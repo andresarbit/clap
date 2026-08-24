@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>CUADRO — Sistema Administrativo Dinámico de Productoras</title>
+<title>CLAP — Control, Logística y Administración de Producción</title>
 <style>
 /* ============================================================
-   CUADRO — design tokens
+   CLAP — design tokens
    ============================================================ */
 :root{
   --bg:#0d0e10; --bg2:#141519; --bg3:#1b1d22; --bg4:#23262c;
@@ -32,9 +32,10 @@ button{cursor:pointer;background:none;border:none}
 .app{display:flex;flex-direction:column;height:100dvh}
 header{background:var(--bg2);border-bottom:1px solid var(--line);flex:none}
 .hrow{display:flex;align-items:center;gap:10px;padding:8px 12px;flex-wrap:wrap}
-.brand{display:flex;align-items:baseline;gap:8px;margin-right:4px;flex:none}
-.brand b{font-size:17px;letter-spacing:.16em;color:var(--ac);font-weight:800}
-.brand span{font-size:10px;color:var(--tx3);letter-spacing:.06em}
+.brand{display:flex;flex-direction:column;justify-content:center;gap:0;margin-right:6px;flex:none}
+.brand b{font-size:18px;letter-spacing:.22em;color:var(--ac);font-weight:800;line-height:1.05}
+.brand span{font-size:8.5px;color:var(--tx3);letter-spacing:.02em;line-height:1.2;
+  text-transform:uppercase;font-weight:600;white-space:nowrap}
 .spacer{flex:1}
 .tabs{display:flex;gap:2px;padding:0 8px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
@@ -167,7 +168,8 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
   .ln .mlbl::before{content:attr(data-l);font-size:8.5px;color:var(--tx3);display:block;
     text-transform:uppercase;letter-spacing:.05em;margin-bottom:1px;font-weight:700}
   .stick .val{font-size:16px}
-  .brand span{display:none}
+  .brand b{font-size:16px;letter-spacing:.18em}
+  .brand span{font-size:7px;letter-spacing:0}
 }
 /* ---------- impresión ---------- */
 @media print{
@@ -186,7 +188,7 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 <div id="app"></div>
 <script>
 /* ============================================================================
-   CUADRO — Sistema Administrativo Dinámico de Productoras
+   CLAP — Control, Logística y Administración de Producción
    Prototipo v0.1 · presupuestador
    ----------------------------------------------------------------------------
    ARQUITECTURA (pensada para migrar a Postgres/Supabase sin rehacer el modelo)
@@ -307,7 +309,8 @@ function hoy(){const d=new Date();return d.toISOString().slice(0,10)}
 
 /* ===========================  STORE  ====================================== */
 
-const KEY = 'cuadro.db.v1';
+const KEY = 'clap.db.v1';
+const KEY_VIEJA = 'cuadro.db.v1';   /* la app se llamaba CUADRO: no perder lo ya cargado */
 let DB;
 
 function dbVacia(){
@@ -318,8 +321,15 @@ function dbVacia(){
 
 function cargar(){
   try{
-    const raw = localStorage.getItem(KEY);
-    if(raw){ DB = JSON.parse(raw); migrar(); return; }
+    const propio = localStorage.getItem(KEY);
+    const raw = propio || localStorage.getItem(KEY_VIEJA);
+    if(raw){
+      DB = JSON.parse(raw); migrar();
+      /* venía de la clave vieja: reescribir ya en la nueva, así el día que se
+         borre el fallback no se pierde nada. */
+      if(!propio) localStorage.setItem(KEY, JSON.stringify(DB));
+      return;
+    }
   }catch(e){ console.warn('DB corrupta, arranco limpio', e); }
   DB = dbVacia(); sembrar(); guardar();
 }
@@ -470,7 +480,7 @@ function header(pr,py,v){
   const TABS=[['presu','Presupuesto'],['catalogo','Catálogo'],['config','Productoras']];
   return `<header>
     <div class="hrow">
-      <div class="brand"><b>CUADRO</b><span>SADP</span></div>
+      <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
       <div class="pick"><label>Productora</label>
         <select onchange="selProductora(this.value)">
           ${DB.productoras.map(p=>`<option value="${p.id}" ${p.id===pr?.id?'selected':''}>${esc(p.nombre)}</option>`).join('')}
@@ -1003,7 +1013,7 @@ function bajar(nombre, contenido, tipo){
   a.href=URL.createObjectURL(new Blob([contenido],{type:tipo}));
   a.download=nombre; a.click(); URL.revokeObjectURL(a.href); }
 
-function expJSON(){ bajar(`cuadro-${hoy()}.json`, JSON.stringify(DB,null,2), 'application/json');
+function expJSON(){ bajar(`clap-${hoy()}.json`, JSON.stringify(DB,null,2), 'application/json');
   toast('Respaldo descargado'); }
 function impJSON(inp){
   const f=inp.files[0]; if(!f) return;
@@ -1013,7 +1023,7 @@ function impJSON(inp){
       if(!d.productoras) throw new Error('formato');
       if(!confirm('Esto reemplaza todos los datos actuales. ¿Seguir?')) return;
       DB=d; migrar(); cerrar(); toast('Respaldo importado');
-    }catch(e){ alert('El archivo no es un respaldo válido de CUADRO.'); } };
+    }catch(e){ alert('El archivo no es un respaldo válido de CLAP.'); } };
   fr.readAsText(f); }
 function expCSV(){
   const v=getV(), py=getPy(); if(!v) return;

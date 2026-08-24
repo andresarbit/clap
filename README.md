@@ -1,7 +1,6 @@
-# CUADRO
+# CLAP
 
-**C**ontrol **U**nificado de **A**dministración, **D**irección, **R**odaje y **O**peraciones
-— Sistema Administrativo Dinámico de Productoras.
+**C**ontrol, **L**ogística y **A**dministración de **P**roducción.
 
 Sistema de gestión para productoras de publicidad y cine: presupuestos, equipo técnico,
 equipamiento, seguros, callsheet y circuito de dinero. Pensado para que dos personas
@@ -9,7 +8,7 @@ administren muchas productoras al mismo tiempo.
 
 ## Estado
 
-**v0.1 — prototipo del presupuestador.** Un solo archivo, `cuadro.html`.
+**v0.1 — prototipo del presupuestador.** Un solo archivo, `clap.html`.
 Abrilo con doble clic en cualquier navegador; no necesita servidor ni instalación.
 Los datos se guardan en el navegador (`localStorage`).
 
@@ -44,7 +43,7 @@ Los datos se guardan en el navegador (`localStorage`).
 
 ## Arquitectura
 
-Todo en `cuadro.html`, en cuatro bloques marcados en el código:
+Todo en `clap.html`, en cuatro bloques marcados en el código:
 
 | Bloque | Qué es |
 |---|---|
