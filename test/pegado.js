@@ -23,10 +23,15 @@ ok('vacío: invita a pegar', /Pegá el guion acá/.test(infoGuion('')));
 const bien = infoGuion(TXT);
 ok('con guion válido: cuenta escenas', /✓ 1 escena/.test(bien), bien.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
 ok('con guion válido: dice qué hacer', /tocá .Desglosar/.test(bien));
-const mal = infoGuion('Esto es un texto cualquiera\nsin ningun encabezado de escena.\n');
-ok('sin encabezados: avisa el problema', /No encuentro encabezados/.test(mal));
-ok('sin encabezados: explica cómo se escriben', /INT\.<\/b>|EXT\./.test(mal));
-ok('sin encabezados: da un ejemplo concreto', /COCINA - DÍA/.test(mal));
+/* sin encabezados ya no es un error: desglosa igual, pero avisa que infirió */
+const libre = infoGuion('Abrimos en una cocina soleada. Una MADRE limpia.\n\nEn el patio, el perro juega.\n');
+ok('sin encabezados: desglosa igual', /✓ 2 bloques/.test(libre), libre.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+ok('sin encabezados: avisa que infirió', /separo por párrafo e infiero/.test(libre));
+ok('sin encabezados: no lo llama "escenas"', !/✓ \d+ escena/.test(libre));
+ok('con encabezados: dice que los usó', /leído por encabezados/.test(infoGuion(TXT)));
+const unSolo = infoGuion('Un tipo camina por la calle y se detiene.');
+ok('un bloque solo: avisa que hay que partirlo', /todo en una escena, la partís después/.test(unSolo));
+ok('sólo espacios cuenta como vacío', /Pegá el guion acá/.test(infoGuion('   \n  \n')));
 
 /* --- 3. encabezados de guion publicitario -------------------------------- */
 console.log('\n--- ENCABEZADOS DE PUBLICIDAD ---');

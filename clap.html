@@ -173,6 +173,15 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 .gbien{color:var(--ok);font-weight:700}
 .gmal{color:var(--warn);font-weight:700}
 .ginfo code{font-family:var(--mono);background:var(--bg4);padding:1px 5px;border-radius:3px;font-size:11px}
+.gaviso{color:var(--warn)}
+.avisomodo{background:rgba(224,145,62,.09);border:1px solid rgba(224,145,62,.35);border-radius:var(--r);
+  padding:9px 12px;margin-bottom:9px;font-size:12px;line-height:1.55;color:var(--tx2)}
+.avisomodo b{color:var(--warn)}
+.esctools{border-top:1px dashed var(--line);padding-top:7px;margin-top:2px}
+.elmas.dgr:hover{color:var(--bad);border-color:var(--bad)}
+.lineadiv{width:100%;text-align:left;margin-bottom:3px;border-color:transparent;font-size:12px;
+  white-space:normal;line-height:1.4}
+.lineadiv:hover{border-color:var(--ac);color:var(--ac)}
 .btn.grande{padding:9px 20px;font-size:14px}
 
 .esc{border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px;background:var(--bg2);overflow:hidden}
@@ -495,7 +504,7 @@ const DICC = {
     'anteojos','lentes','paraguas','torta','comida','plato','platos','cubiertos','tenedor','cuchara','computadora',
     'notebook','laptop','tablet','camara','radio','televisor','tele','control remoto','pelota','guitarra','ramo',
     'flores','regalo','bolsa','changuito','carrito','mate','termo','trofeo','maquina','herramienta','martillo',
-    'escalera','soga','cadena','candado','mapa','plano','foto','fotografia','cuadro','espejo','vela','velas','globo','globos'],
+    'escalera','soga','cadena','candado','mapa','foto','fotografia','cuadro','espejo','vela','velas','globo','globos'],
   vestuario:['traje','vestido','camisa','remera','campera','saco','pantalon','jean','pollera','falda','zapatos',
     'zapatillas','botas','sombrero','gorra','bufanda','guantes','uniforme','delantal','ambo','corbata','abrigo','tapado',
     'pijama','malla','bikini','disfraz','capa','poncho','chaleco','buzo','sweater','pulover','cinturon',
@@ -531,7 +540,7 @@ function nuevaEscena(o={}){
 }
 function nuevoDesglose(o={}){
   return {guion:o.guion||'', escenas:o.escenas||[], jornadas:o.jornadas||[],
-    paginasPorJornada:o.paginasPorJornada??4, importado:o.importado||''};
+    paginasPorJornada:o.paginasPorJornada??4, importado:o.importado||'', modo:o.modo||''};
 }
 
 /* Una jornada de rodaje. Los datos que no salen del guion —dirección, hospital,
@@ -870,6 +879,150 @@ function parseGuion(txt){
   cerrar();
   escenas.forEach(e=>{ delete e._lineas; detectar(e); });
   return escenas;
+}
+
+/* --- Guion SIN encabezados -----------------------------------------------
+   La mayoría de los guiones de publicidad no tienen ni un INT./EXT.: son
+   prosa corrida, una lista de planos o una tabla VIDEO | AUDIO. Para esos se
+   corta por párrafo y se INFIERE la locación y el momento del texto. Es una
+   propuesta para corregir a mano, no una lectura exacta.                     */
+
+/* Lugares frecuentes, con su INT/EXT probable. */
+const LUGARES = {
+  INT:['cocina','living','comedor','bano','dormitorio','habitacion','pieza','oficina','aula','escuela',
+    'bar','restaurante','negocio','local','supermercado','super','kiosco','banco','hospital','consultorio',
+    'gimnasio','estudio','galpon','garage','cochera','ascensor','pasillo','sala','casa','departamento',
+    'depto','hotel','cine','teatro','iglesia','subte','deposito','fabrica','taller','peluqueria','farmacia',
+    'panaderia','heladeria','quincho','altillo','sotano','probador','shopping','aeropuerto','cabina',
+    'lavadero','recepcion','sala de espera','vestuario','barra','mostrador','pasilllo','oficina','comisaria'],
+  EXT:['calle','vereda','plaza','parque','patio','jardin','terraza','balcon','playa','campo','ruta',
+    'autopista','cancha','estacionamiento','montana','rio','bosque','esquina','azotea','muelle','pileta',
+    'piscina','avenida','barrio','puerto','desierto','sierra','laguna','costanera','feria','obra','techo',
+    'camino','sendero','estadio','vereda','parrilla','camping','bosque','puente','peaje','semaforo'],
+};
+/* Pistas de momento del día en prosa. */
+const PISTAS_MOMENTO = [
+  [/\b(de noche|nocturn[oa]|anochecer|la noche|oscurid|a oscuras)\b/, 'NOCHE'],
+  [/\b(atardecer|crepusculo|cae el sol|puesta del sol|caida del sol)\b/, 'ATARDECER'],
+  [/\b(amanecer|al alba|sale el sol|madrugada|primera luz)\b/, 'AMANECER'],
+  [/\b(de tarde|la tarde|siesta|media tarde)\b/, 'TARDE'],
+  [/\b(de manana|la manana|desayuno|temprano|primera hora)\b/, 'MAÑANA'],
+  [/\b(de dia|solead[oa]|pleno sol|luz del dia|mediodia|al sol)\b/, 'DÍA'],
+];
+/* Frases que en un guion publicitario suelen abrir un plano nuevo. */
+const RE_CORTE = /(?:^|(?<=[.:;!?])\s+)(?=(?:corte a|cortamos a|cut to|abrimos en|abre en|abrimos con|cierra en|cierre|cerramos|vemos|se ve|aparece|pasamos a|primer plano|primerisimo primer plano|plano general|plano detalle|plano medio|contraplano|paneo|travelling|zoom in|zoom out|acto seguido|de golpe|luego|despues)\b)/i;
+/* Palabras en mayúscula que NO son personajes. */
+const NO_PERSONAJE = new Set(['INT','EXT','DIA','DÍA','NOCHE','TARDE','FIN','VIDEO','AUDIO','OFF','VOZ','VO',
+  'SFX','FX','MUS','LOGO','PACK','SUPER','ZOOM','CUT','TO','THE','END','CORTE','PLANO','TOMA','ESCENA','SEC',
+  'SPOT','TV','TVC','CLIENTE','PRODUCTO','MARCA','TITULO','TÍTULO','CLAIM','PACKSHOT','SLOGAN','ON','OK']);
+
+/* Una tabla VIDEO | AUDIO pegada de Word llega con tabs o muchos espacios.
+   Se aplana: primero la columna de imagen, después la de audio.              */
+function aplanarTabla(txt){
+  const lineas = txt.replace(/\r\n?/g,'\n').split('\n');
+  const conCols = lineas.filter(l=>l.trim() && /\t| {3,}/.test(l));
+  const conTexto = lineas.filter(l=>l.trim());
+  if(!conTexto.length || conCols.length / conTexto.length < 0.34) return txt;  /* no es tabla */
+  const out=[];
+  lineas.forEach(l=>{
+    if(!l.trim()){ out.push(''); return; }
+    const p = l.split(/\t+| {3,}/).map(x=>x.trim()).filter(Boolean);
+    if(p.length<2){ out.push(l.trim()); return; }
+    if(/^(video|imagen|image)$/i.test(p[0])) return;      /* encabezado de la tabla */
+    out.push(p[0]);
+    p.slice(1).forEach(x=>out.push(x));
+    out.push('');   /* cada fila de la tabla es un plano aparte */
+  });
+  return out.join('\n');
+}
+
+/* Divide el guion en bloques que van a ser las escenas/planos. */
+function bloquesLibres(txt){
+  let t = aplanarTabla(txt).replace(/\r\n?/g,'\n');
+  let bl = t.split(/\n\s*\n+/).map(b=>b.trim()).filter(Boolean);
+  /* descartar un título suelto arriba de todo */
+  if(bl.length>1 && bl[0].split('\n').length===1 && bl[0].length<70 &&
+     bl[0]===bl[0].toUpperCase() && !/[.]/.test(bl[0])) bl.shift();
+  /* si vino todo de corrido, cortar por las frases que abren plano */
+  if(bl.length===1 && bl[0].length>260){
+    const p = bl[0].split(RE_CORTE).map(x=>x.trim()).filter(Boolean);
+    if(p.length>1) bl = p;
+  }
+  /* un bloque larguísimo se corta también por esas frases */
+  if(bl.length>1) bl = bl.flatMap(b=> b.length>500
+    ? b.split(RE_CORTE).map(x=>x.trim()).filter(Boolean) : [b]);
+  /* un bloque que es puro diálogo o puro sonido no es un plano nuevo:
+     va pegado al anterior (si no, "MADRE: Listo." contaría como una escena) */
+  const soloDialogo = b => {
+    const ls = b.split('\n').map(x=>x.trim()).filter(Boolean);
+    return ls.length && ls.length<=3 &&
+      ls.every(l=>/^[A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ\s\.'()]{0,30}\s*[:：]/.test(l));
+  };
+  const out=[];
+  bl.forEach(b=>{ if(out.length && soloDialogo(b)) out[out.length-1] += '\n' + b; else out.push(b); });
+  return out;
+}
+
+function parseGuionLibre(txt){
+  const bl = bloquesLibres(txt);
+  if(!bl.length) return [];
+  let locPrev='', iePrev='INT', momPrev='DÍA';
+  return bl.map((b,i)=>{
+    const t = norm(b);
+    /* locación: primer lugar conocido que aparezca; si no hay, sigue el anterior */
+    let loc='', ie='';
+    for(const [k,palabras] of Object.entries(LUGARES)){
+      for(const p of palabras){
+        const pos = t.indexOf(' '+p);
+        if(pos>=0 || t.startsWith(p)){
+          const cand = p.toUpperCase();
+          if(!loc || (pos>=0 && pos < t.indexOf(' '+norm(loc)))){ loc=cand; ie=k; }
+        }
+      }
+    }
+    if(/\b(interior|adentro|dentro de)\b/.test(t)) ie='INT';
+    if(/\b(exterior|afuera|a la calle|al aire libre)\b/.test(t)) ie='EXT';
+    if(!loc){ loc = locPrev || 'Sin locación'; ie = ie || iePrev; }
+    /* momento */
+    let mom='';
+    for(const [re,val] of PISTAS_MOMENTO) if(re.test(t)){ mom=val; break; }
+    if(!mom) mom = momPrev;
+    locPrev=loc; iePrev=ie||'INT'; momPrev=mom;
+
+    const e = nuevaEscena({numero:String(i+1), encabezado:b.split('\n')[0].slice(0,90),
+      intExt:ie||'INT', locacion:loc, momento:mom, texto:b,
+      octavos: Math.max(1, Math.round(b.split('\n').length/6.875) || Math.round(b.length/380*8) || 1)});
+    e.personajes = personajesLibres(b);
+    detectar(e);
+    return e;
+  });
+}
+
+/* En prosa los personajes vienen en MAYÚSCULA la primera vez ("Una MADRE
+   limpia…") o como "MADRE: texto".                                           */
+function personajesLibres(b){
+  const out=[];
+  b.split('\n').forEach(l=>{
+    const m = l.match(/^\s*([A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ\s\.']{1,30}?)\s*[:：]\s*\S/);
+    if(m){ const nom=m[1].trim(); if(!NO_PERSONAJE.has(nom) && nom.length>1 && !out.includes(nom)) out.push(nom); }
+  });
+  (b.match(/\b[A-ZÁÉÍÓÚÑÜ]{3,}(?:\s+[A-ZÁÉÍÓÚÑÜ]{3,})?\b/g)||[]).forEach(w=>{
+    const nom=w.trim();
+    if(NO_PERSONAJE.has(nom) || out.includes(nom)) return;
+    if(nom.split(/\s+/).some(x=>NO_PERSONAJE.has(x))) return;
+    if(LUGARES.INT.includes(norm(nom)) || LUGARES.EXT.includes(norm(nom))) return;
+    out.push(nom);
+  });
+  return out;
+}
+
+/* Punto de entrada único: usa encabezados si los hay, si no corta por párrafo.
+   Devuelve también en qué modo leyó, para poder decírselo a la persona.      */
+function desglosar(txt){
+  const conEnc = parseGuion(txt);
+  if(conEnc.length) return {escenas:conEnc, modo:'encabezados'};
+  const libres = parseGuionLibre(txt);
+  return {escenas:libres, modo: libres.length>1 ? 'parrafos' : libres.length ? 'bloque' : 'nada'};
 }
 
 /* Sugiere elementos por diccionario. Marca lo detectado en `auto` para poder
@@ -1386,7 +1539,9 @@ function vistaDesglose(py){
       <button class="btn sm pri noprint" onclick="aPresupuesto()">→ Presupuesto</button>
     </div>
     <div class="pad">${
-      sub==='deptos' ? deptosHTML(r) : sub==='plan' ? planHTML(py,d,r) : d.escenas.map(e=>escHTML(e,d)).join('')
+      sub==='deptos' ? deptosHTML(r) : sub==='plan' ? planHTML(py,d,r) :
+      (d.modo && d.modo!=='encabezados' ? avisoModoHTML(d) : '') + d.escenas.map(e=>escHTML(e,d)).join('') +
+      (sub==='escenas' ? `<button class="btn sm noprint" style="margin-top:4px" onclick="addEscena()">+ Escena al final</button>` : '')
     }</div></div>`;
 }
 
@@ -1426,18 +1581,23 @@ function importadorHTML(){
    mientras se pega, así no hace falta adivinar si el guion se entiende.      */
 function infoGuion(txt){
   if(!txt || !txt.trim())
-    return `<span class="muted">Pegá el guion acá. A medida que escribís te voy diciendo qué encuentro.</span>`;
-  const es = parseGuion(txt);
-  if(!es.length) return `<span class="gmal">✕ No encuentro encabezados de escena.</span>
-    <span class="muted">Tienen que ser líneas propias que digan <b>INT.</b> o <b>EXT.</b> —también acepto
-    <b>ESCENA 1</b>, <b>SEC. 1</b>, <b>PLANO 1</b> o <b>TOMA 1</b>. Por ejemplo:
-    <code>1. INT. COCINA - DÍA</code></span>`;
+    return `<span class="muted">Pegá el guion acá. Si tiene encabezados los uso; si no —como la mayoría
+      de los guiones de publicidad— separo por párrafo e infiero la locación del texto.</span>`;
+  const {escenas:es, modo} = desglosar(txt);
+  if(!es.length) return `<span class="gmal">✕ No encuentro nada para desglosar.</span>`;
   const locs = new Set(es.map(e=>e.locacion));
   const pers = new Set(es.flatMap(e=>e.personajes));
   const oct = es.reduce((s,e)=>s+e.octavos,0);
-  return `<span class="gbien">✓ ${es.length} escena${es.length==1?'':'s'}</span>
+  const cuantos = modo==='encabezados' ? `${es.length} escena${es.length==1?'':'s'}`
+                                       : `${es.length} bloque${es.length==1?'':'s'}`;
+  const aviso = modo==='encabezados'
+    ? `<span class="muted">· leído por encabezados</span>`
+    : modo==='bloque'
+      ? `<span class="gaviso">· sin encabezados y sin cortes claros: va a quedar todo en una escena, la partís después</span>`
+      : `<span class="gaviso">· sin encabezados: separo por párrafo e infiero la locación — revisalo después</span>`;
+  return `<span class="gbien">✓ ${cuantos}</span>
     <span class="muted">· ${locs.size} ${locs.size==1?'locación':'locaciones'} · ${pers.size} personaje${pers.size==1?'':'s'}
-    · ${octavosATexto(oct)} páginas</span>
+    · ${octavosATexto(oct)} páginas</span> ${aviso}
     <b style="color:var(--ac)">— tocá “Desglosar”</b>`;
 }
 
@@ -1501,6 +1661,13 @@ function escHTML(e,d){
         <button class="elmas solo-cel" onclick="pickDepto('${e.id}')">+ Agregar elemento</button></div>
       ${e.texto.trim()?`<details><summary class="muted noprint" style="font-size:11px;cursor:pointer;padding:2px 0">Ver texto de la escena</summary>
         <div class="etxt">${esc(e.texto.trim())}</div></details>`:''}
+      <div class="drow noprint esctools">
+        <span class="dlbl"></span>
+        <span class="dels">
+          <button class="elmas" onclick="unirEscena('${e.id}')" title="Pegar esta escena a la de arriba">↑ Unir con la anterior</button>
+          <button class="elmas" onclick="dividirEscena('${e.id}')" title="Partir en dos por un renglón">✂ Dividir</button>
+          <button class="elmas dgr" onclick="delEscena('${e.id}')">Eliminar escena</button>
+        </span></div>
     </div></div>`;
 }
 function elHTML(eid, dep, val, color, sugerido){
@@ -1962,6 +2129,82 @@ function addPersona(rid, pid){
 
 /* ---------- desglose ---------- */
 function setSub(k){ DB.ui.subDesglose=k; R(); }
+/* Aviso permanente cuando el guion se leyó sin encabezados: que quede claro
+   que lo de abajo es una propuesta y no una lectura exacta.                  */
+function avisoModoHTML(d){
+  return `<div class="avisomodo noprint">
+    <b>Este guion no tenía encabezados.</b>
+    ${d.modo==='bloque'
+      ? 'No encontré cortes claros, así que quedó todo en una escena. Usá <b>✂ Dividir</b> para partirla donde cambia el plano.'
+      : 'Separé por párrafo e inferí la locación, el INT/EXT y el momento del texto. <b>Revisalo:</b> el INT/EXT se cambia con un click, la locación y el momento se editan en el lugar, y abajo de cada escena tenés <b>Unir</b> y <b>Dividir</b>.'}
+  </div>`;
+}
+
+function addEscena(){
+  const d = getD();
+  d.escenas.push(nuevaEscena({numero:String(d.escenas.length+1), locacion:'Sin locación', abierta:true}));
+  R();
+}
+function delEscena(id){
+  const d = getD(); const e = d.escenas.find(x=>x.id===id);
+  if(!confirm(`Eliminar la escena ${e.numero}?`)) return;
+  d.escenas = d.escenas.filter(x=>x.id!==id);
+  sincronizarJornadas(d); R();
+}
+/* Une con la anterior: junta textos, personajes y elementos sin duplicar.    */
+function unirEscena(id){
+  const d = getD(); const i = d.escenas.findIndex(x=>x.id===id);
+  if(i<=0){ toast('Esta es la primera escena'); return; }
+  const a = d.escenas[i-1], b = d.escenas[i];
+  a.texto = (a.texto.trimEnd() + '\n\n' + b.texto.trim()).trim();
+  a.octavos += b.octavos;
+  b.personajes.forEach(p=>{ if(!a.personajes.includes(p)) a.personajes.push(p); });
+  Object.entries(b.elementos).forEach(([k,v])=>{
+    a.elementos[k] = [...new Set([...(a.elementos[k]||[]), ...v])]; });
+  if(b.notas) a.notas = (a.notas ? a.notas+' · ' : '') + b.notas;
+  d.escenas.splice(i,1);
+  renumerar(d); sincronizarJornadas(d); toast('Escenas unidas'); R();
+}
+/* Dividir: se elige el renglón donde arranca la escena nueva.                */
+function dividirEscena(id){
+  const e = getD().escenas.find(x=>x.id===id);
+  const ls = e.texto.split('\n');
+  if(ls.filter(x=>x.trim()).length<2){ toast('Esta escena tiene una sola línea'); return; }
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+    <h3>Dividir la escena ${esc(e.numero)}</h3>
+    <div class="mbody" style="padding:8px">
+      <div class="muted" style="font-size:12px;padding:4px 8px 10px">
+        Tocá el renglón donde <b>arranca la escena nueva</b>. Lo de arriba queda en la ${esc(e.numero)}.</div>
+      ${ls.map((l,i)=> i===0 || !l.trim() ? '' :
+        `<button class="btn lineadiv" onclick="hacerDivision('${e.id}',${i})">${esc(l.trim())}</button>`).join('')}
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button></div>
+  </div></div>`);
+}
+function hacerDivision(id, i){
+  const d = getD(); const idx = d.escenas.findIndex(x=>x.id===id); const e = d.escenas[idx];
+  const ls = e.texto.split('\n');
+  const arriba = ls.slice(0,i).join('\n').trim();
+  const abajo  = ls.slice(i).join('\n').trim();
+  if(!arriba || !abajo){ cerrar(); toast('No hay dónde cortar'); return; }
+  const nueva = nuevaEscena({numero:e.numero+'A', intExt:e.intExt, locacion:e.locacion,
+    momento:e.momento, texto:abajo, abierta:true,
+    octavos: Math.max(1, Math.round(e.octavos * abajo.length / (arriba.length+abajo.length)))});
+  nueva.personajes = personajesLibres(abajo);
+  detectar(nueva);
+  e.texto = arriba;
+  e.octavos = Math.max(1, e.octavos - nueva.octavos);
+  e.personajes = personajesLibres(arriba).length ? personajesLibres(arriba) : e.personajes;
+  e.elementos = {}; e.auto = {}; detectar(e);
+  d.escenas.splice(idx+1, 0, nueva);
+  renumerar(d); cerrar(); toast('Escena dividida'); R();
+}
+/* Renumera 1..N sólo si la numeración original era correlativa simple.       */
+function renumerar(d){
+  const simple = d.escenas.every(e=>/^\d+[A-Z]?$/.test(String(e.numero)));
+  if(!simple) return;
+  d.escenas.forEach((e,i)=>e.numero = String(i+1));
+}
+
 function cicloIE(id){
   const e = getD().escenas.find(x=>x.id===id);
   const o = ['INT','EXT','INT/EXT'];
@@ -1975,14 +2218,15 @@ const getD = () => { const py=getPy(); if(!py) return null; py.desglose ||= nuev
 function importarGuion(txt){
   const t = typeof txt==='string' ? txt : (document.getElementById('gtxt')?.value || getD().guion || '');
   if(!t.trim()){ toast('Pegá el guion primero'); return; }
-  const escenas = parseGuion(t);
+  const {escenas, modo} = desglosar(t);
   if(!escenas.length){
-    alert('No encontré encabezados de escena.\n\nEl guion tiene que tener líneas tipo:\n\n  INT. COCINA - DÍA\n  EXT. CALLE - NOCHE\n\nSe acepta con o sin número de escena adelante.');
-    return; }
+    alert('No hay texto para desglosar.'); return; }
   const d = getD();
-  d.guion = t; d.escenas = escenas; d.importado = hoy();
+  d.guion = t; d.escenas = escenas; d.importado = hoy(); d.modo = modo;
   DB.ui.subDesglose='escenas';
-  toast(`${escenas.length} escenas desglosadas`); R();
+  toast(modo==='encabezados' ? `${escenas.length} escenas desglosadas`
+      : `${escenas.length} bloques — sin encabezados, separé por párrafo. Revisá y ajustá.`);
+  R();
 }
 async function subirGuion(inp){
   const f=inp.files[0]; if(!f) return;
@@ -1994,7 +2238,7 @@ async function subirGuion(inp){
   /* el texto extraído se muestra antes de desglosar: de un PDF o un .doc
      puede salir sucio y conviene que lo mire una persona */
   const ta = document.getElementById('gtxt');
-  const escenas = parseGuion(txt).length;
+  const escenas = desglosar(txt).escenas.length;
   if(ta){ ta.value = txt; ta.scrollTop = 0; }
   if(!escenas){
     alert('Leí el archivo pero no encontré encabezados de escena.\n\n' +

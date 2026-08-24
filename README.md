@@ -53,6 +53,15 @@ texto va diciendo en vivo cuántas escenas encuentra, o por qué no encuentra ni
   Esto es determinístico, no adivina.
 - Acepta encabezados de guion de cine (`INT. COCINA - DÍA`) y **de publicidad**
   (`ESCENA 1`, `SEC. 1`, `PLANO 3`, `TOMA 2`), que suelen venir sin INT/EXT.
+- **Y guiones sin ningun encabezado**, que es como viene la mayoria de la
+  publicidad. Si no encuentra encabezados corta por parrafo e **infiere** la
+  locacion, el INT/EXT y el momento del texto; lo que un bloque no nombra lo
+  hereda del anterior. Tambien aplana una **tabla VIDEO | AUDIO** pegada de Word
+  (cada fila es un plano) y parte un guion escrito de corrido por las frases que
+  abren plano ("Corte a", "Vemos", "Abrimos en", "Primer plano"...).
+- Un cartel arriba deja claro cuando el desglose fue **inferido** y no leido, y
+  cada escena trae **Unir con la anterior**, **Dividir** (se elige el renglon
+  donde arranca la escena nueva) y **Eliminar**, mas **+ Escena** al final.
 - En cada escena, el **INT/EXT se cambia con un click** y la locación y el momento
   se editan en el lugar: el parser propone, vos corregís.
 - **Detección de elementos por diccionario** en 12 departamentos (utilería, vestuario,
@@ -138,6 +147,7 @@ node test/run.js test/desglose.js   # desglose, jornadas y puente al presupuesto
 node test/run.js test/importar.js  # PDF, DOCX, RTF, FDX y .doc contra test/muestras/
 node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
+node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```
