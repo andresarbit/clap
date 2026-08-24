@@ -1,1 +1,6 @@
 .claude/settings.local.json
+test/muestras/renombrado*.doc
+test/muestras/binario.doc
+test/muestras/roto.docx
+test/muestras/escaneado.pdf
+test/muestras/vacio.xyz

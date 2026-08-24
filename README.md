@@ -57,6 +57,35 @@ Los datos se guardan en el navegador (`localStorage`).
   la cantidad y los días ya calculados. Los valores quedan en cero: los pone una persona.
 - Export del desglose a **CSV**.
 
+**Formatos que acepta**: `.pdf` · `.docx` · `.doc` · `.rtf` · `.fdx` (Final Draft) ·
+`.txt` · `.fountain`. Sin librerias externas: el `.docx` es un ZIP y los streams del
+PDF se inflan con el `DecompressionStream` que ya trae el navegador.
+
+| Formato | Calidad | Nota |
+|---|---|---|
+| `.fdx` | Perfecta | Trae el tipo de cada parrafo marcado |
+| `.txt` `.fountain` | Perfecta | |
+| `.docx` `.rtf` | Muy buena | |
+| `.pdf` | Buena | Solo PDF de texto. Un PDF escaneado es una imagen: avisa y pide OCR |
+| `.doc` | Aproximada | El binario viejo de Word no tiene lectura limpia; conviene guardarlo como `.docx` |
+
+El texto extraido se muestra **antes** de desglosar, para revisarlo.
+
+### Callsheet
+
+Se arma solo juntando las tres fuentes que ya estan cargadas:
+
+- **del guion**: las escenas de esa jornada, con INT/EXT, locacion, momento, paginas y elenco
+- **del presupuesto**: el equipo tecnico (lineas de los rubros 02 a 08), agrupado por departamento
+- **del catalogo**: nombre y telefono de cada persona enlazada
+
+Encima de eso se cargan a mano los datos que no salen de ningun lado: fecha, citacion,
+comida, wrap, salida y puesta del sol, direccion y contacto de cada locacion, hospital
+mas cercano, contacto de emergencia, clima, citaciones individuales y notas del dia.
+
+Cada jornada guarda lo suyo. `Imprimir / PDF` saca una hoja A4 limpia: se ocultan los
+controles de edicion, los campos quedan como texto y los bloques no se parten entre paginas.
+
 > El diccionario está en la constante `DICC`. Sumar términos ahí mejora el desglose
 > de todos los proyectos.
 
@@ -80,8 +109,7 @@ de `productoraId`, así que el schema ya es multi-tenant.
 1. **Presupuestador** ✅
 2. **Desglose de guion** ✅ — parser, elementos por departamento, plan de rodaje,
    puente al presupuesto.
-3. **Callsheet** — generado del desglose y del crew: citaciones por departamento,
-   escenas del día, locaciones, hospital más cercano, contactos.
+3. **Callsheet** ✅ — jornada por jornada, con impresion a A4.
 4. **Seguros** — generar el alta (nómina para el broker) desde el crew ya cargado;
    guardar pólizas y certificados. AP, ART, RC, todo riesgo equipos.
 5. **Caja y pagos** — órdenes de compra, caja chica por jornada, rendiciones, y el
@@ -98,4 +126,8 @@ El motor de cálculo y los caminos de render se prueban headless (sin navegador)
 node test/run.js test/pruebas.js    # presupuesto: cálculo, capas, versionado
 node test/run.js test/parser.js     # parser de guion contra test/guion-ejemplo.txt
 node test/run.js test/desglose.js   # desglose, jornadas y puente al presupuesto
+node test/run.js test/importar.js  # PDF, DOCX, RTF, FDX y .doc contra test/muestras/
+node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
+
+python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```

@@ -6,7 +6,7 @@ global.document={querySelector:()=>fake,querySelectorAll:()=>[],createElement:()
   body:{appendChild(){}},getElementById:()=>fake};
 global.window={print(){},addEventListener(){}};
 global.alert=()=>{};global.confirm=()=>true;global.prompt=()=>null;
-global.URL={createObjectURL:()=>'blob:x',revokeObjectURL(){}};global.Blob=class{};
+global.URL={createObjectURL:()=>'blob:x',revokeObjectURL(){}};
 const fs=require('fs');
 const src=fs.readFileSync('D:/Cuadro/clap.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 const tst=fs.readFileSync(process.argv[2],'utf8');

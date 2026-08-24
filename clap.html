@@ -195,6 +195,33 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 .ecar{color:var(--tx3);font-size:11px;flex:none;width:9px}
 .ecnt{font:600 10px var(--mono);color:var(--tx3);flex:none}
 
+/* ---------- callsheet ---------- */
+.cs{background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);overflow:hidden}
+.cshead{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;
+  padding:14px 16px;border-bottom:2px solid var(--ac);flex-wrap:wrap}
+.csttl{font-size:20px;font-weight:800;line-height:1.15}
+.cssub{font-size:11.5px;color:var(--tx3);margin-top:3px}
+.csj{font:800 17px var(--mono);color:var(--ac);letter-spacing:.04em}
+.csj span{font-size:11px;color:var(--tx3);font-weight:600;letter-spacing:0}
+.cshoras{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:1px;background:var(--line)}
+.cshoras>div{background:var(--bg3);padding:9px 12px}
+.cshoras b{display:block;font:700 15px var(--mono);color:var(--tx);line-height:1.2}
+.cshoras span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700}
+.csblock{border-top:1px solid var(--line)}
+.csblock>h4{padding:8px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;
+  color:var(--ac);background:var(--bg3);font-weight:800}
+.cst input{padding:3px 6px;font-size:12px;background:transparent;border-color:transparent}
+.cst input:hover{border-color:var(--line)}
+.cst input:focus{background:var(--bg4);border-color:var(--ac)}
+.cst .enum{color:var(--ac);font:800 12px var(--mono)}
+tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;
+  color:var(--tx2);font-weight:800;padding:5px 9px}
+.csloc{padding:9px 16px;border-bottom:1px solid rgba(44,47,54,.5)}
+.csloc:last-child{border:none}
+.cslocn{font-weight:700;font-size:13px;margin-bottom:5px}
+.cslocd{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px}
+.csfoot{padding:9px 16px;border-top:1px solid var(--line);font-size:10px;color:var(--tx3);text-align:center}
+
 /* ---------- celular ---------- */
 @media (max-width:860px){
   .wrap{padding:10px}
@@ -217,6 +244,10 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
   .esc .drow{gap:4px}
   .esc:not(.on) .ebody{display:none}
   .esc .ehead{cursor:pointer}
+  .cst input{padding:8px 6px;font-size:14px;border-color:var(--line);background:var(--bg3)}
+  .cst th,.cst td{padding:5px 7px}
+  .csttl{font-size:17px}
+  .cslocd input{padding:8px}
   .ln select.chipsel{font-size:12px;padding:7px 22px 7px 8px;
     background-position:calc(100% - 12px) 15px,calc(100% - 8px) 15px}
   .rhead{padding:12px 11px}
@@ -227,15 +258,45 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
   .brand span{font-size:7px;letter-spacing:0}
 }
 /* ---------- impresión ---------- */
+@page{size:A4;margin:11mm 10mm}
 @media print{
-  body{background:#fff;color:#000}
-  header,.tabs,.stick,.addln,.noprint,.del{display:none!important}
+  html,body{background:#fff;color:#000;height:auto}
+  header,.tabs,.stick,.addln,.noprint,.del,.subtabs,details{display:none!important}
+  .app{display:block;height:auto}
+  main{overflow:visible}
+  .wrap{padding:0;max-width:none}
   .card,.rubro{border-color:#ccc;background:#fff;break-inside:avoid}
   .rhead{background:#f2f2f2}
   .lh{background:#fafafa;color:#555}
-  main{overflow:visible}
   .rcode{color:#8a6a12;background:#f6eed6}
   .tot.big b{color:#000}
+
+  /* callsheet: es el documento que se manda, tiene que entrar prolijo en A4 */
+  .cs{border:none;border-radius:0;background:#fff;font-size:10px}
+  .cshead{border-bottom:2px solid #000;padding:0 0 7px}
+  .csttl{font-size:16px}
+  .csj{color:#000;font-size:14px}
+  .cssub,.cshoras span,.csfoot{color:#444}
+  .cshoras{background:#bbb;gap:1px}
+  .cshoras>div{background:#fff;padding:5px 8px}
+  .cshoras b{font-size:12px;color:#000}
+  .csblock{border-top:1px solid #999;break-inside:avoid}
+  .csblock>h4{background:#eee;color:#000;padding:4px 0;font-size:9px}
+  .cst{font-size:9.5px}
+  .cst th,.cst td{padding:2.5px 5px;border-bottom:1px solid #ddd}
+  .cst .enum{color:#000}
+  tr.csdep td{background:#f0f0f0;color:#000}
+  .cst input{border:none;background:transparent;color:#000;padding:0;font-size:9.5px}
+  .csloc{padding:5px 0}
+  .cslocd input{border:none;background:transparent;color:#000;font-size:9.5px;padding:0}
+  .eie.int,.eie.ext{background:#eee;color:#000}
+  .emom.noche{color:#000;font-weight:800}
+  .el{border-color:#bbb!important;color:#000!important}
+  .ddot{outline:1px solid #999}
+  .dlbl{color:#000!important}
+  .csfoot{border-top:1px solid #999;padding:6px 0 0}
+  .scrollx{overflow:visible}
+  textarea{border:none;color:#000;resize:none}
 }
 </style>
 </head>
@@ -444,6 +505,263 @@ function nuevoDesglose(o={}){
     paginasPorJornada:o.paginasPorJornada??4, importado:o.importado||''};
 }
 
+/* Una jornada de rodaje. Los datos que no salen del guion —dirección, hospital,
+   horarios, citaciones— se cargan acá y son lo que completa el callsheet.     */
+function nuevaJornada(o={}){
+  return {id:uid('j'), numero:o.numero||1, fecha:o.fecha||'',
+    citacion:o.citacion||'07:00', comida:o.comida||'13:00', wrap:o.wrap||'19:00',
+    amanecer:o.amanecer||'', atardecer:o.atardecer||'', clima:o.clima||'',
+    hospital:o.hospital||{nombre:'', direccion:'', tel:''},
+    emergencia:o.emergencia||{nombre:'', tel:''},
+    direcciones:o.direcciones||{},   /* { [locación]: {direccion, contacto, notas} } */
+    citaciones:o.citaciones||{},     /* { [clave persona]: 'HH:MM' } */
+    notas:o.notas||''};
+}
+
+/* Rubros de los que sale el equipo técnico del callsheet.                     */
+const RUBROS_CREW = ['02','03','04','05','06','07','08'];
+
+/* Arma el callsheet de una jornada juntando guion + presupuesto + catálogo.   */
+function armarCallsheet(py, v, numJornada){
+  const d = py.desglose;
+  const j = normalizarJornada(d.jornadas.find(x=>x.numero===numJornada) || nuevaJornada({numero:numJornada}));
+  const escenas = d.escenas.filter(e=>e.jornada===numJornada)
+    .sort((a,b)=>String(a.numero).localeCompare(String(b.numero),undefined,{numeric:true}));
+  const octavos = escenas.reduce((s,e)=>s+e.octavos,0);
+  const locaciones = [...new Set(escenas.map(e=>e.locacion))];
+
+  /* elenco: los personajes con diálogo en las escenas del día */
+  const elenco = [...new Set(escenas.flatMap(e=>e.personajes))].sort().map(p=>({
+    clave:'p:'+p, personaje:p,
+    escenas: escenas.filter(e=>e.personajes.includes(p)).map(e=>e.numero),
+    persona: DB.catalogo.personas.find(x=>norm(x.nombre)===norm(p) || norm(x.funcion)===norm(p)) || null,
+  }));
+
+  /* equipo técnico: las líneas de los rubros de crew del presupuesto activo */
+  const crew = [];
+  if(v) v.rubros.filter(r=>RUBROS_CREW.includes(r.codigo)).forEach(r=>{
+    r.lineas.forEach(l=>{
+      if(!l.concepto.trim()) return;
+      const pe = l.refId ? DB.catalogo.personas.find(x=>x.id===l.refId) : null;
+      crew.push({clave:'l:'+l.id, rubro:r.codigo, depto:r.nombre, funcion:l.concepto,
+        nombre:pe?pe.nombre:'', tel:pe?pe.tel:'', persona:pe});
+    });
+  });
+
+  /* elementos del día, agrupados por departamento */
+  const elementos = {};
+  escenas.forEach(e=>Object.entries(e.elementos).forEach(([k,vals])=>{
+    elementos[k] ||= new Set(); vals.forEach(x=>elementos[k].add(x)); }));
+
+  return {j, escenas, octavos, locaciones, elenco, crew,
+    elementos: Object.fromEntries(Object.entries(elementos).map(([k,s])=>[k,[...s]])),
+    totalJornadas: d.jornadas.length};
+}
+
+/* --- Lectura de archivos --------------------------------------------------
+   Sin librerías externas: el navegador ya trae DecompressionStream, así que
+   el .docx (que es un ZIP) y los streams comprimidos del PDF se inflan solos.
+   Cada extractor devuelve texto plano; el parser de guion hace el resto.     */
+
+const FORMATOS = '.txt, .fountain, .fdx, .docx, .rtf, .pdf, .doc';
+
+async function inflar(bytes, raw){
+  const ds = new DecompressionStream(raw ? 'deflate-raw' : 'deflate');
+  const buf = await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+  return new Uint8Array(buf);
+}
+const latin1 = b => { let s=''; const N=8192;
+  for(let i=0;i<b.length;i+=N) s += String.fromCharCode.apply(null, b.subarray(i,i+N));
+  return s; };
+const utf8 = b => new TextDecoder('utf-8').decode(b);
+const desentidad = s => s.replace(/&#(\d+);/g,(m,d)=>String.fromCharCode(+d))
+  .replace(/&#x([0-9a-f]+);/gi,(m,h)=>String.fromCharCode(parseInt(h,16)))
+  .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")
+  .replace(/&amp;/g,'&');
+const limpiar = t => t.replace(/\r\n?/g,'\n').replace(/[\t ]+/g,' ')
+  .replace(/ +\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+
+/* ZIP: leer el directorio central y sacar una entrada por nombre.            */
+async function zipEntrada(bytes, nombre){
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let eocd = -1;
+  for(let i=bytes.length-22; i>=Math.max(0,bytes.length-66000); i--)
+    if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; }
+  if(eocd<0) throw new Error('No parece un archivo .docx válido (no encontré el índice del ZIP).');
+  const total = dv.getUint16(eocd+10,true);
+  let p = dv.getUint32(eocd+16,true);
+  for(let i=0;i<total;i++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const metodo = dv.getUint16(p+10,true);
+    const compLen = dv.getUint32(p+20,true);
+    const nLen = dv.getUint16(p+28,true), eLen = dv.getUint16(p+30,true), cLen = dv.getUint16(p+32,true);
+    const off = dv.getUint32(p+42,true);
+    const nom = latin1(bytes.subarray(p+46, p+46+nLen));
+    if(nom===nombre){
+      const lnLen = dv.getUint16(off+26,true), leLen = dv.getUint16(off+28,true);
+      const ini = off+30+lnLen+leLen;
+      const datos = bytes.subarray(ini, ini+compLen);
+      return metodo===0 ? datos : await inflar(datos, true);
+    }
+    p += 46+nLen+eLen+cLen;
+  }
+  throw new Error('No encontré '+nombre+' adentro del archivo.');
+}
+
+/* .docx — el texto vive en word/document.xml                                 */
+async function docxATexto(bytes){
+  const xml = utf8(await zipEntrada(bytes,'word/document.xml'));
+  return limpiar(desentidad(xml
+    .replace(/<w:tab[^>]*\/>/g,'  ')
+    .replace(/<w:br[^>]*\/>/g,'\n')
+    .replace(/<\/w:p>/g,'\n')
+    .replace(/<[^>]+>/g,'')));
+}
+
+/* .fdx — Final Draft. Es XML con el tipo de cada párrafo, así que reconstruyo
+   el formato de guion exacto: es el import de mejor calidad.                 */
+function fdxATexto(txt){
+  const out=[]; const re=/<Paragraph\b([^>]*)>([\s\S]*?)<\/Paragraph>/g;
+  let m;
+  while((m=re.exec(txt))){
+    const tipo=(m[1].match(/Type="([^"]*)"/)||[,''])[1];
+    const cuerpo=desentidad(m[2].replace(/<[^>]+>/g,'')).trim();
+    if(!cuerpo) continue;
+    if(/Scene Heading/i.test(tipo)) out.push('','' + cuerpo.toUpperCase(),'');
+    else if(/Character/i.test(tipo)) out.push('', cuerpo.toUpperCase());
+    else if(/Transition/i.test(tipo)) out.push('', cuerpo.toUpperCase(),'');
+    else out.push(cuerpo);
+  }
+  if(!out.length) throw new Error('No encontré párrafos de guion en el .fdx.');
+  return limpiar(out.join('\n'));
+}
+
+/* .rtf — sacar grupos de control y quedarse con el texto                     */
+function rtfATexto(s){
+  s = s.replace(/\\'([0-9a-f]{2})/gi,(m,h)=>String.fromCharCode(parseInt(h,16)))
+       .replace(/\\u(-?\d+)\s?\??/g,(m,d)=>String.fromCharCode(((+d)+65536)%65536))
+       .replace(/\{\\\*[^{}]*\}/g,'')
+       .replace(/\\par[d]?\b/g,'\n').replace(/\\line\b/g,'\n').replace(/\\tab\b/g,'  ')
+       .replace(/\\[a-z]+-?\d*\s?/gi,'').replace(/[{}]/g,'');
+  return limpiar(s);
+}
+
+/* .pdf — recorrer los streams de contenido, inflar los que estén comprimidos
+   y leer los operadores de texto (Tj / TJ / ' / "). Sirve para PDF de texto;
+   un PDF escaneado es una imagen y no tiene texto que leer.                  */
+async function pdfATexto(bytes){
+  const s = latin1(bytes);
+  if(/\/Encrypt\b/.test(s.slice(0,Math.min(s.length,4000))) || /\/Encrypt\s+\d+\s+\d+\s+R/.test(s))
+    throw new Error('El PDF está protegido con contraseña. Quitale la protección o exportalo de nuevo.');
+  const partes=[]; let i=0;
+  while((i = s.indexOf('stream', i)) !== -1){
+    const dictIni = s.lastIndexOf('<<', i);
+    const dict = dictIni<0 ? '' : s.slice(dictIni, i);
+    let ini = i+6;
+    if(s[ini]==='\r') ini++;
+    if(s[ini]==='\n') ini++;
+    const fin = s.indexOf('endstream', ini);
+    if(fin<0) break;
+    i = fin+9;
+    if(/\/Image|\/DCTDecode|\/JPXDecode|\/CCITTFaxDecode/.test(dict)) continue;
+    /* el largo real lo da /Length; si no está, recorto el salto de línea que
+       va antes de `endstream` (si se lo dejo, zlib rechaza el stream entero) */
+    let corte = fin;
+    const mLen = dict.match(/\/Length\s+(\d+)/);
+    if(mLen && ini + +mLen[1] <= fin) corte = ini + +mLen[1];
+    else while(corte>ini && (bytes[corte-1]===10 || bytes[corte-1]===13)) corte--;
+    let datos = bytes.subarray(ini, corte);
+    if(/\/FlateDecode/.test(dict)){
+      try{ datos = await inflar(datos, false); }
+      catch(e){ try{ datos = await inflar(datos, true); }catch(e2){ continue; } }
+    } else if(/\/Filter/.test(dict)) continue;   /* filtro que no sé leer */
+    partes.push(latin1(datos));
+  }
+  if(!partes.length) throw new Error('No pude leer el contenido del PDF.');
+  const txt = partes.map(contenidoPdfATexto).join('\n');
+  if(txt.replace(/\s/g,'').length < 40)
+    throw new Error('El PDF no tiene texto adentro: parece escaneado o exportado como imagen.\n\n' +
+      'Necesitás un PDF de texto (el que exporta Final Draft, Celtx o Word), o pasarle un OCR antes.');
+  return limpiar(txt);
+}
+
+/* Lee un flujo de contenido PDF y arma las líneas de texto.                  */
+function contenidoPdfATexto(c){
+  const lineas=[]; let act='';
+  const salto = () => { if(act.trim()) lineas.push(act.trimEnd()); act=''; };
+  const literal = t => t.replace(/\\([nrtbf()\\])/g,(m,ch)=>
+      ({n:'\n',r:'',t:' ',b:'',f:'','(':'(',')':')','\\':'\\'}[ch]))
+    .replace(/\\([0-7]{1,3})/g,(m,o)=>String.fromCharCode(parseInt(o,8)));
+  /* hex string <...> o literal (...) seguidos de Tj/TJ/'/" ; y operadores de
+     posición que implican renglón nuevo */
+  /* T* va como alternativa propia: después de un asterisco no hay borde de
+     palabra, así que \b nunca lo matchearía y se perderían los renglones */
+  const re = /\((?:\\[\s\S]|[^\\()])*\)|<[0-9A-Fa-f\s]*>|T\*|\bT[jJdDmL]\b|\bET\b|'|"/g;
+  let m, buf=[];
+  while((m = re.exec(c))){
+    const tk = m[0];
+    if(tk[0]==='('){ buf.push(literal(tk.slice(1,-1))); }
+    else if(tk[0]==='<' && tk[1]!=='<'){
+      const h = tk.slice(1,-1).replace(/\s/g,'');
+      let t='';
+      if(h.length%4===0 && h.length>=4){                      /* UTF-16BE */
+        for(let k=0;k<h.length;k+=4) t+=String.fromCharCode(parseInt(h.substr(k,4),16));
+      } else for(let k=0;k+1<h.length;k+=2) t+=String.fromCharCode(parseInt(h.substr(k,2),16));
+      buf.push(t);
+    }
+    else if(tk==='Tj'||tk==='TJ'||tk==="'"||tk==='"'){ act += buf.join(''); buf=[];
+      if(tk==="'"||tk==='"') salto(); }
+    else if(tk==='Td'||tk==='TD'||tk==='T*'||tk==='Tm'||tk==='ET'){ buf=[]; salto(); }
+    else buf=[];
+  }
+  salto();
+  return lineas.join('\n');
+}
+
+/* .doc viejo (binario OLE): no hay forma limpia sin librería. Rescato las
+   corridas de texto legible y aviso que hay que revisarlo.                   */
+function docATexto(bytes){
+  const u16=[]; let run='';
+  for(let i=0;i+1<bytes.length;i+=2){
+    const c = bytes[i] | (bytes[i+1]<<8);
+    if(bytes[i+1]===0 && (c===9||c===10||c===13||(c>=32&&c<127)) || (c>=160&&c<0x2100)) run += String.fromCharCode(c);
+    else { if(run.length>3) u16.push(run); run=''; }
+  }
+  if(run.length>3) u16.push(run);
+  let mejor = u16.join('\n');
+  const a=[]; run='';
+  for(let i=0;i<bytes.length;i++){
+    const c=bytes[i];
+    if(c===9||c===10||c===13||(c>=32&&c<127)||(c>=192&&c<256)) run+=String.fromCharCode(c);
+    else { if(run.length>3) a.push(run); run=''; }
+  }
+  if(run.length>3) a.push(run);
+  const ascii = a.join('\n');
+  if(ascii.length > mejor.length*1.4) mejor = ascii;
+  mejor = limpiar(mejor.replace(/[^\S\n]{3,}/g,' '));
+  if(mejor.replace(/\s/g,'').length<40)
+    throw new Error('No pude sacar texto de este .doc.\n\nAbrilo en Word y guardalo como .docx, .rtf o .txt.');
+  return mejor;
+}
+
+/* Despachador: elige el extractor por extensión.                             */
+async function archivoATexto(file){
+  const ext = (file.name.match(/\.[^.]+$/)||[''])[0].toLowerCase();
+  if(ext==='.txt'||ext==='.fountain'||ext==='.md'||ext==='') return limpiar(await file.text());
+  if(ext==='.fdx') return fdxATexto(await file.text());
+  if(ext==='.rtf') return rtfATexto(await file.text());
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if(ext==='.pdf')  return await pdfATexto(bytes);
+  if(ext==='.docx') return await docxATexto(bytes);
+  if(ext==='.doc'){
+    /* algunos .doc en realidad son .docx o .rtf renombrados */
+    if(bytes[0]===0x50&&bytes[1]===0x4b) return await docxATexto(bytes);
+    if(latin1(bytes.subarray(0,5))==='{\\rtf') return rtfATexto(latin1(bytes));
+    return docATexto(bytes);
+  }
+  throw new Error('Formato no reconocido ('+ext+').\n\nAcepto: '+FORMATOS);
+}
+
 /* --- Parser de guion ------------------------------------------------------
    Reconoce formato estándar y Fountain. Un encabezado es INT/EXT + locación
    + momento; un personaje es una línea corta en mayúsculas seguida de texto. */
@@ -489,8 +807,11 @@ function parseGuion(txt){
     /* personaje: línea corta en mayúsculas con algo debajo */
     if(t && t.length<=42 && !/^\(.*\)$/.test(t)){
       const soloLetras = t.replace(/\([^)]*\)/g,'').replace(/[^A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/g,'');
-      const sig = (lineas[i+1]||'').trim();
-      if(soloLetras.length>1 && soloLetras===soloLetras.toUpperCase() && sig){
+      /* la siguiente línea CON CONTENIDO: los guiones a doble espacio (típico
+         de un PDF o un RTF) dejan un renglón vacío entre el nombre y el diálogo */
+      let sig=''; for(let k=i+1;k<lineas.length && k<=i+3;k++){
+        const x=lineas[k].trim(); if(x){ sig=x; break; } }
+      if(soloLetras.length>1 && soloLetras===soloLetras.toUpperCase() && sig && !RE_SLUG.test(sig)){
         const nom = t.replace(/\([^)]*\)/g,'').replace(/[:：]$/,'').trim();
         if(nom && nom.length>1 && !act.personajes.includes(nom)) act.personajes.push(nom);
       }
@@ -573,6 +894,7 @@ function migrar(){
   (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(py=>{
     py.desglose ||= nuevoDesglose();
     py.desglose.escenas ||= []; py.desglose.jornadas ||= [];
+    py.desglose.jornadas.forEach(normalizarJornada);
   }));
 }
 let _t;
@@ -714,7 +1036,7 @@ function render(){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['presu','Presupuesto'],['desglose','Desglose'],['catalogo','Catálogo'],['config','Productoras']];
+  const TABS=[['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['catalogo','Catálogo'],['config','Productoras']];
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -751,7 +1073,8 @@ function cuerpo(pr,py,v){
   if(DB.ui.tab==='config')   return vistaConfig(pr);
   if(!py) return `<div class="card"><div class="empty">"${esc(pr.nombre)}" no tiene proyectos.<br><br>
     <button class="btn pri" onclick="editProyecto()">Crear proyecto</button></div></div>`;
-  if(DB.ui.tab==='desglose') return vistaDesglose(py);
+  if(DB.ui.tab==='desglose')  return vistaDesglose(py);
+  if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,v);
   return vistaPresupuesto(pr,py,v);
 }
 
@@ -1031,8 +1354,9 @@ function importadorHTML(){
         style="font-family:var(--mono);font-size:12px;line-height:1.5"></textarea>
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
         <button class="btn pri" onclick="importarGuion()">Desglosar</button>
-        <button class="btn" onclick="document.getElementById('gfile').click()">Subir archivo (.txt / .fountain)</button>
-        <input type="file" id="gfile" accept=".txt,.fountain,.fdx,text/plain" style="display:none" onchange="subirGuion(this)">
+        <button class="btn" onclick="document.getElementById('gfile').click()">Subir archivo</button>
+        <span class="muted" style="font-size:11px;align-self:center">PDF · Word · Final Draft · RTF · txt</span>
+        <input type="file" id="gfile" accept=".txt,.fountain,.fdx,.docx,.doc,.rtf,.pdf" style="display:none" onchange="subirGuion(this)">
         <div style="flex:1"></div>
         <button class="btn" onclick="guionEjemplo()">Probar con un guion de ejemplo</button>
       </div>
@@ -1145,6 +1469,155 @@ function planHTML(py,d,r){
     ${nums.map(nn=>bloque('Jornada '+nn, asignadas[nn])).join('')}
     ${sin.length?bloque('Sin asignar', sin, 'sinasig'):''}
     ${!nums.length&&!sin.length?'<div class="empty">Sin escenas</div>':''}`;
+}
+
+/* ---------- vista callsheet ---------- */
+function vistaCallsheet(pr,py,v){
+  const d = py.desglose;
+  if(!d.escenas.length) return `<div class="card"><div class="empty">
+    Primero cargá el guion en la solapa <b>Desglose</b>.<br>
+    <span style="font-size:12px">El callsheet se arma solo con las escenas de cada jornada.</span><br><br>
+    <button class="btn pri" onclick="setTab('desglose')">Ir al desglose</button></div></div>`;
+  if(!d.jornadas.length) return `<div class="card"><div class="empty">
+    Las escenas todavía no están repartidas en jornadas.<br>
+    <span style="font-size:12px">Andá a <b>Desglose → Plan de rodaje</b> y tocá "Auto-agrupar".</span><br><br>
+    <button class="btn pri" onclick="setTab('desglose');setSub('plan')">Ir al plan de rodaje</button></div></div>`;
+
+  const num = DB.ui.jornada && d.jornadas.some(x=>x.numero===DB.ui.jornada) ? DB.ui.jornada : d.jornadas[0].numero;
+  DB.ui.jornada = num;
+  const C = armarCallsheet(py, v, num);
+  const j = C.j;
+  const F = (l,campo,val,tipo='text',ph='') => `<label class="f"><span>${l}</span>
+    <input type="${tipo}" value="${esc(val??'')}" placeholder="${esc(ph)}" onchange="upJornada('${campo}',this.value)"></label>`;
+
+  return `<div class="noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <div class="pick"><label>Jornada</label><select onchange="selJornada(this.value)">
+        ${d.jornadas.map(x=>`<option value="${x.numero}" ${x.numero===num?'selected':''}>Jornada ${x.numero}${x.fecha?' · '+x.fecha:''}</option>`).join('')}
+      </select></div>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="setTab('desglose');setSub('plan')">Editar el plan</button>
+      <button class="btn pri" onclick="window.print()">Imprimir / PDF</button>
+    </div>
+
+    <div class="cs">
+      <div class="cshead">
+        <div>
+          <div class="csttl">${esc(py.nombre)}</div>
+          <div class="cssub">${esc(pr.nombre)}${py.cliente?' · '+esc(py.cliente):''}${py.agencia?' · '+esc(py.agencia):''}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="csj">JORNADA ${num}<span> de ${C.totalJornadas}</span></div>
+          <div class="cssub">${esc(j.fecha||'sin fecha')}${j.fecha?' · '+diaSemana(j.fecha):''}</div>
+        </div>
+      </div>
+
+      <div class="csgrid">
+        <div class="cshoras">
+          <div><b>${esc(j.citacion||'—')}</b><span>Citación general</span></div>
+          <div><b>${esc(j.comida||'—')}</b><span>Comida</span></div>
+          <div><b>${esc(j.wrap||'—')}</b><span>Wrap estimado</span></div>
+          <div><b>${C.escenas.length}</b><span>Escenas</span></div>
+          <div><b>${octavosATexto(C.octavos)}</b><span>Páginas</span></div>
+          <div><b>${esc(j.amanecer||'—')} / ${esc(j.atardecer||'—')}</b><span>Sale / se pone el sol</span></div>
+        </div>
+      </div>
+
+      ${bloqueCS('Locaciones', C.locaciones.map(l=>{
+        const dir = j.direcciones[l]||{};
+        return `<div class="csloc">
+          <div class="cslocn">${esc(l)}</div>
+          <div class="cslocd">
+            <input type="text" value="${esc(dir.direccion||'')}" placeholder="Dirección"
+              onchange="upDireccion('${esc(l).replace(/'/g,"\\'")}','direccion',this.value)">
+            <input type="text" value="${esc(dir.contacto||'')}" placeholder="Contacto en locación"
+              onchange="upDireccion('${esc(l).replace(/'/g,"\\'")}','contacto',this.value)">
+            <input type="text" value="${esc(dir.notas||'')}" placeholder="Estacionamiento / notas"
+              onchange="upDireccion('${esc(l).replace(/'/g,"\\'")}','notas',this.value)">
+          </div></div>`;}).join(''))}
+
+      ${bloqueCS('Plan del día', `<div class="scrollx"><table class="tbl cst">
+        <thead><tr><th style="width:38px">Esc</th><th style="width:46px">I/E</th><th>Locación</th>
+          <th style="width:82px">Momento</th><th style="width:52px">Pág.</th><th>Elenco</th><th>Notas</th></tr></thead>
+        <tbody>${C.escenas.map(e=>`<tr>
+          <td><b class="enum">${esc(e.numero)}</b></td>
+          <td><span class="eie ${e.intExt==='INT'?'int':'ext'}">${esc(e.intExt)}</span></td>
+          <td>${esc(e.locacion)}</td>
+          <td class="${/NOCHE|MADRUGADA/.test(e.momento)?'emom noche':'muted'}">${esc(e.momento)}</td>
+          <td class="num">${octavosATexto(e.octavos)}</td>
+          <td class="muted">${esc(e.personajes.join(', ')||'—')}</td>
+          <td><input type="text" value="${esc(e.notas)}" placeholder="—" onchange="upEscNota('${e.id}',this.value)"></td>
+        </tr>`).join('')||'<tr><td colspan="7" class="empty">Esta jornada no tiene escenas asignadas</td></tr>'}</tbody>
+      </table></div>`)}
+
+      ${C.elenco.length?bloqueCS('Elenco', `<div class="scrollx"><table class="tbl cst">
+        <thead><tr><th>Personaje</th><th>Intérprete</th><th style="width:78px">Citación</th>
+          <th style="width:84px">Maquillaje</th><th style="width:74px">En set</th><th>Escenas</th></tr></thead>
+        <tbody>${C.elenco.map(p=>{
+          const c = j.citaciones[p.clave]||{};
+          return `<tr><td><b>${esc(p.personaje)}</b></td>
+            <td class="muted">${esc(p.persona?p.persona.nombre:'')}</td>
+            ${['citacion','maquillaje','set'].map(k=>`<td><input type="text" value="${esc(c[k]||'')}"
+              placeholder="—" onchange="upCitacion('${p.clave}','${k}',this.value)"></td>`).join('')}
+            <td class="muted">${esc(p.escenas.join(', '))}</td></tr>`;}).join('')}
+        </tbody></table></div>`):''}
+
+      ${C.crew.length?bloqueCS('Equipo técnico', (()=>{
+        const porDepto={}; C.crew.forEach(c=>(porDepto[c.depto] ||= []).push(c));
+        return `<div class="scrollx"><table class="tbl cst">
+          <thead><tr><th style="width:34%">Función</th><th>Nombre</th>
+            <th style="width:78px">Citación</th><th style="width:110px">Teléfono</th></tr></thead>
+          <tbody>${Object.entries(porDepto).map(([dep,list])=>
+            `<tr class="csdep"><td colspan="4">${esc(dep)}</td></tr>` +
+            list.map(c=>`<tr><td>${esc(c.funcion)}</td>
+              <td class="${c.nombre?'':'muted'}">${esc(c.nombre||'— sin asignar —')}</td>
+              <td><input type="text" value="${esc((j.citaciones[c.clave]||{}).citacion||'')}"
+                placeholder="${esc(j.citacion||'')}" onchange="upCitacion('${c.clave}','citacion',this.value)"></td>
+              <td class="muted">${esc(c.tel||'')}</td></tr>`).join('')).join('')}
+          </tbody></table></div>`;})()):
+        `<div class="pad muted" style="font-size:12px">El equipo técnico sale de las líneas de los rubros
+         02 a 08 del presupuesto. Cargalas ahí y aparecen acá con su citación.</div>`}
+
+      ${Object.keys(C.elementos).length?bloqueCS('Elementos del día',
+        `<div class="pad" style="display:flex;flex-direction:column;gap:6px">
+        ${DEPTOS.filter(dp=>!dp.auto && C.elementos[dp.k]).map(dp=>`<div class="drow">
+          <span class="dlbl" style="color:${dp.c}"><i class="ddot" style="background:${dp.c}"></i>${esc(dp.l)}</span>
+          <span class="dels">${C.elementos[dp.k].map(x=>
+            `<span class="el" style="border-color:${dp.c}66;color:${dp.c}">${esc(x)}</span>`).join('')}</span>
+        </div>`).join('')}</div>`):''}
+
+      ${bloqueCS('Seguridad y contactos', `<div class="pad grid2">
+        ${F('Hospital más cercano','hospital.nombre',j.hospital.nombre)}
+        ${F('Dirección del hospital','hospital.direccion',j.hospital.direccion)}
+        ${F('Teléfono del hospital','hospital.tel',j.hospital.tel)}
+        ${F('Contacto de emergencia','emergencia.nombre',j.emergencia.nombre)}
+        ${F('Teléfono de emergencia','emergencia.tel',j.emergencia.tel)}
+        ${F('Clima previsto','clima',j.clima,'text','Despejado, 28°')}
+      </div>`)}
+
+      ${bloqueCS('Datos de la jornada', `<div class="pad grid2">
+        ${F('Fecha','fecha',j.fecha,'date')}
+        ${F('Citación general','citacion',j.citacion,'time')}
+        ${F('Comida','comida',j.comida,'time')}
+        ${F('Wrap estimado','wrap',j.wrap,'time')}
+        ${F('Sale el sol','amanecer',j.amanecer,'time')}
+        ${F('Se pone el sol','atardecer',j.atardecer,'time')}
+      </div>`, 'noprint')}
+
+      ${bloqueCS('Notas de producción', `<div class="pad">
+        <textarea rows="3" placeholder="Avisos, restricciones de la locación, orden del día…"
+          onchange="upJornada('notas',this.value)">${esc(j.notas)}</textarea></div>`)}
+
+      <div class="csfoot">${esc(pr.nombre)} · ${esc(py.nombre)} · Jornada ${num} de ${C.totalJornadas}
+        · generado con CLAP</div>
+    </div>`;
+}
+function bloqueCS(titulo, contenido, cls=''){
+  return `<div class="csblock ${cls}"><h4>${esc(titulo)}</h4>${contenido}</div>`;
+}
+function diaSemana(f){
+  const D=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const p=String(f).split('-'); if(p.length!==3) return '';
+  return D[new Date(+p[0],+p[1]-1,+p[2]).getDay()]||'';
 }
 
 /* ===========================  ACCIONES  =================================== */
@@ -1408,11 +1881,25 @@ function importarGuion(txt){
   DB.ui.subDesglose='escenas';
   toast(`${escenas.length} escenas desglosadas`); R();
 }
-function subirGuion(inp){
+async function subirGuion(inp){
   const f=inp.files[0]; if(!f) return;
-  const fr=new FileReader();
-  fr.onload=()=>importarGuion(String(fr.result));
-  fr.readAsText(f,'utf-8');
+  inp.value='';
+  toast('Leyendo '+f.name+'…');
+  let txt;
+  try{ txt = await archivoATexto(f); }
+  catch(e){ alert('No pude leer "'+f.name+'".\n\n'+e.message); return; }
+  /* el texto extraído se muestra antes de desglosar: de un PDF o un .doc
+     puede salir sucio y conviene que lo mire una persona */
+  const ta = document.getElementById('gtxt');
+  const escenas = parseGuion(txt).length;
+  if(ta){ ta.value = txt; ta.scrollTop = 0; }
+  if(!escenas){
+    alert('Leí el archivo pero no encontré encabezados de escena.\n\n' +
+      'Revisá el texto y corregí los encabezados: tienen que decir INT. o EXT.\n' +
+      'Después tocá Desglosar.');
+    return;
+  }
+  toast(`${f.name}: ${escenas} escenas detectadas — revisá el texto y tocá Desglosar`);
 }
 function guionEjemplo(){
   importarGuion(`1. INT. COCINA DEPARTAMENTO - DÍA
@@ -1571,8 +2058,42 @@ function autoAgrupar(){
 }
 function sincronizarJornadas(d){
   const max = d.escenas.reduce((m,e)=>Math.max(m, e.jornada||0), 0);
-  d.jornadas = Array.from({length:max},(_,i)=>d.jornadas[i] || {id:uid('j'), numero:i+1, fecha:'', notas:''});
+  d.jornadas = Array.from({length:max},(_,i)=>d.jornadas[i] || nuevaJornada({numero:i+1}));
+  d.jornadas.forEach((j,i)=>{ j.numero=i+1; normalizarJornada(j); });
 }
+/* Completa los campos que falten. Las jornadas guardadas por una versión
+   anterior sólo tenían id/numero/fecha/notas: sin esto el callsheet las
+   muestra vacías. Se aplica en todos los caminos de entrada.                 */
+function normalizarJornada(j){
+  const base = nuevaJornada({numero:j.numero});
+  for(const k in base) if(j[k]===undefined || j[k]===null) j[k] = base[k];
+  return j;
+}
+
+/* ---------- callsheet ---------- */
+function selJornada(nn){ DB.ui.jornada = parseInt(nn,10); R(); }
+function jornadaActiva(){
+  const d=getD(); const num=DB.ui.jornada;
+  let j = d.jornadas.find(x=>x.numero===num);
+  if(!j){ j = nuevaJornada({numero:num}); d.jornadas.push(j);
+    d.jornadas.sort((a,b)=>a.numero-b.numero); }
+  return normalizarJornada(j);
+}
+function upJornada(campo, val){
+  const j = jornadaActiva();
+  if(campo.includes('.')){ const [a,b]=campo.split('.'); j[a] ||= {}; j[a][b]=val; }
+  else j[campo]=val;
+  R();
+}
+function upDireccion(loc, campo, val){
+  const j = jornadaActiva();
+  j.direcciones[loc] ||= {}; j.direcciones[loc][campo]=val; R();
+}
+function upCitacion(clave, campo, val){
+  const j = jornadaActiva();
+  j.citaciones[clave] ||= {}; j.citaciones[clave][campo]=val; R();
+}
+function upEscNota(eid, val){ getD().escenas.find(x=>x.id===eid).notas=val; R(); }
 
 /* --- Puente desglose → presupuesto ---------------------------------------
    Cada departamento cae en el rubro que le corresponde. Se crean las líneas
