@@ -41,6 +41,25 @@ Los datos se guardan en el navegador (`localStorage`).
 - Export **JSON** (respaldo completo), export **CSV**, e impresión a **PDF**.
 - Funciona en el celular (las filas se convierten en tarjetas).
 
+### Desglose de guion
+
+- **Parser** de formato estándar y Fountain: separa escenas, INT/EXT, locación,
+  momento del día, personajes con diálogo y extensión en **octavos de página**.
+  Esto es determinístico, no adivina.
+- **Detección de elementos por diccionario** en 12 departamentos (utilería, vestuario,
+  vehículos, animales, efectos, riesgo, equipo especial…). Lo detectado aparece con
+  borde punteado: es una **sugerencia que se confirma o se borra**. Se puede agregar
+  a mano lo que el diccionario no ve.
+- `Re-detectar` vuelve a pasar el diccionario **conservando lo que agregaste a mano**.
+- **Plan de rodaje**: auto-agrupa por locación + INT/EXT + momento, llenando jornadas
+  hasta un tope de páginas configurable. Es un punto de partida, no un plan final.
+- **→ Presupuesto**: convierte el desglose en líneas del presupuesto con el concepto,
+  la cantidad y los días ya calculados. Los valores quedan en cero: los pone una persona.
+- Export del desglose a **CSV**.
+
+> El diccionario está en la constante `DICC`. Sumar términos ahí mejora el desglose
+> de todos los proyectos.
+
 ## Arquitectura
 
 Todo en `clap.html`, en cuatro bloques marcados en el código:
@@ -59,14 +78,16 @@ de `productoraId`, así que el schema ya es multi-tenant.
 ## Roadmap
 
 1. **Presupuestador** ✅
-2. **Plan de rodaje y callsheet** — generado del mismo dato: jornadas, citaciones por
-   departamento, locaciones, hospital más cercano, contactos.
-3. **Seguros** — generar el alta (nómina para el broker) desde el crew ya cargado;
+2. **Desglose de guion** ✅ — parser, elementos por departamento, plan de rodaje,
+   puente al presupuesto.
+3. **Callsheet** — generado del desglose y del crew: citaciones por departamento,
+   escenas del día, locaciones, hospital más cercano, contactos.
+4. **Seguros** — generar el alta (nómina para el broker) desde el crew ya cargado;
    guardar pólizas y certificados. AP, ART, RC, todo riesgo equipos.
-4. **Caja y pagos** — órdenes de compra, caja chica por jornada, rendiciones, y el
+5. **Caja y pagos** — órdenes de compra, caja chica por jornada, rendiciones, y el
    tablero Presupuestado / Comprometido / Real.
-5. **Backend** — Supabase, usuarios, adjuntos, acceso de sólo lectura para el cliente.
-6. **Tarifario histórico** — al cerrar un proyecto, el catálogo aprende cuánto salió
+6. **Backend** — Supabase, usuarios, adjuntos, acceso de sólo lectura para el cliente.
+7. **Tarifario histórico** — al cerrar un proyecto, el catálogo aprende cuánto salió
    cada rubro de verdad.
 
 ## Pruebas
@@ -74,5 +95,7 @@ de `productoraId`, así que el schema ya es multi-tenant.
 El motor de cálculo y los caminos de render se prueban headless (sin navegador):
 
 ```bash
-node test/run.js test/pruebas.js
+node test/run.js test/pruebas.js    # presupuesto: cálculo, capas, versionado
+node test/run.js test/parser.js     # parser de guion contra test/guion-ejemplo.txt
+node test/run.js test/desglose.js   # desglose, jornadas y puente al presupuesto
 ```
