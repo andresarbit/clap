@@ -91,7 +91,23 @@ El texto extraido se muestra **antes** de desglosar, para revisarlo.
 
 ### Callsheet
 
-Se arma solo juntando las tres fuentes que ya estan cargadas:
+La solapa tiene **dos documentos distintos**, porque son dos cosas:
+
+- **Hoja de citacion** — POR JORNADA. Quien viene manana, a que hora, a que
+  direccion, que escenas se filman.
+- **Lista de contactos** — DEL PROYECTO. Todos los implicados con telefono y
+  mail: produccion, cliente, agencia, cada departamento tecnico, elenco,
+  proveedores y locaciones. Se arma sola a medida que se cargan los
+  profesionales: lo que esta enlazado al catalogo trae nombre, telefono y mail
+  solos, y lo que se carga a mano se puede mandar al catalogo con un boton para
+  reusarlo en el proximo proyecto. Boton para **copiar todos los mails**,
+  export a CSV e impresion.
+
+> Una persona se carga **una sola vez**. Si esta enlazada al catalogo, editar su
+> telefono en la lista de contactos lo cambia en el catalogo, y eso se ve en la
+> hoja de citacion y en todos los proyectos.
+
+La hoja de citacion se arma sola juntando las tres fuentes que ya estan cargadas:
 
 - **del guion**: las escenas de esa jornada, con INT/EXT, locacion, momento, paginas y elenco
 - **del presupuesto**: el equipo tecnico (lineas de los rubros 02 a 08), agrupado por departamento
@@ -148,6 +164,7 @@ node test/run.js test/importar.js  # PDF, DOCX, RTF, FDX y .doc contra test/mues
 node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
+node test/run.js test/contactos.js # lista de contactos y su circuito con catalogo y callsheet
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```

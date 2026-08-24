@@ -253,6 +253,14 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .cslocn{font-weight:700;font-size:13px;margin-bottom:5px}
 .cslocd{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:6px}
 .csfoot{padding:9px 16px;border-top:1px solid var(--line);font-size:10px;color:var(--tx3);text-align:center}
+/* lista de contactos */
+.ctab td{vertical-align:middle}
+.crol{font-size:12px}
+.cnom{display:inline-flex;align-items:center;gap:4px;font-weight:600;font-size:12.5px}
+.clink{font-style:normal;font-size:9px;color:var(--ac);opacity:.75}
+.ctab input{width:100%}
+.ctab input[type=email]{font-size:11.5px}
+.csblock>h4 .btn{font-weight:600;letter-spacing:0;text-transform:none}
 
 /* ---------- celular ---------- */
 @media (max-width:860px){
@@ -442,7 +450,8 @@ function nuevoProyecto(o={}){
     cliente:o.cliente||'', agencia:o.agencia||'', producto:o.producto||'',
     territorio:o.territorio||'Argentina', plazo:o.plazo||'12 meses', medios:o.medios||'Digital',
     jornadas:o.jornadas??1, versiones:o.versiones||[nuevaVersion()], versionActiva:null,
-    desglose:o.desglose||nuevoDesglose()};
+    desglose:o.desglose||nuevoDesglose(),
+    contactos:o.contactos||{porLinea:{}, extra:[]}};
 }
 function nuevaProductora(o={}){
   return {id:uid('pr'), nombre:o.nombre||'Productora nueva', cuit:o.cuit||'',
@@ -558,6 +567,78 @@ function nuevaJornada(o={}){
 
 /* Rubros de los que sale el equipo técnico del callsheet.                     */
 const RUBROS_CREW = ['02','03','04','05','06','07','08'];
+const RUBROS_PROV = ['10','11','12','13','14','15'];
+
+/* Un contacto suelto: los que no salen de una línea de presupuesto (cliente,
+   agencia, el productor de la agencia, un contacto de la marca).             */
+function nuevoContacto(o={}){
+  return {id:uid('ct'), grupo:o.grupo||'Producción y cliente', rol:o.rol||'',
+    nombre:o.nombre||'', tel:o.tel||'', email:o.email||'', notas:o.notas||''};
+}
+
+/* Lista de contactos del proyecto: TODOS los implicados, con teléfono y mail.
+   Sale de las mismas líneas del presupuesto que alimentan el callsheet, más
+   los contactos sueltos que se cargan a mano.                                */
+function armarContactos(py, v){
+  py.contactos ||= {porLinea:{}, extra:[]};
+  py.contactos.porLinea ||= {}; py.contactos.extra ||= [];
+  const C = py.contactos;
+  const grupos = [];
+  const push = (nombre, filas) => { if(filas.length) grupos.push({nombre, filas}); };
+
+  /* datos guardados: si la línea está enlazada al catálogo, manda el catálogo */
+  const fila = (clave, rol, refId) => {
+    const pe = refId ? DB.catalogo.personas.find(x=>x.id===refId) : null;
+    const g = C.porLinea[clave] || {};
+    return {clave, rol, refId: pe?pe.id:null,
+      nombre: pe ? pe.nombre : (g.nombre||''),
+      tel:    pe ? pe.tel    : (g.tel||''),
+      email:  pe ? pe.email  : (g.email||'')};
+  };
+
+  const extrasDe = g => C.extra.filter(x=>x.grupo===g).map(x=>({
+    clave:'x:'+x.id, rol:x.rol, nombre:x.nombre, tel:x.tel, email:x.email, extra:true}));
+
+  /* 1. producción, cliente y agencia */
+  push('Producción y cliente', [
+    ...(py.cliente ? [{clave:'x:cliente', rol:'Cliente', nombre:py.cliente, tel:'', email:'', fijo:true}] : []),
+    ...(py.agencia ? [{clave:'x:agencia', rol:'Agencia', nombre:py.agencia, tel:'', email:'', fijo:true}] : []),
+    ...extrasDe('Producción y cliente')]);
+
+  /* 2. equipo técnico, por departamento */
+  if(v) v.rubros.filter(r=>RUBROS_CREW.includes(r.codigo)).forEach(r=>
+    push(r.nombre, [...r.lineas.filter(l=>l.concepto.trim()).map(l=>fila('l:'+l.id, l.concepto, l.refId)),
+                    ...extrasDe(r.nombre)]));
+
+  /* 3. elenco */
+  if(v){
+    const r9 = v.rubros.find(r=>r.codigo==='09');
+    push('Elenco', [...(r9?r9.lineas.filter(l=>l.concepto.trim()).map(l=>fila('l:'+l.id, l.concepto, l.refId)):[]),
+                    ...extrasDe('Elenco')]);
+  }
+
+  /* 4. proveedores */
+  if(v){
+    const provs = v.rubros.filter(r=>RUBROS_PROV.includes(r.codigo))
+      .flatMap(r=>r.lineas.filter(l=>l.concepto.trim()).map(l=>fila('l:'+l.id, l.concepto, l.refId)));
+    push('Proveedores', [...provs, ...extrasDe('Proveedores')]);
+  }
+
+  /* 5. locaciones: el contacto sale de la dirección cargada en la jornada */
+  const locs = [...new Set((py.desglose?.escenas||[]).map(e=>e.locacion))];
+  push('Locaciones', [...locs.map(l=>{
+      const j = (py.desglose.jornadas||[]).find(x=>x.direcciones && x.direcciones[l]);
+      const dd = j ? j.direcciones[l] : {};
+      const g = C.porLinea['loc:'+l] || {};
+      return {clave:'loc:'+l, rol:l, nombre:g.nombre || dd.contacto || '',
+        tel:g.tel||'', email:g.email||'', dir:dd.direccion||''};
+    }), ...extrasDe('Locaciones')]);
+
+  const todos = grupos.flatMap(g=>g.filas);
+  return {grupos, total:todos.length,
+    mails:[...new Set(todos.map(f=>f.email).filter(x=>x && x.includes('@')))],
+    sinDatos: todos.filter(f=>!f.tel && !f.email).length};
+}
 
 /* Arma el callsheet de una jornada juntando guion + presupuesto + catálogo.   */
 function armarCallsheet(py, v, numJornada){
@@ -577,12 +658,15 @@ function armarCallsheet(py, v, numJornada){
 
   /* equipo técnico: las líneas de los rubros de crew del presupuesto activo */
   const crew = [];
+  const man = (py.contactos && py.contactos.porLinea) || {};
   if(v) v.rubros.filter(r=>RUBROS_CREW.includes(r.codigo)).forEach(r=>{
     r.lineas.forEach(l=>{
       if(!l.concepto.trim()) return;
       const pe = l.refId ? DB.catalogo.personas.find(x=>x.id===l.refId) : null;
+      const g = man['l:'+l.id] || {};
       crew.push({clave:'l:'+l.id, rubro:r.codigo, depto:r.nombre, funcion:l.concepto,
-        nombre:pe?pe.nombre:'', tel:pe?pe.tel:'', persona:pe});
+        nombre: pe?pe.nombre:(g.nombre||''), tel: pe?pe.tel:(g.tel||''),
+        email: pe?pe.email:(g.email||''), persona:pe});
     });
   });
 
@@ -1098,6 +1182,8 @@ function migrar(){
     py.desglose ||= nuevoDesglose();
     py.desglose.escenas ||= []; py.desglose.jornadas ||= [];
     py.desglose.jornadas.forEach(normalizarJornada);
+    py.contactos ||= {porLinea:{}, extra:[]};
+    py.contactos.porLinea ||= {}; py.contactos.extra ||= [];
   }));
 }
 let _t;
@@ -1736,7 +1822,66 @@ function planHTML(py,d,r){
 }
 
 /* ---------- vista callsheet ---------- */
+/* Dos documentos distintos, en la misma solapa porque se usan juntos:
+   la hoja de citación es POR JORNADA; la lista de contactos es DEL PROYECTO. */
 function vistaCallsheet(pr,py,v){
+  const sub = DB.ui.subCall || 'hoja';
+  const S = [['hoja','Hoja de citación'],['contactos','Lista de contactos']];
+  const tabs = `<div class="seg noprint" style="margin-bottom:12px">
+    ${S.map(([k,l])=>`<button class="${sub===k?'on':''}" onclick="setSubCall('${k}')">${l}</button>`).join('')}
+  </div>`;
+  return tabs + (sub==='contactos' ? vistaContactos(pr,py,v) : hojaCitacionHTML(pr,py,v));
+}
+
+/* ---------- lista de contactos del proyecto ---------- */
+function vistaContactos(pr,py,v){
+  const C = armarContactos(py, v);
+  const inp = (clave,campo,val,ph,tipo='text') =>
+    `<input type="${tipo}" value="${esc(val)}" placeholder="${esc(ph)}"
+       onchange="upContacto('${clave}','${campo}',this.value)">`;
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Lista de contactos</div>
+        <div class="cssub">${esc(py.nombre)} · ${esc(pr.nombre)}</div></div>
+      <div style="text-align:right">
+        <div class="csj">${C.total}<span> contactos</span></div>
+        <div class="cssub">${C.mails.length} con mail${C.sinDatos?` · <b style="color:var(--warn)">${C.sinDatos} sin datos</b>`:''}</div></div>
+    </div>
+    <div class="pad noprint" style="display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--line)">
+      <button class="btn sm pri" onclick="copiarMails()">Copiar los ${C.mails.length} mails</button>
+      <button class="btn sm" onclick="expContactosCSV()">Exportar (.csv)</button>
+      <button class="btn sm" onclick="window.print()">Imprimir / PDF</button>
+      <div style="flex:1"></div>
+      <span class="muted" style="font-size:11px;align-self:center">
+        Los que salen del presupuesto se completan solos; el resto se carga acá.</span>
+    </div>
+    ${C.grupos.map(g=>`<div class="csblock">
+      <h4>${esc(g.nombre)}
+        <button class="btn sm noprint" style="float:right;margin-top:-3px"
+          onclick="addContacto('${esc(g.nombre).replace(/'/g,"\\'")}')">+ Contacto</button></h4>
+      <div class="scrollx"><table class="tbl cst ctab">
+        <thead><tr><th style="width:27%">Rol</th><th style="width:24%">Nombre</th>
+          <th style="width:19%">Teléfono</th><th>Mail</th><th class="noprint" style="width:34px"></th></tr></thead>
+        <tbody>${g.filas.map(f=>`<tr>
+          <td>${f.extra ? inp(f.clave,'rol',f.rol,'Rol') : `<span class="crol">${esc(f.rol)}</span>`}
+            ${f.dir?`<span class="muted" style="display:block;font-size:10px">${esc(f.dir)}</span>`:''}</td>
+          <td>${f.refId
+            ? `<span class="cnom">${esc(f.nombre)}<i class="clink" title="Enlazado al catálogo: se edita ahí">↗</i></span>`
+            : inp(f.clave,'nombre',f.nombre,'—')}</td>
+          <td>${inp(f.clave,'tel',f.tel,'—','tel')}</td>
+          <td>${inp(f.clave,'email',f.email,'—','email')}</td>
+          <td class="noprint" style="text-align:right">${
+            f.extra ? `<button class="del" onclick="delContacto('${f.clave.slice(2)}')">×</button>`
+            : f.refId ? `<button class="btn sm" onclick="editPersona('${f.refId}')" title="Editar en el catálogo">✎</button>`
+            : (f.nombre||f.tel||f.email) ? `<button class="btn sm" title="Guardar en el catálogo para reusarlo"
+                onclick="aCatalogo('${f.clave}')">+cat</button>` : ''}</td>
+        </tr>`).join('') || '<tr><td colspan="5" class="empty">Sin contactos en este grupo</td></tr>'}
+        </tbody></table></div></div>`).join('')}
+    <div class="csfoot">${esc(pr.nombre)} · ${esc(py.nombre)} · lista de contactos · generado con CLAP</div>
+  </div>`;
+}
+
+function hojaCitacionHTML(pr,py,v){
   const d = py.desglose;
   if(!d.escenas.length) return `<div class="card"><div class="empty">
     Primero cargá el guion en la solapa <b>Desglose</b>.<br>
@@ -1828,15 +1973,16 @@ function vistaCallsheet(pr,py,v){
       ${C.crew.length?bloqueCS('Equipo técnico', (()=>{
         const porDepto={}; C.crew.forEach(c=>(porDepto[c.depto] ||= []).push(c));
         return `<div class="scrollx"><table class="tbl cst">
-          <thead><tr><th style="width:34%">Función</th><th>Nombre</th>
-            <th style="width:78px">Citación</th><th style="width:110px">Teléfono</th></tr></thead>
+          <thead><tr><th style="width:26%">Función</th><th>Nombre</th>
+            <th style="width:74px">Citación</th><th style="width:104px">Teléfono</th><th>Mail</th></tr></thead>
           <tbody>${Object.entries(porDepto).map(([dep,list])=>
-            `<tr class="csdep"><td colspan="4">${esc(dep)}</td></tr>` +
+            `<tr class="csdep"><td colspan="5">${esc(dep)}</td></tr>` +
             list.map(c=>`<tr><td>${esc(c.funcion)}</td>
               <td class="${c.nombre?'':'muted'}">${esc(c.nombre||'— sin asignar —')}</td>
               <td><input type="text" value="${esc((j.citaciones[c.clave]||{}).citacion||'')}"
                 placeholder="${esc(j.citacion||'')}" onchange="upCitacion('${c.clave}','citacion',this.value)"></td>
-              <td class="muted">${esc(c.tel||'')}</td></tr>`).join('')).join('')}
+              <td class="muted">${esc(c.tel||'')}</td>
+              <td class="muted" style="font-size:10.5px">${esc(c.email||'')}</td></tr>`).join('')).join('')}
           </tbody></table></div>`;})()):
         `<div class="pad muted" style="font-size:12px">El equipo técnico sale de las líneas de los rubros
          02 a 08 del presupuesto. Cargalas ahí y aparecen acá con su citación.</div>`}
@@ -2415,6 +2561,76 @@ function normalizarJornada(j){
   const base = nuevaJornada({numero:j.numero});
   for(const k in base) if(j[k]===undefined || j[k]===null) j[k] = base[k];
   return j;
+}
+
+/* ---------- lista de contactos ---------- */
+function setSubCall(k){ DB.ui.subCall = k; R(); }
+const getC = () => { const py=getPy();
+  py.contactos ||= {porLinea:{}, extra:[]};
+  py.contactos.porLinea ||= {}; py.contactos.extra ||= [];
+  return py.contactos; };
+
+/* Si el contacto está enlazado al catálogo se escribe ahí: un solo lugar para
+   el teléfono de cada persona, sirva en el proyecto que sirva.               */
+function upContacto(clave, campo, val){
+  const C = getC();
+  if(clave.startsWith('x:')){
+    const ct = C.extra.find(x=>x.id===clave.slice(2));
+    if(ct){ ct[campo]=val; R(); }
+    return;
+  }
+  if(clave.startsWith('l:')){
+    const l = lineaPorId(clave.slice(2));
+    if(l && l.refId){
+      const pe = DB.catalogo.personas.find(x=>x.id===l.refId);
+      if(pe){ pe[campo]=val; R(); return; }
+    }
+  }
+  C.porLinea[clave] ||= {};
+  C.porLinea[clave][campo] = val;
+  R();
+}
+function lineaPorId(id){
+  for(const v of (getPy()?.versiones||[]))
+    for(const r of v.rubros){ const l = r.lineas.find(x=>x.id===id); if(l) return l; }
+  return null;
+}
+function addContacto(grupo){
+  getC().extra.push(nuevoContacto({grupo}));
+  toast('Contacto agregado — cargale el nombre'); R();
+}
+function delContacto(id){
+  const C = getC(); C.extra = C.extra.filter(x=>x.id!==id); R();
+}
+/* Guardar en el catálogo lo cargado a mano, para reusarlo en otros proyectos */
+function aCatalogo(clave){
+  const C = getC(); const g = C.porLinea[clave]; if(!g || !g.nombre){ toast('Cargale el nombre primero'); return; }
+  const l = clave.startsWith('l:') ? lineaPorId(clave.slice(2)) : null;
+  const rubro = l ? (getV().rubros.find(r=>r.lineas.some(x=>x.id===l.id))||{}).codigo : '03';
+  const pe = nuevaPersona({nombre:g.nombre, tel:g.tel, email:g.email,
+    funcion: l ? l.concepto : '', rubro: rubro||'03',
+    tarifaRef: l ? n(l.valorUnit) : 0, moneda: l ? l.moneda : 'ARS', unidad: l ? l.unidad : 'jornada'});
+  DB.catalogo.personas.push(pe);
+  if(l) l.refId = pe.id;          /* la línea queda enlazada */
+  delete C.porLinea[clave];
+  toast(`${pe.nombre} guardado en el catálogo`); R();
+}
+function copiarMails(){
+  const {mails} = armarContactos(getPy(), getV());
+  if(!mails.length){ toast('Todavía no hay mails cargados'); return; }
+  const txt = mails.join(', ');
+  const ok = () => toast(`${mails.length} mails copiados`);
+  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(ok, ()=>prompt('Copiá los mails:', txt));
+  else prompt('Copiá los mails:', txt);
+}
+function expContactosCSV(){
+  const py=getPy(); const {grupos} = armarContactos(py, getV());
+  const q = s => '"'+String(s??'').replace(/"/g,'""')+'"';
+  const L = [['Grupo','Rol','Nombre','Teléfono','Mail'].map(q).join(',')];
+  grupos.forEach(g=>g.filas.forEach(f=>
+    L.push([g.nombre, f.rol, f.nombre, f.tel, f.email].map(q).join(','))));
+  bajar(`contactos-${py.nombre}.csv`, '﻿'+L.join('\n'), 'text/csv;charset=utf-8');
+  toast('Contactos exportados');
 }
 
 /* ---------- callsheet ---------- */
