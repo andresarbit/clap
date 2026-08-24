@@ -43,9 +43,18 @@ Los datos se guardan en el navegador (`localStorage`).
 
 ### Desglose de guion
 
+**El flujo es de tres pasos y nada pasa solo:** pegás o subís el guion →
+tocás **Desglosar** y lo revisás en esta solapa → recién ahí tocás **→ Presupuesto**.
+Desglosar NO toca el presupuesto. Mientras escribís, un cartel abajo del cuadro de
+texto va diciendo en vivo cuántas escenas encuentra, o por qué no encuentra ninguna.
+
 - **Parser** de formato estándar y Fountain: separa escenas, INT/EXT, locación,
   momento del día, personajes con diálogo y extensión en **octavos de página**.
   Esto es determinístico, no adivina.
+- Acepta encabezados de guion de cine (`INT. COCINA - DÍA`) y **de publicidad**
+  (`ESCENA 1`, `SEC. 1`, `PLANO 3`, `TOMA 2`), que suelen venir sin INT/EXT.
+- En cada escena, el **INT/EXT se cambia con un click** y la locación y el momento
+  se editan en el lugar: el parser propone, vos corregís.
 - **Detección de elementos por diccionario** en 12 departamentos (utilería, vestuario,
   vehículos, animales, efectos, riesgo, equipo especial…). Lo detectado aparece con
   borde punteado: es una **sugerencia que se confirma o se borra**. Se puede agregar
@@ -128,6 +137,7 @@ node test/run.js test/parser.js     # parser de guion contra test/guion-ejemplo.
 node test/run.js test/desglose.js   # desglose, jornadas y puente al presupuesto
 node test/run.js test/importar.js  # PDF, DOCX, RTF, FDX y .doc contra test/muestras/
 node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
+node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```

@@ -160,7 +160,30 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 .subtab{padding:7px 12px;font-size:12px;color:var(--tx2);border-radius:6px 6px 0 0;white-space:nowrap;font-weight:600}
 .subtab.on{background:var(--bg4);color:var(--ac)}
 
+/* pasos del importador: que se vea de una que hay que tocar Desglosar */
+.pasos{display:flex;gap:1px;background:var(--line);border-bottom:1px solid var(--line)}
+.paso{background:var(--bg3);padding:8px 12px;flex:1;display:flex;align-items:center;gap:8px;min-width:0}
+.paso b{width:19px;height:19px;border-radius:50%;background:var(--bg4);color:var(--tx3);
+  display:grid;place-items:center;font-size:10.5px;font-weight:800;flex:none}
+.paso.on b{background:var(--ac);color:#161005}
+.paso span{font-size:11px;color:var(--tx3);line-height:1.3}
+.paso.on span{color:var(--tx)}
+.paso i{font-style:normal;color:var(--ac);font-weight:700}
+.ginfo{margin-top:7px;font-size:12px;line-height:1.5;min-height:18px}
+.gbien{color:var(--ok);font-weight:700}
+.gmal{color:var(--warn);font-weight:700}
+.ginfo code{font-family:var(--mono);background:var(--bg4);padding:1px 5px;border-radius:3px;font-size:11px}
+.btn.grande{padding:9px 20px;font-size:14px}
+
 .esc{border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px;background:var(--bg2);overflow:hidden}
+/* campos del encabezado de escena: editables, pero sin verse como formulario */
+.ed{border:1px solid transparent;background:transparent;cursor:pointer}
+.ed:hover{border-color:var(--line2)}
+input.eloc{padding:2px 5px;border-radius:4px}
+input.eloc:focus{background:var(--bg4);border-color:var(--ac);cursor:text}
+select.emom{width:auto;padding:2px 17px 2px 5px;background-image:none;flex:none}
+select.emom:focus{background:var(--bg4);border-color:var(--ac)}
+button.eie:hover{filter:brightness(1.35)}
 .ehead{display:flex;align-items:center;gap:8px;padding:8px 11px;background:var(--bg3);flex-wrap:wrap}
 .enum{font:800 13px var(--mono);color:var(--ac);min-width:24px;flex:none}
 .eie{font:700 9.5px var(--mono);padding:2px 5px;border-radius:3px;flex:none;letter-spacing:.04em}
@@ -244,6 +267,12 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
   .esc .drow{gap:4px}
   .esc:not(.on) .ebody{display:none}
   .esc .ehead{cursor:pointer}
+  /* controles del encabezado de escena: tienen que poder tocarse con el dedo */
+  button.eie{padding:7px 9px;font-size:11px}
+  input.eloc{padding:7px 6px;font-size:14px;flex:1 1 100%;order:9;border-color:var(--line);background:var(--bg3)}
+  select.emom{padding:7px 20px 7px 8px;font-size:12px;background-image:none}
+  .pasos{flex-direction:column}
+  .paso{padding:7px 11px}
   .cst input{padding:8px 6px;font-size:14px;border-color:var(--line);background:var(--bg3)}
   .cst th,.cst td{padding:5px 7px}
   .csttl{font-size:17px}
@@ -766,7 +795,31 @@ async function archivoATexto(file){
    Reconoce formato estándar y Fountain. Un encabezado es INT/EXT + locación
    + momento; un personaje es una línea corta en mayúsculas seguida de texto. */
 const RE_SLUG = /^\s*(?:(\d+[A-Za-z]?)[\.\)]?\s+)?(INT\.?\s*\/\s*EXT\.?|EXT\.?\s*\/\s*INT\.?|I\s*\/\s*E|INT\b\.?|EXT\b\.?|INTERIOR\b|EXTERIOR\b)\s*[\.\-—:]*\s*(.+)$/i;
+/* Encabezado sin INT/EXT: el guion publicitario suele venir numerado por
+   escena, plano o toma. Se toma igual y el INT/EXT se corrige con un click.  */
+const RE_SLUG2 = /^\s*(?:ESCENA|ESC\.?|SECUENCIA|SEC\.?|PLANO|TOMA|CUADRO|SHOT|SCENE)\s*[Nn°º]?\s*(\d+[A-Za-z]?)\s*[\.\)\-–—:]*\s*(.*)$/i;
 const RE_TRANS = /^\s*(CORTE A|CORTA A|FUNDE|FUNDIDO|DISOLVENCIA|ENCADENA|CUT TO|FADE (IN|OUT)|DISSOLVE|SMASH CUT|FIN|THE END)\b.*$/i;
+
+/* Reconoce un encabezado de escena en cualquiera de los dos formatos.        */
+function matchEncabezado(t){
+  if(t.length>=160) return null;
+  let m = t.match(RE_SLUG);
+  if(m){
+    const ie = norm(m[2]).replace(/[\.\s]/g,'');
+    return {numero:m[1]||'', resto:m[3],
+      intExt: ie.startsWith('inte')&&ie.length>4 ? 'INT' : ie.startsWith('exte')&&ie.length>4 ? 'EXT'
+            : /^(int\/ext|ext\/int|ie)$/.test(ie) ? 'INT/EXT' : ie.startsWith('int') ? 'INT' : 'EXT'};
+  }
+  m = t.match(RE_SLUG2);
+  if(m && !RE_TRANS.test(t)){
+    const r = norm(m[2]);
+    const ie = /\bext/.test(r) ? 'EXT' : /\bint/.test(r) ? 'INT' : 'INT';
+    /* si el INT/EXT venía adentro ya lo tomé: no debe quedar en la locación */
+    const resto = m[2].replace(/^\s*(INT\.?\s*\/\s*EXT\.?|EXT\.?\s*\/\s*INT\.?|INT|EXT|INTERIOR|EXTERIOR)\b\.?\s*[\-–—:]?\s*/i,'');
+    return {numero:m[1], resto, intExt:ie};
+  }
+  return null;
+}
 
 function parseGuion(txt){
   const lineas = String(txt).replace(/\r\n?/g,'\n').split('\n');
@@ -776,11 +829,11 @@ function parseGuion(txt){
 
   for(let i=0;i<lineas.length;i++){
     const cru = lineas[i], t = cru.trim();
-    const m = t.match(RE_SLUG);
-    if(m && t.length<160){
+    const m = matchEncabezado(t);
+    if(m){
       cerrar();
       /* separar locación de momento por el último guion */
-      let resto = m[3].trim().replace(/\s+\d+[A-Za-z]?$/,'');   /* número al final */
+      let resto = m.resto.trim().replace(/\s+\d+[A-Za-z]?$/,'');   /* número al final */
       let loc = resto, mom = '';
       const partes = resto.split(/\s+[\-–—]\s+|\s{2,}/);
       if(partes.length>1){
@@ -789,13 +842,10 @@ function parseGuion(txt){
           mom = ult.toUpperCase(); loc = partes.slice(0,-1).join(' - ').trim();
         }
       }
-      const ie = norm(m[2]).replace(/[\.\s]/g,'');
       act = nuevaEscena({
-        numero: m[1] || String(++nAuto),
-        encabezado: t,
-        intExt: ie.startsWith('inte')&&ie.length>4 ? 'INT' : ie.startsWith('exte')&&ie.length>4 ? 'EXT'
-              : /^(int\/ext|ext\/int|ie)$/.test(ie) ? 'INT/EXT' : ie.startsWith('int') ? 'INT' : 'EXT',
-        locacion: loc.replace(/\.$/,'').trim() || 'Sin locación',
+        numero: m.numero || String(++nAuto),
+        encabezado: t, intExt: m.intExt,
+        locacion: loc.replace(/[\.:]$/,'').trim() || 'Sin locación',
         momento: mom || 'DÍA'});
       act._lineas = 0; act.texto = '';
       continue;
@@ -811,7 +861,7 @@ function parseGuion(txt){
          de un PDF o un RTF) dejan un renglón vacío entre el nombre y el diálogo */
       let sig=''; for(let k=i+1;k<lineas.length && k<=i+3;k++){
         const x=lineas[k].trim(); if(x){ sig=x; break; } }
-      if(soloLetras.length>1 && soloLetras===soloLetras.toUpperCase() && sig && !RE_SLUG.test(sig)){
+      if(soloLetras.length>1 && soloLetras===soloLetras.toUpperCase() && sig && !matchEncabezado(sig)){
         const nom = t.replace(/\([^)]*\)/g,'').replace(/[:：]$/,'').trim();
         if(nom && nom.length>1 && !act.personajes.includes(nom)) act.personajes.push(nom);
       }
@@ -1341,26 +1391,67 @@ function vistaDesglose(py){
 }
 
 function importadorHTML(){
+  const d = getD();
   return `<div class="card"><h3>Desglose de guion</h3>
+    <div class="pasos">
+      <div class="paso on"><b>1</b><span>Pegás o subís el guion</span></div>
+      <div class="paso"><b>2</b><span>Tocás <i>Desglosar</i> y lo revisás acá</span></div>
+      <div class="paso"><b>3</b><span>Recién ahí lo mandás al presupuesto</span></div>
+    </div>
     <div class="pad">
-      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">
-        Pegá el guion en formato estándar y el sistema separa las escenas, saca INT/EXT,
-        locación, momento del día, los personajes con diálogo y la extensión en octavos de página.
-        Después propone los elementos por departamento —utilería, vestuario, vehículos, animales,
-        efectos, riesgo— con un diccionario: <b>lo propuesto lo confirmás o lo borrás vos</b>.
-        Del desglose salen el plan de rodaje y las líneas del presupuesto.
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
+        El sistema separa las escenas y saca INT/EXT, locación, momento del día, los personajes
+        con diálogo y la extensión en octavos de página. Después propone los elementos por
+        departamento con un diccionario: <b>lo propuesto lo confirmás o lo borrás vos</b>.
+        Nada se toca del presupuesto hasta que vos lo mandes.
       </div>
-      <textarea id="gtxt" rows="12" placeholder="1. INT. COCINA - DÍA&#10;&#10;Luz de mañana. LUCÍA revuelve un mate.&#10;&#10;LUCÍA&#10;Otra vez treinta y ocho grados.&#10;&#10;2. EXT. CALLE - DÍA&#10;..."
-        style="font-family:var(--mono);font-size:12px;line-height:1.5"></textarea>
-      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-        <button class="btn pri" onclick="importarGuion()">Desglosar</button>
+      <textarea id="gtxt" rows="12" oninput="guionInput(this)"
+        onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')importarGuion()"
+        placeholder="1. INT. COCINA - DÍA&#10;&#10;Luz de mañana. LUCÍA revuelve un mate.&#10;&#10;LUCÍA&#10;Otra vez treinta y ocho grados.&#10;&#10;2. EXT. CALLE - DÍA&#10;..."
+        style="font-family:var(--mono);font-size:12px;line-height:1.5">${esc(d.guion)}</textarea>
+      <div id="ginfo" class="ginfo">${infoGuion(d.guion)}</div>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+        <button class="btn pri grande" id="gbtn" onclick="importarGuion()">Desglosar</button>
+        <span class="muted" style="font-size:10.5px">o Ctrl+Enter</span>
         <button class="btn" onclick="document.getElementById('gfile').click()">Subir archivo</button>
-        <span class="muted" style="font-size:11px;align-self:center">PDF · Word · Final Draft · RTF · txt</span>
+        <span class="muted" style="font-size:11px">PDF · Word · Final Draft · RTF · txt</span>
         <input type="file" id="gfile" accept=".txt,.fountain,.fdx,.docx,.doc,.rtf,.pdf" style="display:none" onchange="subirGuion(this)">
         <div style="flex:1"></div>
         <button class="btn" onclick="guionEjemplo()">Probar con un guion de ejemplo</button>
       </div>
     </div></div>`;
+}
+
+/* Devuelve el cartel de estado que va abajo del textarea. Se actualiza en vivo
+   mientras se pega, así no hace falta adivinar si el guion se entiende.      */
+function infoGuion(txt){
+  if(!txt || !txt.trim())
+    return `<span class="muted">Pegá el guion acá. A medida que escribís te voy diciendo qué encuentro.</span>`;
+  const es = parseGuion(txt);
+  if(!es.length) return `<span class="gmal">✕ No encuentro encabezados de escena.</span>
+    <span class="muted">Tienen que ser líneas propias que digan <b>INT.</b> o <b>EXT.</b> —también acepto
+    <b>ESCENA 1</b>, <b>SEC. 1</b>, <b>PLANO 1</b> o <b>TOMA 1</b>. Por ejemplo:
+    <code>1. INT. COCINA - DÍA</code></span>`;
+  const locs = new Set(es.map(e=>e.locacion));
+  const pers = new Set(es.flatMap(e=>e.personajes));
+  const oct = es.reduce((s,e)=>s+e.octavos,0);
+  return `<span class="gbien">✓ ${es.length} escena${es.length==1?'':'s'}</span>
+    <span class="muted">· ${locs.size} ${locs.size==1?'locación':'locaciones'} · ${pers.size} personaje${pers.size==1?'':'s'}
+    · ${octavosATexto(oct)} páginas</span>
+    <b style="color:var(--ac)">— tocá “Desglosar”</b>`;
+}
+
+/* En vivo: guarda lo tipeado en el modelo (para que no se pierda si algo
+   redibuja) y actualiza el cartel sin re-renderizar, que perdería el foco.   */
+let _gt;
+function guionInput(el){
+  getD().guion = el.value;
+  clearTimeout(_gt);
+  _gt = setTimeout(()=>{
+    const info = document.getElementById('ginfo');
+    if(info) info.innerHTML = infoGuion(el.value);
+    guardar();
+  }, 220);
 }
 
 function escHTML(e,d){
@@ -1370,9 +1461,15 @@ function escHTML(e,d){
     <div class="ehead" onclick="if(event.target===this||event.target.closest('.enum,.eloc,.eie,.emom,.epg,.ecar'))toggleEsc('${e.id}')">
       <span class="ecar solo-cel">${e.abierta?'▾':'▸'}</span>
       <span class="enum">${esc(e.numero)}</span>
-      <span class="eie ${e.intExt==='INT'?'int':'ext'}">${esc(e.intExt)}</span>
-      <span class="eloc">${esc(e.locacion)}</span>
-      <span class="emom ${noche?'noche':''}">${esc(e.momento)}</span>
+      <button class="eie ed ${e.intExt==='INT'?'int':'ext'}" title="Click para cambiar"
+        onclick="event.stopPropagation();cicloIE('${e.id}')">${esc(e.intExt)}</button>
+      <input class="eloc ed" value="${esc(e.locacion)}" title="Locación"
+        onclick="event.stopPropagation()" onchange="upEsc('${e.id}','locacion',this.value)">
+      <select class="emom ed ${noche?'noche':''}" title="Momento del día"
+        onclick="event.stopPropagation()" onchange="upEsc('${e.id}','momento',this.value)">
+        ${[...new Set(['DÍA','NOCHE','TARDE','MAÑANA','AMANECER','ATARDECER','MADRUGADA','CONTINUO',e.momento])]
+          .map(x=>`<option ${x===e.momento?'selected':''}>${esc(x)}</option>`).join('')}
+      </select>
       <span class="epg">${octavosATexto(e.octavos)} pg</span>
       <span class="ecnt solo-cel">${e.personajes.length + Object.values(e.elementos).reduce((s,v)=>s+v.length,0)} el.</span>
       <span class="jda noprint"><span class="muted" style="font-size:9.5px;font-weight:700">JORN.</span>
@@ -1865,12 +1962,18 @@ function addPersona(rid, pid){
 
 /* ---------- desglose ---------- */
 function setSub(k){ DB.ui.subDesglose=k; R(); }
+function cicloIE(id){
+  const e = getD().escenas.find(x=>x.id===id);
+  const o = ['INT','EXT','INT/EXT'];
+  e.intExt = o[(o.indexOf(e.intExt)+1) % o.length]; R();
+}
+function upEsc(id, campo, val){ getD().escenas.find(x=>x.id===id)[campo] = val; R(); }
 function toggleEsc(id){ const e=getD().escenas.find(x=>x.id===id); e.abierta=!e.abierta; R(); }
 function plegarTodo(abrir){ getD().escenas.forEach(e=>e.abierta=abrir); R(); }
 const getD = () => { const py=getPy(); if(!py) return null; py.desglose ||= nuevoDesglose(); return py.desglose; };
 
 function importarGuion(txt){
-  const t = typeof txt==='string' ? txt : (document.getElementById('gtxt')?.value||'');
+  const t = typeof txt==='string' ? txt : (document.getElementById('gtxt')?.value || getD().guion || '');
   if(!t.trim()){ toast('Pegá el guion primero'); return; }
   const escenas = parseGuion(t);
   if(!escenas.length){
