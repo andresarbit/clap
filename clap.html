@@ -261,6 +261,25 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .ctab input{width:100%}
 .ctab input[type=email]{font-size:11.5px}
 .csblock>h4 .btn{font-weight:600;letter-spacing:0;text-transform:none}
+/* rodaje */
+.mono{font-family:var(--mono)}
+a.btn{display:inline-block;text-decoration:none}
+a.btn.wa{border-color:rgba(63,178,127,.5);color:#6fd0a3}
+a.btn.wa:hover{background:rgba(63,178,127,.14);border-color:var(--ok);color:#8fdcb8}
+tr.yacitado td:first-child{box-shadow:inset 3px 0 0 var(--ok)}
+tr.yacitado{opacity:.62}
+tr.filmada td{background:rgba(63,178,127,.07)}
+tr.filmada .enum{color:var(--ok)}
+td.conhe,tr.conhe .num{color:var(--warn)}
+tr.conhe td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+.turno-ok{background:rgba(63,178,127,.09);border-color:rgba(63,178,127,.35)}
+.turno-ok b{color:var(--ok)}
+.turno-mal{background:rgba(224,90,90,.1);border-color:rgba(224,90,90,.4)}
+.turno-mal b{color:var(--bad)}
+.cst tfoot td{border-top:2px solid var(--ac);padding-top:7px}
+/* los checkboxes del parte se tocan con el dedo en un set, no con el mouse */
+input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointer;flex:none}
+@media (max-width:860px){ input[type=checkbox]{width:24px;height:24px} }
 
 /* ---------- celular ---------- */
 @media (max-width:860px){
@@ -451,7 +470,8 @@ function nuevoProyecto(o={}){
     territorio:o.territorio||'Argentina', plazo:o.plazo||'12 meses', medios:o.medios||'Digital',
     jornadas:o.jornadas??1, versiones:o.versiones||[nuevaVersion()], versionActiva:null,
     desglose:o.desglose||nuevoDesglose(),
-    contactos:o.contactos||{porLinea:{}, extra:[]}};
+    contactos:o.contactos||{porLinea:{}, extra:[]},
+    configRodaje:o.configRodaje||nuevaConfigRodaje()};
 }
 function nuevaProductora(o={}){
   return {id:uid('pr'), nombre:o.nombre||'Productora nueva', cuit:o.cuit||'',
@@ -568,6 +588,130 @@ function nuevaJornada(o={}){
 /* Rubros de los que sale el equipo técnico del callsheet.                     */
 const RUBROS_CREW = ['02','03','04','05','06','07','08'];
 const RUBROS_PROV = ['10','11','12','13','14','15'];
+
+/* ---------------------------- RODAJE -------------------------------------
+   El parte de rodaje: lo que un asistente de producción llena en el set.
+   Horarios reales, quién entró y salió a qué hora, e incidencias. De ahí
+   salen las horas extra, que es donde se va la plata de un rodaje.           */
+function nuevoParte(o={}){
+  return {primeraToma:o.primeraToma||'', comidaIn:o.comidaIn||'', comidaOut:o.comidaOut||'',
+    ultimaToma:o.ultimaToma||'', wrap:o.wrap||'', comidasServidas:o.comidasServidas??0,
+    filmadas:o.filmadas||[],            /* ids de escenas efectivamente filmadas */
+    fichadas:o.fichadas||{},            /* { clave: {entrada, salida, nota} } */
+    citados:o.citados||{},              /* { clave: true } — ya se le avisó */
+    incidencias:o.incidencias||'', climaReal:o.climaReal||''};
+}
+/* Condiciones de la jornada. Se configuran por proyecto porque cambian según
+   el convenio y el tipo de trabajo.                                          */
+function nuevaConfigRodaje(o={}){
+  return {horasJornada:o.horasJornada??10, recargoHE:o.recargoHE??50,
+    descontarComida:o.descontarComida!==false, minTurnaround:o.minTurnaround??12,
+    telProduccion:o.telProduccion||''};
+}
+
+const hhmm = t => { const m=String(t||'').match(/^(\d{1,2}):?(\d{2})$/); return m ? (+m[1])*60 + (+m[2]) : null; };
+const minAHoras = m => (m/60);
+const fmtHoras = m => { if(m==null) return '—';
+  const neg = m<0; m=Math.abs(Math.round(m));
+  return (neg?'-':'') + Math.floor(m/60) + ':' + String(m%60).padStart(2,'0'); };
+
+/* Minutos entre dos horas; si la salida es menor, cruzó la medianoche.       */
+function lapso(desde, hasta){
+  const a=hhmm(desde), b=hhmm(hasta);
+  if(a==null || b==null) return null;
+  return b>=a ? b-a : (b+24*60)-a;
+}
+
+/* Horas de una persona en una jornada, con su costo de hora extra.           */
+function horasDe(clave, j, cfg, valorJornada, moneda){
+  const f = (j.parte?.fichadas||{})[clave] || {};
+  const brutos = lapso(f.entrada, f.salida);
+  if(brutos==null) return {sinDatos:true, entrada:f.entrada||'', salida:f.salida||''};
+  let comida = 0;
+  if(cfg.descontarComida){
+    const c = lapso(j.parte?.comidaIn, j.parte?.comidaOut);
+    if(c!=null && c>0 && c<240) comida = c;
+  }
+  const netos = Math.max(0, brutos - comida);
+  const base = cfg.horasJornada*60;
+  const extra = Math.max(0, netos - base);
+  const valorHora = valorJornada ? valorJornada / Math.max(1,cfg.horasJornada) : 0;
+  const costoHE = extra/60 * valorHora * (1 + n(cfg.recargoHE)/100);
+  return {sinDatos:false, entrada:f.entrada, salida:f.salida, nota:f.nota||'',
+    brutos, comida, netos, extra, valorHora, costoHE, moneda:moneda||'ARS'};
+}
+
+/* Todos los que participan de una jornada, técnicos y elenco, con lo que hace
+   falta para citarlos y para liquidarles las horas.                          */
+function gentePorJornada(py, v, num){
+  const C = armarCallsheet(py, v, num);
+  const man = (py.contactos && py.contactos.porLinea) || {};
+  const linea = id => { for(const r of (v?.rubros||[])){ const l=r.lineas.find(x=>x.id===id); if(l) return l; } return null; };
+
+  const crew = C.crew.map(c=>{
+    const l = linea(c.clave.slice(2));
+    return {clave:c.clave, grupo:c.depto, rol:c.funcion, nombre:c.nombre,
+      tel:c.tel, email:c.email, tipo:'tecnico',
+      valorJornada: l ? n(l.valorUnit) : 0, moneda: l ? l.moneda : 'ARS'};
+  });
+
+  /* al elenco se le busca su línea en el rubro 09 por el nombre del personaje */
+  const r9 = (v?.rubros||[]).find(r=>r.codigo==='09');
+  const elenco = C.elenco.map(p=>{
+    const l = r9 ? r9.lineas.find(x=>norm(x.concepto)===norm(p.personaje)) : null;
+    const g = l ? (man['l:'+l.id]||{}) : {};
+    const pe = p.persona || (l && l.refId ? DB.catalogo.personas.find(x=>x.id===l.refId) : null);
+    return {clave:p.clave, grupo:'Elenco', rol:p.personaje,
+      nombre: pe?pe.nombre:(g.nombre||''), tel: pe?pe.tel:(g.tel||''), email: pe?pe.email:(g.email||''),
+      tipo:'elenco', escenas:p.escenas,
+      valorJornada: l ? n(l.valorUnit) : 0, moneda: l ? l.moneda : 'ARS'};
+  });
+  return {gente:[...elenco, ...crew], callsheet:C};
+}
+
+/* Texto de la citación que se le manda a cada uno.                           */
+function textoCitacion(pr, py, j, C, p, cfg){
+  const cit = (j.citaciones[p.clave]||{});
+  const hora = cit.citacion || j.citacion || '';
+  const locs = C.locaciones.map(l=>{
+    const d = j.direcciones[l]||{};
+    return l + (d.direccion ? ' — ' + d.direccion : '');
+  });
+  const L = [];
+  L.push(`CITACIÓN · ${py.nombre}`);
+  L.push(`Jornada ${j.numero}${j.fecha ? ' · ' + j.fecha + ' (' + diaSemana(j.fecha) + ')' : ''}`);
+  L.push('');
+  L.push(`${p.rol}${p.nombre ? ': ' + p.nombre : ''}`);
+  L.push(`Citación: ${hora || 'a confirmar'}`);
+  if(cit.maquillaje) L.push(`Maquillaje: ${cit.maquillaje}`);
+  if(cit.set)        L.push(`En set: ${cit.set}`);
+  L.push('');
+  if(locs.length) L.push('Locación: ' + locs.join(' | '));
+  if(p.escenas?.length) L.push('Escenas: ' + p.escenas.join(', '));
+  if(j.wrap) L.push('Wrap estimado: ' + j.wrap);
+  if(j.hospital?.nombre) L.push(`Hospital: ${j.hospital.nombre}${j.hospital.tel ? ' ' + j.hospital.tel : ''}`);
+  if(j.notas) { L.push(''); L.push(j.notas); }
+  L.push('');
+  L.push(`${pr.nombre}${cfg.telProduccion ? ' · Producción: ' + cfg.telProduccion : ''}`);
+  return L.join('\n');
+}
+
+/* Normaliza un teléfono argentino al formato que espera WhatsApp.
+   Es best-effort: si el número viene raro, se abre igual y se corrige a mano. */
+function telWhatsapp(tel){
+  let d = String(tel||'').replace(/\D/g,'');
+  if(!d) return '';
+  if(d.startsWith('00')) d = d.slice(2);
+  if(d.startsWith('54')){
+    d = d.slice(2);
+    if(d.startsWith('9')) d = d.slice(1);
+  }
+  if(d.startsWith('0')) d = d.slice(1);
+  /* el 15 va después de la característica: 11 15 xxxx xxxx, 351 15 xxx xxxx */
+  d = d.replace(/^(\d{2,4})15(\d{6,8})$/, '$1$2');
+  if(d.length < 8) return '';
+  return '549' + d;
+}
 
 /* Un contacto suelto: los que no salen de una línea de presupuesto (cliente,
    agencia, el productor de la agencia, un contacto de la marca).             */
@@ -1184,6 +1328,9 @@ function migrar(){
     py.desglose.jornadas.forEach(normalizarJornada);
     py.contactos ||= {porLinea:{}, extra:[]};
     py.contactos.porLinea ||= {}; py.contactos.extra ||= [];
+    py.configRodaje ||= nuevaConfigRodaje();
+    py.desglose.jornadas.forEach(j=>{ j.parte ||= nuevoParte();
+      j.parte.fichadas ||= {}; j.parte.citados ||= {}; j.parte.filmadas ||= []; });
   }));
 }
 let _t;
@@ -1325,7 +1472,7 @@ function render(){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['catalogo','Catálogo'],['config','Productoras']];
+  const TABS=[['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['catalogo','Catálogo'],['config','Productoras']];
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -1364,6 +1511,7 @@ function cuerpo(pr,py,v){
     <button class="btn pri" onclick="editProyecto()">Crear proyecto</button></div></div>`;
   if(DB.ui.tab==='desglose')  return vistaDesglose(py);
   if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,v);
+  if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,v);
   return vistaPresupuesto(pr,py,v);
 }
 
@@ -1819,6 +1967,264 @@ function planHTML(py,d,r){
     ${nums.map(nn=>bloque('Jornada '+nn, asignadas[nn])).join('')}
     ${sin.length?bloque('Sin asignar', sin, 'sinasig'):''}
     ${!nums.length&&!sin.length?'<div class="empty">Sin escenas</div>':''}`;
+}
+
+/* ---------- vista rodaje ---------- */
+/* Pensada para que un asistente de producción la use en el set, con el celu
+   en la mano: citar, fichar entradas y salidas, y anotar lo que pasó.        */
+function vistaRodaje(pr,py,v){
+  const d = py.desglose;
+  if(!d.jornadas.length) return `<div class="card"><div class="empty">
+    Todavía no hay jornadas.<br><span style="font-size:12px">Armá el plan en
+    <b>Desglose → Plan de rodaje</b> y volvé acá.</span><br><br>
+    <button class="btn pri" onclick="setTab('desglose');setSub('plan')">Ir al plan de rodaje</button></div></div>`;
+
+  const num = d.jornadas.some(x=>x.numero===DB.ui.jornada) ? DB.ui.jornada : d.jornadas[0].numero;
+  DB.ui.jornada = num;
+  const j = normalizarJornada(d.jornadas.find(x=>x.numero===num));
+  j.parte ||= nuevoParte();
+  py.configRodaje ||= nuevaConfigRodaje();
+  const cfg = py.configRodaje;
+  const {gente, callsheet:C} = gentePorJornada(py, v, num);
+  const sub = DB.ui.subRodaje || 'citaciones';
+  const S = [['citaciones','Citaciones'],['parte','Parte del día'],['horas','Horas y extras']];
+
+  return `<div class="noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <div class="pick"><label>Jornada</label><select onchange="selJornada(this.value)">
+        ${d.jornadas.map(x=>`<option value="${x.numero}" ${x.numero===num?'selected':''}>Jornada ${x.numero}${x.fecha?' · '+x.fecha:''}</option>`).join('')}
+      </select></div>
+      <div class="seg">${S.map(([k,l])=>
+        `<button class="${sub===k?'on':''}" onclick="setSubRodaje('${k}')">${l}</button>`).join('')}</div>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="cfgRodaje()">Condiciones ⚙</button>
+      <button class="btn" onclick="window.print()">Imprimir / PDF</button>
+    </div>
+    ${sub==='citaciones' ? citacionesHTML(pr,py,j,C,gente,cfg)
+    : sub==='parte'      ? parteHTML(pr,py,j,C,gente,cfg)
+                         : horasHTML(pr,py,v,j,gente,cfg)}`;
+}
+
+/* --- citaciones: mandarle a cada uno su hora ----------------------------- */
+function citacionesHTML(pr,py,j,C,gente,cfg){
+  const citados = Object.keys(j.parte.citados||{}).filter(k=>j.parte.citados[k]).length;
+  const conTel = gente.filter(p=>telWhatsapp(p.tel)).length;
+  const fila = p => {
+    const cit = j.citaciones[p.clave]||{};
+    const hora = cit.citacion || '';
+    const wa = telWhatsapp(p.tel);
+    const listo = !!(j.parte.citados||{})[p.clave];
+    return `<tr class="${listo?'yacitado':''}">
+      <td><span class="crol">${esc(p.rol)}</span>
+        <span class="muted" style="display:block;font-size:10px">${esc(p.grupo)}</span></td>
+      <td class="${p.nombre?'':'muted'}">${esc(p.nombre||'— sin asignar —')}</td>
+      <td><input type="text" value="${esc(hora)}" placeholder="${esc(j.citacion||'')}"
+        onchange="upCitacion('${p.clave}','citacion',this.value)"></td>
+      <td class="noprint" style="white-space:nowrap">
+        ${wa ? `<a class="btn sm wa" href="https://wa.me/${wa}?text=${encodeURIComponent(textoCitacion(pr,py,j,C,p,cfg))}"
+             target="_blank" rel="noopener" onclick="marcarCitado('${p.clave}')">WhatsApp</a>`
+             : `<span class="muted" style="font-size:10.5px">sin teléfono</span>`}
+        ${p.email ? `<a class="btn sm" href="mailto:${esc(p.email)}?subject=${encodeURIComponent('Citación J'+j.numero+' · '+py.nombre)}&body=${encodeURIComponent(textoCitacion(pr,py,j,C,p,cfg))}"
+             onclick="marcarCitado('${p.clave}')">Mail</a>` : ''}
+        <button class="btn sm" onclick="copiarCitacion('${p.clave}')">Copiar</button>
+      </td>
+      <td class="noprint" style="text-align:center">
+        <input type="checkbox" ${listo?'checked':''} style="width:auto"
+          onchange="marcarCitado('${p.clave}', this.checked)" title="Ya lo cité"></td>
+    </tr>`;
+  };
+  const grupos = {};
+  gente.forEach(p=>(grupos[p.grupo] ||= []).push(p));
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Citaciones · Jornada ${j.numero}</div>
+        <div class="cssub">${esc(py.nombre)}${j.fecha?' · '+esc(j.fecha)+' ('+diaSemana(j.fecha)+')':''}
+          · citación general ${esc(j.citacion||'—')}</div></div>
+      <div style="text-align:right"><div class="csj">${citados}<span> de ${gente.length}</span></div>
+        <div class="cssub">avisados</div></div>
+    </div>
+    <div class="pad noprint" style="display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--line)">
+      <button class="btn sm pri" onclick="copiarTodasCitaciones()">Copiar todas las citaciones</button>
+      <button class="btn sm" onclick="marcarTodos(true)">Marcar todos como citados</button>
+      <button class="btn sm" onclick="marcarTodos(false)">Limpiar marcas</button>
+      <div style="flex:1"></div>
+      <span class="muted" style="font-size:11px;align-self:center">
+        ${conTel} de ${gente.length} tienen teléfono cargado · el mensaje se abre en tu WhatsApp o tu mail, lo mandás vos</span>
+    </div>
+    ${Object.entries(grupos).map(([g,ps])=>`<div class="csblock"><h4>${esc(g)}</h4>
+      <div class="scrollx"><table class="tbl cst ctab">
+        <thead><tr><th style="width:26%">Rol</th><th style="width:24%">Nombre</th>
+          <th style="width:82px">Citación</th><th class="noprint">Avisar</th>
+          <th class="noprint" style="width:44px">Listo</th></tr></thead>
+        <tbody>${ps.map(fila).join('')}</tbody></table></div></div>`).join('')}
+  </div>`;
+}
+
+/* --- parte del día: lo que el AP llena en el set ------------------------- */
+function parteHTML(pr,py,j,C,gente,cfg){
+  const p = j.parte;
+  const F = (l,campo,val,tipo='time') => `<label class="f"><span>${l}</span>
+    <input type="${tipo}" value="${esc(val??'')}" onchange="upParte('${campo}',this.value)"></label>`;
+  const rodado = lapso(j.citacion, p.wrap);
+  const filmadas = C.escenas.filter(e=>p.filmadas.includes(e.id));
+  const octFilm = filmadas.reduce((s,e)=>s+e.octavos,0);
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Parte de rodaje · Jornada ${j.numero}</div>
+        <div class="cssub">${esc(py.nombre)} · ${esc(pr.nombre)}${j.fecha?' · '+esc(j.fecha):''}</div></div>
+      <div style="text-align:right"><div class="csj">${fmtHoras(rodado)}<span> de set</span></div>
+        <div class="cssub">citación ${esc(j.citacion||'—')} → wrap ${esc(p.wrap||'—')}</div></div>
+    </div>
+    <div class="csblock"><h4>Horarios reales del día</h4>
+      <div class="pad grid2">
+        ${F('Primera toma','primeraToma',p.primeraToma)}
+        ${F('Corte de comida','comidaIn',p.comidaIn)}
+        ${F('Vuelta de comida','comidaOut',p.comidaOut)}
+        ${F('Última toma','ultimaToma',p.ultimaToma)}
+        ${F('Wrap','wrap',p.wrap)}
+        ${F('Comidas servidas','comidasServidas',p.comidasServidas,'number')}
+      </div>
+      <div class="pad" style="padding-top:0;display:flex;gap:16px;flex-wrap:wrap;font-size:12px">
+        <span class="muted">Arranque: <b class="mono">${fmtHoras(lapso(j.citacion,p.primeraToma))}</b> después de la citación</span>
+        <span class="muted">Comida: <b class="mono">${fmtHoras(lapso(p.comidaIn,p.comidaOut))}</b></span>
+        <span class="muted">Desarme: <b class="mono">${fmtHoras(lapso(p.ultimaToma,p.wrap))}</b></span>
+      </div>
+    </div>
+    <div class="csblock"><h4>Escenas filmadas
+      <span style="float:right;font-weight:600;text-transform:none;letter-spacing:0;color:var(--tx2)">
+        ${filmadas.length} de ${C.escenas.length} · ${octavosATexto(octFilm)} de ${octavosATexto(C.octavos)} pg</span></h4>
+      <div class="scrollx"><table class="tbl cst">
+        <thead><tr><th style="width:44px" class="noprint">✓</th><th style="width:40px">Esc</th>
+          <th style="width:46px">I/E</th><th>Locación</th><th style="width:52px">Pág.</th><th>Notas</th></tr></thead>
+        <tbody>${C.escenas.map(e=>`<tr class="${p.filmadas.includes(e.id)?'filmada':''}">
+          <td class="noprint" style="text-align:center"><input type="checkbox" style="width:auto"
+            ${p.filmadas.includes(e.id)?'checked':''} onchange="toggleFilmada('${e.id}',this.checked)"></td>
+          <td><b class="enum">${esc(e.numero)}</b></td>
+          <td><span class="eie ${e.intExt==='INT'?'int':'ext'}">${esc(e.intExt)}</span></td>
+          <td>${esc(e.locacion)}</td><td class="num">${octavosATexto(e.octavos)}</td>
+          <td><input type="text" value="${esc(e.notas)}" placeholder="—" onchange="upEscNota('${e.id}',this.value)"></td>
+        </tr>`).join('')||'<tr><td colspan="6" class="empty">Esta jornada no tiene escenas</td></tr>'}</tbody>
+      </table></div></div>
+    <div class="csblock"><h4>Entradas y salidas
+      <span style="float:right;font-weight:600;text-transform:none;letter-spacing:0;color:var(--tx2)">
+        ${gente.filter(g=>(p.fichadas[g.clave]||{}).salida).length} de ${gente.length} fichados</span></h4>
+      <div class="pad noprint" style="padding-bottom:0;display:flex;gap:7px;flex-wrap:wrap">
+        <button class="btn sm" onclick="ficharTodos('entrada')">Entrada = citación de cada uno</button>
+        <button class="btn sm" onclick="ficharTodos('salida')">Salida = wrap</button>
+      </div>
+      <div class="scrollx"><table class="tbl cst">
+        <thead><tr><th style="width:28%">Rol</th><th>Nombre</th><th style="width:76px">Entrada</th>
+          <th style="width:76px">Salida</th><th style="width:66px">Horas</th><th>Nota</th></tr></thead>
+        <tbody>${gente.map(g=>{
+          const h = horasDe(g.clave, j, cfg, g.valorJornada, g.moneda);
+          return `<tr><td><span class="crol">${esc(g.rol)}</span></td>
+            <td class="${g.nombre?'':'muted'}">${esc(g.nombre||'—')}</td>
+            <td><input type="text" value="${esc(h.entrada||'')}" placeholder="${esc((j.citaciones[g.clave]||{}).citacion||j.citacion||'')}"
+              onchange="upFichada('${g.clave}','entrada',this.value)"></td>
+            <td><input type="text" value="${esc(h.salida||'')}" placeholder="${esc(p.wrap||'')}"
+              onchange="upFichada('${g.clave}','salida',this.value)"></td>
+            <td class="num ${h.extra>0?'conhe':''}">${h.sinDatos?'—':fmtHoras(h.netos)}</td>
+            <td><input type="text" value="${esc((p.fichadas[g.clave]||{}).nota||'')}" placeholder="—"
+              onchange="upFichada('${g.clave}','nota',this.value)"></td></tr>`;}).join('')}
+        </tbody></table></div></div>
+    <div class="csblock"><h4>Incidencias del día</h4>
+      <div class="pad grid2">
+        ${F('Clima real','climaReal',p.climaReal,'text')}
+      </div>
+      <div class="pad" style="padding-top:0"><label class="f"><span>Qué pasó</span>
+        <textarea rows="4" placeholder="Demoras y por qué, roturas, accidentes, cambios de plan, escenas que quedaron pendientes…"
+          onchange="upParte('incidencias',this.value)">${esc(p.incidencias)}</textarea></label></div></div>
+    <div class="csfoot">${esc(pr.nombre)} · ${esc(py.nombre)} · parte de rodaje J${j.numero} · generado con CLAP</div>
+  </div>`;
+}
+
+/* --- horas y extras ------------------------------------------------------ */
+function horasHTML(pr,py,v,j,gente,cfg){
+  const filas = gente.map(g=>({...g, h:horasDe(g.clave, j, cfg, g.valorJornada, g.moneda)}))
+    .filter(x=>!x.h.sinDatos);
+  const conHE = filas.filter(x=>x.h.extra>0);
+  const totalHE = conHE.reduce((s,x)=>s+x.h.extra,0);
+  const costoARS = conHE.filter(x=>x.moneda==='ARS').reduce((s,x)=>s+x.h.costoHE,0);
+  const costoUSD = conHE.filter(x=>x.moneda==='USD').reduce((s,x)=>s+x.h.costoHE,0);
+  const proy = horasProyecto(py, v, cfg);
+  const tur = turnaround(py, j, cfg);
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Horas y extras · Jornada ${j.numero}</div>
+        <div class="cssub">Jornada base ${cfg.horasJornada} h · extra +${cfg.recargoHE}%
+          ${cfg.descontarComida?'· se descuenta la comida':'· la comida no se descuenta'}</div></div>
+      <div style="text-align:right"><div class="csj">${fmtHoras(totalHE)}<span> extras</span></div>
+        <div class="cssub">${conHE.length} de ${filas.length} pasaron la jornada</div></div>
+    </div>
+    ${tur ? `<div class="pad"><div class="${tur.corto?'avisomodo turno-mal':'avisomodo turno-ok'}">
+      <b>Descanso hasta la jornada ${tur.siguiente}: ${fmtHoras(tur.minutos)}</b>
+      ${tur.corto ? `— menos del mínimo de ${cfg.minTurnaround} h. Si no se corre la citación, se paga.`
+                  : `— por encima del mínimo de ${cfg.minTurnaround} h.`}</div></div>` : ''}
+    <div class="csblock"><h4>Detalle del día</h4>
+      <div class="scrollx"><table class="tbl cst">
+        <thead><tr><th style="width:24%">Rol</th><th>Nombre</th><th style="width:60px">Entra</th>
+          <th style="width:60px">Sale</th><th style="width:62px">Netas</th><th style="width:62px">Extras</th>
+          <th style="width:88px">Valor hora</th><th style="width:96px">Costo extras</th></tr></thead>
+        <tbody>${filas.map(x=>`<tr class="${x.h.extra>0?'conhe':''}">
+          <td><span class="crol">${esc(x.rol)}</span></td>
+          <td class="${x.nombre?'':'muted'}">${esc(x.nombre||'—')}</td>
+          <td class="num muted">${esc(x.h.entrada)}</td><td class="num muted">${esc(x.h.salida)}</td>
+          <td class="num">${fmtHoras(x.h.netos)}</td>
+          <td class="num"><b>${x.h.extra?fmtHoras(x.h.extra):'—'}</b></td>
+          <td class="num muted">${x.h.valorHora?fmt(x.h.valorHora,x.moneda):'—'}</td>
+          <td class="num"><b>${x.h.costoHE?fmt(x.h.costoHE,x.moneda):'—'}</b></td></tr>`).join('')
+          || '<tr><td colspan="8" class="empty">Cargá las entradas y salidas en el <b>Parte del día</b></td></tr>'}
+        </tbody></table></div>
+      ${(costoARS||costoUSD) ? `<div class="pad" style="border-top:1px solid var(--line)">
+        <div class="tot big"><span>Horas extra del día</span>
+          <b>${costoARS?fmt(costoARS,'ARS'):''}${costoARS&&costoUSD?' + ':''}${costoUSD?fmt(costoUSD,'USD'):''}</b></div>
+        <div class="muted" style="font-size:11px;margin-top:5px">
+          No está en el presupuesto: es desvío. Con ${cfg.horasJornada} h de jornada base
+          y +${cfg.recargoHE}% de recargo.</div></div>`:''}
+    </div>
+    ${proy.jornadas.length>1 ? `<div class="csblock"><h4>Acumulado del proyecto</h4>
+      <div class="scrollx"><table class="tbl cst">
+        <thead><tr><th>Jornada</th><th style="width:80px">Fichados</th><th style="width:80px">Extras</th>
+          <th style="width:110px">Costo extras</th></tr></thead>
+        <tbody>${proy.jornadas.map(x=>`<tr>
+          <td>Jornada ${x.numero}${x.fecha?` <span class="muted">· ${esc(x.fecha)}</span>`:''}</td>
+          <td class="num muted">${x.fichados}</td>
+          <td class="num">${x.extra?fmtHoras(x.extra):'—'}</td>
+          <td class="num"><b>${x.costoARS?fmt(x.costoARS,'ARS'):'—'}</b></td></tr>`).join('')}</tbody>
+        <tfoot><tr><td colspan="2"><b>Total del rodaje</b></td>
+          <td class="num"><b>${fmtHoras(proy.totalExtra)}</b></td>
+          <td class="num"><b style="color:var(--ac)">${fmt(proy.totalARS,'ARS')}</b></td></tr></tfoot>
+      </table></div></div>`:''}
+    <div class="csfoot">${esc(pr.nombre)} · ${esc(py.nombre)} · horas J${j.numero} · generado con CLAP</div>
+  </div>`;
+}
+
+/* Acumulado de horas extra de todo el rodaje. */
+function horasProyecto(py, v, cfg){
+  const out = {jornadas:[], totalExtra:0, totalARS:0};
+  (py.desglose?.jornadas||[]).forEach(jj=>{
+    normalizarJornada(jj); jj.parte ||= nuevoParte();
+    const {gente} = gentePorJornada(py, v, jj.numero);
+    let extra=0, costoARS=0, fichados=0;
+    gente.forEach(g=>{
+      const h = horasDe(g.clave, jj, cfg, g.valorJornada, g.moneda);
+      if(h.sinDatos) return;
+      fichados++; extra += h.extra;
+      if(g.moneda==='ARS') costoARS += h.costoHE;
+    });
+    out.jornadas.push({numero:jj.numero, fecha:jj.fecha, fichados, extra, costoARS});
+    out.totalExtra += extra; out.totalARS += costoARS;
+  });
+  return out;
+}
+/* Descanso entre el wrap de una jornada y la citación de la siguiente. */
+function turnaround(py, j, cfg){
+  const js = py.desglose.jornadas;
+  const sig = js.find(x=>x.numero===j.numero+1);
+  if(!sig || !j.parte?.wrap || !sig.citacion) return null;
+  let min = lapso(j.parte.wrap, sig.citacion);
+  if(min==null) return null;
+  /* si las fechas son consecutivas el lapso ya cruza la medianoche */
+  return {siguiente:sig.numero, minutos:min, corto: min < n(cfg.minTurnaround)*60};
 }
 
 /* ---------- vista callsheet ---------- */
@@ -2560,7 +2966,109 @@ function sincronizarJornadas(d){
 function normalizarJornada(j){
   const base = nuevaJornada({numero:j.numero});
   for(const k in base) if(j[k]===undefined || j[k]===null) j[k] = base[k];
+  j.parte ||= nuevoParte();
+  j.parte.fichadas ||= {}; j.parte.citados ||= {}; j.parte.filmadas ||= [];
   return j;
+}
+
+/* ---------- rodaje ---------- */
+function setSubRodaje(k){ DB.ui.subRodaje = k; R(); }
+function jornadaParte(){ const j = jornadaActiva(); j.parte ||= nuevoParte(); return j; }
+function cfgActual(){ const py=getPy(); py.configRodaje ||= nuevaConfigRodaje(); return py.configRodaje; }
+
+function upParte(campo, val){
+  const j = jornadaParte();
+  j.parte[campo] = campo==='comidasServidas' ? n(val) : val;
+  R();
+}
+function upFichada(clave, campo, val){
+  const j = jornadaParte();
+  j.parte.fichadas[clave] ||= {};
+  j.parte.fichadas[clave][campo] = val;
+  R();
+}
+function toggleFilmada(eid, on){
+  const j = jornadaParte();
+  j.parte.filmadas = on ? [...new Set([...j.parte.filmadas, eid])]
+                        : j.parte.filmadas.filter(x=>x!==eid);
+  R();
+}
+/* Fichar de una: la entrada de cada uno es su citación; la salida, el wrap.
+   Es el 90% de los casos; después se corrigen las excepciones a mano.        */
+function ficharTodos(campo){
+  const py=getPy(), v=getV(), j=jornadaParte();
+  const {gente} = gentePorJornada(py, v, j.numero);
+  let n0=0;
+  gente.forEach(g=>{
+    const val = campo==='entrada' ? ((j.citaciones[g.clave]||{}).citacion || j.citacion) : j.parte.wrap;
+    if(!val) return;
+    j.parte.fichadas[g.clave] ||= {};
+    if(!j.parte.fichadas[g.clave][campo]){ j.parte.fichadas[g.clave][campo] = val; n0++; }
+  });
+  toast(n0 ? `${n0} ${campo}s cargadas` : (campo==='salida'&&!j.parte.wrap ? 'Cargá primero el wrap' : 'Ya estaban cargadas'));
+  R();
+}
+function marcarCitado(clave, val){
+  const j = jornadaParte();
+  j.parte.citados ||= {};
+  j.parte.citados[clave] = val===undefined ? true : !!val;
+  guardar();
+  if(val!==undefined) R();
+}
+function marcarTodos(val){
+  const py=getPy(), j=jornadaParte();
+  const {gente} = gentePorJornada(py, getV(), j.numero);
+  j.parte.citados = {};
+  if(val) gente.forEach(g=>j.parte.citados[g.clave]=true);
+  R();
+}
+function copiarCitacion(clave){
+  const pr=getPr(), py=getPy(), j=jornadaParte();
+  const {gente, callsheet:C} = gentePorJornada(py, getV(), j.numero);
+  const p = gente.find(x=>x.clave===clave); if(!p) return;
+  alPortapapeles(textoCitacion(pr,py,j,C,p,cfgActual()), 'Citación copiada');
+  marcarCitado(clave);
+}
+function copiarTodasCitaciones(){
+  const pr=getPr(), py=getPy(), j=jornadaParte();
+  const {gente, callsheet:C} = gentePorJornada(py, getV(), j.numero);
+  const cfg = cfgActual();
+  const txt = gente.map(p=>textoCitacion(pr,py,j,C,p,cfg)).join('\n\n' + '─'.repeat(28) + '\n\n');
+  alPortapapeles(txt, `${gente.length} citaciones copiadas`);
+}
+function alPortapapeles(txt, msg){
+  const ok = () => toast(msg);
+  if(navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(ok, ()=>prompt('Copiá el texto:', txt));
+  else prompt('Copiá el texto:', txt);
+}
+function cfgRodaje(){
+  const c = cfgActual();
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+    <h3>Condiciones de la jornada</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">
+        Con esto se calculan las horas extra. Cambia según el convenio y el tipo de trabajo,
+        así que se configura por proyecto.</div>
+      <div class="grid2">
+        ${campo('Horas de jornada base','horasJornada',c.horasJornada,'number','step="any" min="1"')}
+        ${campo('Recargo hora extra %','recargoHE',c.recargoHE,'number','step="any"')}
+        ${campo('Descanso mínimo entre jornadas (h)','minTurnaround',c.minTurnaround,'number','step="any"')}
+        ${campo('Teléfono de producción','telProduccion',c.telProduccion,'text','placeholder="va en la citación"')}
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:14px;cursor:pointer">
+        <input type="checkbox" name="descontarComida" ${c.descontarComida?'checked':''} style="width:auto;flex:none">
+        <span style="font-size:12.5px">Descontar la comida de las horas trabajadas</span></label>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="saveCfgRodaje()">Guardar</button></div>
+  </div></div>`);
+}
+function saveCfgRodaje(){
+  const d = datos(); const c = cfgActual();
+  const chk = document.querySelector('.mod [name=descontarComida]');
+  Object.assign(c, {horasJornada:Math.max(1,n(d.horasJornada)), recargoHE:n(d.recargoHE),
+    minTurnaround:n(d.minTurnaround), telProduccion:d.telProduccion,
+    descontarComida: chk ? chk.checked : true});
+  cerrar();
 }
 
 /* ---------- lista de contactos ---------- */

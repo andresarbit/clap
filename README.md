@@ -123,6 +123,33 @@ controles de edicion, los campos quedan como texto y los bloques no se parten en
 > El diccionario está en la constante `DICC`. Sumar términos ahí mejora el desglose
 > de todos los proyectos.
 
+### Rodaje
+
+La solapa que usa un **asistente de produccion en el set**, con el celu en la
+mano. Por jornada, tres cosas:
+
+- **Citaciones** — la lista de todos los que participan ese dia (tecnicos y
+  elenco) con su hora. Cada uno tiene boton de **WhatsApp** y de **mail** que
+  abren el mensaje ya escrito con su citacion, la locacion con direccion, las
+  escenas, el wrap y el hospital. El mensaje lo manda la persona desde su propio
+  WhatsApp o su mail: el sistema lo prepara y lo abre, no manda nada solo. Hay
+  checkbox de "ya lo cite" y un boton para copiar las citaciones de todos.
+- **Parte del dia** — horarios reales (primera toma, comida, ultima toma, wrap),
+  que escenas se filmaron de las previstas, entradas y salidas de cada persona e
+  incidencias. `Entrada = citacion de cada uno` y `Salida = wrap` cargan todo de
+  una y despues se corrigen las excepciones; no pisa lo ya cargado a mano.
+- **Horas y extras** — horas netas por persona (descontando la comida), horas
+  extra sobre la jornada base y **cuanto cuestan**, usando el valor de jornada
+  de su linea del presupuesto y en su moneda. Acumulado de todo el rodaje y
+  aviso cuando el **descanso entre jornadas** queda por debajo del minimo.
+
+Las condiciones (jornada base, recargo de hora extra, descanso minimo, si se
+descuenta la comida) se configuran **por proyecto**, porque cambian segun el
+convenio y el tipo de trabajo.
+
+> Las horas extra no estan en el presupuesto: son desvio. Este es el modulo que
+> te lo muestra el mismo dia y no un mes despues.
+
 ## Arquitectura
 
 Todo en `clap.html`, en cuatro bloques marcados en el código:
@@ -144,12 +171,13 @@ de `productoraId`, así que el schema ya es multi-tenant.
 2. **Desglose de guion** ✅ — parser, elementos por departamento, plan de rodaje,
    puente al presupuesto.
 3. **Callsheet** ✅ — jornada por jornada, con impresion a A4.
-4. **Seguros** — generar el alta (nómina para el broker) desde el crew ya cargado;
+4. **Rodaje** ✅ — citaciones, parte del dia y horas extra.
+5. **Seguros** — generar el alta (nómina para el broker) desde el crew ya cargado;
    guardar pólizas y certificados. AP, ART, RC, todo riesgo equipos.
-5. **Caja y pagos** — órdenes de compra, caja chica por jornada, rendiciones, y el
+6. **Caja y pagos** — órdenes de compra, caja chica por jornada, rendiciones, y el
    tablero Presupuestado / Comprometido / Real.
-6. **Backend** — Supabase, usuarios, adjuntos, acceso de sólo lectura para el cliente.
-7. **Tarifario histórico** — al cerrar un proyecto, el catálogo aprende cuánto salió
+7. **Backend** — Supabase, usuarios, adjuntos, acceso de sólo lectura para el cliente.
+8. **Tarifario histórico** — al cerrar un proyecto, el catálogo aprende cuánto salió
    cada rubro de verdad.
 
 ## Pruebas
@@ -165,6 +193,7 @@ node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
 node test/run.js test/contactos.js # lista de contactos y su circuito con catalogo y callsheet
+node test/run.js test/rodaje.js    # citaciones, fichadas, horas extra y turnaround
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```
