@@ -261,6 +261,14 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .ctab input{width:100%}
 .ctab input[type=email]{font-size:11.5px}
 .csblock>h4 .btn{font-weight:600;letter-spacing:0;text-transform:none}
+/* tarifario de convenio */
+.sica{font:600 10.5px var(--mono);color:var(--info);background:rgba(91,155,213,.13);
+  padding:2px 6px;border-radius:4px;flex:none}
+.sicabox{background:rgba(91,155,213,.08);border:1px solid rgba(91,155,213,.3);border-radius:var(--r);
+  padding:9px 12px;margin-bottom:10px;font-size:12px;line-height:1.5}
+.sicabox b{color:var(--info)}
+.sicabox .mono{color:var(--tx);font-size:12.5px}
+
 /* rodaje */
 .mono{font-family:var(--mono)}
 a.btn{display:inline-block;text-decoration:none}
@@ -425,6 +433,71 @@ const FUNCIONES = {
 };
 
 /* Unidades de contratación */
+/* Escala salarial SICA · publicidad. Salarios BRUTOS de convenio, por
+   jornada de 8 horas; la columna de 12 h incluye 4 extras al 50%.
+   Es el PISO legal para relación de dependencia, no lo que cobra un
+   monotributista por su fee. Fuente: sicacine.org.ar                       */
+const SICA = {vigencia:'01/08/2026', hasta:'30/09/2026', fuente:'SICA · publicidad',
+  cargos:[
+    {c:"ASISTENTE", d:"Dirección", r:'02', j8:224585, j12:393024},
+    {c:"CONTINUISTA (SCRIPT)", d:"Dirección", r:'02', j8:187134, j12:327485},
+    {c:"1º AYUDANTE", d:"Dirección", r:'02', j8:130828, j12:228949},
+    {c:"2º AYUDANTE", d:"Dirección", r:'02', j8:87503, j12:153130},
+    {c:"JEFE/A", d:"Producción", r:'03', j8:224585, j12:393024},
+    {c:"ASISTENTE", d:"Producción", r:'03', j8:130828, j12:228949},
+    {c:"1º AYUDANTE", d:"Producción", r:'03', j8:87503, j12:153130},
+    {c:"CHAPERON/A", d:"RR.PP.", r:'03', j8:87013, j12:152273},
+    {c:"JEFE/A", d:"Locaciones", r:'10', j8:168442, j12:294774},
+    {c:"ASISTENTE", d:"Locaciones", r:'10', j8:130828, j12:228949},
+    {c:"1º AYUDANTE", d:"Locaciones", r:'10', j8:87503, j12:153130},
+    {c:"DIRECTOR/A DE FOTOGRAFIA", d:"Fotografía y Cámara", r:'04', j8:973242, j12:1703173},
+    {c:"CAMAROGRAFO/A", d:"Fotografía y Cámara", r:'04', j8:396835, j12:694461},
+    {c:"ASISTENTE (FOQUISTA)", d:"Fotografía y Cámara", r:'04', j8:261999, j12:458499},
+    {c:"AYUDANTE", d:"Fotografía y Cámara", r:'04', j8:187134, j12:327485},
+    {c:"VIDEO ASISTENTE", d:"Fotografía y Cámara", r:'04', j8:163010, j12:285267},
+    {c:"OPERADOR/A HD", d:"Fotografía y Cámara", r:'04', j8:336867, j12:589518},
+    {c:"AYTE. OPERADOR/A HD", d:"Fotografía y Cámara", r:'04', j8:187134, j12:327485},
+    {c:"GAFFER", d:"Eléctrica e Iluminación", r:'05', j8:291131, j12:509480},
+    {c:"JEFE/A ELECTRICO/A", d:"Eléctrica e Iluminación", r:'05', j8:261999, j12:458499},
+    {c:"ELECTRICO/A", d:"Eléctrica e Iluminación", r:'05', j8:202051, j12:353589},
+    {c:"OP. DE GENERADOR", d:"Eléctrica e Iluminación", r:'05', j8:149771, j12:262099},
+    {c:"SONIDISTA", d:"Sonido", r:'08', j8:261999, j12:458499},
+    {c:"MICROFONISTA", d:"Sonido", r:'08', j8:202051, j12:353589},
+    {c:"KEY GRIP", d:"Grip", r:'05', j8:261999, j12:458499},
+    {c:"UTILERO/A - CARPINTERO/A", d:"Utilería", r:'06', j8:261999, j12:458499},
+    {c:"AYUDANTE", d:"Utilería", r:'06', j8:202051, j12:353589},
+    {c:"MAQUILLADOR/A", d:"Maquillaje y Peinado", r:'07', j8:261999, j12:458499},
+    {c:"AYUDANTE", d:"Maquillaje y Peinado", r:'07', j8:149771, j12:262099},
+    {c:"ASIST. DE MAQUILLAJE Y PEINADO", d:"Maquillaje y Peinado", r:'07', j8:179646, j12:314381},
+    {c:"PEINADOR/A", d:"Maquillaje y Peinado", r:'07', j8:261999, j12:458499},
+    {c:"DIRECCION DE ARTE", d:"Arte", r:'06', j8:247898, j12:433822},
+    {c:"AMBIENTADOR/A / 1er ASIST. DE ARTE", d:"Arte", r:'06', j8:169568, j12:296744},
+    {c:"ASISTENTE DE ARTE", d:"Arte", r:'06', j8:130828, j12:228949},
+    {c:"AYUDANTE DE ARTE", d:"Arte", r:'06', j8:87503, j12:153130},
+    {c:"VESTUARIO", d:"Vestuario", r:'07', j8:211298, j12:369771},
+    {c:"ASISTENTE DE VESTUARIO", d:"Vestuario", r:'07', j8:130828, j12:228949},
+    {c:"AYUDANTE DE VESTUARIO", d:"Vestuario", r:'07', j8:87503, j12:153130},
+    {c:"EDITOR/A", d:"Edición", r:'14', j8:224585, j12:393024},
+    {c:"ASISTENTE DE EDICION", d:"Edición", r:'14', j8:157223, j12:275140},
+    {c:"APRENDIZ", d:"Aprendices", r:'03', j8:39248, j12:68684},
+  ]};
+
+/* Busca el cargo del SICA que corresponde a una función.
+   La escala escribe los cargos en las dos formas de género ("DIRECTOR/A DE
+   FOTOGRAFIA", "JEFE/A"), así que hay que sacar ese sufijo para comparar.    */
+const normCargo = s => norm(s).replace(/\/\s*[ao]\b/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+function sicaDe(funcion, rubro){
+  if(!funcion) return null;
+  const f = normCargo(funcion);
+  if(!f) return null;
+  const cand = SICA.cargos.filter(c=>!rubro || c.r===rubro);
+  const pool = cand.length ? cand : SICA.cargos;
+  return pool.find(c=>normCargo(c.c)===f)
+      || pool.find(c=>{ const n0=normCargo(c.c);
+           return n0.length>3 && f.length>3 && (n0.includes(f) || f.includes(n0)); })
+      || null;
+}
+
 const UNIDADES = ['jornada','media jornada','hora','semana','global','unidad','día','km','persona'];
 
 /* Circuito de pago y respaldo documental — la "ductilidad" del sistema.
@@ -604,7 +677,7 @@ function nuevoParte(o={}){
 /* Condiciones de la jornada. Se configuran por proyecto porque cambian según
    el convenio y el tipo de trabajo.                                          */
 function nuevaConfigRodaje(o={}){
-  return {horasJornada:o.horasJornada??10, recargoHE:o.recargoHE??50,
+  return {horasJornada:o.horasJornada??8, recargoHE:o.recargoHE??50,
     descontarComida:o.descontarComida!==false, minTurnaround:o.minTurnaround??12,
     telProduccion:o.telProduccion||''};
 }
@@ -1677,6 +1750,53 @@ function barraTotal(v){
 
 /* ---------- vista catálogo ---------- */
 function vistaCatalogo(){
+  const sub = DB.ui.subCat || 'gente';
+  const tabs = `<div class="seg noprint" style="margin-bottom:12px">
+    ${[['gente','Personas y proveedores'],['sica','Tarifario de convenio']].map(([k,l])=>
+      `<button class="${sub===k?'on':''}" onclick="setSubCat('${k}')">${l}</button>`).join('')}</div>`;
+  return tabs + (sub==='sica' ? tarifarioHTML() : catalogoGenteHTML());
+}
+
+/* La escala del SICA, para tenerla a mano al presupuestar. */
+function tarifarioHTML(){
+  const porDep = {};
+  SICA.cargos.forEach(c=>(porDep[c.d] ||= []).push(c));
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Tarifario de convenio</div>
+        <div class="cssub">${esc(SICA.fuente)} · salarios brutos · vigente ${esc(SICA.vigencia)} a ${esc(SICA.hasta)}</div></div>
+      <div style="text-align:right"><div class="csj">${SICA.cargos.length}<span> cargos</span></div>
+        <div class="cssub">jornada 8 h + 4 extras al 50%</div></div>
+    </div>
+    <div class="pad" style="border-bottom:1px solid var(--line)">
+      <div class="sicabox" style="margin:0">
+        <b>Esto es el piso, no la tarifa.</b> Son los brutos de convenio para relación de
+        dependencia. En publicidad la mayoría del crew factura como monotributista y cobra
+        por encima de esta escala. Sirve para dos cosas: no presupuestar por debajo del piso
+        legal, y tener una referencia relativa entre categorías.
+        <span class="muted" style="display:block;margin-top:4px;font-size:10.5px">
+          Estos valores vencen el ${esc(SICA.hasta)}. Cuando salga la paritaria nueva hay que actualizarlos.</span>
+      </div></div>
+    ${Object.entries(porDep).map(([dep,cs])=>`<div class="csblock"><h4>${esc(dep)}</h4>
+      <div class="scrollx"><table class="tbl cst">
+        <thead><tr><th>Cargo</th><th style="width:110px;text-align:right">Jornada 8 h</th>
+          <th style="width:120px;text-align:right">12 h c/ extras</th>
+          <th style="width:96px;text-align:right">La hora</th>
+          <th style="width:52px" class="noprint"></th></tr></thead>
+        <tbody>${cs.map(c=>`<tr>
+          <td>${esc(c.c)}</td>
+          <td class="num" style="text-align:right">${fmt(c.j8)}</td>
+          <td class="num" style="text-align:right"><b>${fmt(c.j12)}</b></td>
+          <td class="num muted" style="text-align:right">${fmt(Math.round(c.j8/8))}</td>
+          <td class="noprint" style="text-align:right"><button class="btn sm"
+            title="Crear una ficha en el catálogo con este cargo"
+            onclick="desdeSica(${JSON.stringify(c.c).replace(/"/g,'&quot;')},'${c.r}',${c.j12})">+cat</button></td>
+        </tr>`).join('')}</tbody></table></div></div>`).join('')}
+    <div class="csfoot">Fuente: sicacine.org.ar · escala de publicidad vigente ${esc(SICA.vigencia)}</div>
+  </div>`;
+}
+
+function catalogoGenteHTML(){
   const ps = DB.catalogo.personas;
   return `<div class="card"><h3>Catálogo compartido — personas, proveedores y equipos
     <span class="spacer"></span>
@@ -2613,6 +2733,14 @@ function editPersona(id){
         ${sel('Condición fiscal','condicion',p.condicion,CONDICIONES)}
       </div>
       <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Tarifa de referencia</div>
+      ${(()=>{ const sc = sicaDe(p.funcion, p.rubro); return sc ? `<div class="sicabox">
+        <b>${esc(sc.c)}</b> · ${esc(sc.d)} — piso de convenio SICA
+        <span style="display:block;margin-top:3px">Jornada 8 h <b class="mono">${fmt(sc.j8)}</b>
+          · con 4 extras (12 h) <b class="mono">${fmt(sc.j12)}</b>
+          · la hora <b class="mono">${fmt(Math.round(sc.j8/8))}</b></span>
+        <span class="muted" style="display:block;margin-top:3px;font-size:10.5px">
+          Bruto de convenio, vigente ${esc(SICA.vigencia)} a ${esc(SICA.hasta)}. Es el piso legal en
+          relación de dependencia, no lo que cobra un monotributista por su fee.</span></div>` : ''; })()}
       <div class="grid2">
         ${campo('Valor','tarifaRef',p.tarifaRef,'number','step="any"')}
         ${sel('Moneda','moneda',p.moneda,['ARS','USD'])}
@@ -2643,8 +2771,10 @@ function pickFuncion(rid){
   abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:460px">
     <h3>${esc(r.codigo)} · ${esc(r.nombre)}</h3>
     <div class="mbody" style="padding:8px">
-      ${fs.length?fs.map(f=>`<button class="btn" style="width:100%;text-align:left;margin-bottom:4px;border-color:transparent"
-        onclick="addFuncion('${rid}',${JSON.stringify(f).replace(/"/g,'&quot;')})">${esc(f)}</button>`).join('')
+      ${fs.length?fs.map(f=>{ const sc = sicaDe(f, r.codigo);
+        return `<button class="btn" style="width:100%;text-align:left;margin-bottom:4px;border-color:transparent;display:flex;gap:8px;align-items:baseline"
+        onclick="addFuncion('${rid}',${JSON.stringify(f).replace(/"/g,'&quot;')})"><span style="flex:1">${esc(f)}</span>
+        ${sc?`<span class="sica" title="Piso de convenio SICA · jornada de 12 h (8 + 4 extras)">SICA ${fmtC(sc.j12)}</span>`:''}</button>`;}).join('')
         :'<div class="empty">Este rubro no tiene funciones sugeridas. Usá “+ Línea”.</div>'}
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div>
@@ -2969,6 +3099,18 @@ function normalizarJornada(j){
   j.parte ||= nuevoParte();
   j.parte.fichadas ||= {}; j.parte.citados ||= {}; j.parte.filmadas ||= [];
   return j;
+}
+
+/* ---------- tarifario de convenio ---------- */
+function setSubCat(k){ DB.ui.subCat = k; R(); }
+/* Crear una ficha del catálogo a partir de un cargo de la escala. La tarifa
+   arranca en el piso de convenio y se ajusta a lo que cobra la persona.      */
+function desdeSica(cargo, rubro, valor){
+  const pe = nuevaPersona({funcion:cargo, rubro, tarifaRef:valor, unidad:'jornada'});
+  DB.catalogo.personas.push(pe);
+  DB.ui.subCat = 'gente';
+  toast(`Ficha creada con el piso de convenio — cargale el nombre y la tarifa real`);
+  editPersona(pe.id);
 }
 
 /* ---------- rodaje ---------- */

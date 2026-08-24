@@ -150,6 +150,34 @@ convenio y el tipo de trabajo.
 > Las horas extra no estan en el presupuesto: son desvio. Este es el modulo que
 > te lo muestra el mismo dia y no un mes despues.
 
+### Tarifario de convenio (SICA)
+
+En `Catalogo -> Tarifario de convenio` esta embebida la **escala salarial de
+publicidad del SICA**, sacada del PDF oficial con el mismo lector de PDF que usa
+el desglosador. 41 cargos agrupados por departamento, con la jornada de 8 h, la
+de 12 h con 4 extras, y el valor de la hora.
+
+Aparece como referencia donde hace falta: al elegir una funcion para una linea
+del presupuesto y en la ficha del catalogo.
+
+> **Es un piso, no una tarifa.** Son brutos de convenio para relacion de
+> dependencia. En publicidad la mayoria del crew factura como monotributista y
+> cobra por encima. Sirve para no presupuestar por debajo del piso legal y para
+> tener la referencia relativa entre categorias.
+
+De esa escala sale tambien el default de la jornada: **8 horas base y las extras
+al 50%**, que es lo que fija el convenio (la columna de 12 h del PDF es
+exactamente 1,75x la de 8 h).
+
+**Los valores vencen.** Estan marcados con su vigencia; cuando salga la paritaria
+nueva hay que bajar el PDF de sicacine.org.ar y regenerar la constante:
+
+```bash
+node test/run.js test/leer-pdf.js  <escala.pdf>   # ver el texto crudo
+node test/run.js test/sica-tabla.js <escala.pdf>  # -> JSON estructurado
+node test/run.js test/gen-sica.js   <escala.json> # -> constante JS
+```
+
 ## Arquitectura
 
 Todo en `clap.html`, en cuatro bloques marcados en el código:
@@ -194,6 +222,7 @@ node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezado
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
 node test/run.js test/contactos.js # lista de contactos y su circuito con catalogo y callsheet
 node test/run.js test/rodaje.js    # citaciones, fichadas, horas extra y turnaround
+node test/run.js test/sica.js      # escala de convenio y su uso como referencia
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```

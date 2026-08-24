@@ -23,7 +23,7 @@ const j = normalizarJornada(d.jornadas[0]);
 j.citacion = '07:00';
 j.parte.comidaIn = '13:00'; j.parte.comidaOut = '14:00'; j.parte.wrap = '21:00';
 const cfg = cfgActual();
-ok('jornada base por defecto 10 h', cfg.horasJornada === 10, cfg.horasJornada);
+ok('jornada base por defecto 8 h (convenio SICA publicidad)', cfg.horasJornada === 8, cfg.horasJornada);
 ok('recargo por defecto 50%', cfg.recargoHE === 50, cfg.recargoHE);
 
 upFichada('l:test', 'entrada', '07:00');
@@ -32,21 +32,21 @@ let h = horasDe('l:test', j, cfg, 500000, 'ARS');
 ok('brutas 14 h', h.brutos === 840, fmtHoras(h.brutos));
 ok('descuenta la comida', h.comida === 60, fmtHoras(h.comida));
 ok('netas 13 h', h.netos === 780, fmtHoras(h.netos));
-ok('extras 3 h sobre las 10 de base', h.extra === 180, fmtHoras(h.extra));
-ok('valor hora = jornada / 10', h.valorHora === 50000, h.valorHora);
-ok('costo extras = 3 h × 50.000 × 1,5', Math.round(h.costoHE) === 225000, Math.round(h.costoHE));
+ok('extras 5 h sobre las 8 de base', h.extra === 300, fmtHoras(h.extra));
+ok('valor hora = jornada / 8', h.valorHora === 62500, h.valorHora);
+ok('costo extras = 5 h x 62.500 x 1,5', Math.round(h.costoHE) === 468750, Math.round(h.costoHE));
 
 /* sin extras */
 upFichada('l:corto', 'entrada', '08:00'); upFichada('l:corto', 'salida', '17:00');
 h = horasDe('l:corto', j, cfg, 500000, 'ARS');
-ok('8 h netas no generan extras', h.netos === 480 && h.extra === 0, fmtHoras(h.netos) + ' / ' + fmtHoras(h.extra));
+ok('8 h netas justas no generan extras', h.netos === 480 && h.extra === 0, fmtHoras(h.netos) + ' / ' + fmtHoras(h.extra));
 ok('sin extras el costo es cero', h.costoHE === 0);
 
 /* cruzando medianoche */
 upFichada('l:noche', 'entrada', '18:00'); upFichada('l:noche', 'salida', '06:00');
 h = horasDe('l:noche', j, cfg, 400000, 'ARS');
 ok('rodaje nocturno cruza medianoche', h.brutos === 720, fmtHoras(h.brutos));
-ok('nocturno: 1 h extra tras descontar comida', h.extra === 60, fmtHoras(h.extra));
+ok('nocturno: 3 h extra tras descontar comida', h.extra === 180, fmtHoras(h.extra));
 
 /* sin fichar */
 ok('sin fichar avisa que no hay datos', horasDe('l:nadie', j, cfg, 100, 'ARS').sinDatos);
@@ -60,7 +60,7 @@ ok('recargo 100% duplica la hora', Math.round(h.costoHE) === 100000, Math.round(
 cfg.descontarComida = false;
 h = horasDe('l:test', j, cfg, 600000, 'ARS');
 ok('sin descontar comida suma 1 h más', h.netos === 840 && h.extra === 120, fmtHoras(h.netos) + ' / ' + fmtHoras(h.extra));
-cfg.horasJornada = 10; cfg.recargoHE = 50; cfg.descontarComida = true;
+cfg.horasJornada = 8; cfg.recargoHE = 50; cfg.descontarComida = true;
 
 /* --- 3. la gente de la jornada sale del presupuesto ---------------------- */
 console.log('\n--- 3. QUIENES PARTICIPAN ---');
@@ -94,7 +94,7 @@ ok('el matcheo ignora acentos y mayúsculas', (() => {
 /* las horas extra del elenco se calculan en SU moneda */
 upFichada(lucia.clave, 'entrada', '07:00'); upFichada(lucia.clave, 'salida', '21:00');
 const hL = horasDe(lucia.clave, j, cfg, lucia.valorJornada, lucia.moneda);
-ok('extras del elenco en USD', hL.moneda === 'USD' && Math.round(hL.costoHE) === 540,
+ok('extras del elenco en USD', hL.moneda === 'USD' && Math.round(hL.costoHE) === 1125,
   fmtHoras(hL.extra) + ' extras = ' + Math.round(hL.costoHE) + ' USD');
 
 /* --- 4. citaciones ------------------------------------------------------- */
