@@ -32,6 +32,25 @@ global.fetch = async (url, opts = {}) => {
     const pr = TB.productora.find(x => x.id === cuerpo.p);
     return respu(200, !!(pr && pr.requiere_aprobacion));
   }
+  /* El arranque lo hace la base de una sola vez, con permisos de dueño: crea
+     la organizacion si hace falta, la productora, y da de alta al que la pidio
+     como admin. Es lo que evita el 403 al no poder releer lo recien creado. */
+  if (u.includes('/rpc/crear_mi_productora')) {
+    if (!SESION) return respu(401, { message: 'Hay que iniciar sesion' });
+    if (!String(cuerpo.p_nombre || '').trim())
+      return respu(400, { message: 'La productora necesita un nombre' });
+    let org = TB.organizacion.find(o => TB.productora.some(p =>
+      p.org_id === o.id && TB.usuario.some(x => x.productora_id === p.id && x.auth_uid === SESION)));
+    if (!org) { org = { id: nid('organizacion'), nombre: cuerpo.p_mi_nombre || 'Mi estudio' };
+      TB.organizacion.push(org); }
+    const prod = { id: nid('productora'), org_id: org.id, nombre: String(cuerpo.p_nombre).trim(),
+      requiere_aprobacion: false };
+    TB.productora.push(prod);
+    TB.usuario.push({ id: nid('usuario'), auth_uid: SESION, productora_id: prod.id,
+      nombre: cuerpo.p_mi_nombre || 'Yo', rol: cuerpo.p_rol || 'admin',
+      area: cuerpo.p_area, tel: cuerpo.p_tel, email: 'a@b.com', activo: true, pendiente: false });
+    return respu(200, prod.id);
+  }
 
   const m = u.match(/\/rest\/v1\/(\w+)/);
   if (!m) return respu(404, { msg: 'no such route' });
@@ -49,10 +68,6 @@ global.fetch = async (url, opts = {}) => {
         return respu(403, { message: 'new row violates row-level security policy' });
     }
     tabla.push(fila);
-    /* el trigger: el que crea la productora queda admin, sin esperar a nadie */
-    if (m[1] === 'productora' && !TB.usuario.some(x => x.productora_id === fila.id))
-      TB.usuario.push({ id: nid('usuario'), auth_uid: SESION, productora_id: fila.id,
-        nombre: 'a@b.com', rol: 'admin', email: 'a@b.com', activo: true, pendiente: false });
     return respu(200, [fila]);
   }
   if (met === 'PATCH') {
@@ -193,6 +208,32 @@ const cargarForm = campos => {
   await pantallaAlta();
   ok('al que ya está no le vuelve a preguntar', modal === null, String(modal).slice(0, 40));
   ok('sigue siendo el mismo', (await sbMiFicha()).nombre === 'Andrés');
+
+  /* --- 7. si falta arranque.sql, que lo diga ------------------------------ */
+  console.log('\n--- 7. SI FALTA arranque.sql, EL MENSAJE AYUDA ---');
+  const fetchBueno = global.fetch;
+  global.fetch = async (url, opts) => String(url).includes('crear_mi_productora')
+    ? respu(404, { message: 'Could not find the function public.crear_mi_productora' })
+    : fetchBueno(url, opts);
+
+  let textoError = '';
+  const caja = { appendChild() {}, style: {},
+    set innerHTML(v) { textoError = v; }, get innerHTML() { return textoError; } };
+  document.getElementById = () => caja;
+
+  SESION = 'auth-nuevo';
+  await conectar('nuevo@x.com');
+  _prodsElegibles = [];
+  cargarForm({ nombre: 'Alguien', tel: '', productoraId: '__nueva',
+    productoraNombre: 'Neto Films', rol: 'admin', area: '' });
+  await confirmarAlta();
+
+  const plano = textoError.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  ok('avisa que falta correr arranque.sql', /arranque\.sql/.test(textoError), plano.slice(0, 95));
+  ok('y dice dónde correrlo', /SQL Editor/.test(textoError));
+  ok('no dice que salió bien', !/Bienvenido/.test(textoError));
+  ok('no dejó una productora a medias', !TB.productora.some(p => p.nombre === 'Neto Films'));
+  global.fetch = fetchBueno;
 
   console.log('\n' + (fallos ? '>>> ' + fallos + ' FALLAS' : '>>> TODO OK'));
   process.exitCode = fallos ? 1 : 0;

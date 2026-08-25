@@ -2269,18 +2269,24 @@ async function sbCandado(productoraId){
   return r === true;
 }
 /* Crear productora nueva: hace falta una organización que la contenga. */
-async function sbCrearProductora(nombre){
-  const orgs = await sbFetch('/rest/v1/organizacion?select=id&limit=1');
-  let orgId = orgs && orgs[0] && orgs[0].id;
-  if(!orgId){
-    const o = await sbFetch('/rest/v1/organizacion', {method:'POST',
-      headers:{'Prefer':'return=representation'}, body: JSON.stringify({nombre:'Mi estudio'})});
-    orgId = o[0].id;
-  }
-  const p = await sbFetch('/rest/v1/productora', {method:'POST',
-    headers:{'Prefer':'return=representation'},
-    body: JSON.stringify({org_id: orgId, nombre})});
-  return p[0];
+/* Crear la primera productora no se puede hacer desde acá a fuerza de inserts:
+   quien recién entra no pertenece a ninguna organización, así que inserta la
+   fila pero después no puede leerla de vuelta para saber qué id le tocó —la
+   política de lectura exige ser miembro— y el alta falla con un 403 confuso.
+   Aflojar esa política dejaría a cualquiera listar las productoras del sistema
+   con sus CUIT. Así que el arranque lo hace la base de una sola vez: crea la
+   organización si hace falta, crea la productora, y da de alta a quien la pidió
+   como administrador de lo que acaba de crear.                               */
+async function sbCrearProductora(nombre, ficha = {}){
+  const id = await sbFetch('/rest/v1/rpc/crear_mi_productora', {method:'POST',
+    body: JSON.stringify({
+      p_nombre: nombre,
+      p_mi_nombre: ficha.nombre || null,
+      p_rol: ficha.rol || 'admin',
+      p_area: ficha.area || null,
+      p_tel: ficha.tel || null })});
+  if(!id) throw new Error('La base no devolvió la productora creada.');
+  return {id, nombre};
 }
 async function sbAltaPropia({productoraId, nombre, rol, area, tel}){
   const pide = await sbCandado(productoraId);
@@ -6434,12 +6440,10 @@ async function confirmarAlta(){
   try{
     let pid = d.productoraId, esMia = false;
     if(nueva){
-      const p = await sbCrearProductora(d.productoraNombre.trim());
+      /* la base crea productora + organización + mi alta como admin, de una */
+      const p = await sbCrearProductora(d.productoraNombre.trim(),
+        {nombre, rol:d.rol, area:d.area, tel:d.tel});
       pid = p.id; esMia = true;
-      /* el trigger ya me dio de alta como admin de lo que acabo de crear */
-      const ficha = await sbMiFicha();
-      if(ficha) await sbFetch(`/rest/v1/usuario?id=eq.${ficha.id}`, {method:'PATCH',
-        body: JSON.stringify({nombre, tel:d.tel, area:d.area, rol:d.rol})});
     } else {
       await sbAltaPropia({productoraId:pid, nombre, rol:d.rol, area:d.area, tel:d.tel});
     }
@@ -6454,7 +6458,19 @@ async function confirmarAlta(){
     espejarFichaLocal(ficha);
     R();
   }catch(e){
-    if(cont) cont.innerHTML = `<div class="avisomodo turno-mal"><b>No pude darte de alta.</b> ${esc(e.message)}</div>`;
+    /* El error crudo de Postgres no le sirve a nadie. Los dos que de verdad
+       pasan tienen causa conocida y arreglo concreto: decilo. */
+    const m = String(e.message||'');
+    let ayuda = '';
+    if(/crear_mi_productora|No encontré eso|no such|does not exist|Could not find/i.test(m))
+      ayuda = 'Falta correr <code>backend/arranque.sql</code> en el SQL Editor de Supabase. ' +
+              'Es lo que le permite a la base crear la primera productora.';
+    else if(/no te deja|policy|403/i.test(m))
+      ayuda = 'La base rechazó el alta. Si la productora tiene el candado cerrado, ' +
+              'un administrador tiene que aprobarte antes.';
+    if(cont) cont.innerHTML = `<div class="avisomodo turno-mal">
+      <b>No pude darte de alta.</b> ${esc(m)}
+      ${ayuda ? `<div style="margin-top:6px">${ayuda}</div>` : ''}</div>`;
   }
 }
 

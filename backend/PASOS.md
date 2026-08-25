@@ -61,6 +61,23 @@ con trigger e índice —para saber cuándo cambió cada fila— y crea la tabla
 contra la base: la tabla existe, tapa sin login, y se puede pedir "lo que
 cambió desde tal fecha".
 
+### A2e. Correr arranque.sql — ✅ YA ESTÁ HECHO
+
+Corrido el 25/08/2026. Sin esto, crear la PRIMERA productora fallaba con
+"El servidor no te deja hacer eso": quien recién entra no pertenece a ninguna
+organización, así que insertaba la fila y después no podía leerla de vuelta
+para saber qué id le tocó, porque la política de lectura exige ser miembro.
+
+La salida no fue aflojar esa política —con eso cualquiera con la clave pública
+podría listar todas las productoras con sus CUIT y sus fees— sino hacer el
+arranque de una sola vez del lado de la base: la función `crear_mi_productora`
+crea la organización si hace falta, crea la productora, y da de alta a quien la
+pidió como administrador de lo que acaba de crear. Corre con permisos de dueño
+pero sólo hace esas tres cosas y sólo para quien la llama.
+
+Verificado: sin sesión responde *"Hay que iniciar sesión antes de crear una
+productora"* y no crea nada.
+
 ### A4. Lo único que falta de esta parte, y sólo lo podés hacer vos
 
 Crear tu cuenta pide elegir una contraseña. Eso no lo hago yo por vos: es tuya
