@@ -7,3 +7,6 @@ test/muestras/vacio.xyz
 
 # Datos de conexion propios: no van al repo publico
 MI-CONEXION.txt
+
+# Script puntual, no va al repo
+LIMPIAR-CLAVE.bat
