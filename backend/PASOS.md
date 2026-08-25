@@ -27,11 +27,36 @@ está protegido y qué no.
 
 1. En el panel de Supabase: **SQL Editor** → **New query**.
 2. Abrí `backend/esquema.sql`, copiá **todo** y pegalo.
-3. **Run**. Tiene que decir *Success*.
+3. **Run**.
 
-Si tira un error, copiámelo tal cual y lo arreglo. No lo corras dos veces: si
-necesitás empezar de nuevo, andá a **Database → Tables** y borrá las tablas
-primero.
+> **Si aparece el cartel "Potential issue detected"**, elegí **"Run without
+> RLS"**. No es lo que suena: el script **ya prende Row Level Security en las
+> 23 tablas y define sus 35 políticas**. Esa opción quiere decir "corré mi
+> query tal como está", que es justamente lo que hace falta.
+>
+> La otra opción, *"Run and enable RLS"*, agrega por su cuenta un `enable row
+> level security` sin políticas: la base quedaría cerrada y la app no podría
+> leer nada.
+
+### A2b. Comprobar que quedó bien
+
+Pegá esto en una query nueva. **No tiene que devolver ninguna fila.** Si alguna
+tabla aparece, le falta RLS o le faltan políticas:
+
+```sql
+select c.relname as tabla,
+       c.relrowsecurity as tiene_rls,
+       count(p.polname) as politicas
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  left join pg_policy p on p.polrelid = c.oid
+ where n.nspname = 'public' and c.relkind = 'r'
+ group by 1,2
+having c.relrowsecurity = false or count(p.polname) = 0;
+```
+
+Si tira un error en el paso 3, copiámelo tal cual y lo arreglo. Para empezar de
+nuevo, andá a **Database → Tables** y borrá las tablas primero.
 
 ### A3. Copiar las dos claves
 

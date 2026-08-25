@@ -373,53 +373,269 @@ create table contacto_proyecto (
 create index on contacto_proyecto (proyecto_id);
 
 -- =============================================================================
--- AISLAMIENTO ENTRE PRODUCTORAS
--- La base impide leer lo que no es tuyo. No depende de que la interfaz filtre.
+-- AISLAMIENTO Y PERMISOS · Row Level Security en LAS 23 TABLAS
+--
+-- Sin esto, cualquiera con la clave anónima —que es pública por diseño y viaja
+-- en el navegador— puede leer y escribir todo. El editor de Supabase avisa
+-- justamente de eso.
+--
+-- La regla es una sola: cada fila pertenece a una productora, directa o por
+-- cadena, y sólo la ve quien es usuario de esa productora. Lo que cambia por
+-- tabla es el camino para llegar a la productora.
 -- =============================================================================
+
+-- ------------------------------------------------------------ quién soy yo
+-- security definer: estas funciones leen `usuario` salteando su propia RLS,
+-- si no se muerden la cola.
+
 create or replace function mis_productoras() returns setof uuid
-language sql stable security definer as $$
+language sql stable security definer set search_path = public as $$
   select productora_id from usuario where auth_uid = auth.uid() and activo
 $$;
 
-create or replace function mi_rol(p uuid) returns rol_usuario
-language sql stable security definer as $$
-  select rol from usuario where auth_uid = auth.uid() and productora_id = p and activo limit 1
+create or replace function mis_orgs() returns setof uuid
+language sql stable security definer set search_path = public as $$
+  select distinct p.org_id from productora p
+  where p.id in (select productora_id from usuario where auth_uid = auth.uid() and activo)
 $$;
 
-alter table proyecto     enable row level security;
-alter table comprobante  enable row level security;
-alter table orden_compra enable row level security;
-alter table caja_chica   enable row level security;
-alter table usuario      enable row level security;
+create or replace function mi_rol(p uuid) returns rol_usuario
+language sql stable security definer set search_path = public as $$
+  select rol from usuario
+  where auth_uid = auth.uid() and productora_id = p and activo limit 1
+$$;
 
-create policy proyecto_de_mi_productora on proyecto
-  for all using (productora_id in (select mis_productoras()));
+-- ¿Puedo ver este proyecto? Es el pivote: casi todo cuelga de acá.
+create or replace function puedo_proyecto(p uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists(
+    select 1 from proyecto
+    where id = p and productora_id in (select productora_id from usuario
+                                       where auth_uid = auth.uid() and activo))
+$$;
 
-create policy usuario_de_mi_productora on usuario
-  for select using (productora_id in (select mis_productoras()));
+-- El rol que tengo en la productora dueña de este proyecto.
+create or replace function mi_rol_en_proyecto(p uuid) returns rol_usuario
+language sql stable security definer set search_path = public as $$
+  select u.rol from proyecto pr
+  join usuario u on u.productora_id = pr.productora_id
+  where pr.id = p and u.auth_uid = auth.uid() and u.activo limit 1
+$$;
 
--- Todos los de la productora ven los comprobantes del proyecto...
-create policy comprobante_ver on comprobante for select
-  using (proyecto_id in (select id from proyecto where productora_id in (select mis_productoras())));
+-- ---------------------------------------------------------- prender RLS
+-- En TODAS. Una tabla con RLS y sin política no deja pasar nada, que es el
+-- default correcto: si abajo me olvido de alguna, se nota enseguida.
 
--- ...cualquiera con acceso puede cargar...
-create policy comprobante_cargar on comprobante for insert
-  with check (proyecto_id in (select id from proyecto where productora_id in (select mis_productoras())));
+alter table organizacion            enable row level security;
+alter table productora             enable row level security;
+alter table usuario                enable row level security;
+alter table catalogo_persona       enable row level security;
+alter table proyecto               enable row level security;
+alter table version_presupuesto    enable row level security;
+alter table rubro_version          enable row level security;
+alter table linea_presupuesto      enable row level security;
+alter table desglose               enable row level security;
+alter table escena                 enable row level security;
+alter table escena_personaje       enable row level security;
+alter table escena_elemento        enable row level security;
+alter table jornada                enable row level security;
+alter table jornada_locacion       enable row level security;
+alter table jornada_persona        enable row level security;
+alter table jornada_escena_filmada enable row level security;
+alter table orden_compra           enable row level security;
+alter table caja_chica             enable row level security;
+alter table caja_adelanto          enable row level security;
+alter table comprobante            enable row level security;
+alter table comprobante_paso       enable row level security;
+alter table adjunto                enable row level security;
+alter table contacto_proyecto      enable row level security;
 
--- ...pero SOLO administracion puede marcar algo como pagado.
--- Esto es lo que hoy no se puede hacer cumplir sin servidor.
-create policy comprobante_pagar on comprobante for update using (
-  proyecto_id in (select id from proyecto where productora_id in (select mis_productoras()))
-) with check (
-  estado <> 'pagado'
-  or mi_rol((select productora_id from proyecto where id = comprobante.proyecto_id)) = 'admin'
-);
+-- ------------------------------------------------- organización y productora
+
+create policy org_mia on organizacion for all
+  using (id in (select mis_orgs()))
+  with check (id in (select mis_orgs()));
+
+-- Cualquiera con sesión puede crear SU organización y SU productora: si no,
+-- no habría forma de empezar. El trigger de abajo lo hace usuario admin de
+-- lo que crea, y a partir de ahí las políticas normales lo encierran.
+create policy org_crear on organizacion for insert to authenticated with check (true);
+
+create policy productora_mia on productora for all
+  using (id in (select mis_productoras()))
+  with check (id in (select mis_productoras()));
+create policy productora_crear on productora for insert to authenticated with check (true);
+
+-- --------------------------------------------------------------- usuarios
+-- Todos ven quiénes son sus compañeros; sólo admin y ejecutivo dan de alta,
+-- cambian roles o desactivan.
+
+create policy usuario_ver on usuario for select
+  using (productora_id in (select mis_productoras()));
+create policy usuario_alta on usuario for insert
+  with check (mi_rol(productora_id) in ('admin','ejecutivo'));
+create policy usuario_editar on usuario for update
+  using (mi_rol(productora_id) in ('admin','ejecutivo'))
+  with check (mi_rol(productora_id) in ('admin','ejecutivo'));
+create policy usuario_baja on usuario for delete
+  using (mi_rol(productora_id) in ('admin','ejecutivo'));
+
+-- ----------------------------------------------------- catálogo (por org)
+create policy catalogo_mio on catalogo_persona for all
+  using (org_id in (select mis_orgs()))
+  with check (org_id in (select mis_orgs()));
+
+-- --------------------------------------------------- proyecto y presupuesto
+
+create policy proyecto_mio on proyecto for all
+  using (productora_id in (select mis_productoras()))
+  with check (productora_id in (select mis_productoras()));
+
+create policy version_mia on version_presupuesto for all
+  using (puedo_proyecto(proyecto_id))
+  with check (puedo_proyecto(proyecto_id));
+
+create policy rubro_mio on rubro_version for all
+  using (exists(select 1 from version_presupuesto v
+                where v.id = version_id and puedo_proyecto(v.proyecto_id)))
+  with check (exists(select 1 from version_presupuesto v
+                where v.id = version_id and puedo_proyecto(v.proyecto_id)));
+
+create policy linea_mia on linea_presupuesto for all
+  using (exists(select 1 from rubro_version r
+                join version_presupuesto v on v.id = r.version_id
+                where r.id = rubro_id and puedo_proyecto(v.proyecto_id)))
+  with check (exists(select 1 from rubro_version r
+                join version_presupuesto v on v.id = r.version_id
+                where r.id = rubro_id and puedo_proyecto(v.proyecto_id)));
+
+-- ------------------------------------------------------------- desglose
+
+create policy desglose_mio on desglose for all
+  using (puedo_proyecto(proyecto_id)) with check (puedo_proyecto(proyecto_id));
+
+create policy escena_mia on escena for all
+  using (puedo_proyecto(proyecto_id)) with check (puedo_proyecto(proyecto_id));
+
+create policy escena_pers_mia on escena_personaje for all
+  using (exists(select 1 from escena e where e.id = escena_id and puedo_proyecto(e.proyecto_id)))
+  with check (exists(select 1 from escena e where e.id = escena_id and puedo_proyecto(e.proyecto_id)));
+
+create policy escena_elem_mia on escena_elemento for all
+  using (exists(select 1 from escena e where e.id = escena_id and puedo_proyecto(e.proyecto_id)))
+  with check (exists(select 1 from escena e where e.id = escena_id and puedo_proyecto(e.proyecto_id)));
+
+-- ------------------------------------------------------------- jornadas
+
+create policy jornada_mia on jornada for all
+  using (puedo_proyecto(proyecto_id)) with check (puedo_proyecto(proyecto_id));
+
+create policy jloc_mia on jornada_locacion for all
+  using (exists(select 1 from jornada j where j.id = jornada_id and puedo_proyecto(j.proyecto_id)))
+  with check (exists(select 1 from jornada j where j.id = jornada_id and puedo_proyecto(j.proyecto_id)));
+
+create policy jpers_mia on jornada_persona for all
+  using (exists(select 1 from jornada j where j.id = jornada_id and puedo_proyecto(j.proyecto_id)))
+  with check (exists(select 1 from jornada j where j.id = jornada_id and puedo_proyecto(j.proyecto_id)));
+
+create policy jfilm_mia on jornada_escena_filmada for all
+  using (exists(select 1 from jornada j where j.id = jornada_id and puedo_proyecto(j.proyecto_id)))
+  with check (exists(select 1 from jornada j where j.id = jornada_id and puedo_proyecto(j.proyecto_id)));
+
+-- ---------------------------------------------------------------- plata
+-- Acá es donde los permisos dejan de ser cosmética.
+
+-- Órdenes de compra: todos las ven, sólo ejecutivo y admin las emiten o tocan.
+create policy oc_ver on orden_compra for select using (puedo_proyecto(proyecto_id));
+create policy oc_crear on orden_compra for insert
+  with check (puedo_proyecto(proyecto_id)
+              and mi_rol_en_proyecto(proyecto_id) in ('admin','ejecutivo','produccion'));
+create policy oc_editar on orden_compra for update
+  using (puedo_proyecto(proyecto_id))
+  with check (estado <> 'emitida'
+              or mi_rol_en_proyecto(proyecto_id) in ('admin','ejecutivo'));
+create policy oc_borrar on orden_compra for delete
+  using (mi_rol_en_proyecto(proyecto_id) in ('admin','ejecutivo'));
+
+create policy caja_mia on caja_chica for all
+  using (puedo_proyecto(proyecto_id)) with check (puedo_proyecto(proyecto_id));
+
+create policy adelanto_mio on caja_adelanto for all
+  using (exists(select 1 from caja_chica c where c.id = caja_id and puedo_proyecto(c.proyecto_id)))
+  with check (exists(select 1 from caja_chica c where c.id = caja_id and puedo_proyecto(c.proyecto_id)));
+
+-- Comprobantes: cualquiera del equipo carga; el estado sólo lo mueve quien
+-- corresponde. Esto es lo que hoy, sin servidor, no se puede hacer cumplir.
+create policy cbte_ver on comprobante for select using (puedo_proyecto(proyecto_id));
+
+create policy cbte_cargar on comprobante for insert
+  with check (puedo_proyecto(proyecto_id) and estado = 'cargado');
+
+create policy cbte_mover on comprobante for update
+  using (puedo_proyecto(proyecto_id))
+  with check (
+    case estado
+      when 'pagado'    then mi_rol_en_proyecto(proyecto_id) = 'admin'
+      when 'aprobado'  then mi_rol_en_proyecto(proyecto_id) in ('admin','ejecutivo')
+      when 'revisado'  then mi_rol_en_proyecto(proyecto_id) in ('admin','ejecutivo','produccion')
+      when 'rechazado' then mi_rol_en_proyecto(proyecto_id) in ('admin','ejecutivo','produccion')
+      else true
+    end);
+
+create policy cbte_borrar on comprobante for delete
+  using (mi_rol_en_proyecto(proyecto_id) in ('admin','ejecutivo'));
+
+-- El recorrido se escribe y no se toca: es la auditoría.
+create policy paso_ver on comprobante_paso for select
+  using (exists(select 1 from comprobante c where c.id = comprobante_id and puedo_proyecto(c.proyecto_id)));
+create policy paso_escribir on comprobante_paso for insert
+  with check (exists(select 1 from comprobante c where c.id = comprobante_id and puedo_proyecto(c.proyecto_id)));
+-- a propósito NO hay política de update ni de delete: nadie reescribe la historia.
+
+create policy adjunto_mio on adjunto for all
+  using (exists(select 1 from comprobante c where c.id = comprobante_id and puedo_proyecto(c.proyecto_id)))
+  with check (exists(select 1 from comprobante c where c.id = comprobante_id and puedo_proyecto(c.proyecto_id)));
+
+create policy contacto_mio on contacto_proyecto for all
+  using (puedo_proyecto(proyecto_id)) with check (puedo_proyecto(proyecto_id));
+
+-- ------------------------------------------------------------- arranque
+-- Al crear una productora, quien la crea queda como su administrador. Sin
+-- esto, el primero que entra crea una productora que después no puede ver.
+
+create or replace function alta_primer_usuario() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is not null
+     and not exists(select 1 from usuario where productora_id = new.id) then
+    insert into usuario (auth_uid, productora_id, nombre, rol, email)
+    values (auth.uid(), new.id,
+            coalesce((select raw_user_meta_data->>'nombre' from auth.users where id = auth.uid()),
+                     (select email from auth.users where id = auth.uid()), 'Yo'),
+            'admin',
+            (select email from auth.users where id = auth.uid()));
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists tr_alta_primer_usuario on productora;
+create trigger tr_alta_primer_usuario after insert on productora
+  for each row execute function alta_primer_usuario();
 
 commit;
 
+
 -- =============================================================================
--- MIGRACION DESDE EL ARCHIVO ACTUAL
--- El JSON que exporta CLAP (Datos → Exportar todo) tiene exactamente estas
--- entidades con los mismos nombres de campo. La migracion es un script que
--- recorre el JSON e inserta; no hay que volver a cargar nada a mano.
+-- COMPROBAR QUE QUEDÓ BIEN
+-- Después de correr esto, pegá esta consulta: no tiene que devolver NINGUNA
+-- fila. Si alguna tabla aparece, le falta RLS o le faltan políticas.
 -- =============================================================================
+-- select c.relname as tabla,
+--        c.relrowsecurity as tiene_rls,
+--        count(p.polname) as politicas
+--   from pg_class c
+--   join pg_namespace n on n.oid = c.relnamespace
+--   left join pg_policy p on p.polrelid = c.oid
+--  where n.nspname = 'public' and c.relkind = 'r'
+--  group by 1,2
+-- having c.relrowsecurity = false or count(p.polname) = 0;
