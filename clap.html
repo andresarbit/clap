@@ -343,6 +343,9 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .pick.sesion{border-color:rgba(224,169,46,.45);background:rgba(224,169,46,.07)}
 .pick.sesion label{color:var(--ac)}
 .pick.sesion select{background:transparent}
+/* Sin login no hay identidad real: se ve gente de ejemplo. Que se note. */
+.pick.sesion.simulando{border-color:rgba(155,161,172,.4);background:rgba(155,161,172,.07);border-style:dashed}
+.pick.sesion.simulando label{color:var(--tx3)}
 .est{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.03em;
   padding:2px 7px;border-radius:20px;border:1px solid;white-space:nowrap}
 .estdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:baseline}
@@ -2411,7 +2414,7 @@ function sembrar(){
   pr.usuarios = [
     nuevoUsuario({nombre:'Sofía Roldán',  rol:'equipo',     depto:'Arte',           tel:'11 5555-1001', email:'sofia@ejemplo.com'}),
     nuevoUsuario({nombre:'Lucía Ferrer',  rol:'produccion', depto:'Producción',     tel:'11 5555-1002', email:'lucia@ejemplo.com'}),
-    nuevoUsuario({nombre:'Andrés Pereyra',rol:'ejecutivo',  depto:'Producción',     tel:'11 5555-1003', email:'andres@ejemplo.com'}),
+    nuevoUsuario({nombre:'Tomás Vidal',   rol:'ejecutivo',  depto:'Producción',     tel:'11 5555-1003', email:'tomas@ejemplo.com'}),
     nuevoUsuario({nombre:'Marta Giles',   rol:'admin',      depto:'Administración', tel:'11 5555-1004', email:'marta@ejemplo.com'}),
   ];
   const [uArte, uProd, uEjec, uAdmin] = pr.usuarios;
@@ -2569,8 +2572,11 @@ function header(pr,py,v){
           ${py.versiones.map(x=>`<option value="${x.id}" ${x.id===v?.id?'selected':''}>${esc(x.nombre)} · ${esc(x.estado)}</option>`).join('')}
         </select></div>`:''}
       <div class="spacer"></div>
-      ${(pr?.usuarios||[]).length?`<div class="pick sesion" title="Quién sos. Sin servidor esto no es seguridad: simula el rol para ver cada bandeja.">
-        <label>Soy</label>
+      ${(pr?.usuarios||[]).length?`<div class="pick sesion${sbConectado()?'':' simulando'}"
+        title="${sbConectado()
+          ? 'Entraste como '+esc(SB.user.email)+'. Podés mirar la app con los ojos de otro rol para probar; no cambia tus permisos reales.'
+          : 'Nadie inició sesión: esto es gente de ejemplo. Elegí un rol para ver cómo le queda la app. Para entrar de verdad, tocá ☁.'}">
+        <label>${sbConectado()?'Soy':'Viendo como'}</label>
         <select onchange="setUsuario(this.value)">
           ${pr.usuarios.filter(x=>x.activo).map(x=>`<option value="${x.id}" ${x.id===getUsuario()?.id?'selected':''}>${esc(x.nombre)} · ${esc(ROL(x.rol).l)}</option>`).join('')}
         </select></div>`:''}
