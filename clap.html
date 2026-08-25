@@ -261,6 +261,19 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .ctab input{width:100%}
 .ctab input[type=email]{font-size:11.5px}
 .csblock>h4 .btn{font-weight:600;letter-spacing:0;text-transform:none}
+/* portada / resumen */
+.resl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);font-weight:800;margin-bottom:4px}
+.resd{font-size:12.5px;line-height:1.5}
+.pendfila{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:9px 4px;
+  border-bottom:1px solid rgba(44,47,54,.6);font-size:13px;color:var(--tx)}
+.pendfila:last-child{border-bottom:none}
+.pendfila:hover{background:var(--bg3)}
+.pendn{min-width:26px;height:22px;border-radius:11px;background:var(--bg4);color:var(--tx2);
+  display:grid;place-items:center;font:800 11.5px var(--mono);flex:none;padding:0 6px}
+.pendfila.urg .pendn{background:var(--ac);color:#161005}
+.pendir{margin-left:auto;color:var(--tx3)}
+.pendfila:hover .pendir{color:var(--ac)}
+
 /* equipo, gastos y circuito de aprobación */
 .pick.sesion{border-color:rgba(224,169,46,.45);background:rgba(224,169,46,.07)}
 .pick.sesion label{color:var(--ac)}
@@ -1693,7 +1706,7 @@ let DB;
 function dbVacia(){
   return {schemaVersion:SCHEMA_VERSION, org:{nombre:'Mi estudio'},
     catalogo:{personas:[]}, productoras:[],
-    ui:{productoraId:null, proyectoId:null, versionId:null, vista:'interna', tab:'presu'}};
+    ui:{productoraId:null, proyectoId:null, versionId:null, vista:'interna', tab:'resumen'}};
 }
 
 function cargar(){
@@ -1720,7 +1733,7 @@ function migrar(){
       v.rubros.sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo)));
     })));
   DB.catalogo ||= {personas:[]};
-  DB.ui ||= {vista:'interna', tab:'presu'};
+  DB.ui ||= {vista:'interna', tab:'resumen'};
   (DB.productoras||[]).forEach(pr=>{ pr.usuarios ||= []; (pr.proyectos||[]).forEach(py=>{
     py.comprobantes ||= []; py.ocs ||= []; py.cajas ||= [];
     py.desglose ||= nuevoDesglose();
@@ -1772,6 +1785,51 @@ function sembrar(){
   const pr = nuevaProductora({nombre:'Productora Demo', cuit:'30-71234567-9', proyectos:[py]});
   DB.productoras = [pr];
   DB.ui.productoraId = pr.id; DB.ui.proyectoId = py.id; DB.ui.versionId = v.id;
+
+  /* Equipo de ejemplo: uno por rol, para que el circuito se pueda probar de
+     entrada sin tener que cargar gente antes de ver nada.                    */
+  pr.usuarios = [
+    nuevoUsuario({nombre:'Sofía Roldán',  rol:'equipo',     depto:'Arte',           tel:'11 5555-1001', email:'sofia@ejemplo.com'}),
+    nuevoUsuario({nombre:'Lucía Ferrer',  rol:'produccion', depto:'Producción',     tel:'11 5555-1002', email:'lucia@ejemplo.com'}),
+    nuevoUsuario({nombre:'Andrés Pereyra',rol:'ejecutivo',  depto:'Producción',     tel:'11 5555-1003', email:'andres@ejemplo.com'}),
+    nuevoUsuario({nombre:'Marta Giles',   rol:'admin',      depto:'Administración', tel:'11 5555-1004', email:'marta@ejemplo.com'}),
+  ];
+  const [uArte, uProd, uEjec, uAdmin] = pr.usuarios;
+  DB.ui.usuarioId = uEjec.id;
+
+  /* Un movimiento de cada tipo, para que ninguna pantalla arranque vacía. */
+  const oc = nuevaOC({numero:'OC-0001', rubro:'11', subrubro:'Paquete de luces',
+    proveedor:'Rental Sur', importe:520000, estado:'emitida', emitidaPor:uEjec.id,
+    condicion:'50% anticipo, 50% contra entrega',
+    historial:[{a:'emitida', usuario:uEjec.nombre, fecha:hoy()}]});
+  py.ocs = [oc];
+
+  const caja = nuevaCaja({nombre:'Caja de arte', responsable:uArte.id, jornada:1,
+    adelantos:[{id:uid('ad'), fecha:hoy(), importe:200000, circuito:'efectivo',
+      entregadoPor:uProd.id, nota:'Adelanto para compras'}]});
+  py.cajas = [caja];
+
+  const paso = (de,a,accion,usr) => ({de, a, accion, usuario:usr.nombre, usuarioId:usr.id,
+    rol:usr.rol, fecha:hoy(), nota:''});
+  py.comprobantes = [
+    nuevoComprobante({rubro:'11', subrubro:'Paquete de luces', proveedor:'Rental Sur',
+      cuit:'30-70111222-3', tipo:'facA', numero:'0001-00009911', importe:300000,
+      circuito:'transferencia', ocId:oc.id, estado:'revisado', cargadoPor:uProd.id,
+      historial:[paso(null,'cargado','cargar',uProd), paso('cargado','revisado','revisar',uProd)]}),
+    nuevoComprobante({rubro:'06', subrubro:'Compras de arte', proveedor:'Pinturería Norte',
+      tipo:'facBC', numero:'0003-00000455', importe:45000, circuito:'efectivo',
+      cajaId:caja.id, estado:'cargado', cargadoPor:uArte.id, notas:'Telas y pintura',
+      historial:[paso(null,'cargado','cargar',uArte)]}),
+    nuevoComprobante({rubro:'06', subrubro:'Utilero', proveedor:'Feria de Once',
+      tipo:'ninguno', importe:30000, circuito:'efectivo', cajaId:caja.id,
+      estado:'cargado', cargadoPor:uArte.id, notas:'Sin comprobante, se pagó en la feria',
+      historial:[paso(null,'cargado','cargar',uArte)]}),
+    nuevoComprobante({rubro:'13', subrubro:'Almuerzo', proveedor:'Catering La Mesa',
+      tipo:'facBC', numero:'0002-00001180', importe:448000, circuito:'transferencia',
+      estado:'pagado', cargadoPor:uProd.id,
+      historial:[paso(null,'cargado','cargar',uProd), paso('cargado','revisado','revisar',uProd),
+        paso('revisado','aprobado','aprobar',uEjec), paso('aprobado','pagado','pagar',uAdmin)]}),
+  ];
 }
 
 /* Accesores de contexto ---------------------------------------------------- */
@@ -1872,7 +1930,7 @@ function render(){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
+  const TABS=[['resumen','Resumen'],['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -1919,6 +1977,7 @@ function cuerpo(pr,py,v){
   if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,v);
   if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,v);
   if(DB.ui.tab==='gastos')    return vistaGastos(pr,py,v);
+  if(DB.ui.tab==='resumen')   return vistaResumen(pr,py,v);
   return vistaPresupuesto(pr,py,v);
 }
 
@@ -2421,6 +2480,134 @@ function planHTML(py,d,r){
     ${nums.map(nn=>bloque('Jornada '+nn, asignadas[nn])).join('')}
     ${sin.length?bloque('Sin asignar', sin, 'sinasig'):''}
     ${!nums.length&&!sin.length?'<div class="empty">Sin escenas</div>':''}`;
+}
+
+/* ---------- portada: resumen del proyecto ----------
+   Lo primero que se ve al abrir. Contesta dos preguntas: cómo viene la plata
+   y qué está esperando algo de mí.                                           */
+function vistaResumen(pr,py,v){
+  const u = getUsuario();
+  const P = resumenPlata(py, v);
+  const cs = getComprobantes();
+  const d = py.desglose || nuevoDesglose();
+  const cfg = (py.configRodaje ||= nuevaConfigRodaje());
+  const R = v ? calcular(v) : null;
+
+  /* qué hay pendiente */
+  const pend = [];
+  const mios = u ? cs.filter(c=>accionesDe(c,u).length) : [];
+  if(mios.length){
+    const QUE = {revisar:'para revisar', aprobar:'para aprobar', pagar:'para pagar'};
+    /* si esperan cosas distintas, se dice genérico */
+    const sigs = [...new Set(mios.map(c=>EST(c.estado).sig).filter(Boolean))];
+    const que = sigs.length===1 ? (QUE[sigs[0]]||'esperándote') : 'esperándote';
+    pend.push({n:mios.length, t:`comprobante${mios.length==1?'':'s'} ${que}`,
+      ir:"setTab('gastos');setSubGasto('bandeja')", urg:true});
+  }
+  const cajasAb = getCajas().filter(x=>x.estado==='abierta');
+  if(cajasAb.length){ const enMano = cajasAb.reduce((s,x)=>s+saldoCaja(py,x).saldo, 0);
+    pend.push({n:cajasAb.length, t:`caja${cajasAb.length==1?'':'s'} sin rendir · ${fmt(enMano)} en mano`,
+      ir:"setTab('gastos');setSubGasto('caja')"}); }
+  const ocBorr = getOCs().filter(o=>o.estado==='borrador');
+  if(ocBorr.length) pend.push({n:ocBorr.length, t:`orden${ocBorr.length==1?'':'es'} de compra sin emitir`,
+    ir:"setTab('gastos');setSubGasto('oc')"});
+  const sinRubro = cs.filter(c=>!c.rubro).length;
+  if(sinRubro) pend.push({n:sinRubro, t:'comprobantes sin rubro', ir:"setTab('gastos');setSubGasto('todos')", urg:true});
+  /* citaciones de la próxima jornada sin avisar */
+  const prox = d.jornadas.find(j=>{ normalizarJornada(j);
+    return Object.keys(j.parte.citados||{}).filter(k=>j.parte.citados[k]).length <
+           gentePorJornada(py,v,j.numero).gente.length; });
+  if(prox){ const g = gentePorJornada(py,v,prox.numero).gente;
+    const falta = g.length - Object.keys(prox.parte.citados||{}).filter(k=>prox.parte.citados[k]).length;
+    if(falta) pend.push({n:falta, t:`sin citar para la jornada ${prox.numero}`,
+      ir:`DB.ui.jornada=${prox.numero};setTab('rodaje');setSubRodaje('citaciones')`}); }
+  const sinDatos = armarContactos(py, v).sinDatos;
+  if(sinDatos) pend.push({n:sinDatos, t:'contactos sin teléfono ni mail',
+    ir:"setTab('callsheet');setSubCall('contactos')"});
+
+  /* horas extra acumuladas */
+  const HE = d.jornadas.length ? horasProyecto(py, v, cfg) : {totalExtra:0, totalARS:0};
+  const filmadas = d.escenas.filter(e=>d.jornadas.some(j=>(j.parte?.filmadas||[]).includes(e.id))).length;
+  const octT = d.escenas.reduce((s,e)=>s+e.octavos,0);
+
+  const dato = (val,l,col) => `<div><b${col?` style="color:${col}"`:''}>${val}</b><span>${esc(l)}</span></div>`;
+  const bloque = (t,c,extra='') => `<div class="csblock"><h4>${esc(t)}${extra}</h4>${c}</div>`;
+
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">${esc(py.nombre)}</div>
+        <div class="cssub">${esc(pr.nombre)}${py.cliente?' · '+esc(py.cliente):''}${py.agencia?' · '+esc(py.agencia):''}
+          · ${py.jornadas} jornada${py.jornadas==1?'':'s'}${py.tipo?' · '+esc(py.tipo):''}</div></div>
+      <div style="text-align:right">
+        <div class="csj">${R?fmt(R.total, v.monedaBase):'—'}</div>
+        <div class="cssub">presupuesto ${esc(v?v.nombre:'')} · ${esc(v?v.estado:'')}</div></div>
+    </div>
+
+    <div class="cshoras">
+      ${dato(fmt(P.presu,P.base), 'Costo directo')}
+      ${dato(fmt(P.comp,P.base), 'Comprometido', 'var(--ac)')}
+      ${dato(fmt(P.real,P.base), 'Real cargado')}
+      ${dato(fmt(P.pagado,P.base), 'Pagado', 'var(--ok)')}
+      ${dato(fmt(P.disponible,P.base), 'Disponible', P.disponible<0?'var(--bad)':'var(--ac)')}
+    </div>
+
+    ${pend.length ? bloque('Esperan algo', `<div class="pad" style="display:flex;flex-direction:column;gap:1px">
+      ${pend.map(x=>`<button class="pendfila ${x.urg?'urg':''}" onclick="${x.ir}">
+        <span class="pendn">${x.n}</span><span>${esc(x.t)}</span><span class="pendir">→</span></button>`).join('')}
+    </div>`) : bloque('Esperan algo', `<div class="pad muted" style="font-size:12.5px">
+      Nada pendiente. ${u?'':'Cargá el equipo para que aparezcan las bandejas.'}</div>`)}
+
+    ${bloque('El proyecto', `<div class="pad grid2" style="gap:14px">
+      <div>
+        <div class="resl">Guion y desglose</div>
+        ${d.escenas.length
+          ? `<div class="resd">${d.escenas.length} escenas · ${octavosATexto(octT)} páginas ·
+             ${new Set(d.escenas.map(e=>e.locacion)).size} locaciones ·
+             ${new Set(d.escenas.flatMap(e=>e.personajes)).size} personajes</div>
+             <div class="resd muted">${filmadas} escena${filmadas==1?'':'s'} marcada${filmadas==1?'':'s'} como filmada${filmadas==1?'':'s'}</div>`
+          : `<div class="resd muted">Sin guion cargado</div>`}
+        <button class="btn sm" onclick="setTab('desglose')" style="margin-top:6px">Ir al desglose</button>
+      </div>
+      <div>
+        <div class="resl">Rodaje</div>
+        ${d.jornadas.length
+          ? `<div class="resd">${d.jornadas.length} jornada${d.jornadas.length==1?'':'s'} planificada${d.jornadas.length==1?'':'s'}</div>
+             <div class="resd ${HE.totalExtra?'':'muted'}">Horas extra acumuladas: <b>${fmtHoras(HE.totalExtra)}</b>${HE.totalARS?' · '+fmt(HE.totalARS):''}</div>
+             <div class="resd muted">Jornada base ${cfg.horasJornada} h · extras +${cfg.recargoHE}%</div>`
+          : `<div class="resd muted">Sin plan de rodaje</div>`}
+        <button class="btn sm" onclick="setTab('rodaje')" style="margin-top:6px">Ir al rodaje</button>
+      </div>
+      <div>
+        <div class="resl">Gastos</div>
+        <div class="resd">${cs.length} comprobante${cs.length==1?'':'s'} ·
+          ${cs.filter(c=>c.estado==='pagado').length} pagado${cs.filter(c=>c.estado==='pagado').length==1?'':'s'}</div>
+        <div class="resd muted">${getOCs().length} orden${getOCs().length==1?'':'es'} de compra ·
+          ${getCajas().length} caja${getCajas().length==1?'':'s'}</div>
+        <button class="btn sm" onclick="setTab('gastos')" style="margin-top:6px">Ir a gastos</button>
+      </div>
+      <div>
+        <div class="resl">Equipo</div>
+        <div class="resd">${(pr.usuarios||[]).filter(x=>x.activo).length} persona(s) con acceso ·
+          ${DB.catalogo.personas.length} en el catálogo</div>
+        <div class="resd muted">${u?'Estás como <b>'+esc(u.nombre)+'</b> · '+esc(ROL(u.rol).l):'Sin sesión'}</div>
+        <button class="btn sm" onclick="setTab('equipo')" style="margin-top:6px">Ir al equipo</button>
+      </div>
+    </div>`)}
+
+    ${P.filas.some(f=>f.disponible<0) ? bloque('Rubros pasados de presupuesto',
+      `<div class="scrollx"><table class="tbl cst"><thead><tr><th style="width:44px">Cód.</th><th>Rubro</th>
+        <th style="width:118px;text-align:right">Presupuestado</th>
+        <th style="width:118px;text-align:right">Comprometido + real</th>
+        <th style="width:112px;text-align:right">Se pasó</th></tr></thead>
+        <tbody>${P.filas.filter(f=>f.disponible<0).map(f=>`<tr class="conhe">
+          <td><span class="rcode">${esc(f.codigo)}</span></td><td>${esc(f.nombre)}</td>
+          <td class="num" style="text-align:right">${fmt(f.presu,P.base)}</td>
+          <td class="num" style="text-align:right">${fmt(f.comp+f.real,P.base)}</td>
+          <td class="num" style="text-align:right"><b>${fmt(-f.disponible,P.base)}</b></td></tr>`).join('')}
+        </tbody></table></div>`) : ''}
+
+    <div class="csfoot">${esc(pr.nombre)} · ${esc(py.nombre)} · resumen al ${hoy()}</div>
+  </div>`;
 }
 
 /* ---------- vista gastos ---------- */

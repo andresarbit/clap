@@ -288,6 +288,7 @@ node test/run.js test/rodaje.js    # citaciones, fichadas, horas extra y turnaro
 node test/run.js test/sica.js      # escala de convenio y su uso como referencia
 node test/run.js test/gastos.js    # rubros, roles y circuito de aprobacion
 node test/run.js test/plata.js     # ordenes de compra, caja chica y tablero
+node test/run.js test/resumen.js   # portada, pendientes y datos de ejemplo
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```
