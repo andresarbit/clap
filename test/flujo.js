@@ -291,7 +291,7 @@ const cols = [...M.areas.map(a => a.k), ...(M.haySin ? ['__sin'] : [])];
 console.log('    ' + 'rubro'.padEnd(26) + cols.map(c => (c === '__sin' ? 'sin área' : areaLbl(c)).slice(0, 11).padStart(13)).join('') + 'TOTAL'.padStart(13));
 M.rubros.forEach(r => console.log('    ' + (r.codigo + ' ' + r.nombre).slice(0, 25).padEnd(26) +
   cols.map(c => { const x = (M.celda[r.codigo] || {})[c] || 0; return (x ? Math.round(x).toLocaleString('es-AR') : '·').padStart(13); }).join('') +
-  Math.round(M.totRubro[r.codigo]).toLocaleString('es-AR').padStart(13)));
+  Math.round(M.totRubro[r.codigo] || 0).toLocaleString('es-AR').padStart(13)));
 console.log('    ' + 'TOTAL POR ÁREA'.padEnd(26) +
   cols.map(c => Math.round(M.totArea[c] || 0).toLocaleString('es-AR').padStart(13)).join('') +
   Math.round(M.total).toLocaleString('es-AR').padStart(13));
@@ -305,7 +305,7 @@ ok('arte suma su nafta + sus viajes + su hotel + su alquiler',
   M.celda['12'].arte === 45000 + 180000 + 95000 && M.celda['11'].arte === 120000,
   'viajes ' + fmt(M.celda['12'].arte) + ' · alquileres ' + fmt(M.celda['11'].arte));
 /* los totales tienen que cerrar por las dos vías */
-const sumaFilas = M.rubros.reduce((s, r) => s + M.totRubro[r.codigo], 0);
+const sumaFilas = M.rubros.reduce((s, r) => s + (M.totRubro[r.codigo] || 0), 0);
 const sumaCols = cols.reduce((s, c) => s + (M.totArea[c] || 0), 0);
 ok('la suma por filas = la suma por columnas', Math.abs(sumaFilas - sumaCols) < 1,
   fmt(sumaFilas) + ' vs ' + fmt(sumaCols));
@@ -314,6 +314,37 @@ ok('cada celda suma sus comprobantes', (() => {
   const cbs = py.comprobantes.filter(c => c.estado !== 'rechazado' && c.rubro === '12' && c.area === 'arte');
   return Math.abs(M.celda['12'].arte - cbs.reduce((s, c) => s + n(c.importe), 0)) < 1;
 })());
+/* ── el presupuesto también se abre por área ─────────────────────────── */
+console.log('');
+/* etiquetar algunas líneas del presupuesto con su área */
+v.rubros.find(r => r.codigo === '12').lineas.forEach(l => { l.area = 'produccion'; });
+v.rubros.find(r => r.codigo === '11').lineas.forEach(l => { l.area = 'camara'; });
+const MP = matrizRubroArea(py, v);
+ok('el presupuesto se abre por área', Object.keys(MP.celdaP).length > 0,
+  Object.keys(MP.celdaP).sort().join(', '));
+ok('la línea etiquetada va a su área', (MP.celdaP['11'] || {}).camara > 0,
+  fmt((MP.celdaP['11'] || {}).camara || 0));
+/* una línea de un rubro NO transversal sin área se deduce del rubro */
+ok('sin área, un rubro no transversal se deduce', (MP.celdaP['02'] || {}).direccion > 0,
+  'dirección ' + fmt((MP.celdaP['02'] || {}).direccion || 0));
+ok('pero un transversal sin área queda como "sin área"',
+  esTransversal('13') && (MP.celdaP['13'] || {}).__sin > 0,
+  'catering sin área ' + fmt((MP.celdaP['13'] || {}).__sin || 0));
+ok('avisa de las líneas de presupuesto sin área en transversales', MP.huecosPresu > 0,
+  MP.huecosPresu + ' líneas');
+/* el presupuestado por área tiene que sumar el subtotal del presupuesto */
+const sumaPresuAreas = Object.values(MP.totAreaP).reduce((s, x) => s + x, 0);
+ok('el presupuestado por área suma el subtotal del presupuesto',
+  Math.abs(sumaPresuAreas - calcular(v).subtotal) < 1,
+  fmt(sumaPresuAreas) + ' vs ' + fmt(calcular(v).subtotal));
+ok('y por filas da lo mismo',
+  Math.abs(MP.rubros.reduce((s, r) => s + (MP.totRubroP[r.codigo] || 0), 0) - sumaPresuAreas) < 1);
+/* ahora sí se puede comparar presupuestado contra real POR AREA */
+const dispCamara = (MP.totAreaP.camara || 0) - (MP.totArea.camara || 0);
+console.log(`    cámara: presupuestado ${fmt(MP.totAreaP.camara || 0)} · real ${fmt(MP.totArea.camara || 0)} · disponible ${fmt(dispCamara)}`);
+ok('se puede comparar presupuestado vs real por área',
+  MP.totAreaP.camara > 0 && MP.totArea.camara > 0, 'las dos puntas cargadas');
+
 /* el total del área tiene que ser lo mismo que da resumenAreas */
 const A2 = resumenAreas(py, v);
 ok('el total de arte coincide con la vista por área',

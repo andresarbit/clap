@@ -274,6 +274,23 @@ Cuanto mas pesa una celda dentro de su rubro, mas fuerte se pinta. La columna
 **Sin area** aparece resaltada, y arriba hay un aviso con cuantos comprobantes
 transversales quedaron sin asignar y un boton para ir a corregirlos.
 
+**Las lineas del presupuesto tambien llevan area**, con un chip al lado del
+circuito de pago y el comprobante. Por eso la matriz tiene tres modos:
+
+```
+                    Presupuestado        Real       Disponible
+Producción             1.350.000       78.000        1.272.000
+Dirección                880.000            —          880.000
+Fotografía y Cámara    2.060.000      240.000        1.820.000
+Sin área                 448.000      748.000         -300.000
+TOTAL                  8.998.000    1.306.000        7.692.000
+```
+
+Si una linea no tiene area, se le asigna la del rubro — salvo en los
+transversales, donde deducirla seria inventar y queda como "sin area".
+
+El puente **desglose → presupuesto** ya crea las lineas con su area puesta.
+
 ### Rubros internos
 
 **17 rubros y 234 subrubros**, en `RUBROS_BASE` y `FUNCIONES`. Es la misma
