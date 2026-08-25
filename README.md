@@ -178,6 +178,40 @@ node test/run.js test/sica-tabla.js <escala.pdf>  # -> JSON estructurado
 node test/run.js test/gen-sica.js   <escala.json> # -> constante JS
 ```
 
+### Equipo y Gastos
+
+El circuito real de una factura, con cada paso firmado:
+
+```
+carga el departamento -> revisa produccion -> aprueba el ejecutivo -> paga administracion
+                      \-> rechaza (con motivo, vuelve a quien la cargo)
+```
+
+- **Equipo** — cada persona con su rol. `Equipo/Departamento` carga; `Produccion`
+  ademas revisa; `Productor Ejecutivo` ademas aprueba; `Administracion` ademas paga.
+- **Gastos** — cada uno abre en **su bandeja**: quien carga ve lo suyo, quien
+  revisa ve lo que espera algo de el. Foto del comprobante desde la camara del
+  celular (se achica sola: una foto de 2400x3200 queda en ~16 KB).
+- **Presupuesto vs real** — rubro por rubro: presupuestado, cargado, pagado,
+  avance y desvio. Lo rechazado no suma.
+- Cada comprobante guarda su **recorrido**: quien hizo que, cuando, y el motivo
+  si lo rechazaron.
+
+> **Esto todavia no es seguridad.** Sin servidor no hay contrasenas: el selector
+> "Soy" simula quien sos para que cada rol vea su bandeja, pero cualquiera que
+> abra el archivo puede cambiarse de rol. El modelo de datos y el circuito ya son
+> los definitivos: cuando haya backend se reemplaza el selector por un login y no
+> cambia nada mas.
+
+### Rubros internos
+
+**17 rubros y 234 subrubros**, en `RUBROS_BASE` y `FUNCIONES`. Es la misma
+taxonomia con la que se carga una linea de presupuesto y con la que se clasifica
+cada factura que entra, asi nadie escribe el concepto a mano y todo suma al mismo
+lugar. Al elegir el rubro, el desplegable de subrubro se llena solo.
+
+Se regenera con `python test/gen-rubros.py`.
+
 ## Arquitectura
 
 Todo en `clap.html`, en cuatro bloques marcados en el código:
@@ -202,7 +236,8 @@ de `productoraId`, así que el schema ya es multi-tenant.
 4. **Rodaje** ✅ — citaciones, parte del dia y horas extra.
 5. **Seguros** — generar el alta (nómina para el broker) desde el crew ya cargado;
    guardar pólizas y certificados. AP, ART, RC, todo riesgo equipos.
-6. **Caja y pagos** — órdenes de compra, caja chica por jornada, rendiciones, y el
+6. **Caja y pagos** ✅ parcial — circuito de aprobacion y presupuesto vs real.
+   Falta: ordenes de compra, caja chica por jornada y rendiciones. — órdenes de compra, caja chica por jornada, rendiciones, y el
    tablero Presupuestado / Comprometido / Real.
 7. **Backend** — Supabase, usuarios, adjuntos, acceso de sólo lectura para el cliente.
 8. **Tarifario histórico** — al cerrar un proyecto, el catálogo aprende cuánto salió
@@ -223,6 +258,7 @@ node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tab
 node test/run.js test/contactos.js # lista de contactos y su circuito con catalogo y callsheet
 node test/run.js test/rodaje.js    # citaciones, fichadas, horas extra y turnaround
 node test/run.js test/sica.js      # escala de convenio y su uso como referencia
+node test/run.js test/gastos.js    # rubros, roles y circuito de aprobacion
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```

@@ -3,7 +3,7 @@ const ok=(t,c,extra='')=>{ console.log((c?'  OK  ':'FALLA ')+t+(extra?'  -> '+ex
 const pr=getPr(), py=getPy(), v=getV();
 ok('semilla: 1 productora', DB.productoras.length===1, pr.nombre);
 ok('semilla: proyecto activo', !!py, py.nombre);
-ok('semilla: 15 rubros', v.rubros.length===15);
+ok('semilla: 17 rubros', v.rubros.length===17, v.rubros.length);
 const RR=calcular(v);
 console.log('\n--- CALCULO ---');
 RR.porRubro.filter(r=>r.total>0).forEach(r=>

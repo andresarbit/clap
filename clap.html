@@ -261,6 +261,25 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .ctab input{width:100%}
 .ctab input[type=email]{font-size:11.5px}
 .csblock>h4 .btn{font-weight:600;letter-spacing:0;text-transform:none}
+/* equipo, gastos y circuito de aprobación */
+.pick.sesion{border-color:rgba(224,169,46,.45);background:rgba(224,169,46,.07)}
+.pick.sesion label{color:var(--ac)}
+.pick.sesion select{background:transparent}
+.est{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.03em;
+  padding:2px 7px;border-radius:20px;border:1px solid;white-space:nowrap}
+.estdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:baseline}
+.clip{font-size:11px;opacity:.7;margin-left:4px}
+.barra{display:block;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;min-width:60px}
+.barra i{display:block;height:100%;border-radius:4px;transition:width .2s}
+.adj{display:flex;flex-direction:column;gap:5px}
+.adj img{max-width:100%;max-height:230px;object-fit:contain;border:1px solid var(--line);
+  border-radius:var(--r);background:var(--bg)}
+.linea-tiempo{display:flex;flex-direction:column;gap:0}
+.hito{display:flex;gap:10px;align-items:flex-start;padding:0 0 11px;position:relative;font-size:12.5px}
+.hito:not(:last-child)::before{content:'';position:absolute;left:5px;top:14px;bottom:0;width:1px;background:var(--line2)}
+.hito i{width:11px;height:11px;border-radius:50%;flex:none;margin-top:3px;z-index:1;
+  box-shadow:0 0 0 3px var(--bg2)}
+
 /* tarifario de convenio */
 .sica{font:600 10.5px var(--mono);color:var(--info);background:rgba(91,155,213,.13);
   padding:2px 6px;border-radius:4px;flex:none}
@@ -396,7 +415,7 @@ const uid = p => (p||'x') + '_' + Math.random().toString(36).slice(2,9);
 /* Rubros por defecto — estructura de presupuesto publicitario argentino.
    aplicaFee: si el fee de producción se calcula sobre este rubro.            */
 const RUBROS_BASE = [
-  {codigo:'01', nombre:'Preproducción y Gastos Generales', aplicaFee:true},
+  {codigo:'01', nombre:'Preproducción y Desarrollo',       aplicaFee:true},
   {codigo:'02', nombre:'Dirección',                        aplicaFee:true},
   {codigo:'03', nombre:'Equipo de Producción',             aplicaFee:true},
   {codigo:'04', nombre:'Fotografía y Cámara',              aplicaFee:true},
@@ -411,26 +430,83 @@ const RUBROS_BASE = [
   {codigo:'13', nombre:'Catering',                         aplicaFee:true},
   {codigo:'14', nombre:'Postproducción',                   aplicaFee:true},
   {codigo:'15', nombre:'Seguros y Legales',                aplicaFee:false},
+  {codigo:'16', nombre:'Seguridad, Higiene y Salud',       aplicaFee:true},
+  {codigo:'17', nombre:'Administración y Gastos Bancarios',aplicaFee:false},
 ];
 
-/* Catálogo de funciones por rubro — para cargar líneas rápido.               */
+/* Catálogo de subrubros internos, por rubro. Es la taxonomía con la que se
+   carga una línea de presupuesto Y con la que se clasifica cada factura que
+   entra, así nadie escribe el concepto a mano y todo suma al mismo lugar.  */
 const FUNCIONES = {
-  '01':['Scouting','Casting','Pre Production Meeting','Permisos y trámites','Movilidad preproducción','Oficina y comunicaciones'],
-  '02':['Director','Ayudante de Dirección (1° AD)','2° Ayudante de Dirección','Script / Continuista','Storyboard artist'],
-  '03':['Productor Ejecutivo','Jefe de Producción','Coordinador de Producción','Asistente de Producción','Runner','Location Manager','Director de Casting','Fijador'],
-  '04':['Director de Fotografía','Operador de Cámara','Foquista','Asistente de Cámara','DIT','Video Assist','Operador de Steadicam','Piloto de Drone'],
-  '05':['Gaffer','Best Boy','Eléctrico','Key Grip','Grip','Maquinista','Generadorista'],
-  '06':['Director de Arte','Asistente de Arte','Ambientador','Utilero','Escenógrafo','Constructor','Compras de arte','Construcción de set'],
-  '07':['Vestuarista','Asistente de Vestuario','Compra / alquiler de vestuario','Maquillador/a','Peinador/a','Asistente de Maquillaje'],
-  '08':['Sonidista Directo','Microfonista','Equipo de sonido directo'],
-  '09':['Actor / Actriz Principal','Actor / Actriz Secundario','Extra','Modelo','Voz en off','Buyout / Cesión de derechos','Fee de agencia de casting'],
-  '10':['Fee de locación','Permiso municipal / filmación','Fijador de locación','Estudio / plató','Servicios de locación','Limpieza y restitución'],
-  '11':['Paquete cámara + ópticas','Paquete de luces','Paquete de grip','Grupo electrógeno','Camión de luces','Monitores','Handies / walkies','Carpa y catering rig','Baños químicos'],
-  '12':['Combi de pasajeros','Camión de producción','Auto de producción','Combustible y peajes','Pasajes aéreos','Hotel','Viáticos / per diem','Chofer'],
-  '13':['Desayuno','Almuerzo','Merienda / snacks','Agua y bebidas','Catering de elenco'],
-  '14':['Postproductor','Montajista','Sala de edición','Colorista','VFX / composición','Diseño sonoro','Musicalización / derechos','Locución','Masterización y entregables'],
-  '15':['Seguro de Accidentes Personales','ART','Responsabilidad Civil','Todo Riesgo Equipos','Honorarios contables','Honorarios legales','Impuesto al cheque / gastos bancarios'],
+  '01':["Scouting / búsqueda de locaciones","Casting","Pre Production Meeting (PPM)",
+        "Permisos y trámites","Movilidad de preproducción","Oficina y coworking",
+        "Comunicaciones y telefonía","Papelería e impresiones","Research y referencias",
+        "Storyboard","Traducciones","Honorarios de desarrollo","Mensajería"],
+  '02':["Director","Ayudante de Dirección (1° AD)","2° Ayudante de Dirección",
+        "3° Ayudante de Dirección","Script / Continuista","Storyboard artist",
+        "Director de segunda unidad","Coach de actores","Asistente de dirección de casting"],
+  '03':["Productor Ejecutivo","Productor","Jefe de Producción","Coordinador de Producción",
+        "Asistente de Producción","2° Asistente de Producción","Runner / Cadete",
+        "Location Manager","Fijador","Director de Casting","Productor de campo",
+        "Contador de producción","Caja chica de producción","Producer de agencia"],
+  '04':["Director de Fotografía","Operador de Cámara","Foquista (1° AC)",
+        "2° Asistente de Cámara","DIT","Data manager","Video Assist","Operador de Steadicam",
+        "Operador de Ronin / gimbal","Piloto de Drone","Fotógrafo de fija","Cámara de backstage",
+        "Segunda unidad de cámara"],
+  '05':["Gaffer","Best Boy eléctrico","Eléctrico","Jefe eléctrico","Key Grip","Grip",
+        "Best Boy grip","Maquinista","Generadorista","Rigger","Operador de dolly",
+        "Operador de grúa","Expendables de eléctrica"],
+  '06':["Director de Arte","Ambientador / 1° Asistente de Arte","Asistente de Arte",
+        "Ayudante de Arte","Utilero","Escenógrafo","Constructor","Carpintero","Pintor","Herrero",
+        "Compras de arte","Alquiler de utilería","Alquiler de muebles","Construcción de set",
+        "Plantas y flores","Food styling","Animales y adiestrador","Armería / utilería especial",
+        "Gráfica y cartelería","Devoluciones y restitución"],
+  '07':["Vestuarista","Asistente de Vestuario","Ayudante de Vestuario","Compra de vestuario",
+        "Alquiler de vestuario","Lavandería y tintorería","Arreglos y costura","Maquillador/a",
+        "Peinador/a","Asistente de Maquillaje y Peinado","Caracterización y prótesis","Manicura",
+        "Insumos de maquillaje","Barbería"],
+  '08':["Sonidista Directo","Microfonista","Asistente de sonido","Equipo de sonido directo",
+        "Playback","Alquiler de microfonía","Insumos de sonido"],
+  '09':["Actor / Actriz Principal","Actor / Actriz Secundario","Bolo","Extra",
+        "Figuración especial","Modelo","Voz en off","Doble de riesgo","Coordinador de riesgo",
+        "Coach de elenco","Fee de agencia de casting","Buyout / Cesión de derechos",
+        "Renovación de derechos","Cargas sociales de elenco","Tutor de menores"],
+  '10':["Fee de locación","Permiso municipal de filmación","Permiso de organismo / privado",
+        "Fijador de locación","Estudio / plató","Servicios de locación (luz, agua)","Limpieza",
+        "Restitución y daños","Seguridad de locación","Estacionamiento","Baños químicos",
+        "Vigilancia nocturna","Seguro de locación"],
+  '11':["Paquete cámara + ópticas","Ópticas especiales","Paquete de luces","Paquete de grip",
+        "Grúa / pluma","Dolly y rieles","Grupo electrógeno","Camión de luces","Camión de grip",
+        "Monitores","Handies / walkies","Carpa y estructura","Medios de grabación (tarjetas)",
+        "Discos y backup","Expendables (gelatinas, cintas, pilas)","Alquiler de generador",
+        "Equipos de climatización","Alquiler de drone"],
+  '12':["Combi de pasajeros","Minibús","Camión de producción","Auto de producción","Moto",
+        "Chofer","Combustible","Peajes","Estacionamiento y garage","Pasajes aéreos",
+        "Pasajes terrestres","Exceso de equipaje","Hotel","Viáticos / per diem",
+        "Traslados aeropuerto","Remises y aplicaciones","Fletes"],
+  '13':["Desayuno","Almuerzo","Merienda / snacks","Cena","Agua y bebidas","Café y termos",
+        "Catering de elenco","Dietas especiales","Servicio y mozos","Descartables",
+        "Compras de supermercado","Catering de preproducción"],
+  '14':["Postproductor","Montajista","Asistente de edición","Sala de edición","Online / conform",
+        "Colorista","Sala de color","VFX / composición","Motion graphics","Diseño sonoro",
+        "Mezcla y masterización de audio","Estudio de sonido","Música original",
+        "Licencia de música","Derechos de archivo","Locución","Subtitulado",
+        "Traducción de guion","Entregables y copias","Backup y archivo","Transcoding"],
+  '15':["Seguro de Accidentes Personales","ART","Responsabilidad Civil","Todo Riesgo Equipos",
+        "Seguro de cancelación","Seguro de vehículos","Honorarios contables",
+        "Honorarios legales","Escribano","Contratos y cesiones","Registro de obra / marca",
+        "Asesoría laboral"],
+  '16':["Enfermero / paramédico","Ambulancia","Servicio de emergencias","Seguridad e higiene",
+        "Matafuegos y elementos de seguridad","Elementos de protección personal",
+        "Test y controles sanitarios","Coordinador de intimidad","Guardavidas"],
+  '17':["Impuestos y tasas","Ingresos Brutos","Impuesto al cheque","Comisiones bancarias",
+        "Retenciones","Percepciones","Diferencia de cambio","Gastos de transferencia",
+        "Software y licencias","Internet y telefonía de oficina","Alquiler de oficina",
+        "Sueldos de estructura","Contingencia","Fee de producción"],
 };
+
+/* Todos los subrubros como una lista plana, para buscar al clasificar. */
+const SUBRUBROS = Object.entries(FUNCIONES).flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
 
 /* Unidades de contratación */
 /* Escala salarial SICA · publicidad. Salarios BRUTOS de convenio, por
@@ -544,11 +620,13 @@ function nuevoProyecto(o={}){
     jornadas:o.jornadas??1, versiones:o.versiones||[nuevaVersion()], versionActiva:null,
     desglose:o.desglose||nuevoDesglose(),
     contactos:o.contactos||{porLinea:{}, extra:[]},
-    configRodaje:o.configRodaje||nuevaConfigRodaje()};
+    configRodaje:o.configRodaje||nuevaConfigRodaje(),
+    comprobantes:o.comprobantes||[]};
 }
 function nuevaProductora(o={}){
   return {id:uid('pr'), nombre:o.nombre||'Productora nueva', cuit:o.cuit||'',
     condicionIVA:o.condicionIVA||'Responsable Inscripto', jurisdiccion:o.jurisdiccion||'CABA',
+    usuarios:o.usuarios||[],
     feeDefault:o.feeDefault??15, contingenciaDefault:o.contingenciaDefault??5,
     ivaDefault:o.ivaDefault??21, iibbDefault:o.iibbDefault??0,
     proyectos:o.proyectos||[]};
@@ -661,6 +739,148 @@ function nuevaJornada(o={}){
 /* Rubros de los que sale el equipo técnico del callsheet.                     */
 const RUBROS_CREW = ['02','03','04','05','06','07','08'];
 const RUBROS_PROV = ['10','11','12','13','14','15'];
+
+/* --------------------------- EQUIPO Y GASTOS ------------------------------
+   El circuito real de una factura en una productora: el departamento la carga,
+   producción la chequea, el ejecutivo la aprueba y administración la paga.
+   Cada paso queda registrado con quién y cuándo.
+
+   OJO: sin backend esto NO es seguridad. El selector de sesión simula quién
+   sos para que cada rol vea su bandeja; cualquiera que abra el archivo puede
+   cambiarse de rol. El modelo de datos sí es el definitivo: cuando haya
+   backend se reemplaza el selector por un login y no se toca nada más.       */
+
+const ROLES = [
+  {k:'equipo',    l:'Equipo / Departamento', d:'Carga los comprobantes de su área',
+   puede:['cargar']},
+  {k:'produccion',l:'Producción',            d:'Revisa que corresponda y que el precio sea el acordado',
+   puede:['cargar','revisar']},
+  {k:'ejecutivo', l:'Productor Ejecutivo',   d:'Aprueba el gasto',
+   puede:['cargar','revisar','aprobar','equipo']},
+  {k:'admin',     l:'Administración',        d:'Aprueba y ejecuta el pago',
+   puede:['cargar','revisar','aprobar','pagar','equipo']},
+];
+const ROL = k => ROLES.find(r=>r.k===k) || ROLES[0];
+const puede = (u, accion) => !!u && ROL(u.rol).puede.includes(accion);
+
+/* Los estados por los que pasa un comprobante. */
+const ESTADOS = [
+  {k:'cargado',  l:'Cargado',    d:'Esperando revisión de producción', c:'#9ba1ac', sig:'revisar'},
+  {k:'revisado', l:'Revisado',   d:'Producción lo chequeó, falta aprobar', c:'#5b9bd5', sig:'aprobar'},
+  {k:'aprobado', l:'Aprobado',   d:'Listo para pagar', c:'#e0a92e', sig:'pagar'},
+  {k:'pagado',   l:'Pagado',     d:'Circuito cerrado', c:'#3fb27f', sig:null},
+  {k:'rechazado',l:'Rechazado',  d:'Volvió a quien lo cargó', c:'#e05a5a', sig:null},
+];
+const EST = k => ESTADOS.find(e=>e.k===k) || ESTADOS[0];
+/* qué acción lleva de un estado al siguiente */
+const ACCION_ESTADO = {revisar:'revisado', aprobar:'aprobado', pagar:'pagado'};
+
+function nuevoUsuario(o={}){
+  return {id:uid('us'), nombre:o.nombre||'', rol:o.rol||'equipo', depto:o.depto||'',
+    rubros:o.rubros||[],       /* qué rubros puede cargar; vacío = todos */
+    email:o.email||'', tel:o.tel||'', activo:o.activo!==false};
+}
+
+function nuevoComprobante(o={}){
+  return {id:uid('cp'), rubro:o.rubro||'', subrubro:o.subrubro||'', concepto:o.concepto||'',
+    proveedor:o.proveedor||'', cuit:o.cuit||'',
+    tipo:o.tipo||'', numero:o.numero||'', fecha:o.fecha||hoy(),
+    importe:o.importe??0, moneda:o.moneda||'ARS',
+    circuito:o.circuito||'', lineaId:o.lineaId||null, jornada:o.jornada??null,
+    estado:o.estado||'cargado', cargadoPor:o.cargadoPor||null, cargadoEl:o.cargadoEl||hoy(),
+    historial:o.historial||[], adjunto:o.adjunto||null, notas:o.notas||''};
+}
+
+/* --- sesión simulada ---------------------------------------------------- */
+const getUsuarios = () => { const pr=getPr(); if(!pr) return [];
+  pr.usuarios ||= []; return pr.usuarios; };
+function getUsuario(){
+  const us = getUsuarios();
+  return us.find(u=>u.id===DB.ui.usuarioId && u.activo) || us.find(u=>u.activo) || null;
+}
+
+/* --- comprobantes ------------------------------------------------------- */
+const getComprobantes = () => { const py=getPy(); if(!py) return [];
+  py.comprobantes ||= []; return py.comprobantes; };
+
+/* Qué puede hacer este usuario con este comprobante, ahora. */
+function accionesDe(c, u){
+  if(!u || c.estado==='pagado' || c.estado==='rechazado') return [];
+  const est = EST(c.estado);
+  const out = [];
+  if(est.sig && puede(u, est.sig)) out.push(est.sig);
+  if(puede(u,'revisar')) out.push('rechazar');
+  return out;
+}
+
+function moverComprobante(id, accion, nota){
+  const c = getComprobantes().find(x=>x.id===id); if(!c) return;
+  const u = getUsuario();
+  const antes = c.estado;
+  c.estado = accion==='rechazar' ? 'rechazado' : (ACCION_ESTADO[accion] || c.estado);
+  c.historial.push({de:antes, a:c.estado, accion, usuario:u?u.nombre:'—',
+    usuarioId:u?u.id:null, rol:u?u.rol:null, fecha:hoy(), nota:nota||''});
+}
+
+/* Totales: qué se lleva gastado por rubro y en qué estado está.             */
+function resumenGastos(py, v){
+  const cs = py.comprobantes || [];
+  const tc = v ? n(v.tc) : 1000, base = v ? v.monedaBase : 'ARS';
+  const enBase = c => conv(n(c.importe), c.moneda||'ARS', base, tc);
+  const porRubro = {}, porEstado = {};
+  ESTADOS.forEach(e=>porEstado[e.k]={cant:0, total:0});
+  cs.forEach(c=>{
+    const t = enBase(c);
+    porEstado[c.estado] ||= {cant:0,total:0};
+    porEstado[c.estado].cant++; porEstado[c.estado].total += t;
+    if(c.estado==='rechazado') return;
+    porRubro[c.rubro] ||= {gastado:0, cant:0, pagado:0};
+    porRubro[c.rubro].gastado += t; porRubro[c.rubro].cant++;
+    if(c.estado==='pagado') porRubro[c.rubro].pagado += t;
+  });
+  /* contra el presupuesto */
+  const filas = (v?v.rubros:[]).map(r=>{
+    const g = porRubro[r.codigo] || {gastado:0, cant:0, pagado:0};
+    const presu = totalRubro(r, v);
+    return {codigo:r.codigo, nombre:r.nombre, presu, ...g,
+      desvio: g.gastado - presu, pct: presu ? g.gastado/presu*100 : (g.gastado?Infinity:0)};
+  });
+  const sinRubro = Object.keys(porRubro).filter(k=>!filas.some(f=>f.codigo===k));
+  return {filas, porEstado, sinRubro, base,
+    totalGastado: filas.reduce((s,f)=>s+f.gastado,0),
+    totalPresu:   filas.reduce((s,f)=>s+f.presu,0),
+    totalPagado:  filas.reduce((s,f)=>s+f.pagado,0)};
+}
+
+/* Foto de la factura. Se achica fuerte: en localStorage el espacio es poco y
+   una foto de celular sin tocar se lo come entero.                          */
+function achicarImagen(file, maxLado=1400, calidad=0.6){
+  return new Promise((res, rej)=>{
+    const fr = new FileReader();
+    fr.onerror = () => rej(new Error('No pude leer el archivo'));
+    fr.onload = () => {
+      const img = new Image();
+      img.onerror = () => rej(new Error('El archivo no es una imagen que pueda abrir'));
+      img.onload = () => {
+        const esc = Math.min(1, maxLado/Math.max(img.width, img.height));
+        const w = Math.round(img.width*esc), h = Math.round(img.height*esc);
+        const cv = document.createElement('canvas'); cv.width=w; cv.height=h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        const url = cv.toDataURL('image/jpeg', calidad);
+        res({nombre:file.name, tipo:'image/jpeg', dataUrl:url,
+          bytes: Math.round(url.length*0.75), w, h});
+      };
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+/* Cuánto lugar queda. localStorage suele ser 5 MB por origen. */
+function espacioUsado(){
+  let b = 0;
+  try{ b = new Blob([localStorage.getItem(KEY)||'']).size; }catch(e){ b = (localStorage.getItem(KEY)||'').length; }
+  return {bytes:b, mb:b/1048576, pct: Math.min(100, b/(5*1048576)*100)};
+}
 
 /* ---------------------------- RODAJE -------------------------------------
    El parte de rodaje: lo que un asistente de producción llena en el set.
@@ -1393,9 +1613,17 @@ function cargar(){
 }
 function migrar(){
   if(!DB.schemaVersion) DB.schemaVersion = 1;
+  /* rubros agregados despues: se suman a los presupuestos que ya existian */
+  (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(py=>
+    (py.versiones||[]).forEach(v=>{
+      RUBROS_BASE.forEach(rb=>{ if(!v.rubros.some(x=>x.codigo===rb.codigo))
+        v.rubros.push({id:uid('rb'), ...rb, lineas:[], abierto:false}); });
+      v.rubros.sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo)));
+    })));
   DB.catalogo ||= {personas:[]};
   DB.ui ||= {vista:'interna', tab:'presu'};
-  (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(py=>{
+  (DB.productoras||[]).forEach(pr=>{ pr.usuarios ||= []; (pr.proyectos||[]).forEach(py=>{
+    py.comprobantes ||= [];
     py.desglose ||= nuevoDesglose();
     py.desglose.escenas ||= []; py.desglose.jornadas ||= [];
     py.desglose.jornadas.forEach(normalizarJornada);
@@ -1404,7 +1632,7 @@ function migrar(){
     py.configRodaje ||= nuevaConfigRodaje();
     py.desglose.jornadas.forEach(j=>{ j.parte ||= nuevoParte();
       j.parte.fichadas ||= {}; j.parte.citados ||= {}; j.parte.filmadas ||= []; });
-  }));
+  }); });
 }
 let _t;
 function guardar(){
@@ -1545,7 +1773,7 @@ function render(){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['catalogo','Catálogo'],['config','Productoras']];
+  const TABS=[['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -1564,6 +1792,11 @@ function header(pr,py,v){
           ${py.versiones.map(x=>`<option value="${x.id}" ${x.id===v?.id?'selected':''}>${esc(x.nombre)} · ${esc(x.estado)}</option>`).join('')}
         </select></div>`:''}
       <div class="spacer"></div>
+      ${(pr?.usuarios||[]).length?`<div class="pick sesion" title="Quién sos. Sin servidor esto no es seguridad: simula el rol para ver cada bandeja.">
+        <label>Soy</label>
+        <select onchange="setUsuario(this.value)">
+          ${pr.usuarios.filter(x=>x.activo).map(x=>`<option value="${x.id}" ${x.id===getUsuario()?.id?'selected':''}>${esc(x.nombre)} · ${esc(ROL(x.rol).l)}</option>`).join('')}
+        </select></div>`:''}
       ${DB.ui.tab==='presu'&&v?`<div class="seg">
         <button class="${DB.ui.vista==='interna'?'on':''}" onclick="setVista('interna')">Interna</button>
         <button class="${DB.ui.vista==='cliente'?'on':''}" onclick="setVista('cliente')">Cliente</button>
@@ -1578,6 +1811,7 @@ function header(pr,py,v){
 function cuerpo(pr,py,v){
   if(!pr) return `<div class="card"><div class="empty">No hay productoras cargadas.<br><br>
     <button class="btn pri" onclick="editProductora()">Crear la primera productora</button></div></div>`;
+  if(DB.ui.tab==='equipo')   return vistaEquipo(pr);
   if(DB.ui.tab==='catalogo') return vistaCatalogo();
   if(DB.ui.tab==='config')   return vistaConfig(pr);
   if(!py) return `<div class="card"><div class="empty">"${esc(pr.nombre)}" no tiene proyectos.<br><br>
@@ -1585,6 +1819,7 @@ function cuerpo(pr,py,v){
   if(DB.ui.tab==='desglose')  return vistaDesglose(py);
   if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,v);
   if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,v);
+  if(DB.ui.tab==='gastos')    return vistaGastos(pr,py,v);
   return vistaPresupuesto(pr,py,v);
 }
 
@@ -2088,6 +2323,176 @@ function planHTML(py,d,r){
     ${sin.length?bloque('Sin asignar', sin, 'sinasig'):''}
     ${!nums.length&&!sin.length?'<div class="empty">Sin escenas</div>':''}`;
 }
+
+/* ---------- vista gastos ---------- */
+function vistaGastos(pr,py,v){
+  const u = getUsuario();
+  if(!u) return `<div class="card"><div class="empty">
+    Todavía no hay nadie cargado en el equipo de <b>${esc(pr.nombre)}</b>.<br>
+    <span style="font-size:12px">Los comprobantes los carga cada departamento, así que primero
+    hay que dar de alta a la gente y decir qué rol tiene cada uno.</span><br><br>
+    <button class="btn pri" onclick="setTab('equipo')">Cargar el equipo</button></div></div>`;
+
+  const cs = getComprobantes();
+  const R = resumenGastos(py, v);
+  const sub = DB.ui.subGasto || 'bandeja';
+  const pend = cs.filter(c=>accionesDe(c,u).length);
+  const mios = cs.filter(c=>c.cargadoPor===u.id);
+  const S = [['bandeja',`Mi bandeja${pend.length?' · '+pend.length:''}`],
+             ['todos',`Todos · ${cs.length}`],['control','Presupuesto vs real']];
+  const lista = sub==='bandeja' ? (puede(u,'revisar') ? pend : mios) : cs;
+
+  return `<div class="noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <div class="seg">${S.map(([k,l])=>
+        `<button class="${sub===k?'on':''}" onclick="setSubGasto('${k}')">${l}</button>`).join('')}</div>
+      <div style="flex:1"></div>
+      <button class="btn pri" onclick="cargarComprobante()">+ Cargar comprobante</button>
+    </div>
+    ${sub==='control' ? controlHTML(R, v) : bandejaHTML(lista, u, R, sub, pr)}`;
+}
+
+function bandejaHTML(lista, u, R, sub, pr){
+  const chip = c => { const e=EST(c.estado);
+    return `<span class="est" style="color:${e.c};border-color:${e.c}55;background:${e.c}18">${e.l}</span>`; };
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">${sub==='bandeja'
+        ? (puede(u,'revisar') ? 'Esperan algo tuyo' : 'Lo que cargué') : 'Todos los comprobantes'}</div>
+        <div class="cssub">Estás como <b>${esc(u.nombre)}</b> · ${esc(ROL(u.rol).l)}
+          <span class="muted">— ${esc(ROL(u.rol).d)}</span></div></div>
+      <div style="text-align:right"><div class="csj">${lista.length}</div>
+        <div class="cssub">${sub==='bandeja'?'para vos':'en total'}</div></div>
+    </div>
+    <div class="pad noprint" style="display:flex;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);font-size:11.5px">
+      ${ESTADOS.filter(e=>R.porEstado[e.k]?.cant).map(e=>
+        `<span><span class="estdot" style="background:${e.c}"></span>
+         <b>${R.porEstado[e.k].cant}</b> ${esc(e.l.toLowerCase())}
+         <span class="muted">${fmt(R.porEstado[e.k].total, R.base)}</span></span>`).join('')
+        || '<span class="muted">Todavía no se cargó ningún comprobante.</span>'}
+    </div>
+    <div class="scrollx"><table class="tbl cst">
+      <thead><tr><th style="width:88px">Estado</th><th>Concepto</th><th style="width:19%">Proveedor</th>
+        <th style="width:52px">Rubro</th><th style="width:110px;text-align:right">Importe</th>
+        <th style="width:80px">Cargó</th><th class="noprint">Acciones</th></tr></thead>
+      <tbody>${lista.map(c=>{
+        const acc = accionesDe(c,u);
+        const quien = (pr.usuarios||[]).find(x=>x.id===c.cargadoPor);
+        return `<tr>
+          <td>${chip(c)}</td>
+          <td><b>${esc(c.subrubro||c.concepto||'—')}</b>
+            ${c.concepto&&c.subrubro?`<span class="muted" style="display:block;font-size:10.5px">${esc(c.concepto)}</span>`:''}
+            ${c.adjunto?'<span class="clip" title="Tiene foto adjunta">📎</span>':''}</td>
+          <td class="muted">${esc(c.proveedor||'—')}
+            ${c.tipo?`<span class="muted" style="display:block;font-size:10px">${esc(TIPO_CBTE(c.tipo))}${c.numero?' '+esc(c.numero):''}</span>`:''}</td>
+          <td><span class="rcode">${esc(c.rubro)}</span></td>
+          <td class="num" style="text-align:right"><b>${fmt(c.importe, c.moneda)}</b></td>
+          <td class="muted" style="font-size:10.5px">${esc(quien?quien.nombre.split(' ')[0]:'—')}
+            <span style="display:block">${esc(c.cargadoEl)}</span></td>
+          <td class="noprint" style="white-space:nowrap">
+            ${acc.filter(a=>a!=='rechazar').map(a=>
+              `<button class="btn sm pri" onclick="accionComprobante('${c.id}','${a}')">${esc(LBL_ACCION[a])}</button>`).join('')}
+            ${acc.includes('rechazar')?`<button class="btn sm dgr" onclick="accionComprobante('${c.id}','rechazar')">Rechazar</button>`:''}
+            <button class="btn sm" onclick="verComprobante('${c.id}')">Ver</button></td>
+        </tr>`;}).join('') || `<tr><td colspan="7" class="empty">
+          ${sub==='bandeja' ? 'No hay nada esperándote. Buen día.' : 'Sin comprobantes cargados.'}</td></tr>`}
+      </tbody></table></div>
+  </div>`;
+}
+const LBL_ACCION = {revisar:'Revisar ✓', aprobar:'Aprobar ✓', pagar:'Marcar pagado ✓'};
+const TIPOS_CBTE = [
+  {v:'facA',   l:'Factura A'},   {v:'facBC', l:'Factura B / C'},
+  {v:'reciboX',l:'Recibo oficial'}, {v:'reciboS', l:'Recibo simple'},
+  {v:'ticket', l:'Ticket'},      {v:'ninguno', l:'Sin comprobante'},
+];
+const TIPO_CBTE = k => (TIPOS_CBTE.find(x=>x.v===k)||{l:''}).l;
+
+/* Presupuestado vs real, rubro por rubro. */
+function controlHTML(R, v){
+  const barra = f => { const p = Math.min(100, f.presu ? f.gastado/f.presu*100 : (f.gastado?100:0));
+    const col = !f.presu && f.gastado ? 'var(--bad)' : p>100 ? 'var(--bad)' : p>85 ? 'var(--warn)' : 'var(--ok)';
+    return `<span class="barra"><i style="width:${p}%;background:${col}"></i></span>`; };
+  const conMov = R.filas.filter(f=>f.presu || f.gastado);
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Presupuestado vs real</div>
+        <div class="cssub">Sólo cuenta lo que no está rechazado · ${esc(R.base)}</div></div>
+      <div style="text-align:right">
+        <div class="csj">${R.totalPresu?Math.round(R.totalGastado/R.totalPresu*100):0}%<span> ejecutado</span></div>
+        <div class="cssub">${fmt(R.totalGastado,R.base)} de ${fmt(R.totalPresu,R.base)}</div></div>
+    </div>
+    <div class="scrollx"><table class="tbl cst">
+      <thead><tr><th style="width:44px">Cód.</th><th>Rubro</th>
+        <th style="width:118px;text-align:right">Presupuestado</th>
+        <th style="width:118px;text-align:right">Cargado</th>
+        <th style="width:118px;text-align:right">Pagado</th>
+        <th style="width:110px">Avance</th>
+        <th style="width:118px;text-align:right">Desvío</th></tr></thead>
+      <tbody>${conMov.map(f=>`<tr class="${f.desvio>0?'conhe':''}">
+        <td><span class="rcode">${esc(f.codigo)}</span></td>
+        <td>${esc(f.nombre)}${f.cant?`<span class="muted" style="font-size:10px"> · ${f.cant} cbte${f.cant==1?'':'s'}</span>`:''}</td>
+        <td class="num" style="text-align:right">${f.presu?fmt(f.presu,R.base):'—'}</td>
+        <td class="num" style="text-align:right"><b>${f.gastado?fmt(f.gastado,R.base):'—'}</b></td>
+        <td class="num muted" style="text-align:right">${f.pagado?fmt(f.pagado,R.base):'—'}</td>
+        <td>${barra(f)}</td>
+        <td class="num" style="text-align:right">${f.gastado?`<b>${f.desvio>0?'+':''}${fmt(f.desvio,R.base)}</b>`:'—'}</td>
+      </tr>`).join('') || '<tr><td colspan="7" class="empty">Sin movimientos</td></tr>'}
+      </tbody>
+      <tfoot><tr><td colspan="2"><b>Total</b></td>
+        <td class="num" style="text-align:right"><b>${fmt(R.totalPresu,R.base)}</b></td>
+        <td class="num" style="text-align:right"><b style="color:var(--ac)">${fmt(R.totalGastado,R.base)}</b></td>
+        <td class="num" style="text-align:right"><b>${fmt(R.totalPagado,R.base)}</b></td>
+        <td></td>
+        <td class="num" style="text-align:right"><b>${R.totalGastado-R.totalPresu>0?'+':''}${fmt(R.totalGastado-R.totalPresu,R.base)}</b></td>
+      </tr></tfoot></table></div>
+    <div class="pad muted" style="font-size:11.5px;line-height:1.5">
+      El presupuesto es el de la versión activa. Las horas extra del rodaje
+      <b>no están acá</b>: se ven en <b>Rodaje → Horas y extras</b> hasta que se carguen como comprobante.
+    </div></div>`;
+}
+
+/* ---------- vista equipo ---------- */
+function vistaEquipo(pr){
+  const us = pr.usuarios || [];
+  const esp = espacioUsado();
+  return `<div class="card"><h3>Equipo de ${esc(pr.nombre)}
+    <span class="spacer"></span>
+    <button class="btn sm pri" onclick="editUsuario()">+ Persona</button></h3>
+    <div class="pad muted" style="font-size:12px;line-height:1.6;border-bottom:1px solid var(--line)">
+      Cada persona carga los comprobantes de su área y el circuito los va moviendo:
+      <b>carga</b> el departamento → <b>revisa</b> producción → <b>aprueba</b> el ejecutivo →
+      <b>paga</b> administración. Cada paso queda firmado con quién y cuándo.
+      <div class="avisomodo" style="margin:10px 0 0">
+        <b>Esto todavía no es seguridad.</b> Sin servidor no hay contraseñas: el selector de arriba
+        simula quién sos para que cada uno vea su bandeja, pero cualquiera que abra el archivo puede
+        cambiarse de rol. Los datos y el circuito ya son los definitivos — cuando haya backend se
+        reemplaza el selector por un login y no cambia nada más.
+      </div>
+    </div>
+    ${us.length?`<div class="scrollx"><table class="tbl">
+      <thead><tr><th>Nombre</th><th>Rol</th><th>Departamento</th><th>Puede</th>
+        <th>Contacto</th><th></th></tr></thead>
+      <tbody>${us.map(u=>`<tr style="${u.id===getUsuario()?.id?'background:rgba(224,169,46,.06)':''}${u.activo?'':';opacity:.45'}">
+        <td><b>${esc(u.nombre)||'<span class="muted">sin nombre</span>'}</b>${u.activo?'':' <span class="muted">(inactivo)</span>'}</td>
+        <td><span class="est" style="color:var(--info);border-color:rgba(91,155,213,.4);background:rgba(91,155,213,.12)">${esc(ROL(u.rol).l)}</span></td>
+        <td class="muted">${esc(u.depto||'—')}</td>
+        <td class="muted" style="font-size:11px">${ROL(u.rol).puede.filter(x=>x!=='equipo').map(x=>esc(LBL_PUEDE[x]||x)).join(' · ')}</td>
+        <td class="muted" style="font-size:11px">${esc(u.email||'')}${u.email&&u.tel?'<br>':''}${esc(u.tel||'')}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn sm" onclick="setUsuario('${u.id}')">Entrar como</button>
+          <button class="btn sm" onclick="editUsuario('${u.id}')">Editar</button>
+          <button class="btn sm dgr" onclick="delUsuario('${u.id}')">×</button></td>
+      </tr>`).join('')}</tbody></table></div>`
+      :'<div class="empty">Sin nadie cargado. Empezá por vos.</div>'}
+    <div class="pad" style="border-top:1px solid var(--line)">
+      <div class="tot sub"><span>Espacio usado en este navegador</span>
+        <b>${esp.mb.toFixed(2)} MB <span class="muted">de ~5 MB</span></b></div>
+      <span class="barra" style="margin-top:6px"><i style="width:${esp.pct}%;background:${esp.pct>80?'var(--bad)':esp.pct>55?'var(--warn)':'var(--ok)'}"></i></span>
+      <div class="muted" style="font-size:11px;margin-top:6px;line-height:1.5">
+        Las fotos de los comprobantes son lo que más ocupa; se achican al cargarlas.
+        Si esto se llena, exportá el respaldo desde <b>Datos</b> y borrá proyectos cerrados.</div>
+    </div></div>`;
+}
+const LBL_PUEDE = {cargar:'cargar', revisar:'revisar', aprobar:'aprobar', pagar:'pagar'};
 
 /* ---------- vista rodaje ---------- */
 /* Pensada para que un asistente de producción la use en el set, con el celu
@@ -3099,6 +3504,205 @@ function normalizarJornada(j){
   j.parte ||= nuevoParte();
   j.parte.fichadas ||= {}; j.parte.citados ||= {}; j.parte.filmadas ||= [];
   return j;
+}
+
+/* ---------- equipo y sesión ---------- */
+function setUsuario(id){ DB.ui.usuarioId = id; DB.ui.subGasto='bandeja';
+  const u = getUsuarios().find(x=>x.id===id);
+  toast(u ? `Ahora sos ${u.nombre} · ${ROL(u.rol).l}` : ''); R(); }
+
+function editUsuario(id){
+  const pr = getPr(); pr.usuarios ||= [];
+  const u = id ? pr.usuarios.find(x=>x.id===id) : nuevoUsuario();
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+    <h3>${id?'Editar':'Nueva'} persona del equipo</h3><div class="mbody">
+      <div class="grid2">
+        ${campo('Nombre','nombre',u.nombre)}
+        ${sel('Rol','rol',u.rol,ROLES.map(r=>({v:r.k,l:r.l})))}
+        ${campo('Departamento / área','depto',u.depto,'text','placeholder="Arte, Cámara, Producción…"')}
+        ${campo('Email','email',u.email,'email')}
+        ${campo('Teléfono','tel',u.tel)}
+      </div>
+      <div class="sicabox" style="margin-top:14px">
+        ${ROLES.map(r=>`<div style="margin-bottom:5px"><b>${esc(r.l)}</b> — ${esc(r.d)}
+          <span class="muted" style="font-size:10.5px">(${r.puede.filter(x=>x!=='equipo').join(', ')})</span></div>`).join('')}
+      </div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px;cursor:pointer">
+        <input type="checkbox" name="activo" ${u.activo?'checked':''} style="width:auto;flex:none">
+        <span style="font-size:12.5px">Activo</span></label>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="saveUsuario('${id||''}')">Guardar</button></div>
+  </div></div>`);
+}
+function saveUsuario(id){
+  const d = datos(); const pr = getPr(); pr.usuarios ||= [];
+  const chk = document.querySelector('.mod [name=activo]');
+  let u = id ? pr.usuarios.find(x=>x.id===id) : nuevoUsuario();
+  Object.assign(u, {nombre:d.nombre||'Sin nombre', rol:d.rol, depto:d.depto,
+    email:d.email, tel:d.tel, activo: chk?chk.checked:true});
+  if(!id){ pr.usuarios.push(u); if(!DB.ui.usuarioId) DB.ui.usuarioId = u.id; }
+  cerrar();
+}
+function delUsuario(id){
+  const pr = getPr(); const u = pr.usuarios.find(x=>x.id===id);
+  const cargo = getComprobantes().filter(c=>c.cargadoPor===id).length;
+  if(cargo){ if(!confirm(`${u.nombre} cargó ${cargo} comprobante(s). Si lo borrás se pierde de quién fueron.\n\nMejor marcalo como inactivo. ¿Borrar igual?`)) return; }
+  else if(!confirm(`Eliminar a ${u.nombre} del equipo?`)) return;
+  pr.usuarios = pr.usuarios.filter(x=>x.id!==id);
+  if(DB.ui.usuarioId===id) DB.ui.usuarioId = pr.usuarios[0]?.id || null;
+  R();
+}
+
+/* ---------- comprobantes ---------- */
+function setSubGasto(k){ DB.ui.subGasto = k; R(); }
+
+function cargarComprobante(id){
+  const py = getPy(), v = getV(), u = getUsuario();
+  if(!u){ toast('Primero cargá el equipo'); setTab('equipo'); return; }
+  const c = id ? getComprobantes().find(x=>x.id===id) : nuevoComprobante({rubro:'', moneda: v?v.monedaBase:'ARS'});
+  const jorn = (py.desglose?.jornadas)||[];
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+    <h3>${id?'Editar comprobante':'Cargar comprobante'}
+      <span class="spacer"></span>
+      <span class="muted" style="font-size:11px;text-transform:none;letter-spacing:0">como ${esc(u.nombre)}</span></h3>
+    <div class="mbody">
+      <div class="grid2">
+        <label class="f"><span>Rubro</span>
+          <select name="rubro" onchange="alCambiarRubro(this.value)">
+            <option value="">— elegir —</option>
+            ${RUBROS_BASE.map(r=>`<option value="${r.codigo}" ${r.codigo===c.rubro?'selected':''}>${esc(r.codigo+' · '+r.nombre)}</option>`).join('')}
+          </select></label>
+        <label class="f"><span>Subrubro</span>
+          <select name="subrubro" id="csub">${subrubroOpts(c.rubro, c.subrubro)}</select></label>
+        ${campo('Detalle','concepto',c.concepto,'text','placeholder="opcional — qué es exactamente"')}
+        ${campo('Proveedor','proveedor',c.proveedor)}
+        ${campo('CUIT','cuit',c.cuit)}
+        ${sel('Comprobante','tipo',c.tipo,[{v:'',l:'— elegir —'},...TIPOS_CBTE])}
+        ${campo('Número','numero',c.numero)}
+        ${campo('Fecha','fecha',c.fecha,'date')}
+        ${campo('Importe','importe',c.importe,'number','step="any"')}
+        ${sel('Moneda','moneda',c.moneda,['ARS','USD'])}
+        ${sel('Cómo se paga','circuito',c.circuito,CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
+        ${jorn.length?sel('Jornada','jornada',c.jornada??'',[{v:'',l:'— sin jornada —'},...jorn.map(j=>({v:j.numero,l:'Jornada '+j.numero}))]):''}
+      </div>
+      <label class="f" style="margin-top:12px"><span>Notas</span>
+        <textarea name="notas" rows="2" placeholder="Lo que producción necesite saber para revisarlo">${esc(c.notas)}</textarea></label>
+      <div style="margin-top:14px">
+        <span class="f" style="display:block"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700">Foto del comprobante</span></span>
+        <div id="cadj" style="margin-top:6px">${adjuntoHTML(c.adjunto)}</div>
+        <input type="file" id="cfile" accept="image/*" capture="environment" style="display:none" onchange="subirAdjunto(this)">
+        <button class="btn" style="margin-top:7px" onclick="document.getElementById('cfile').click()">
+          ${c.adjunto?'Cambiar la foto':'Sacar o elegir foto'}</button>
+        <span class="muted" style="font-size:10.5px;margin-left:8px">se achica sola antes de guardarse</span>
+      </div>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="saveComprobante('${id||''}')">${id?'Guardar':'Cargar'}</button></div>
+  </div></div>`);
+}
+/* el subrubro sigue al rubro elegido */
+function alCambiarRubro(rubro){
+  const t = document.getElementById('csub');
+  if(t) t.innerHTML = subrubroOpts(rubro, '');
+}
+function subrubroOpts(rubro, sel0){
+  const xs = FUNCIONES[rubro] || [];
+  return `<option value="">${xs.length?'— elegir —':'— elegí primero el rubro —'}</option>` +
+    xs.map(x=>`<option ${x===sel0?'selected':''}>${esc(x)}</option>`).join('');
+}
+function adjuntoHTML(a){
+  if(!a) return '<span class="muted" style="font-size:11.5px">Sin foto. En el celu abre la cámara directo.</span>';
+  return `<div class="adj"><img src="${a.dataUrl}" alt="comprobante">
+    <span class="muted" style="font-size:10.5px">${esc(a.nombre)} · ${a.w}×${a.h} · ${Math.round(a.bytes/1024)} KB</span></div>`;
+}
+let _adjTmp;
+async function subirAdjunto(inp){
+  const f = inp.files[0]; if(!f) return;
+  inp.value='';
+  toast('Achicando la foto…');
+  try{
+    _adjTmp = await achicarImagen(f);
+    const cont = document.getElementById('cadj');
+    if(cont) cont.innerHTML = adjuntoHTML(_adjTmp);
+    toast(`Foto lista · ${Math.round(_adjTmp.bytes/1024)} KB`);
+  }catch(e){ alert('No pude usar esa imagen.\n\n'+e.message); }
+}
+function saveComprobante(id){
+  const d = datos(); const py = getPy(); const u = getUsuario();
+  py.comprobantes ||= [];
+  let c = id ? py.comprobantes.find(x=>x.id===id) : nuevoComprobante();
+  const nuevo = !id;
+  Object.assign(c, {rubro:d.rubro, subrubro:d.subrubro, concepto:d.concepto,
+    proveedor:d.proveedor, cuit:d.cuit, tipo:d.tipo, numero:d.numero, fecha:d.fecha,
+    importe:n(d.importe), moneda:d.moneda, circuito:d.circuito,
+    jornada: d.jornada ? parseInt(d.jornada,10) : null, notas:d.notas});
+  if(_adjTmp){ c.adjunto = _adjTmp; _adjTmp = null; }
+  if(!c.rubro || !c.importe){ alert('Falta el rubro o el importe.'); return; }
+  if(nuevo){
+    c.cargadoPor = u.id; c.cargadoEl = hoy(); c.estado = 'cargado';
+    c.historial = [{de:null, a:'cargado', accion:'cargar', usuario:u.nombre,
+      usuarioId:u.id, rol:u.rol, fecha:hoy(), nota:''}];
+    py.comprobantes.push(c);
+    toast('Comprobante cargado — queda esperando a producción');
+  }
+  cerrar();
+}
+function accionComprobante(id, accion){
+  const c = getComprobantes().find(x=>x.id===id);
+  let nota = '';
+  if(accion==='rechazar'){
+    nota = prompt('¿Por qué lo rechazás? (lo va a leer quien lo cargó)');
+    if(nota===null) return;
+    if(!nota.trim()){ toast('Poné el motivo, si no no sirve'); return; }
+  }
+  moverComprobante(id, accion, nota);
+  const e = EST(getComprobantes().find(x=>x.id===id).estado);
+  toast(`${c.subrubro||c.concepto||'Comprobante'} → ${e.l}`);
+  R();
+}
+function verComprobante(id){
+  const c = getComprobantes().find(x=>x.id===id);
+  const u = getUsuario(); const acc = accionesDe(c,u);
+  const e = EST(c.estado);
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+    <h3>${esc(c.subrubro||c.concepto||'Comprobante')}
+      <span class="spacer"></span>
+      <span class="est" style="color:${e.c};border-color:${e.c}55;background:${e.c}18">${e.l}</span></h3>
+    <div class="mbody">
+      <div class="grid2" style="font-size:12.5px">
+        ${[['Rubro', c.rubro+' · '+((RUBROS_BASE.find(r=>r.codigo===c.rubro)||{}).nombre||'')],
+           ['Proveedor', c.proveedor||'—'],['CUIT', c.cuit||'—'],
+           ['Comprobante', (TIPO_CBTE(c.tipo)||'—')+(c.numero?' '+c.numero:'')],
+           ['Fecha', c.fecha],['Importe', fmt(c.importe, c.moneda)],
+           ['Cómo se paga', (CIRCUITOS.find(x=>x.v===c.circuito)||{l:'—'}).l],
+           ['Jornada', c.jornada?('Jornada '+c.jornada):'—']].map(([k,val])=>
+          `<div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700;display:block">${esc(k)}</span>${esc(val)}</div>`).join('')}
+      </div>
+      ${c.notas?`<div class="sicabox" style="margin-top:12px"><b>Nota de quien lo cargó:</b> ${esc(c.notas)}</div>`:''}
+      ${c.adjunto?`<div style="margin-top:12px">${adjuntoHTML(c.adjunto)}</div>`:''}
+      <div style="margin:16px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Recorrido</div>
+      <div class="linea-tiempo">${c.historial.map(h=>`<div class="hito">
+        <i style="background:${EST(h.a).c}"></i>
+        <div><b>${esc(EST(h.a).l)}</b> <span class="muted">· ${esc(h.usuario)}${h.rol?' ('+esc(ROL(h.rol).l)+')':''} · ${esc(h.fecha)}</span>
+        ${h.nota?`<span style="display:block;color:var(--bad);font-size:11.5px">“${esc(h.nota)}”</span>`:''}</div>
+      </div>`).join('')}</div>
+    </div>
+    <div class="mfoot">
+      <button class="btn dgr" onclick="delComprobante('${c.id}')">Eliminar</button>
+      <div style="flex:1"></div>
+      <button class="btn" onclick="cerrar()">Cerrar</button>
+      ${puede(u,'cargar')&&c.estado!=='pagado'?`<button class="btn" onclick="cerrar();cargarComprobante('${c.id}')">Editar</button>`:''}
+      ${acc.filter(a=>a!=='rechazar').map(a=>
+        `<button class="btn pri" onclick="cerrar();accionComprobante('${c.id}','${a}')">${esc(LBL_ACCION[a])}</button>`).join('')}
+    </div>
+  </div></div>`);
+}
+function delComprobante(id){
+  if(!confirm('Eliminar este comprobante y su recorrido?')) return;
+  const py = getPy();
+  py.comprobantes = py.comprobantes.filter(x=>x.id!==id);
+  cerrar();
 }
 
 /* ---------- tarifario de convenio ---------- */
