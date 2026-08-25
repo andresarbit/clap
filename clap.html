@@ -261,6 +261,16 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .ctab input{width:100%}
 .ctab input[type=email]{font-size:11.5px}
 .csblock>h4 .btn{font-weight:600;letter-spacing:0;text-transform:none}
+/* conexión con el backend */
+.btn.nube-on{border-color:rgba(63,178,127,.5);color:var(--ok)}
+.diag{display:flex;flex-direction:column;gap:1px}
+.diagf{display:flex;gap:9px;align-items:flex-start;padding:8px 10px;font-size:12.5px;
+  background:var(--bg3);border-radius:var(--r)}
+.diagf i{font-style:normal;font-weight:800;width:16px;flex:none;text-align:center}
+.diagf.si i{color:var(--ok)}
+.diagf.no i{color:var(--bad)}
+.diagf.no{background:rgba(224,90,90,.08)}
+
 /* instructivo */
 .guiawrap{display:grid;grid-template-columns:250px 1fr;gap:0}
 .guianav{border-right:1px solid var(--line);padding:9px 0;background:var(--bg)}
@@ -1739,6 +1749,149 @@ function resumenDesglose(d){
     ext: esc.filter(e=>e.intExt!=='INT').length};
 }
 
+/* =========================  BACKEND (Supabase)  ===========================
+   La conexión vive en su propia clave de localStorage, SEPARADA de los datos.
+   Dos razones:
+     · el archivo .html se puede compartir sin que viajen credenciales adentro;
+     · cada persona apunta a su propio proyecto de Supabase.
+   La clave que se usa acá es la ANÓNIMA (anon/publishable), que está hecha
+   para vivir en el navegador. Lo que protege los datos NO es esa clave: es
+   Row Level Security del lado de la base. La clave service_role y la
+   contraseña de la base NO van acá nunca.                                    */
+
+const KEY_SB = 'clap.backend';
+let SB = {url:'', anon:'', access:null, refresh:null, user:null, expira:0};
+
+function sbCargar(){
+  try{ const raw = localStorage.getItem(KEY_SB);
+    if(raw) SB = {...SB, ...JSON.parse(raw)};
+  }catch(e){ /* config corrupta: se arranca desconectado */ }
+}
+function sbGuardar(){
+  try{ localStorage.setItem(KEY_SB, JSON.stringify(SB)); }catch(e){}
+}
+function sbOlvidar(){
+  SB = {url:'', anon:'', access:null, refresh:null, user:null, expira:0};
+  try{ localStorage.removeItem(KEY_SB); }catch(e){}
+}
+const sbConfigurado = () => !!(SB.url && SB.anon);
+const sbConectado   = () => !!(sbConfigurado() && SB.access && SB.user);
+
+/* Normaliza lo que pegue una persona: con o sin https, con o sin barra final */
+function sbNormalizarUrl(u){
+  let s = String(u||'').trim().replace(/\/+$/,'');
+  if(!s) return '';
+  if(!/^https?:\/\//i.test(s)) s = 'https://' + s;
+  return s;
+}
+
+/* Un solo lugar donde se arma la llamada, así los headers no se olvidan. */
+async function sbFetch(ruta, opts={}){
+  if(!sbConfigurado()) throw new Error('Todavía no configuraste la conexión.');
+  const headers = {'apikey': SB.anon, 'Content-Type':'application/json', ...(opts.headers||{})};
+  if(SB.access && !opts.sinToken) headers['Authorization'] = 'Bearer ' + SB.access;
+  let res;
+  try{
+    res = await fetch(SB.url + ruta, {...opts, headers});
+  }catch(e){
+    throw new Error('No pude llegar al servidor. Revisá la URL y que tengas internet.');
+  }
+  const txt = await res.text();
+  let data = null;
+  if(txt){ try{ data = JSON.parse(txt); }catch(e){ data = txt; } }
+  if(!res.ok){
+    const msg = (data && (data.msg || data.message || data.error_description || data.error || data.hint)) || res.statusText;
+    const err = new Error(sbMensaje(res.status, msg));
+    err.status = res.status; err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+/* Los errores crudos de Supabase no le dicen nada a nadie. */
+function sbMensaje(status, msg){
+  const m = String(msg||'');
+  if(status===401 && /invalid.*credential|grant/i.test(m)) return 'Mail o contraseña incorrectos.';
+  if(status===401) return 'La clave anónima no es válida para este proyecto.';
+  if(status===400 && /already registered/i.test(m)) return 'Ese mail ya está registrado. Entrá con tu contraseña.';
+  if(status===400 && /password/i.test(m)) return 'La contraseña es muy corta: mínimo 6 caracteres.';
+  if(status===404) return 'No encontré eso en el servidor. ¿Corriste el esquema SQL?';
+  if(status===403) return 'El servidor no te deja hacer eso (revisá las políticas de acceso).';
+  if(/relation .* does not exist/i.test(m)) return 'Falta una tabla: todavía no corriste backend/esquema.sql.';
+  return m || ('Error ' + status);
+}
+
+/* --- sesión ------------------------------------------------------------- */
+function sbGuardarSesion(d){
+  SB.access = d.access_token; SB.refresh = d.refresh_token;
+  SB.user = d.user ? {id:d.user.id, email:d.user.email} : SB.user;
+  SB.expira = Date.now() + ((d.expires_in||3600) * 1000) - 60000;   /* 1 min de margen */
+  sbGuardar();
+}
+async function sbLogin(email, pass){
+  const d = await sbFetch('/auth/v1/token?grant_type=password', {method:'POST', sinToken:true,
+    body: JSON.stringify({email:String(email||'').trim(), password:pass})});
+  sbGuardarSesion(d); return SB.user;
+}
+async function sbRegistrar(email, pass){
+  const d = await sbFetch('/auth/v1/signup', {method:'POST', sinToken:true,
+    body: JSON.stringify({email:String(email||'').trim(), password:pass})});
+  /* si el proyecto pide confirmar el mail, no vuelve token */
+  if(d && d.access_token){ sbGuardarSesion(d); return {entro:true, user:SB.user}; }
+  return {entro:false, user:d && d.user ? {id:d.user.id, email:d.user.email} : null};
+}
+async function sbRenovar(){
+  if(!SB.refresh) throw new Error('No hay sesión para renovar.');
+  const d = await sbFetch('/auth/v1/token?grant_type=refresh_token', {method:'POST', sinToken:true,
+    body: JSON.stringify({refresh_token: SB.refresh})});
+  sbGuardarSesion(d); return SB.user;
+}
+/* Renueva sola si el token está por vencer. Se llama antes de cada operación. */
+async function sbSesionViva(){
+  if(!SB.access) return false;
+  if(Date.now() < SB.expira) return true;
+  try{ await sbRenovar(); return true; }
+  catch(e){ SB.access = null; SB.user = null; sbGuardar(); return false; }
+}
+async function sbSalir(){
+  try{ if(SB.access) await sbFetch('/auth/v1/logout', {method:'POST'}); }catch(e){}
+  SB.access = null; SB.refresh = null; SB.user = null; SB.expira = 0; sbGuardar();
+}
+
+/* --- diagnóstico --------------------------------------------------------
+   Antes de sincronizar nada conviene saber qué falta. Devuelve una lista de
+   pasos con su estado, para mostrarla y no adivinar.                        */
+const TABLAS_CLAVE = ['organizacion','productora','usuario','proyecto','comprobante','comprobante_paso'];
+
+async function sbDiagnostico(){
+  const pasos = [];
+  const paso = (t, ok, detalle) => { pasos.push({t, ok, detalle}); return ok; };
+
+  if(!sbConfigurado()){ paso('Conexión configurada', false, 'Falta la URL o la clave anónima.'); return pasos; }
+  paso('Conexión configurada', true, SB.url);
+
+  /* la URL responde y la clave sirve */
+  try{
+    await sbFetch('/auth/v1/settings', {sinToken:true});
+    paso('El servidor responde y la clave es válida', true, '');
+  }catch(e){ paso('El servidor responde y la clave es válida', false, e.message); return pasos; }
+
+  /* sesión */
+  if(await sbSesionViva()) paso('Sesión iniciada', true, SB.user?.email || '');
+  else { paso('Sesión iniciada', false, 'Entrá con tu mail y contraseña.'); return pasos; }
+
+  /* las tablas del esquema */
+  const faltan = [];
+  for(const t of TABLAS_CLAVE){
+    try{ await sbFetch(`/rest/v1/${t}?select=*&limit=1`); }
+    catch(e){ if(e.status===404 || /no encontré|falta una tabla/i.test(e.message)) faltan.push(t); }
+  }
+  paso('Esquema cargado', faltan.length===0,
+    faltan.length ? `Faltan estas tablas: ${faltan.join(', ')}. Corré backend/esquema.sql en el editor SQL de Supabase.`
+                  : `${TABLAS_CLAVE.length} tablas encontradas`);
+  return pasos;
+}
+
 /* ===========================  STORE  ====================================== */
 
 const KEY = 'clap.db.v1';
@@ -2000,6 +2153,8 @@ function header(pr,py,v){
         <button class="${DB.ui.vista==='interna'?'on':''}" onclick="setVista('interna')">Interna</button>
         <button class="${DB.ui.vista==='cliente'?'on':''}" onclick="setVista('cliente')">Cliente</button>
       </div>`:''}
+      <button class="btn ${sbConectado()?'nube-on':''}" onclick="menuNube()"
+        title="${sbConectado()?'Conectado a Supabase como '+esc(SB.user.email):'Sin conectar — los datos viven sólo en este navegador'}">☁</button>
       <button class="btn" onclick="menuDatos()">Datos ▾</button>
     </div>
     <div class="tabs">${TABS.map(([k,l])=>
@@ -4960,10 +5115,113 @@ function expDesgloseCSV(){
   cerrar(); toast('Desglose exportado');
 }
 
+/* ---------- conexión con el backend ---------- */
+function menuNube(){
+  const cfg = sbConfigurado(), con = sbConectado();
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+    <h3>Conexión con Supabase
+      <span class="spacer"></span>
+      <span class="est" style="${con?'color:#3fb27f;border-color:#3fb27f55;background:#3fb27f18'
+        :cfg?'color:#e0a92e;border-color:#e0a92e55;background:#e0a92e18'
+        :'color:#9ba1ac;border-color:#9ba1ac55;background:#9ba1ac18'}">${con?'Conectado':cfg?'Sin sesión':'Sin configurar'}</span></h3>
+    <div class="mbody">
+      ${con ? `<div class="sicabox"><b>${esc(SB.user.email)}</b>
+        <span style="display:block;margin-top:3px" class="muted">${esc(SB.url)}</span></div>`
+      : `<div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">
+          Pegá los datos de tu proyecto de Supabase. Están en
+          <b>Project Settings → API</b>: la <b>URL</b> y la clave <b>anon / publishable</b>.
+          <div class="avisomodo" style="margin-top:9px">
+            <b>Sólo la clave anónima.</b> Esa está hecha para vivir en el navegador.
+            La <code>service_role</code> y la contraseña de la base <b>no van acá nunca</b>:
+            quien las tiene puede leer y borrar todo salteándose los permisos.
+          </div></div>`}
+
+      ${!cfg ? `<div class="grid2">
+        ${campo('URL del proyecto','sburl','','text','placeholder="https://xxxx.supabase.co"')}
+        ${campo('Clave anónima (anon / publishable)','sbanon','','text','placeholder="eyJ… o sb_publishable_…"')}
+      </div>` : ''}
+
+      ${cfg && !con ? `<div class="grid2">
+        ${campo('Mail','sbmail','','email')}
+        ${campo('Contraseña','sbpass','','password','placeholder="mínimo 6 caracteres"')}
+      </div>
+      <div class="muted" style="font-size:11.5px;margin-top:8px">
+        Si es la primera vez, tocá <b>Crear cuenta</b>. Según cómo tengas configurado el
+        proyecto, Supabase puede pedirte confirmar el mail antes de dejarte entrar.</div>` : ''}
+
+      <div id="sbdiag" style="margin-top:14px"></div>
+    </div>
+    <div class="mfoot">
+      ${cfg?`<button class="btn dgr" onclick="sbDesconectar()">Olvidar conexión</button>`:''}
+      <div style="flex:1"></div>
+      <button class="btn" onclick="cerrar()">Cerrar</button>
+      ${!cfg ? `<button class="btn pri" onclick="sbGuardarConfig()">Guardar y probar</button>` : ''}
+      ${cfg && !con ? `<button class="btn" onclick="sbAccion('registrar')">Crear cuenta</button>
+                       <button class="btn pri" onclick="sbAccion('entrar')">Entrar</button>` : ''}
+      ${con ? `<button class="btn" onclick="sbCorrerDiagnostico()">Revisar estado</button>
+               <button class="btn" onclick="sbCerrarSesion()">Cerrar sesión</button>` : ''}
+    </div>
+  </div></div>`);
+  if(cfg) setTimeout(sbCorrerDiagnostico, 60);
+}
+
+function sbGuardarConfig(){
+  const d = datos();
+  const url = sbNormalizarUrl(d.sburl), anon = String(d.sbanon||'').trim();
+  if(!url || !anon){ alert('Faltan la URL o la clave.'); return; }
+  if(/service_role|^sb_secret_/i.test(anon) || /"role"\s*:\s*"service_role"/.test(anon)){
+    alert('Esa es la clave service_role.\n\nNo la uses acá: se saltea todos los permisos. ' +
+          'Usá la clave anon / publishable.');
+    return;
+  }
+  SB.url = url; SB.anon = anon; sbGuardar();
+  cerrar(); menuNube();
+}
+async function sbAccion(cual){
+  const d = datos();
+  const mail = d.sbmail, pass = d.sbpass;
+  if(!mail || !pass){ alert('Poné mail y contraseña.'); return; }
+  const cont = document.getElementById('sbdiag');
+  if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Conectando…</div>';
+  try{
+    if(cual==='registrar'){
+      const r = await sbRegistrar(mail, pass);
+      if(!r.entro){
+        if(cont) cont.innerHTML = `<div class="sicabox"><b>Cuenta creada.</b> Supabase te mandó un mail
+          para confirmar la dirección. Confirmalo y después entrá con tu contraseña.</div>`;
+        return;
+      }
+    } else await sbLogin(mail, pass);
+    cerrar(); menuNube();
+    toast('Conectado como ' + SB.user.email);
+  }catch(e){
+    if(cont) cont.innerHTML = `<div class="avisomodo turno-mal"><b>No pude entrar.</b> ${esc(e.message)}</div>`;
+  }
+}
+async function sbCerrarSesion(){ await sbSalir(); cerrar(); menuNube(); toast('Sesión cerrada'); }
+function sbDesconectar(){
+  if(!confirm('Se borra la URL y la clave de este navegador.\n\nTus datos locales no se tocan. ¿Seguir?')) return;
+  sbOlvidar(); cerrar(); menuNube();
+}
+async function sbCorrerDiagnostico(){
+  const cont = document.getElementById('sbdiag');
+  if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Revisando…</div>';
+  const pasos = await sbDiagnostico();
+  if(!cont) return;
+  const falta = pasos.find(p=>!p.ok);
+  cont.innerHTML = `<div class="diag">${pasos.map(p=>`<div class="diagf ${p.ok?'si':'no'}">
+      <i>${p.ok?'✓':'✕'}</i>
+      <span><b>${esc(p.t)}</b>${p.detalle?`<span class="muted" style="display:block;font-size:11px">${esc(p.detalle)}</span>`:''}</span>
+    </div>`).join('')}</div>
+    ${!falta ? `<div class="sicabox" style="margin-top:10px"><b>Todo listo.</b>
+       La base está en pie y con sesión. El paso que sigue es migrar tus datos locales.</div>`:''}`;
+}
+
 /* ---------- datos: export / import / csv / reset ---------- */
 function menuDatos(){
   abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:430px">
     <h3>Datos</h3><div class="mbody" style="display:flex;flex-direction:column;gap:7px">
+      <button class="btn pri" onclick="cerrar();menuNube()">☁ Conectar con Supabase</button>
       <button class="btn" onclick="expJSON()">⬇ Exportar todo (.json) — respaldo completo</button>
       <button class="btn" onclick="document.getElementById('imp').click()">⬆ Importar respaldo (.json)</button>
       <button class="btn" onclick="expCSV()">⬇ Exportar presupuesto actual (.csv)</button>
@@ -5015,6 +5273,7 @@ function resetDB(){
   DB=dbVacia(); sembrar(); cerrar(); toast('Base reiniciada'); }
 
 /* ===========================  ARRANQUE  =================================== */
+sbCargar();
 cargar();
 render();
 window.addEventListener('beforeunload', ()=>{ clearTimeout(_t);

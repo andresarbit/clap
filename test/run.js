@@ -1,5 +1,7 @@
 const store={};
-global.localStorage={getItem:k=>store[k]??null,setItem:(k,v)=>store[k]=v};
+global.localStorage={getItem:k=>store[k]??null,setItem:(k,v)=>store[k]=String(v),
+  removeItem:k=>{delete store[k]},clear:()=>{for(const k in store)delete store[k]},
+  key:i=>Object.keys(store)[i]??null,get length(){return Object.keys(store).length}};
 const fake={innerHTML:'',insertAdjacentHTML(){},scrollTop:0,className:'',textContent:'',
   appendChild(){},remove(){},click(){},addEventListener(){},style:{},href:'',download:''};
 global.document={querySelector:()=>fake,querySelectorAll:()=>[],createElement:()=>({...fake,style:{}}),

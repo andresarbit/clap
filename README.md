@@ -293,6 +293,7 @@ node test/run.js test/gastos.js    # rubros, roles y circuito de aprobacion
 node test/run.js test/plata.js     # ordenes de compra, caja chica y tablero
 node test/run.js test/resumen.js   # portada, pendientes y datos de ejemplo
 node test/run.js test/guia.js      # instructivo: contenido, navegacion y que no mienta
+node test/run.js test/backend.js   # conexion, login, renovacion de sesion y diagnostico
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```
