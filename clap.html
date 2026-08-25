@@ -321,6 +321,10 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .est{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.03em;
   padding:2px 7px;border-radius:20px;border:1px solid;white-space:nowrap}
 .estdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:baseline}
+.areachip{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:4px;
+  background:rgba(143,122,212,.16);color:#b39ce4;margin-left:4px;white-space:nowrap}
+.areachip.grande{font-size:11px;padding:3px 8px;margin:2px 4px 2px 0}
+.areachip.grande b{font-family:var(--mono);margin-left:5px;color:var(--tx)}
 .clip{font-size:11px;opacity:.7;margin-left:4px}
 .barra{display:block;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;min-width:60px}
 .barra i{display:block;height:100%;border-radius:4px;transition:width .2s}
@@ -337,6 +341,8 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .hito:not(:last-child)::before{content:'';position:absolute;left:5px;top:14px;bottom:0;width:1px;background:var(--line2)}
 .hito i{width:11px;height:11px;border-radius:50%;flex:none;margin-top:3px;z-index:1;
   box-shadow:0 0 0 3px var(--bg2)}
+.propio{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:4px;
+  background:rgba(224,145,62,.16);color:var(--warn);margin-left:6px}
 
 /* tarifario de convenio */
 .sica{font:600 10.5px var(--mono);color:var(--info);background:rgba(91,155,213,.13);
@@ -581,7 +587,43 @@ const FUNCIONES = {
 };
 
 /* Todos los subrubros como una lista plana, para buscar al clasificar. */
-const SUBRUBROS = Object.entries(FUNCIONES).flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
+let SUBRUBROS = Object.entries(FUNCIONES).flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
+
+/* --------------------------------------------------------------------------
+   ÁREAS (centros de costo). El rubro dice QUÉ es el gasto; el área dice DE
+   QUIÉN es. Sin esto, la nafta de arte y la de producción caen en la misma
+   bolsa y después no se sabe quién se pasó.                                  */
+const AREAS = [
+  {k:'produccion', l:'Producción',           r:'03'},
+  {k:'direccion',  l:'Dirección',            r:'02'},
+  {k:'camara',     l:'Fotografía y Cámara',  r:'04'},
+  {k:'electrica',  l:'Eléctrica y Grip',     r:'05'},
+  {k:'arte',       l:'Arte',                 r:'06'},
+  {k:'vestuario',  l:'Vestuario y Maquillaje',r:'07'},
+  {k:'sonido',     l:'Sonido',               r:'08'},
+  {k:'elenco',     l:'Elenco',               r:'09'},
+  {k:'locaciones', l:'Locaciones',           r:'10'},
+  {k:'catering',   l:'Catering',             r:'13'},
+  {k:'post',       l:'Postproducción',       r:'14'},
+  {k:'admin',      l:'Administración',       r:'17'},
+];
+const AREA = k => AREAS.find(a=>a.k===k) || null;
+const areaLbl = k => (AREA(k)||{l:'— sin área —'}).l;
+/* Área probable a partir del rubro, para no obligar a elegir dos veces. */
+const areaDeRubro = r => (AREAS.find(a=>a.r===r)||{}).k || '';
+
+/* Gastos que existen en TODAS las áreas: la nafta de arte, la de producción,
+   el flete de vestuario. Se agregan a cada rubro de departamento para poder
+   presupuestarlos ahí, y el área los separa cuando se cargan.                */
+const COMUNES = ['Combustible del área','Movilidad y estacionamiento','Fletes y envíos',
+  'Compras varias','Viáticos del área','Alquiler de vehículo'];
+
+/* Los gastos comunes se agregan a cada rubro de departamento: asi la nafta se
+   puede presupuestar dentro de arte, y el area la separa al cargarla.        */
+['02','03','04','05','06','07','08','10','13','14'].forEach(r=>{
+  COMUNES.forEach(c=>{ if(!FUNCIONES[r].includes(c)) FUNCIONES[r].push(c); });
+});
+SUBRUBROS = Object.entries(FUNCIONES).flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
 
 /* Unidades de contratación */
 /* Escala salarial SICA · publicidad. Salarios BRUTOS de convenio, por
@@ -677,6 +719,7 @@ const CONDICIONES = ['Responsable Inscripto','Monotributista','Exento','Consumid
 /* Fábricas de entidades ---------------------------------------------------- */
 function nuevaLinea(o={}){
   return {id:uid('ln'), concepto:o.concepto||'', refId:o.refId||null, refTipo:o.refTipo||null,
+    area:o.area||'',
     cantidad:o.cantidad??1, dias:o.dias??1, unidad:o.unidad||'jornada',
     valorUnit:o.valorUnit??0, moneda:o.moneda||'ARS',
     circuito:o.circuito||'', comprobante:o.comprobante||'', notas:o.notas||''};
@@ -862,7 +905,7 @@ function nuevoComprobante(o={}){
     tipo:o.tipo||'', numero:o.numero||'', fecha:o.fecha||hoy(),
     importe:o.importe??0, moneda:o.moneda||'ARS',
     circuito:o.circuito||'', lineaId:o.lineaId||null, jornada:o.jornada??null,
-    ocId:o.ocId||null, cajaId:o.cajaId||null,
+    ocId:o.ocId||null, cajaId:o.cajaId||null, area:o.area||'',
     estado:o.estado||'cargado', cargadoPor:o.cargadoPor||null, cargadoEl:o.cargadoEl||hoy(),
     historial:o.historial||[], adjunto:o.adjunto||null, notas:o.notas||''};
 }
@@ -880,7 +923,7 @@ const ESTADOS_OC = [
 const EST_OC = k => ESTADOS_OC.find(e=>e.k===k) || ESTADOS_OC[0];
 
 function nuevaOC(o={}){
-  return {id:uid('oc'), numero:o.numero||'', rubro:o.rubro||'', subrubro:o.subrubro||'',
+  return {id:uid('oc'), numero:o.numero||'', rubro:o.rubro||'', subrubro:o.subrubro||'', area:o.area||'',
     concepto:o.concepto||'', proveedor:o.proveedor||'', cuit:o.cuit||'',
     importe:o.importe??0, moneda:o.moneda||'ARS',
     fecha:o.fecha||hoy(), entrega:o.entrega||'', condicion:o.condicion||'',
@@ -1696,6 +1739,11 @@ function personajesLibres(b){
     if(NO_PERSONAJE.has(nom) || out.includes(nom)) return;
     if(nom.split(/\s+/).some(x=>NO_PERSONAJE.has(x))) return;
     if(LUGARES.INT.includes(norm(nom)) || LUGARES.EXT.includes(norm(nom))) return;
+    /* "el PERRO entra corriendo" está en mayúsculas como un personaje, pero es
+       un animal. Si la palabra ya es un elemento de otro departamento, gana
+       ese: el perro va a Animales, el COLECTIVO a Vehículos.                 */
+    if((DICC.animales||[]).includes(norm(nom))) return;
+    if((DICC.vehiculos||[]).includes(norm(nom))) return;
     out.push(nom);
   });
   return out;
@@ -3006,12 +3054,13 @@ function vistaGastos(pr,py,v){
              ['todos',`Comprobantes · ${cs.length}`],
              ['oc',`Órdenes de compra${getOCs().length?' · '+getOCs().length:''}`],
              ['caja',`Caja chica${abiertas?' · '+abiertas:''}`],
-             ['control','Tablero']];
+             ['areas','Áreas'],['control','Tablero']];
   let lista = sub==='bandeja' ? (puede(u,'revisar') ? pend : mios) : cs;
   /* filtros: administración necesita ver "todas las facturas de arte" */
-  const F = DB.ui.fGasto || {rubro:'', estado:'', q:''};
+  const F = DB.ui.fGasto || {rubro:'', estado:'', q:'', area:''};
   if(sub!=='bandeja'){
     if(F.rubro)  lista = lista.filter(c=>c.rubro===F.rubro);
+    if(F.area)   lista = lista.filter(c=>F.area==='__sin' ? !c.area : c.area===F.area);
     if(F.estado) lista = lista.filter(c=>c.estado===F.estado);
     if(F.q){ const q = norm(F.q);
       lista = lista.filter(c=>[c.proveedor,c.subrubro,c.concepto,c.numero,c.cuit]
@@ -3021,6 +3070,7 @@ function vistaGastos(pr,py,v){
                  todos:['+ Cargar comprobante','cargarComprobante()'],
                  oc:['+ Nueva orden de compra','editOC()'],
                  caja:['+ Abrir caja chica','editCaja()'],
+                 areas:['+ Cargar comprobante','cargarComprobante()'],
                  control:['+ Cargar comprobante','cargarComprobante()']}[sub];
 
   return `<div class="noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
@@ -3030,6 +3080,7 @@ function vistaGastos(pr,py,v){
       <button class="btn pri" onclick="${nuevo[1]}">${nuevo[0]}</button>
     </div>
     ${sub==='control' ? tableroHTML(py,v)
+    : sub==='areas'   ? areasHTML(py,v)
     : sub==='oc'      ? ocsHTML(py,v,u)
     : sub==='caja'    ? cajasHTML(py,v,u,pr)
                       : bandejaHTML(lista, u, R, sub, pr, py, v, cs)}`;
@@ -3138,6 +3189,78 @@ function cajasHTML(py,v,u,pr){
   </div>`;
 }
 
+/* Gasto por área, y el detalle de un subrubro repartido entre áreas.
+   Esto es lo que contesta "cuánta nafta gastó arte y cuánta producción". */
+function resumenAreas(py, v){
+  const base = v?v.monedaBase:'ARS', tc = v?n(v.tc):1000;
+  const cs = (py.comprobantes||[]).filter(c=>c.estado!=='rechazado');
+  const enBase = c => conv(n(c.importe), c.moneda||'ARS', base, tc);
+  const porArea = {}, cruce = {};
+  cs.forEach(c=>{
+    const a = c.area || '__sin';
+    porArea[a] = (porArea[a]||0) + enBase(c);
+    const k = (c.subrubro || c.concepto || 'Sin detalle');
+    cruce[k] ||= {total:0, areas:{}};
+    cruce[k].total += enBase(c);
+    cruce[k].areas[a] = (cruce[k].areas[a]||0) + enBase(c);
+  });
+  /* los subrubros que aparecen en más de un área son los interesantes */
+  const repartidos = Object.entries(cruce)
+    .filter(([,x])=>Object.keys(x.areas).length>1)
+    .sort((a,b)=>b[1].total-a[1].total);
+  return {porArea, cruce, repartidos, base,
+    total: Object.values(porArea).reduce((s,x)=>s+x,0)};
+}
+
+function areasHTML(py,v){
+  const A = resumenAreas(py, v);
+  const filas = AREAS.filter(a=>A.porArea[a.k]).map(a=>({...a, total:A.porArea[a.k]}))
+    .sort((x,y)=>y.total-x.total);
+  const sin = A.porArea['__sin'] || 0;
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Gasto por área</div>
+        <div class="cssub">El rubro dice qué es; el área dice de quién es</div></div>
+      <div style="text-align:right"><div class="csj">${fmt(A.total,A.base)}</div>
+        <div class="cssub">${filas.length} área${filas.length==1?'':'s'} con movimiento</div></div>
+    </div>
+    <div class="scrollx"><table class="tbl cst">
+      <thead><tr><th>Área</th><th style="width:130px;text-align:right">Gastado</th>
+        <th style="width:150px">Peso</th><th style="width:70px;text-align:right">%</th></tr></thead>
+      <tbody>${filas.map(f=>`<tr>
+        <td><b>${esc(f.l)}</b></td>
+        <td class="num" style="text-align:right"><b>${fmt(f.total,A.base)}</b></td>
+        <td><span class="barra"><i style="width:${A.total?f.total/A.total*100:0}%;background:var(--ac)"></i></span></td>
+        <td class="num muted" style="text-align:right">${Math.round(A.total?f.total/A.total*100:0)}%</td>
+      </tr>`).join('')}
+      ${sin?`<tr class="conhe"><td><b>Sin área asignada</b>
+        <span class="muted" style="display:block;font-size:10.5px">conviene ponerles área para saber quién lo gastó</span></td>
+        <td class="num" style="text-align:right"><b>${fmt(sin,A.base)}</b></td>
+        <td><span class="barra"><i style="width:${A.total?sin/A.total*100:0}%;background:var(--warn)"></i></span></td>
+        <td class="num muted" style="text-align:right">${Math.round(A.total?sin/A.total*100:0)}%</td></tr>`:''}
+      ${!filas.length&&!sin?'<tr><td colspan="4" class="empty">Sin gastos cargados</td></tr>':''}
+      </tbody></table></div>
+
+    ${A.repartidos.length ? `<div class="csblock"><h4>El mismo gasto en varias áreas
+      <span style="float:right;font-weight:600;text-transform:none;letter-spacing:0;color:var(--tx2)">
+        ${A.repartidos.length} concepto${A.repartidos.length==1?'':'s'}</span></h4>
+      <div class="pad muted" style="font-size:12px;padding-bottom:0">
+        Acá se ve, por ejemplo, cuánta nafta cargó arte y cuánta producción. Es el mismo
+        subrubro repartido entre departamentos.</div>
+      <div class="scrollx"><table class="tbl cst">
+        <thead><tr><th>Concepto</th><th>Repartido entre</th>
+          <th style="width:120px;text-align:right">Total</th></tr></thead>
+        <tbody>${A.repartidos.map(([k,x])=>`<tr>
+          <td><b>${esc(k)}</b></td>
+          <td>${Object.entries(x.areas).sort((a,b)=>b[1]-a[1]).map(([a,val])=>
+            `<span class="areachip grande">${esc(a==='__sin'?'Sin área':areaLbl(a))}
+              <b>${fmt(val,A.base)}</b></span>`).join('')}</td>
+          <td class="num" style="text-align:right"><b>${fmt(x.total,A.base)}</b></td>
+        </tr>`).join('')}</tbody></table></div></div>` : ''}
+    <div class="csfoot">Sólo cuenta lo que no está rechazado</div>
+  </div>`;
+}
+
 /* --- tablero de plata ---------------------------------------------------- */
 function tableroHTML(py,v){
   const P = resumenPlata(py, v);
@@ -3200,7 +3323,7 @@ function tableroHTML(py,v){
 }
 
 function bandejaHTML(lista, u, R, sub, pr, py, v, todos){
-  const F = DB.ui.fGasto || {rubro:'',estado:'',q:''};
+  const F = DB.ui.fGasto || {rubro:'',estado:'',q:'',area:''};
   /* cuántos hay por rubro, para que el filtro muestre sólo los que tienen algo */
   const cuenta = {};
   (todos||[]).forEach(c=>cuenta[c.rubro] = (cuenta[c.rubro]||0)+1);
@@ -3213,13 +3336,19 @@ function bandejaHTML(lista, u, R, sub, pr, py, v, todos){
         ${RUBROS_BASE.filter(r=>cuenta[r.codigo]).map(r=>
           `<option value="${r.codigo}" ${F.rubro===r.codigo?'selected':''}>${esc(r.codigo+' · '+r.nombre)} (${cuenta[r.codigo]})</option>`).join('')}
       </select>
+      <select onchange="setFiltro('area',this.value)">
+        <option value="">Todas las áreas</option>
+        ${AREAS.filter(a=>(todos||[]).some(c=>c.area===a.k)).map(a=>
+          `<option value="${a.k}" ${F.area===a.k?'selected':''}>${esc(a.l)} (${(todos||[]).filter(c=>c.area===a.k).length})</option>`).join('')}
+        ${(todos||[]).some(c=>!c.area)?`<option value="__sin" ${F.area==='__sin'?'selected':''}>Sin área (${(todos||[]).filter(c=>!c.area).length})</option>`:''}
+      </select>
       <select onchange="setFiltro('estado',this.value)">
         <option value="">Todos los estados</option>
         ${ESTADOS.map(e=>`<option value="${e.k}" ${F.estado===e.k?'selected':''}>${esc(e.l)}</option>`).join('')}
       </select>
       <input type="text" value="${esc(F.q)}" placeholder="Buscar proveedor, concepto, número…"
         onchange="setFiltro('q',this.value)">
-      ${(F.rubro||F.estado||F.q)?`<button class="btn sm" onclick="limpiarFiltros()">Limpiar</button>`:''}
+      ${(F.rubro||F.estado||F.q||F.area)?`<button class="btn sm" onclick="limpiarFiltros()">Limpiar</button>`:''}
       <div style="flex:1"></div>
       <span class="muted" style="font-size:11.5px;align-self:center">
         ${lista.length} de ${(todos||[]).length} · <b style="color:var(--ac)">${fmt(suma, base)}</b></span>
@@ -3261,7 +3390,8 @@ function bandejaCuerpo(lista, u, R, sub, pr, filtros){
             ${c.adjunto?'<span class="clip" title="Tiene foto adjunta">📎</span>':''}</td>
           <td class="muted">${esc(c.proveedor||'—')}
             ${c.tipo?`<span class="muted" style="display:block;font-size:10px">${esc(TIPO_CBTE(c.tipo))}${c.numero?' '+esc(c.numero):''}</span>`:''}</td>
-          <td><span class="rcode">${esc(c.rubro)}</span></td>
+          <td><span class="rcode">${esc(c.rubro)}</span>
+            ${c.area?`<span class="areachip">${esc(areaLbl(c.area))}</span>`:''}</td>
           <td class="num" style="text-align:right"><b>${fmt(c.importe, c.moneda)}</b></td>
           <td class="muted" style="font-size:10.5px">${esc(quien?quien.nombre.split(' ')[0]:'—')}
             <span style="display:block">${esc(c.cargadoEl)}</span></td>
@@ -4433,9 +4563,9 @@ function delUsuario(id){
 
 /* ---------- filtros y export de gastos ---------- */
 function setFiltro(campo, val){
-  DB.ui.fGasto = {...(DB.ui.fGasto||{rubro:'',estado:'',q:''}), [campo]:val}; R();
+  DB.ui.fGasto = {...(DB.ui.fGasto||{rubro:'',estado:'',q:'',area:''}), [campo]:val}; R();
 }
-function limpiarFiltros(){ DB.ui.fGasto = {rubro:'',estado:'',q:''}; R(); }
+function limpiarFiltros(){ DB.ui.fGasto = {rubro:'',estado:'',q:'',area:''}; R(); }
 
 /* Lo que administración le pasa al contador: una fila por comprobante, con su
    rubro, para que se impute donde corresponde.                              */
@@ -4444,16 +4574,18 @@ function expGastosCSV(){
   const F = DB.ui.fGasto || {rubro:'',estado:'',q:''};
   let cs = getComprobantes();
   if(F.rubro)  cs = cs.filter(c=>c.rubro===F.rubro);
+  if(F.area)   cs = cs.filter(c=>F.area==='__sin' ? !c.area : c.area===F.area);
   if(F.estado) cs = cs.filter(c=>c.estado===F.estado);
   if(F.q){ const q=norm(F.q);
     cs = cs.filter(c=>[c.proveedor,c.subrubro,c.concepto,c.numero,c.cuit].some(x=>norm(x||'').includes(q))); }
   const q0 = s => '"'+String(s??'').replace(/"/g,'""')+'"';
   const usr = id => ((pr.usuarios||[]).find(x=>x.id===id)||{nombre:''}).nombre;
-  const L = [['Rubro','Cód. rubro','Subrubro','Detalle','Proveedor','CUIT','Comprobante','Número',
+  const L = [['Rubro','Cód. rubro','Subrubro','Área','Detalle','Proveedor','CUIT','Comprobante','Número',
     'Fecha','Importe','Moneda','Circuito de pago','Estado','Cargado por','Orden de compra',
     'Caja chica','Jornada','Notas'].map(q0).join(',')];
   cs.forEach(c=>L.push([
-    (RUBROS_BASE.find(r=>r.codigo===c.rubro)||{nombre:''}).nombre, c.rubro, c.subrubro, c.concepto,
+    (RUBROS_BASE.find(r=>r.codigo===c.rubro)||{nombre:''}).nombre, c.rubro, c.subrubro,
+    c.area?areaLbl(c.area):'', c.concepto,
     c.proveedor, c.cuit, TIPO_CBTE(c.tipo), c.numero, c.fecha, c.importe, c.moneda,
     (CIRCUITOS.find(x=>x.v===c.circuito)||{l:''}).l, EST(c.estado).l, usr(c.cargadoPor),
     (getOCs().find(x=>x.id===c.ocId)||{numero:''}).numero,
@@ -4480,6 +4612,8 @@ function editOC(id){
           </select></label>
         <label class="f"><span>Subrubro</span>
           <select name="subrubro" id="csub">${subrubroOpts(o.rubro, o.subrubro)}</select></label>
+        <label class="f"><span>Área</span>
+          <select name="area" id="carea">${areaOpts(o.area || areaDeRubro(o.rubro))}</select></label>
         ${campo('Detalle','concepto',o.concepto,'text','placeholder="qué se le encargó"')}
         ${campo('Proveedor','proveedor',o.proveedor)}
         ${campo('CUIT','cuit',o.cuit)}
@@ -4499,7 +4633,7 @@ function saveOC(id){
   const d = datos(); const py = getPy(); py.ocs ||= [];
   let o = id ? py.ocs.find(x=>x.id===id) : nuevaOC();
   const nuevo = !id;
-  Object.assign(o, {numero:d.numero, fecha:d.fecha, rubro:d.rubro, subrubro:d.subrubro,
+  Object.assign(o, {numero:d.numero, fecha:d.fecha, rubro:d.rubro, subrubro:d.subrubro, area:d.area||'',
     concepto:d.concepto, proveedor:d.proveedor, cuit:d.cuit, importe:n(d.importe),
     moneda:d.moneda, entrega:d.entrega, condicion:d.condicion, notas:d.notas});
   if(!o.rubro || !o.importe){ alert('Falta el rubro o el importe.'); return; }
@@ -4654,6 +4788,8 @@ function cargarComprobante(id, cajaId){
           </select></label>
         <label class="f"><span>Subrubro</span>
           <select name="subrubro" id="csub">${subrubroOpts(c.rubro, c.subrubro)}</select></label>
+        <label class="f"><span>Área que lo gastó</span>
+          <select name="area" id="carea">${areaOpts(c.area || areaDeRubro(c.rubro))}</select></label>
         ${campo('Detalle','concepto',c.concepto,'text','placeholder="opcional — qué es exactamente"')}
         ${campo('Proveedor','proveedor',c.proveedor)}
         ${campo('CUIT','cuit',c.cuit)}
@@ -4688,6 +4824,14 @@ function cargarComprobante(id, cajaId){
 function alCambiarRubro(rubro){
   const t = document.getElementById('csub');
   if(t) t.innerHTML = subrubroOpts(rubro, '');
+  /* el área se propone sola, pero se puede cambiar: la nafta va al rubro 12
+     y el área dice si fue de arte o de producción */
+  const a = document.getElementById('carea');
+  if(a && !a.value) a.innerHTML = areaOpts(areaDeRubro(rubro));
+}
+function areaOpts(sel0){
+  return `<option value="">— sin área —</option>` +
+    AREAS.map(a=>`<option value="${a.k}" ${a.k===sel0?'selected':''}>${esc(a.l)}</option>`).join('');
 }
 function subrubroOpts(rubro, sel0){
   const xs = FUNCIONES[rubro] || [];
@@ -4719,7 +4863,7 @@ function saveComprobante(id){
   Object.assign(c, {rubro:d.rubro, subrubro:d.subrubro, concepto:d.concepto,
     proveedor:d.proveedor, cuit:d.cuit, tipo:d.tipo, numero:d.numero, fecha:d.fecha,
     importe:n(d.importe), moneda:d.moneda, circuito:d.circuito,
-    jornada: d.jornada ? parseInt(d.jornada,10) : null, notas:d.notas,
+    jornada: d.jornada ? parseInt(d.jornada,10) : null, notas:d.notas, area:d.area||'',
     ocId: d.ocId || null, cajaId: d.cajaId || null});
   if(_adjTmp){ c.adjunto = _adjTmp; _adjTmp = null; }
   /* Si va contra una OC, los datos salen de ahí: el rubro ya lo decidió quien
@@ -4727,6 +4871,7 @@ function saveComprobante(id){
   if(c.ocId){
     const o = getOCs().find(x=>x.id===c.ocId);
     if(o){ c.rubro = c.rubro || o.rubro; c.subrubro = c.subrubro || o.subrubro;
+           c.area = c.area || o.area;
            c.proveedor = c.proveedor || o.proveedor; c.cuit = c.cuit || o.cuit; }
   }
   if(!c.rubro || !c.importe){ alert('Falta el rubro o el importe.'); return; }
@@ -4775,11 +4920,15 @@ function verComprobante(id){
       ${c.notas?`<div class="sicabox" style="margin-top:12px"><b>Nota de quien lo cargó:</b> ${esc(c.notas)}</div>`:''}
       ${c.adjunto?`<div style="margin-top:12px">${adjuntoHTML(c.adjunto)}</div>`:''}
       <div style="margin:16px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Recorrido</div>
-      <div class="linea-tiempo">${c.historial.map(h=>`<div class="hito">
+      <div class="linea-tiempo">${c.historial.map(h=>{
+        /* quien lo cargó y además lo aprobó: no se bloquea, pero se ve */
+        const propio = h.accion!=='cargar' && h.accion!=='rechazar' && h.usuarioId && h.usuarioId===c.cargadoPor;
+        return `<div class="hito">
         <i style="background:${EST(h.a).c}"></i>
         <div><b>${esc(EST(h.a).l)}</b> <span class="muted">· ${esc(h.usuario)}${h.rol?' ('+esc(ROL(h.rol).l)+')':''} · ${esc(h.fecha)}</span>
+        ${propio?`<span class="propio" title="La misma persona que lo cargó firmó este paso">firmó lo suyo</span>`:''}
         ${h.nota?`<span style="display:block;color:var(--bad);font-size:11.5px">“${esc(h.nota)}”</span>`:''}</div>
-      </div>`).join('')}</div>
+      </div>`;}).join('')}</div>
     </div>
     <div class="mfoot">
       <button class="btn dgr" onclick="delComprobante('${c.id}')">Eliminar</button>

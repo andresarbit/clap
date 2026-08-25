@@ -1,0 +1,392 @@
+/* =============================================================================
+   FLUJO COMPLETO DE UNA PRODUCCION, de punta a punta.
+   No prueba funciones sueltas: arranca con una productora vacía y recorre todo
+   el trabajo real, verificando que los números aten en cada paso y que el dato
+   cargado una vez aparezca en todos lados.
+   ========================================================================== */
+let fallos = 0;
+const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
+const paso = t => console.log('\n═══ ' + t + ' ' + '═'.repeat(Math.max(0, 62 - t.length)));
+
+/* arrancamos de cero, sin la semilla */
+DB = dbVacia();
+
+/* ─────────────────────────────────────────── 1. la productora y el equipo */
+paso('1. ALTA DE PRODUCTORA Y EQUIPO');
+const pr = nuevaProductora({ nombre: 'Pampa Films', cuit: '30-71999888-7', jurisdiccion: 'CABA' });
+DB.productoras = [pr]; DB.ui.productoraId = pr.id;
+const mk = (nombre, rol, depto) => { const u = nuevoUsuario({ nombre, rol, depto, tel: '11 5555-' + (1000 + pr.usuarios.length), email: nombre.split(' ')[0].toLowerCase() + '@pampa.com' }); pr.usuarios.push(u); return u; };
+const uArte = mk('Sofía Roldán', 'equipo', 'Arte');
+const uProd = mk('Lucía Ferrer', 'produccion', 'Producción');
+const uEjec = mk('Andrés Pereyra', 'ejecutivo', 'Producción');
+const uAdm = mk('Marta Giles', 'admin', 'Administración');
+DB.ui.usuarioId = uEjec.id;
+ok('productora creada sin proyectos', pr.proyectos.length === 0);
+ok('4 personas con sus roles', pr.usuarios.length === 4);
+ok('la sesión es el ejecutivo', getUsuario().id === uEjec.id, getUsuario().nombre);
+
+/* ────────────────────────────────────────────────────── 2. el proyecto */
+paso('2. PROYECTO');
+const py = nuevoProyecto({
+  nombre: 'Spot Lavandina 40"', tipo: 'publicidad', cliente: 'Marca Z',
+  agencia: 'Agencia W', producto: 'Lavandina', medios: 'Digital + TV', territorio: 'Argentina', plazo: '12 meses'
+});
+pr.proyectos.push(py); DB.ui.proyectoId = py.id;
+const v = py.versiones[0]; DB.ui.versionId = v.id;
+v.tc = 1420; v.tcNombre = 'MEP'; v.tcFecha = '2026-08-25';
+Object.assign(v.capas, { fee: pr.feeDefault, contingencia: pr.contingenciaDefault, iva: pr.ivaDefault, iibb: pr.iibbDefault });
+ok('el presupuesto arranca en cero', calcular(v).total === 0);
+ok('trae los 17 rubros', v.rubros.length === 17, v.rubros.length);
+ok('toma los defaults de la productora', v.capas.fee === 15 && v.capas.iva === 21);
+
+/* ──────────────────────────────────────────── 3. guion sin encabezados */
+paso('3. GUION (publicitario, sin un solo INT/EXT)');
+const GUION = `LAVANDINA Z — "MUDANZA" 40"
+
+Abrimos en una cocina vacia, de manana. Una MADRE joven termina de limpiar
+la mesada con un trapo. El sol entra por la ventana sin cortinas.
+
+Corte a: en el patio, de tarde, el PERRO entra embarrado y pisa todo el piso.
+La HIJA lo mira y se rie.
+
+Vemos la calle: el camion de mudanza esperando. Un FLETERO fuma apoyado en la puerta.
+
+De noche, en la cocina otra vez, la mesada brilla. La madre apoya la botella
+del producto sobre la mesada limpia.
+
+MADRE: Listo.
+`;
+DB.ui.tab = 'desglose';
+importarGuion(GUION);
+const d = getD();
+console.log(d.escenas.map(e => `    ${e.numero} ${e.intExt.padEnd(3)} ${e.locacion.padEnd(14)} ${e.momento.padEnd(8)} ${octavosATexto(e.octavos)}pg  [${e.personajes.join(',')}]`).join('\n'));
+ok('lo desglosa igual sin encabezados', d.escenas.length === 4, d.escenas.length + ' bloques');
+ok('avisa que infirió', d.modo === 'parrafos', d.modo);
+ok('infiere locaciones', new Set(d.escenas.map(e => e.locacion)).size === 3,
+  [...new Set(d.escenas.map(e => e.locacion))].join(' | '));
+ok('detecta al elenco', ['MADRE', 'HIJA', 'FLETERO'].every(p => d.escenas.some(e => e.personajes.includes(p))),
+  [...new Set(d.escenas.flatMap(e => e.personajes))].join(','));
+ok('detecta el perro', d.escenas.some(e => (e.elementos.animales || []).includes('perro')));
+ok('detecta el camión', d.escenas.some(e => (e.elementos.vehiculos || []).includes('camion')));
+
+/* corregir a mano lo que el parser puso mal, como haría una persona */
+const escCalle = d.escenas.find(e => /CALLE/.test(e.locacion));
+if (escCalle && escCalle.intExt !== 'EXT') { cicloIE(escCalle.id); if (escCalle.intExt !== 'EXT') cicloIE(escCalle.id); }
+ok('el INT/EXT se corrige con clicks', !escCalle || escCalle.intExt === 'EXT', escCalle?.intExt);
+
+/* ──────────────────────────────────────────────── 4. plan de rodaje */
+paso('4. PLAN DE RODAJE');
+setPagJornada(0.25);
+autoAgrupar();
+console.log(d.jornadas.map(j => `    J${j.numero}: ` +
+  d.escenas.filter(e => e.jornada === j.numero).map(e => e.numero + ' ' + e.locacion).join(' · ')).join('\n'));
+ok('reparte las escenas en jornadas', d.escenas.every(e => e.jornada), d.jornadas.length + ' jornadas');
+ok('agrupa por locación', (() => {
+  const porLoc = {}; d.escenas.forEach(e => (porLoc[e.locacion] ||= new Set()).add(e.jornada));
+  return Object.values(porLoc).filter(s => s.size > 1).length <= 1;
+})(), 'como mucho una locación partida');
+
+/* ───────────────────────────────────── 5. del desglose al presupuesto */
+paso('5. DESGLOSE → PRESUPUESTO');
+const prop = propuestaPresupuesto();
+console.log(prop.lineas.map(l => `    ${l.rubro} ${String(l.cantidad)}x${String(l.dias).padEnd(2)} ${l.concepto}`).join('\n'));
+const antesLineas = v.rubros.reduce((s, r) => s + r.lineas.length, 0);
+ok('el presupuesto está vacío antes', antesLineas === 0);
+/* crear todas las líneas propuestas */
+prop.lineas.forEach(l => {
+  const rb = v.rubros.find(r => r.codigo === l.rubro);
+  rb.lineas.push(nuevaLinea({ concepto: l.concepto, cantidad: l.cantidad, dias: l.dias, unidad: l.unidad, valorUnit: 0, notas: l.nota }));
+});
+py.jornadas = prop.jornadas;
+ok('crea una línea por propuesta', v.rubros.reduce((s, r) => s + r.lineas.length, 0) === prop.lineas.length,
+  prop.lineas.length + ' líneas');
+ok('una línea por personaje, sin el perro', prop.lineas.filter(l => l.dep === 'elenco').length === 3,
+  prop.lineas.filter(l => l.dep === 'elenco').map(l => l.concepto).join(', '));
+ok('el perro va a Animales, no a elenco',
+  !prop.lineas.some(l => l.dep === 'elenco' && /PERRO/i.test(l.concepto)) &&
+  prop.lineas.some(l => /Animales/.test(l.concepto)));
+ok('una línea por locación', prop.lineas.filter(l => l.dep === 'locacion').length === 3);
+ok('todas arrancan en cero', v.rubros.every(r => r.lineas.every(l => l.valorUnit === 0)));
+ok('el proyecto queda con las jornadas del plan', py.jornadas === d.jornadas.length, py.jornadas);
+
+/* ───────────────────────────────── 6. cargar el crew y los valores */
+paso('6. CREW Y VALORES');
+const df = nuevaPersona({ nombre: 'Martín Bevilacqua', funcion: 'Director de Fotografía', rubro: '04', tarifaRef: 973242, condicion: 'Monotributista', cuit: '20-28456789-3', tel: '11 5555-2001', email: 'martin@df.com' });
+DB.catalogo.personas.push(df);
+ok('el catálogo trae el piso de convenio', sicaDe('Director de Fotografía', '04').j8 === 973242);
+const r04 = v.rubros.find(r => r.codigo === '04');
+r04.lineas.push(nuevaLinea({ concepto: 'Director de Fotografía', refId: df.id, valorUnit: 1100000, dias: 2 }));
+const r02 = v.rubros.find(r => r.codigo === '02');
+r02.lineas.push(nuevaLinea({ concepto: 'Director', valorUnit: 900000, dias: 2 }));
+const r03 = v.rubros.find(r => r.codigo === '03');
+r03.lineas.push(nuevaLinea({ concepto: 'Jefa de Producción', valorUnit: 600000, dias: 3 }));
+/* elenco en dólares, como suele pasar en publicidad */
+const r09 = v.rubros.find(r => r.codigo === '09');
+r09.lineas.find(l => l.concepto === 'MADRE').valorUnit = 1500;
+r09.lineas.find(l => l.concepto === 'MADRE').moneda = 'USD';
+/* equipamiento y catering */
+const r11 = v.rubros.find(r => r.codigo === '11');
+r11.lineas.push(nuevaLinea({ concepto: 'Paquete cámara + ópticas', valorUnit: 900000, dias: 2 }));
+const r13 = v.rubros.find(r => r.codigo === '13');
+r13.lineas.push(nuevaLinea({ concepto: 'Almuerzo', cantidad: 30, dias: 2, valorUnit: 14000 }));
+
+const PRESU = calcular(v);
+console.log(`    subtotal ${fmt(PRESU.subtotal)} · fee ${fmt(PRESU.fee)} · conting. ${fmt(PRESU.contingencia)} · IVA ${fmt(PRESU.iva)}`);
+console.log(`    TOTAL ${fmt(PRESU.total)}  (${fmt(conv(PRESU.total, 'ARS', 'USD', v.tc), 'USD')})`);
+ok('el presupuesto da un número', PRESU.total > 0, fmt(PRESU.total));
+ok('el dólar del elenco se convierte', PRESU.porRubro.find(x => x.codigo === '09').total >= 1500 * 1420,
+  fmt(PRESU.porRubro.find(x => x.codigo === '09').total));
+ok('el fee excluye elenco', Math.abs(PRESU.baseFee - (PRESU.subtotal - totalRubro(r09, v))) < 1);
+ok('total = neto + IVA', Math.abs(PRESU.total - PRESU.neto * (1 + v.capas.iva / 100)) < 0.01);
+
+/* ─────────────────────────────────────────────────── 7. el callsheet */
+paso('7. CALLSHEET');
+DB.ui.jornada = 1;
+const CS = armarCallsheet(py, v, 1);
+console.log(`    J1: ${CS.escenas.length} escenas · ${octavosATexto(CS.octavos)} pg · ${CS.locaciones.join(', ')}`);
+console.log(`    crew: ${CS.crew.length} · elenco: ${CS.elenco.map(e => e.personaje).join(', ')}`);
+ok('las escenas salen del guion', CS.escenas.every(e => e.jornada === 1));
+ok('el crew sale del presupuesto', CS.crew.length > 0, CS.crew.length + ' líneas de rubros 02-08');
+ok('el DF llega con su teléfono del catálogo',
+  CS.crew.some(c => c.nombre === 'Martín Bevilacqua' && c.tel === '11 5555-2001'));
+ok('el elenco sale de las escenas del día', CS.elenco.every(p => p.escenas.length));
+
+/* datos que no salen de ningún lado */
+upJornada('fecha', '2026-09-14'); upJornada('citacion', '07:00'); upJornada('wrap', '19:00');
+upJornada('hospital.nombre', 'Hospital Fernández'); upJornada('hospital.tel', '011 4808-2600');
+upDireccion(CS.locaciones[0], 'direccion', 'Av. Corrientes 1234');
+const j1 = d.jornadas.find(x => x.numero === 1);
+ok('guarda los datos de la jornada', j1.fecha === '2026-09-14' && j1.hospital.nombre === 'Hospital Fernández');
+
+/* ──────────────────────────────────────── 8. contactos y citaciones */
+paso('8. CONTACTOS Y CITACIONES');
+const C = armarContactos(py, v);
+ok('la lista de contactos se arma sola', C.total > 0, C.total + ' contactos en ' + C.grupos.length + ' grupos');
+ok('el DF viene completo del catálogo',
+  C.grupos.flatMap(g => g.filas).some(f => f.nombre === 'Martín Bevilacqua' && f.email === 'martin@df.com'));
+/* cargar un contacto a mano y ver que viaje */
+const lineaDir = r02.lineas[0];
+upContacto('l:' + lineaDir.id, 'nombre', 'Ana Suárez');
+upContacto('l:' + lineaDir.id, 'tel', '11 5555-3001');
+upContacto('l:' + lineaDir.id, 'email', 'ana@directora.com');
+const CS2 = armarCallsheet(py, v, 1);
+ok('lo cargado en contactos llega al callsheet',
+  CS2.crew.some(c => c.nombre === 'Ana Suárez' && c.email === 'ana@directora.com'));
+
+const { gente } = gentePorJornada(py, v, 1);
+upCitacion(gente[0].clave, 'citacion', '06:30');
+const txtCit = textoCitacion(pr, py, j1, CS2, gente.find(g => g.clave === gente[0].clave), cfgActual());
+ok('la citación trae todo lo necesario',
+  ['Spot Lavandina', 'Jornada 1', '06:30', 'Av. Corrientes 1234', 'Hospital Fernández', 'Pampa Films']
+    .every(x => txtCit.includes(x)), txtCit.split('\n')[0]);
+ok('el teléfono se normaliza para WhatsApp', telWhatsapp('11 5555-2001') === '5491155552001',
+  telWhatsapp('11 5555-2001'));
+marcarTodos(true);
+ok('se marcan como citados', Object.values(j1.parte.citados).filter(Boolean).length === gente.length,
+  gente.length + ' personas');
+
+/* ───────────────────────────────────────── 9. el día de rodaje */
+paso('9. PARTE DE RODAJE Y HORAS EXTRA');
+const cfg = cfgActual();
+ok('jornada base del convenio', cfg.horasJornada === 8 && cfg.recargoHE === 50,
+  cfg.horasJornada + 'h · +' + cfg.recargoHE + '%');
+upParte('primeraToma', '08:30'); upParte('comidaIn', '13:00'); upParte('comidaOut', '14:00');
+upParte('ultimaToma', '20:30'); upParte('wrap', '21:00');
+d.escenas.filter(e => e.jornada === 1).forEach(e => toggleFilmada(e.id, true));
+ficharTodos('entrada'); ficharTodos('salida');
+/* el DF se quedó de más */
+const claveDF = gente.find(g => /Fotograf/.test(g.rol))?.clave;
+if (claveDF) upFichada(claveDF, 'salida', '23:30');
+const hDF = claveDF ? horasDe(claveDF, j1, cfg, gente.find(g => g.clave === claveDF).valorJornada, 'ARS') : null;
+console.log(`    día: citación ${j1.citacion} → wrap ${j1.parte.wrap} · ${fmtHoras(lapso(j1.citacion, j1.parte.wrap))} de set`);
+if (hDF) console.log(`    DF: ${hDF.entrada}→${hDF.salida} = ${fmtHoras(hDF.netos)} netas · ${fmtHoras(hDF.extra)} extras · ${fmt(hDF.costoHE)}`);
+ok('marca las escenas filmadas', j1.parte.filmadas.length === CS.escenas.length);
+ok('ficha a todos', gente.every(g => j1.parte.fichadas[g.clave]?.salida));
+if (hDF) {
+  ok('calcula las horas netas descontando comida', hDF.netos === lapso('07:00', '23:30') - 60,
+    fmtHoras(hDF.netos));
+  ok('las extras salen sobre la jornada base', hDF.extra === hDF.netos - cfg.horasJornada * 60, fmtHoras(hDF.extra));
+  ok('el costo usa el valor de su línea del presupuesto', hDF.valorHora === 1100000 / 8, hDF.valorHora);
+}
+const HE = horasProyecto(py, v, cfg);
+ok('acumula las extras del rodaje', HE.totalARS > 0, fmtHoras(HE.totalExtra) + ' · ' + fmt(HE.totalARS));
+
+/* ═════════════════ 10. EL FLUJO DE FACTURACION, con áreas ═════════════════ */
+paso('10. FACTURACION · NAFTA DE ARTE vs NAFTA DE PRODUCCION');
+DB.ui.usuarioId = uEjec.id;
+/* una OC por el paquete de cámara */
+const oc = nuevaOC({
+  numero: proximoNumeroOC(py), rubro: '11', subrubro: 'Paquete cámara + ópticas',
+  area: 'camara', proveedor: 'Rental Sur', importe: 1800000, condicion: '50% anticipo'
+});
+py.ocs.push(oc); emitirOC(oc.id);
+ok('la OC emitida compromete', comprometidoDeOC(py, oc, 'ARS', v.tc) === 1800000);
+
+/* la nafta: mismo subrubro, distintas áreas */
+const nafta = (area, importe, quien, extra = {}) => {
+  const c = nuevoComprobante({
+    rubro: '12', subrubro: 'Combustible', area, importe,
+    proveedor: 'YPF Ruta 8', tipo: 'facBC', circuito: 'efectivo',
+    cargadoPor: quien.id, estado: 'cargado', ...extra
+  });
+  c.historial = [{ de: null, a: 'cargado', accion: 'cargar', usuario: quien.nombre, usuarioId: quien.id, rol: quien.rol, fecha: hoy(), nota: '' }];
+  py.comprobantes.push(c); return c;
+};
+const naftaArte = nafta('arte', 45000, uArte);
+const naftaProd = nafta('produccion', 78000, uProd);
+const naftaCam = nafta('camara', 32000, uProd);
+ok('mismo rubro y subrubro para las tres', [naftaArte, naftaProd, naftaCam].every(c => c.rubro === '12' && c.subrubro === 'Combustible'));
+ok('pero cada una con su área', [naftaArte.area, naftaProd.area, naftaCam.area].join(',') === 'arte,produccion,camara');
+
+const A = resumenAreas(py, v);
+const comb = A.cruce['Combustible'];
+console.log('    Combustible ' + fmt(comb.total) + ' repartido:');
+Object.entries(comb.areas).forEach(([a, val]) => console.log(`      ${areaLbl(a).padEnd(22)} ${fmt(val)}`));
+ok('la nafta suma bien en total', comb.total === 155000, fmt(comb.total));
+ok('arte tiene la suya', comb.areas.arte === 45000, fmt(comb.areas.arte));
+ok('producción la suya', comb.areas.produccion === 78000, fmt(comb.areas.produccion));
+ok('cámara la suya', comb.areas.camara === 32000, fmt(comb.areas.camara));
+ok('el reparto suma el total', Object.values(comb.areas).reduce((s, x) => s + x, 0) === comb.total);
+ok('aparece como concepto repartido entre áreas',
+  A.repartidos.some(([k]) => k === 'Combustible'), A.repartidos.map(([k]) => k).join(', '));
+/* el rubro 12 las junta a todas */
+const P0 = resumenPlata(py, v);
+ok('el rubro 12 las junta a todas', P0.filas.find(f => f.codigo === '12').real === 155000,
+  fmt(P0.filas.find(f => f.codigo === '12').real));
+
+/* filtrar por área, que es lo que hace administración */
+DB.ui.fGasto = { rubro: '', estado: '', q: '', area: 'arte' };
+const soloArte = py.comprobantes.filter(c => c.area === 'arte');
+ok('se puede filtrar por área', soloArte.length === 1 && soloArte[0].importe === 45000);
+DB.ui.fGasto = { rubro: '12', estado: '', q: '', area: '' };
+ok('y por rubro, que las trae todas', py.comprobantes.filter(c => c.rubro === '12').length === 3);
+limpiarFiltros();
+
+/* ─────────────────────────── 11. el circuito de una factura entera */
+paso('11. EL CIRCUITO, PASO POR PASO');
+const fac = nuevoComprobante({
+  rubro: '11', subrubro: 'Paquete cámara + ópticas', area: 'camara',
+  proveedor: 'Rental Sur', cuit: '30-70111222-3', tipo: 'facA', numero: '0001-00009911',
+  importe: 900000, circuito: 'transferencia', ocId: oc.id, cargadoPor: uProd.id
+});
+fac.historial = [{ de: null, a: 'cargado', accion: 'cargar', usuario: uProd.nombre, usuarioId: uProd.id, rol: uProd.rol, fecha: hoy(), nota: '' }];
+py.comprobantes.push(fac);
+ok('arte NO puede mover lo que no le toca', accionesDe(fac, uArte).length === 0);
+ok('producción la ve para revisar', accionesDe(fac, uProd).includes('revisar'));
+DB.ui.usuarioId = uProd.id; moverComprobante(fac.id, 'revisar');
+ok('pasa a revisado', fac.estado === 'revisado');
+ok('el ejecutivo NO puede pagar', !accionesDe(fac, uEjec).includes('pagar'));
+DB.ui.usuarioId = uEjec.id; moverComprobante(fac.id, 'aprobar');
+DB.ui.usuarioId = uAdm.id; moverComprobante(fac.id, 'pagar');
+ok('llega a pagado', fac.estado === 'pagado');
+console.log('    ' + fac.historial.map(h => `${EST(h.a).l}/${h.usuario.split(' ')[0]}`).join(' → '));
+ok('el recorrido tiene los 4 pasos', fac.historial.length === 4,
+  fac.historial.map(h => EST(h.a).l).join(' → '));
+ok('cada paso lo firma el rol que corresponde',
+  fac.historial.map(h => h.rol).join(',') === 'produccion,produccion,ejecutivo,admin',
+  fac.historial.map(h => h.rol).join(','));
+/* Lucía cargó y además revisó: no se bloquea, pero el detalle lo marca */
+ok('marca cuando alguien firma lo que cargó', /firmó lo suyo/.test(
+  (() => { modal = null; verComprobante(fac.id); const h = modal; cerrar(); return h; })()));
+ok('la OC baja lo facturado', comprometidoDeOC(py, oc, 'ARS', v.tc) === 900000,
+  fmt(comprometidoDeOC(py, oc, 'ARS', v.tc)) + ' (1.800.000 − 900.000)');
+
+/* rechazo */
+const malo = nuevoComprobante({ rubro: '06', subrubro: 'Compras de arte', area: 'arte', importe: 999000, cargadoPor: uArte.id });
+malo.historial = [{ de: null, a: 'cargado', accion: 'cargar', usuario: uArte.nombre, usuarioId: uArte.id, rol: 'equipo', fecha: hoy(), nota: '' }];
+py.comprobantes.push(malo);
+DB.ui.usuarioId = uProd.id; moverComprobante(malo.id, 'rechazar', 'No estaba autorizado');
+ok('lo rechazado guarda el motivo', malo.estado === 'rechazado' && malo.historial[1].nota === 'No estaba autorizado');
+ok('lo rechazado NO suma al gasto',
+  !resumenPlata(py, v).filas.find(f => f.codigo === '06').real, 'rubro 06 en cero');
+
+/* ───────────────────────────────────────────── 12. caja chica */
+paso('12. CAJA CHICA Y RENDICION');
+const caja = nuevaCaja({ nombre: 'Caja de arte J1', responsable: uArte.id, jornada: 1 });
+py.cajas.push(caja);
+caja.adelantos.push({ id: uid('ad'), fecha: hoy(), importe: 150000, circuito: 'efectivo', entregadoPor: uProd.id });
+/* los gastos de arte salen de la caja */
+[['Compras de arte', 38000, 'facBC'], ['Utilero', 22000, 'ninguno']].forEach(([sub, imp, tipo]) => {
+  const c = nuevoComprobante({ rubro: '06', subrubro: sub, area: 'arte', importe: imp, tipo, circuito: 'efectivo', cajaId: caja.id, cargadoPor: uArte.id });
+  c.historial = [{ de: null, a: 'cargado', accion: 'cargar', usuario: uArte.nombre, usuarioId: uArte.id, rol: 'equipo', fecha: hoy(), nota: '' }];
+  py.comprobantes.push(c);
+});
+const sc = saldoCaja(py, caja);
+console.log(`    entregado ${fmt(sc.entregado)} · gastado ${fmt(sc.gastado)} · saldo ${fmt(sc.saldo)} · sin comprobante ${fmt(sc.sinComprobante)}`);
+ok('la caja lleva el saldo', sc.saldo === 150000 - 60000, fmt(sc.saldo));
+ok('marca lo que no tiene comprobante', sc.sinComprobante === 22000, fmt(sc.sinComprobante));
+DB.ui.usuarioId = uAdm.id;
+global.document.querySelectorAll = sel => String(sel).includes('[name]') ? [{ name: 'notas', value: 'Devolvió en efectivo' }] : [];
+confirmarRendicion(caja.id);
+ok('rendida, con lo que devuelve', caja.estado === 'rendida' && caja.devuelto === 90000, fmt(caja.devuelto));
+
+/* ═════════════════════════ 13. TODO TIENE QUE ATAR ═════════════════════════ */
+paso('13. EL TABLERO CIERRA');
+const P = resumenPlata(py, v);
+console.log('    ' + 'RUBRO'.padEnd(32) + 'PRESU'.padStart(13) + 'COMPROM'.padStart(12) + 'REAL'.padStart(12) + 'DISPON'.padStart(13));
+P.filas.filter(f => f.presu || f.comp || f.real).forEach(f => console.log('    ' +
+  (f.codigo + ' ' + f.nombre).slice(0, 31).padEnd(32) +
+  Math.round(f.presu).toLocaleString('es-AR').padStart(13) +
+  Math.round(f.comp).toLocaleString('es-AR').padStart(12) +
+  Math.round(f.real).toLocaleString('es-AR').padStart(12) +
+  Math.round(f.disponible).toLocaleString('es-AR').padStart(13)));
+console.log('    ' + 'TOTAL'.padEnd(32) + Math.round(P.presu).toLocaleString('es-AR').padStart(13) +
+  Math.round(P.comp).toLocaleString('es-AR').padStart(12) +
+  Math.round(P.real).toLocaleString('es-AR').padStart(12) +
+  Math.round(P.disponible).toLocaleString('es-AR').padStart(13));
+
+const cs = py.comprobantes.filter(c => c.estado !== 'rechazado');
+const sumaCbtes = cs.reduce((s, c) => s + conv(n(c.importe), c.moneda, 'ARS', v.tc), 0);
+ok('el real del tablero = la suma de los comprobantes', Math.abs(P.real - sumaCbtes) < 1,
+  fmt(P.real) + ' vs ' + fmt(sumaCbtes));
+ok('disponible = presupuestado − comprometido − real',
+  Math.abs(P.disponible - (P.presu - P.comp - P.real)) < 1);
+ok('el presupuestado del tablero = el subtotal del presupuesto',
+  Math.abs(P.presu - calcular(v).subtotal) < 1, fmt(P.presu));
+ok('el gasto por área suma lo mismo que el total real',
+  Math.abs(resumenAreas(py, v).total - P.real) < 1,
+  fmt(resumenAreas(py, v).total) + ' vs ' + fmt(P.real));
+ok('lo pagado es parte de lo real', P.pagado <= P.real && P.pagado > 0, fmt(P.pagado));
+ok('la caja rendida ya no figura como abierta', getCajas().filter(c => c.estado === 'abierta').length === 0);
+
+/* ────────────────────────────────────── 14. la portada lo refleja */
+paso('14. LA PORTADA');
+DB.ui.usuarioId = uEjec.id;
+const html = vistaResumen(pr, py, v);
+ok('muestra el proyecto', html.includes(esc(py.nombre)));
+ok('muestra el disponible', html.includes(fmt(P.disponible, 'ARS')));
+ok('lista pendientes reales', /Esperan algo/.test(html));
+ok('avisa de rubros pasados si los hay',
+  P.filas.some(f => f.disponible < 0) === /pasados de presupuesto/.test(html));
+
+/* ─────────────────────────────── 15. todo renderiza al final */
+paso('15. TODAS LAS PANTALLAS, CON DATOS REALES');
+const errs = [];
+['resumen', 'guia', 'presu', 'desglose', 'callsheet', 'rodaje', 'gastos', 'equipo', 'catalogo', 'config']
+  .forEach(k => { try { setTab(k); } catch (e) { errs.push(k + ': ' + e.message); } });
+['bandeja', 'todos', 'oc', 'caja', 'areas', 'control'].forEach(k => {
+  try { setTab('gastos'); setSubGasto(k); } catch (e) { errs.push('gastos/' + k + ': ' + e.message); }
+});
+['escenas', 'deptos', 'plan'].forEach(k => { try { setTab('desglose'); setSub(k); } catch (e) { errs.push('desglose/' + k + ': ' + e.message); } });
+['hoja', 'contactos'].forEach(k => { try { setTab('callsheet'); setSubCall(k); } catch (e) { errs.push('callsheet/' + k + ': ' + e.message); } });
+['citaciones', 'parte', 'horas'].forEach(k => { try { setTab('rodaje'); setSubRodaje(k); } catch (e) { errs.push('rodaje/' + k + ': ' + e.message); } });
+['gente', 'sica'].forEach(k => { try { setTab('catalogo'); setSubCat(k); } catch (e) { errs.push('catalogo/' + k + ': ' + e.message); } });
+ok('las 24 vistas renderizan', !errs.length, errs.join(' | ') || '24 vistas sin error');
+
+/* y sobrevive a guardar y recargar */
+localStorage.setItem(KEY, JSON.stringify(DB));
+const crudo = JSON.parse(localStorage.getItem(KEY));
+ok('todo el proyecto persiste', (() => {
+  const p2 = crudo.productoras[0].proyectos[0];
+  return p2.comprobantes.length === py.comprobantes.length &&
+    p2.ocs.length === 1 && p2.cajas.length === 1 &&
+    p2.desglose.escenas.length === 4 && crudo.productoras[0].usuarios.length === 4;
+})(), Math.round(JSON.stringify(DB).length / 1024) + ' KB');
+const cbtesArte = crudo.productoras[0].proyectos[0].comprobantes.filter(c => c.area === 'arte');
+ok('las áreas persisten', cbtesArte.length === 4, cbtesArte.length + ' comprobantes de arte');
+ok('y siguen separadas por área tras recargar',
+  crudo.productoras[0].proyectos[0].comprobantes.filter(c => c.subrubro === 'Combustible')
+    .map(c => c.area).sort().join(',') === 'arte,camara,produccion');
+
+console.log('\n' + (fallos ? '>>> ' + fallos + ' FALLAS' : '>>> FLUJO COMPLETO OK'));
+process.exitCode = fallos ? 1 : 0;

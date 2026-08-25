@@ -231,6 +231,29 @@ Disponible = presupuestado - comprometido - real
 > subrubro de la taxonomia. Por eso todo suma solo, y administracion puede
 > sacar "todas las facturas de arte" con un filtro.
 
+### Areas (rubros dentro de rubros)
+
+El **rubro** dice QUE es el gasto; el **area** dice DE QUIEN es. Sin eso, la
+nafta de arte y la de produccion caen en la misma bolsa y despues no se sabe
+quien se paso.
+
+```
+Combustible  $ 155.000  repartido:
+   Arte                  $  45.000
+   Produccion            $  78.000
+   Fotografia y Camara   $  32.000
+```
+
+Cada comprobante y cada orden de compra llevan area. Se propone sola desde el
+rubro y se puede cambiar. La sub-solapa **Areas** muestra el gasto por
+departamento y, abajo, **los conceptos repartidos entre varias areas** — que es
+exactamente el caso de la nafta. El filtro y el CSV tambien la traen.
+
+Ademas, los gastos que existen en todas las areas (combustible, movilidad,
+fletes, compras varias, viaticos, alquiler de vehiculo) se agregan como
+subrubro a cada rubro de departamento, asi la nafta se puede presupuestar
+dentro de arte si la productora lo prefiere.
+
 ### Rubros internos
 
 **17 rubros y 234 subrubros**, en `RUBROS_BASE` y `FUNCIONES`. Es la misma
@@ -294,6 +317,7 @@ node test/run.js test/plata.js     # ordenes de compra, caja chica y tablero
 node test/run.js test/resumen.js   # portada, pendientes y datos de ejemplo
 node test/run.js test/guia.js      # instructivo: contenido, navegacion y que no mienta
 node test/run.js test/backend.js   # conexion, login, renovacion de sesion y diagnostico
+node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```
