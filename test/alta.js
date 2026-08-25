@@ -7,7 +7,7 @@ let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
 
 /* --- Supabase de mentira, con tablas de verdad --------------------------- */
-const TB = { organizacion: [], productora: [], usuario: [] };
+const TB = { organizacion: [], productora: [], usuario: [], catalogo_persona: [] };
 let SEQ = 0, SESION = 'auth-andres';
 const nid = pre => `${pre}-${++SEQ}`;
 const respu = (status, body) => ({
@@ -50,6 +50,37 @@ global.fetch = async (url, opts = {}) => {
       nombre: cuerpo.p_mi_nombre || 'Yo', rol: cuerpo.p_rol || 'admin',
       area: cuerpo.p_area, tel: cuerpo.p_tel, email: 'a@b.com', activo: true, pendiente: false });
     return respu(200, prod.id);
+  }
+
+  /* Actualiza mi ficha de usuario Y la del catalogo, y las enlaza. Del lado de
+     la base porque alguien recien sumado todavia no puede escribir en el
+     catalogo de la organizacion. */
+  if (u.includes('/rpc/guardar_mis_datos')) {
+    const mia = TB.usuario.find(x => x.auth_uid === SESION);
+    if (!mia) return respu(400, { message: 'Todavía no completaste tu alta' });
+    const c = cuerpo;
+    if (c.p_nombre) mia.nombre = c.p_nombre;
+    if (c.p_tel != null) mia.tel = c.p_tel;
+    if (c.p_area != null) mia.area = c.p_area;
+    if (c.p_rol) {
+      const subia = ['admin', 'ejecutivo'].includes(c.p_rol)
+        && !['admin', 'ejecutivo'].includes(mia.rol);
+      if (subia) mia.pendiente = true;
+      mia.rol = c.p_rol;
+    }
+    const pr = TB.productora.find(x => x.id === mia.productora_id) || {};
+    let cat = TB.catalogo_persona.find(x => x.id === mia.catalogo_id)
+      || TB.catalogo_persona.find(x => mia.email && x.email === mia.email);
+    if (!cat) { cat = { id: nid('catalogo_persona'), org_id: pr.org_id, tipo: 'persona' };
+      TB.catalogo_persona.push(cat); }
+    Object.assign(cat, {
+      nombre: c.p_nombre || cat.nombre, funcion: c.p_funcion || cat.funcion,
+      rubro: c.p_rubro || cat.rubro, dni: c.p_dni || cat.dni, cuit: c.p_cuit || cat.cuit,
+      condicion: c.p_condicion || cat.condicion, tel: c.p_tel || cat.tel,
+      email: cat.email || mia.email, banco: c.p_banco || cat.banco,
+      alias: c.p_alias || cat.alias });
+    mia.catalogo_id = cat.id;
+    return respu(200, cat.id);
   }
 
   const m = u.match(/\/rest\/v1\/(\w+)/);
@@ -287,6 +318,44 @@ const cargarForm = campos => {
   ok('guardó el nombre nuevo', corregida.nombre === 'Andrés Arbit', corregida.nombre);
   ok('y el teléfono', corregida.tel === '11 6112-1250');
   ok('sin duplicar la ficha', TB.usuario.filter(u => u.auth_uid === 'auth-andres').length === 1);
+
+  /* --- 6d. quien entra queda en el catalogo ------------------------------ */
+  console.log('\n--- 6d. QUIEN ENTRA QUEDA EN EL CATALOGO ---');
+  const enCat = n => DB.catalogo.personas.find(p => p.nombre === n);
+  ok('el que se dio de alta ya está en el catálogo', !!enCat('Andrés Arbit'),
+    DB.catalogo.personas.map(p => p.nombre).join(', '));
+  ok('con su mail', (enCat('Andrés Arbit') || {}).email === 'a@b.com');
+  ok('y su teléfono', (enCat('Andrés Arbit') || {}).tel === '11 6112-1250');
+  ok('sin duplicarse al repetir', (espejarFichaLocal(_miFicha),
+    DB.catalogo.personas.filter(p => norm(p.email) === 'a@b.com').length === 1));
+
+  /* los datos de pago no se piden en el alta: van en Mis datos */
+  modal = null; _prodsElegibles = []; formAlta();
+  ok('el alta NO pide CUIT', !/name="cuit"/.test(modal));
+  ok('ni datos bancarios', !/name="alias"/.test(modal) && !/name="banco"/.test(modal));
+  ok('el alta pide sólo lo indispensable',
+    /name="nombre"/.test(modal) && /name="rol"/.test(modal) && /name="area"/.test(modal));
+  cerrar();
+
+  modal = null; await editarMiFicha();
+  ok('Mis datos sí pide CUIT', /name="cuit"/.test(modal || ''));
+  ok('y alias o CBU', /name="alias"/.test(modal));
+  ok('y condición frente a AFIP', /name="condicion"/.test(modal) && /Monotributista/.test(modal));
+  ok('explica para qué sirve', /orden de pago/i.test(modal));
+
+  cargarForm({ nombre: 'Andrés Arbit', tel: '11 6112-1250', rol: 'admin', area: 'produccion',
+    funcion: 'Productor Ejecutivo', condicion: 'Responsable Inscripto',
+    cuit: '20-12345678-9', dni: '12345678', banco: 'Galicia', alias: 'andres.clap' });
+  await guardarMiFicha();
+  const yoCat = enCat('Andrés Arbit');
+  ok('el CUIT llegó al catálogo', yoCat.cuit === '20-12345678-9', yoCat.cuit);
+  ok('el alias también', yoCat.alias === 'andres.clap');
+  ok('la condición también', yoCat.condicion === 'Responsable Inscripto');
+  ok('y la función', yoCat.funcion === 'Productor Ejecutivo');
+  ok('sigue habiendo una sola ficha suya',
+    DB.catalogo.personas.filter(p => norm(p.email) === 'a@b.com').length === 1);
+  ok('el usuario quedó enlazado a su ficha',
+    getPr().usuarios.some(u => u.personaId === yoCat.id));
 
   /* --- 7. si falta arranque.sql, que lo diga ------------------------------ */
   console.log('\n--- 7. SI FALTA arranque.sql, EL MENSAJE AYUDA ---');

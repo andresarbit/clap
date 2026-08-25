@@ -6631,7 +6631,7 @@ async function confirmarAlta(){
 /* Mientras el resto del sistema siga siendo local, la ficha de Supabase se
    copia al equipo local para que las bandejas y los permisos funcionen igual.
    Cuando esté la sincronización completa, esto se va.                        */
-function espejarFichaLocal(ficha){
+function espejarFichaLocal(ficha, extra = {}){
   if(!ficha) return;
   const pr = getPr(); if(!pr) return;
   pr.usuarios ||= [];
@@ -6642,7 +6642,30 @@ function espejarFichaLocal(ficha){
     depto: ficha.area ? areaLbl(ficha.area) : u.depto, email: ficha.email,
     tel: ficha.tel || u.tel, activo: !ficha.pendiente});
   DB.ui.usuarioId = u.id;
+  alCatalogo(u, extra);
   guardar();
+}
+
+/* Quien entra queda en el catálogo. El catálogo es de dónde salen las líneas
+   del presupuesto, las citaciones y las órdenes de pago; si la persona ya
+   cargó sus datos, nadie tiene que volver a tipearlos ni perseguirla por
+   WhatsApp el día que hay que pagarle. Se busca por mail, que es lo que
+   identifica a alguien entre productoras.                                    */
+function alCatalogo(u, extra = {}){
+  DB.catalogo ||= {personas:[]};
+  DB.catalogo.personas ||= [];
+  let p = (u.personaId && DB.catalogo.personas.find(x=>x.id === u.personaId))
+       || (u.email && DB.catalogo.personas.find(x=>norm(x.email) === norm(u.email)))
+       || DB.catalogo.personas.find(x=>norm(x.nombre) === norm(u.nombre) && u.nombre);
+  if(!p){ p = nuevaPersona({tipo:'persona'}); DB.catalogo.personas.push(p); }
+  /* lo que la persona cargó gana; lo que no tocó no se pisa con vacío */
+  const poner = (campo, valor) => { if(valor) p[campo] = valor; };
+  poner('nombre', u.nombre); poner('tel', u.tel); poner('email', u.email);
+  poner('funcion', extra.funcion || (u.depto && !p.funcion ? u.depto : ''));
+  poner('rubro', extra.rubro); poner('dni', extra.dni); poner('cuit', extra.cuit);
+  poner('condicion', extra.condicion); poner('banco', extra.banco); poner('alias', extra.alias);
+  u.personaId = p.id;
+  return p;
 }
 
 /* ---------- corregir mis propios datos ----------
@@ -6650,26 +6673,63 @@ function espejarFichaLocal(ficha){
    corregirse después: el nombre, el teléfono, el área, y el rol.
    Cambiarse el rol a uno que ve todo no es gratis: si la productora no es
    mía, vuelve a quedar pendiente de aprobación. Eso lo decide la base. */
-function editarMiFicha(){
+/* El rubro que le corresponde a un área, para no hacérselo elegir. */
+const rubroDeArea = a => (RUBROS_BASE.find(r => r.area === a) || {}).codigo || '03';
+
+let _miPersona = null;      /* mi ficha del catálogo */
+
+async function editarMiFicha(){
   const f = _miFicha;
   if(!f){ abrirAlta(); return; }
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+  /* traer lo que ya haya en el catálogo, para no pedírselo dos veces */
+  try{
+    const r = f.catalogo_id
+      ? await sbFetch(`/rest/v1/catalogo_persona?select=*&id=eq.${f.catalogo_id}&limit=1`)
+      : null;
+    _miPersona = (r && r[0]) || null;
+  }catch(e){ _miPersona = null; }
+  const p = _miPersona || {};
+
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:640px">
     <h3>Mis datos</h3>
     <div class="mbody">
-      <div class="muted" style="font-size:12.5px;margin-bottom:12px">
+      <div class="muted" style="font-size:12.5px;margin-bottom:12px;line-height:1.6">
         Entrás como <b>${esc(f.email||SB.user.email)}</b>.
         ${f.pendiente?'<span style="display:block;margin-top:4px">Tu alta todavía espera aprobación.</span>':''}
       </div>
+
       <div class="grid2">
         ${campo('Tu nombre','nombre', f.nombre||'')}
-        ${campo('Teléfono','tel', f.tel||'','text','placeholder="11 5555-1234"')}
+        ${campo('Teléfono','tel', f.tel||p.tel||'','text','placeholder="11 5555-1234"')}
       </div>
       <div class="grid2" style="margin-top:12px">
         ${sel('Rol','rol', f.rol||'equipo', ROLES.map(r=>({v:r.k,l:r.l})))}
         ${sel('Área / departamento','area', f.area||'',
           [{v:'',l:'— sin área —'},...AREAS.map(a=>({v:a.k,l:a.l}))])}
       </div>
-      <div class="sicabox" style="margin-top:12px">
+
+      <div style="margin:18px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
+        Para que te puedan pagar</div>
+      <div class="muted" style="font-size:11.5px;line-height:1.6;margin-bottom:9px">
+        Esto va a tu ficha del catálogo. Cargalo una vez y no te lo van a volver a
+        pedir por WhatsApp cada vez que hay que armar una orden de pago.
+      </div>
+      <div class="grid2">
+        ${campo('Función','funcion', p.funcion||'','text','placeholder="Gaffer, Director de Arte…"')}
+        ${sel('Condición frente a AFIP','condicion', p.condicion||'Monotributista',
+          ['Monotributista','Responsable Inscripto','Exento','Relación de dependencia','Sin datos']
+            .map(x=>({v:x,l:x})))}
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        ${campo('CUIT / CUIL','cuit', p.cuit||'','text','placeholder="20-12345678-9"')}
+        ${campo('DNI','dni', p.dni||'')}
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        ${campo('Banco','banco', p.banco||'')}
+        ${campo('Alias o CBU','alias', p.alias||'','text','placeholder="mi.alias.mp"')}
+      </div>
+
+      <div class="sicabox" style="margin-top:14px">
         ${ROLES.map(r=>`<div style="margin-bottom:4px"><b>${esc(r.l)}</b> — ${esc(r.d)}</div>`).join('')}
       </div>
       <div id="fichadiag" style="margin-top:12px"></div>
@@ -6688,17 +6748,29 @@ async function guardarMiFicha(){
   if(!nombre){ if(cont) cont.innerHTML = '<div class="avisomodo turno-mal">Poné tu nombre.</div>'; return; }
   if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Guardando…</div>';
   try{
-    await sbFetch(`/rest/v1/usuario?id=eq.${_miFicha.id}`, {method:'PATCH',
-      body: JSON.stringify({nombre, tel:d.tel, area:d.area, rol:d.rol})});
+    /* Una sola llamada: actualiza mi ficha de usuario Y la del catálogo, y las
+       deja enlazadas. Del lado de la base, porque alguien recién sumado
+       todavía no tiene permiso para escribir en el catálogo de la org.      */
+    await sbFetch('/rest/v1/rpc/guardar_mis_datos', {method:'POST',
+      body: JSON.stringify({
+        p_nombre: nombre, p_tel: d.tel, p_area: d.area, p_rol: d.rol,
+        p_funcion: d.funcion, p_rubro: rubroDeArea(d.area),
+        p_dni: d.dni, p_cuit: d.cuit, p_condicion: d.condicion,
+        p_banco: d.banco, p_alias: d.alias })});
     _miFicha = await sbMiFicha();
-    espejarFichaLocal(_miFicha);
-    cerrar(); toast('Datos guardados'); R();
+    espejarFichaLocal(_miFicha, {funcion:d.funcion, rubro:rubroDeArea(d.area), dni:d.dni,
+      cuit:d.cuit, condicion:d.condicion, banco:d.banco, alias:d.alias});
+    cerrar(); toast('Datos guardados — ya estás en el catálogo'); R();
   }catch(e){
     const m = String(e.message||'');
+    let ayuda = '';
+    if(/No encontré eso|Could not find|does not exist/i.test(m))
+      ayuda = 'Falta correr <code>backend/mis-datos.sql</code> en el SQL Editor de Supabase.';
+    else if(/no te deja/i.test(m))
+      ayuda = 'Para ponerte Administración o Productor Ejecutivo en una productora que ' +
+              'no es tuya, tiene que aprobarte alguien de adentro.';
     if(cont) cont.innerHTML = `<div class="avisomodo turno-mal"><b>No pude guardar.</b> ${esc(m)}
-      ${/no te deja/i.test(m) ? `<div style="margin-top:6px">Para ponerte
-      Administración o Productor Ejecutivo en una productora que no es tuya,
-      tiene que aprobarte alguien de adentro.</div>` : ''}</div>`;
+      ${ayuda ? `<div style="margin-top:6px">${ayuda}</div>` : ''}</div>`;
   }
 }
 
