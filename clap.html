@@ -806,8 +806,27 @@ function nuevoProyecto(o={}){
     contactos:o.contactos||{porLinea:{}, extra:[]},
     tags:o.tags||{manual:[], descartados:[]},
     configRodaje:o.configRodaje||nuevaConfigRodaje(),
+    /* Quién fue invitado a ESTE proyecto. Figurar en la productora no alcanza:
+       un técnico puede tener anotadas cinco productoras con las que trabaja y
+       no por eso ver los presupuestos de todas. Administración y Productor
+       Ejecutivo no necesitan invitación, son los que llevan la casa.        */
+    invitados:o.invitados||[],
     comprobantes:o.comprobantes||[], ocs:o.ocs||[], cajas:o.cajas||[]};
 }
+
+/* Los dos roles que ven todo sin que nadie los invite. */
+const VE_TODO = ['admin','ejecutivo'];
+const veTodo = u => !!u && VE_TODO.includes(u.rol);
+
+/* ¿Este usuario entra a este proyecto? */
+function entraAlProyecto(py, u = getUsuario()){
+  if(!py || !u) return false;
+  if(veTodo(u)) return true;
+  return (py.invitados||[]).includes(u.id);
+}
+/* Los proyectos que le tocan a alguien, que es lo que ve en el selector. */
+const proyectosDe = (pr, u = getUsuario()) =>
+  (pr?.proyectos||[]).filter(py => entraAlProyecto(py, u));
 function nuevaProductora(o={}){
   return {id:uid('pr'), nombre:o.nombre||'Productora nueva', cuit:o.cuit||'',
     condicionIVA:o.condicionIVA||'Responsable Inscripto', jurisdiccion:o.jurisdiccion||'CABA',
@@ -940,9 +959,14 @@ const ROLES = [
    puede:['cargar']},
   {k:'produccion',l:'Producción',            d:'Revisa que corresponda y que el precio sea el acordado',
    puede:['cargar','revisar']},
-  {k:'ejecutivo', l:'Productor Ejecutivo',   d:'Aprueba el gasto',
-   puede:['cargar','revisar','aprobar','equipo']},
-  {k:'admin',     l:'Administración',        d:'Aprueba y ejecuta el pago',
+  /* Ejecutivo y Administración manejan todo el circuito. En una productora
+     chica es el PE el que decide y el que a veces paga, así que separarlos
+     sólo agrega fricción. La diferencia entre los dos no es el poder: es de
+     qué se ocupa cada uno. Quién hizo cada movimiento igual queda firmado en
+     el historial del comprobante, que no se puede editar ni borrar.          */
+  {k:'ejecutivo', l:'Productor Ejecutivo',   d:'Maneja todo el circuito: revisa, aprueba y puede pagar',
+   puede:['cargar','revisar','aprobar','pagar','equipo']},
+  {k:'admin',     l:'Administración',        d:'Maneja todo el circuito y ejecuta los pagos',
    puede:['cargar','revisar','aprobar','pagar','equipo']},
 ];
 const ROL = k => ROLES.find(r=>r.k===k) || ROLES[0];
@@ -2288,8 +2312,13 @@ async function sbCrearProductora(nombre, ficha = {}){
   if(!id) throw new Error('La base no devolvió la productora creada.');
   return {id, nombre};
 }
+/* Sumarse a una productora ajena como Equipo o Producción no abre nada hasta
+   que te inviten a un proyecto, así que puede ser libre. Declararse
+   Administración o Productor Ejecutivo sí da acceso a todo: eso siempre espera
+   el visto bueno de alguien de adentro. (Crear la productora propia es otra
+   cosa y no pasa por acá.)                                                   */
 async function sbAltaPropia({productoraId, nombre, rol, area, tel}){
-  const pide = await sbCandado(productoraId);
+  const pide = await sbCandado(productoraId) || VE_TODO.includes(rol);
   const fila = {auth_uid: SB.user.id, productora_id: productoraId, nombre, rol,
     area, tel, email: SB.user.email, activo: true, pendiente: pide};
   const r = await sbFetch('/rest/v1/usuario', {method:'POST',
@@ -2426,6 +2455,10 @@ function migrar(){
     py.configRodaje ||= nuevaConfigRodaje();
     py.tags ||= {manual:[], descartados:[]};
     py.tags.manual ||= []; py.tags.descartados ||= [];
+    /* Proyectos de antes de las invitaciones: los que ya estaban en la
+       productora seguían entrando a todo, así que se los invita a todo. Nadie
+       pierde acceso por una actualización. */
+    if(!py.invitados) py.invitados = (pr.usuarios||[]).map(u=>u.id);
     py.desglose.jornadas.forEach(j=>{ j.parte ||= nuevoParte();
       j.parte.fichadas ||= {}; j.parte.citados ||= {}; j.parte.filmadas ||= []; });
   }); });
@@ -2630,11 +2663,11 @@ function header(pr,py,v){
           ${DB.productoras.map(p=>`<option value="${p.id}" ${p.id===pr?.id?'selected':''}>${esc(p.nombre)}</option>`).join('')}
           ${!DB.productoras.length?'<option>— ninguna —</option>':''}
         </select></div>
-      ${pr?`<div class="pick"><label>Proyecto</label>
+      ${pr?(()=>{ const mios = proyectosDe(pr); return `<div class="pick"><label>Proyecto</label>
         <select onchange="selProyecto(this.value)">
-          ${pr.proyectos.map(p=>`<option value="${p.id}" ${p.id===py?.id?'selected':''}>${esc(p.nombre)}</option>`).join('')}
-          ${!pr.proyectos.length?'<option>— ninguno —</option>':''}
-        </select></div>`:''}
+          ${mios.map(p=>`<option value="${p.id}" ${p.id===py?.id?'selected':''}>${esc(p.nombre)}</option>`).join('')}
+          ${!mios.length?`<option>${pr.proyectos.length?'— sin invitaciones —':'— ninguno —'}</option>`:''}
+        </select></div>`; })():''}
       ${py?`<div class="pick"><label>Versión</label>
         <select onchange="selVersion(this.value)">
           ${py.versiones.map(x=>`<option value="${x.id}" ${x.id===v?.id?'selected':''}>${esc(x.nombre)} · ${esc(x.estado)}</option>`).join('')}
@@ -4286,6 +4319,7 @@ function vistaEquipo(pr){
           <button class="btn sm dgr" onclick="delUsuario('${u.id}')">×</button></td>
       </tr>`).join('')}</tbody></table></div>`
       :'<div class="empty">Sin nadie cargado. Empezá por vos.</div>'}
+    ${bloqueInvitaciones(pr)}
     <div class="pad" style="border-top:1px solid var(--line)">
       <div class="tot sub"><span>Espacio usado en este navegador</span>
         <b>${esp.mb.toFixed(2)} MB <span class="muted">de ~5 MB</span></b></div>
@@ -4296,6 +4330,71 @@ function vistaEquipo(pr){
     </div></div>`;
 }
 const LBL_PUEDE = {cargar:'cargar', revisar:'revisar', aprobar:'aprobar', pagar:'pagar'};
+
+/* ---------- quién entra a qué proyecto ----------
+   Un técnico puede tener anotadas varias productoras: son las que labura. Eso
+   no le abre nada. La puerta la abre la productora, invitándolo a un proyecto
+   puntual. Administración y Productor Ejecutivo no necesitan invitación.
+   La grilla es proyectos × personas para poder ver de un vistazo quién quedó
+   afuera, que es el error que se paga caro: el técnico llega al set y no puede
+   cargar su factura.                                                         */
+function bloqueInvitaciones(pr){
+  const pys = pr.proyectos || [];
+  const gente = (pr.usuarios || []).filter(u => u.activo && !veTodo(u));
+  if(!pys.length) return '';
+  const yo = getUsuario();
+  const puedoInvitar = veTodo(yo);
+
+  return `<div class="pad" style="border-top:1px solid var(--line)">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+      <b style="font-size:13px">Quién entra a cada proyecto</b>
+      <span class="est" style="color:var(--tx3);border-color:var(--line)">${pys.length} proyecto${pys.length>1?'s':''}</span>
+    </div>
+    <div class="muted" style="font-size:11.5px;line-height:1.6;margin-bottom:10px">
+      Estar en el equipo de la productora no alcanza para ver un proyecto: hay que
+      invitar a cada uno al suyo. Así alguien puede tener varias productoras
+      anotadas sin ver los presupuestos de todas.
+      <b>Administración y Productor Ejecutivo entran a todo</b> sin invitación, por eso
+      no figuran en esta grilla.
+    </div>
+    ${!gente.length
+      ? `<div class="sicabox">Por ahora son todos Administración o Productor Ejecutivo, así que
+         entran a todos los proyectos. Cuando sumes gente de equipo o producción, acá elegís
+         a qué proyecto va cada uno.</div>`
+      : `<div class="scrollx"><table class="tbl cst">
+        <thead><tr><th>Proyecto</th>${gente.map(u=>
+          `<th style="text-align:center;font-size:10.5px">${esc((u.nombre||'?').split(' ')[0])}
+            <span class="muted" style="display:block;font-weight:400">${esc(u.depto||ROL(u.rol).l)}</span></th>`).join('')}</tr></thead>
+        <tbody>${pys.map(py=>`<tr>
+          <td><b>${esc(py.nombre)}</b>
+            <span class="muted" style="display:block;font-size:10.5px">${
+              (py.invitados||[]).filter(id=>gente.some(g=>g.id===id)).length} de ${gente.length} invitados</span></td>
+          ${gente.map(u=>`<td style="text-align:center">
+            <input type="checkbox" ${(py.invitados||[]).includes(u.id)?'checked':''}
+              ${puedoInvitar?'':'disabled'}
+              onchange="invitar('${py.id}','${u.id}',this.checked)"
+              title="${esc(u.nombre)} en ${esc(py.nombre)}"></td>`).join('')}
+        </tr>`).join('')}</tbody></table></div>
+        ${puedoInvitar?'':`<div class="avisomodo" style="margin-top:9px">Sólo Administración
+          o el Productor Ejecutivo pueden invitar.</div>`}`}
+  </div>`;
+}
+
+function invitar(proyectoId, usuarioId, si){
+  const pr = getPr(); if(!pr) return;
+  const py = pr.proyectos.find(p => p.id === proyectoId); if(!py) return;
+  py.invitados ||= [];
+  const u = (pr.usuarios||[]).find(x => x.id === usuarioId);
+  if(si){ if(!py.invitados.includes(usuarioId)) py.invitados.push(usuarioId); }
+  else py.invitados = py.invitados.filter(x => x !== usuarioId);
+  /* Si me saco a mí mismo del proyecto que estoy mirando, quedo sin nada
+     abierto: mandarlo al primero que me toque, no dejarlo en una pantalla
+     que ya no puedo ver. */
+  if(!entraAlProyecto(getPy())) DB.ui.proyectoId = (proyectosDe(pr)[0]||{}).id || null;
+  toast(si ? `${(u?.nombre)||'Invitado'} entra a ${py.nombre}`
+           : `${(u?.nombre)||'Sacado'} ya no entra a ${py.nombre}`);
+  R();
+}
 
 /* ---------- vista rodaje ---------- */
 /* Pensada para que un asistente de producción la use en el set, con el celu
@@ -6414,6 +6513,14 @@ function formAlta(){
       <div class="sicabox" style="margin-top:12px">
         ${ROLES.map(r=>`<div style="margin-bottom:4px"><b>${esc(r.l)}</b> — ${esc(r.d)}</div>`).join('')}
       </div>
+      ${_prodsElegibles.length ? `<div class="muted" style="font-size:11.5px;line-height:1.6;margin-top:10px">
+        Sumarte a una productora no te muestra sus proyectos: te tienen que
+        <b>invitar a cada uno</b>. Por eso podés anotar todas las productoras con las
+        que trabajás sin ver los presupuestos de ninguna.
+        <div style="margin-top:5px"><b>Administración</b> y <b>Productor Ejecutivo</b> son la
+        excepción —entran a todo—, así que si te sumás a una productora que no es tuya con
+        alguno de esos dos roles, un administrador de adentro tiene que aprobarte primero.</div>
+      </div>` : ''}
       <div id="altadiag" style="margin-top:12px"></div>
     </div>
     <div class="mfoot">

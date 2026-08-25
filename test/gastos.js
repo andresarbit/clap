@@ -36,7 +36,10 @@ DB.ui.usuarioId = arte.id;
 ok('la sesión devuelve al usuario elegido', getUsuario().id === arte.id, getUsuario().nombre);
 ok('arte sólo puede cargar', puede(arte, 'cargar') && !puede(arte, 'revisar') && !puede(arte, 'pagar'));
 ok('producción puede revisar pero no pagar', puede(prod, 'revisar') && !puede(prod, 'pagar'));
-ok('el ejecutivo aprueba pero no paga', puede(ejec, 'aprobar') && !puede(ejec, 'pagar'));
+/* Decision de Andres: el PE maneja todo el circuito. En una productora chica
+   es el que decide y a veces el que paga; separarlo solo agrega friccion.
+   Quien movio cada comprobante igual queda firmado en el historial. */
+ok('el ejecutivo aprueba y tambien paga', puede(ejec, 'aprobar') && puede(ejec, 'pagar'));
 ok('administración paga', puede(admi, 'pagar'));
 ok('si el elegido no existe cae en alguien activo', (() => {
   DB.ui.usuarioId = 'no_existe'; const u = getUsuario(); DB.ui.usuarioId = arte.id; return !!u;
@@ -86,7 +89,7 @@ ok('el ejecutivo la ve para aprobar', accionesDe(c, ejec).includes('aprobar'));
 DB.ui.usuarioId = ejec.id;
 moverComprobante(c.id, 'aprobar');
 ok('pasa a aprobado', c.estado === 'aprobado', c.estado);
-ok('el ejecutivo NO puede pagarla', !accionesDe(c, ejec).includes('pagar'), JSON.stringify(accionesDe(c, ejec)));
+ok('el ejecutivo puede pagarla', accionesDe(c, ejec).includes('pagar'), JSON.stringify(accionesDe(c, ejec)));
 ok('administración sí', accionesDe(c, admi).includes('pagar'));
 
 DB.ui.usuarioId = admi.id;

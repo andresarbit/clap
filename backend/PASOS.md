@@ -78,6 +78,23 @@ pero sólo hace esas tres cosas y sólo para quien la llama.
 Verificado: sin sesión responde *"Hay que iniciar sesión antes de crear una
 productora"* y no crea nada.
 
+### A2f. Correr permisos.sql — ✅ YA ESTÁ HECHO
+
+Corrido el 25/08/2026. Es el cambio de modelo que propuso Andrés: **el acceso
+pasa a ser por proyecto, no por productora**.
+
+Alguien puede tener anotadas todas las productoras con las que trabaja; eso no
+le abre nada. La puerta la abre la productora, invitándolo a un proyecto
+puntual. Administración y Productor Ejecutivo entran a todo sin invitación.
+
+Y una consecuencia buena: como agregarse a una productora ya no da acceso, el
+alta libre deja de ser un riesgo para Equipo y Producción. Sólo se pide
+aprobación a quien se declara Administración o Productor Ejecutivo en una
+productora ajena, que son los que sí ven todo.
+
+Verificado: la tabla `proyecto_persona` existe, tapa sin login, y ninguna otra
+tabla se abrió de más.
+
 ### A4. Lo único que falta de esta parte, y sólo lo podés hacer vos
 
 Crear tu cuenta pide elegir una contraseña. Eso no lo hago yo por vos: es tuya

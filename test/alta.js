@@ -59,12 +59,18 @@ global.fetch = async (url, opts = {}) => {
 
   if (met === 'POST') {
     const fila = { id: nid(m[1]), ...cuerpo };
-    /* la política usuario_autoalta, tal cual está escrita en el SQL */
+    /* la política usuario_autoalta, tal cual está escrita en el SQL.
+       Sumarse como Equipo o Producción no da acceso a nada hasta que te
+       inviten a un proyecto: puede ser libre. Declararse Administración o
+       Productor Ejecutivo sí da acceso a todo, así que siempre pasa por
+       aprobación. (Crear la productora propia no pasa por acá.)            */
     if (m[1] === 'usuario') {
       if (fila.auth_uid !== SESION)
         return respu(403, { message: 'new row violates row-level security policy' });
       const pr = TB.productora.find(x => x.id === fila.productora_id);
-      if (!fila.pendiente && pr && pr.requiere_aprobacion)
+      const libre = ['equipo', 'produccion'].includes(fila.rol)
+        && !(pr && pr.requiere_aprobacion);
+      if (!fila.pendiente && !libre)
         return respu(403, { message: 'new row violates row-level security policy' });
     }
     tabla.push(fila);
@@ -108,7 +114,7 @@ const cargarForm = campos => {
     /name="nombre"/.test(modal) && /name="productoraNombre"/.test(modal) && /name="rol"/.test(modal));
   ok('ofrece Administración desde el principio', /Administración/.test(modal));
   ok('están los cuatro roles', ROLES.every(r => modal.includes(r.l)));
-  ok('explica qué hace cada uno', /Aprueba y ejecuta el pago/.test(modal));
+  ok('explica qué hace cada uno', /ejecuta los pagos/.test(modal));
   ok('avisa que la primera productora la crea él', /La primera la creás vos/.test(modal));
   ok('deja elegir área', /name="area"/.test(modal) && modal.includes(areaLbl('arte')));
 
@@ -160,6 +166,36 @@ const cargarForm = campos => {
   ok('con el rol que declaró', luci.rol === 'produccion', luci.rol);
   ok('no creó otra productora', TB.productora.length === 1);
 
+  /* --- 3b. sumarse como admin a una productora ajena --------------------- */
+  console.log('\n--- 3b. DECLARARSE ADMIN EN CASA AJENA PIDE APROBACION ---');
+  SESION = 'auth-vivo';
+  await conectar('vivo@x.com');
+  _prodsElegibles = await sbProductorasParaElegir();
+  modal = null; formAlta();
+  ok('el formulario avisa la regla', /te tienen que/i.test(modal) && /invitar a cada uno/i.test(modal));
+  ok('y aclara la excepción de los dos roles', /entran a todo/.test(modal));
+  cargarForm({ nombre: 'El Vivo', tel: '', productoraId: TB.productora[0].id,
+    productoraNombre: '', rol: 'admin', area: '' });
+  await confirmarAlta();
+  const vivo = await sbMiFicha();
+  ok('queda pendiente aunque el candado esté abierto', !!vivo && vivo.pendiente === true,
+    'candado abierto: ' + !TB.productora[0].requiere_aprobacion);
+  ok('no entra como admin todavía', vivo.pendiente);
+  /* y no puede saltearse la regla desde la consola */
+  const atajo = await sbFetch('/rest/v1/usuario', { method: 'POST',
+    body: JSON.stringify({ auth_uid: SESION, productora_id: TB.productora[0].id,
+      nombre: 'El Vivo', rol: 'admin', activo: true, pendiente: false }) })
+    .then(() => 'pasó').catch(e => e.message);
+  ok('la base rechaza el atajo', /no te deja/.test(atajo), atajo);
+  /* pero sumarse como equipo sigue siendo libre: no ve nada hasta que lo inviten */
+  SESION = 'auth-tecnico';
+  await conectar('tecnico@x.com');
+  cargarForm({ nombre: 'Un Técnico', tel: '', productoraId: TB.productora[0].id,
+    productoraNombre: '', rol: 'equipo', area: 'arte' });
+  await confirmarAlta();
+  const tec = await sbMiFicha();
+  ok('el de equipo entra directo, sin trámite', !!tec && !tec.pendiente, tec && tec.rol);
+
   /* --- 4. candado cerrado ----------------------------------------------- */
   console.log('\n--- 4. CANDADO CERRADO ---');
   TB.productora[0].requiere_aprobacion = true;
@@ -192,12 +228,20 @@ const cargarForm = campos => {
   SESION = 'auth-andres';
   await conectar();
   const cola = await sbPendientes();
-  ok('el admin ve al que espera', cola.length === 1 && cola[0].nombre === 'El Colado',
-    cola.map(c => c.nombre).join(','));
+  /* dos: el que se declaró admin en casa ajena, y el que llegó con el candado
+     cerrado. El técnico que se sumó como equipo NO tiene que estar. */
+  ok('el admin ve a los que esperan', cola.length === 2, cola.map(c => c.nombre).join(', '));
+  ok('están los dos que declararon un rol que ve todo',
+    cola.every(c => VE_TODO.includes(c.rol)), cola.map(c => c.rol).join(','));
+  ok('el que se sumó como equipo no hace cola',
+    !cola.some(c => c.nombre === 'Un Técnico'));
   modal = null; await menuPendientes();
-  ok('la pantalla lo lista', /Altas esperando aprobación/.test(modal));
-  await sbAprobar(cola[0].id);
-  ok('aprobado, sale de la cola', (await sbPendientes()).length === 0);
+  ok('la pantalla los lista', /Altas esperando aprobación/.test(modal));
+  const colado = cola.find(c => c.nombre === 'El Colado');
+  await sbAprobar(colado.id);
+  ok('el aprobado sale de la cola',
+    !(await sbPendientes()).some(c => c.nombre === 'El Colado'));
+  ok('y el otro sigue esperando', (await sbPendientes()).length === 1);
   const colAhora = TB.usuario.find(u => u.nombre === 'El Colado');
   ok('y queda activo', colAhora.activo && !colAhora.pendiente);
   ok('con el rol que había pedido', colAhora.rol === 'admin', colAhora.rol);
