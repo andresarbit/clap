@@ -231,6 +231,37 @@ Disponible = presupuestado - comprometido - real
 > subrubro de la taxonomia. Por eso todo suma solo, y administracion puede
 > sacar "todas las facturas de arte" con un filtro.
 
+### Catalogo: buscador con disponibilidad
+
+`Catalogo` es un buscador, no una lista:
+
+- **Buscar** por nombre, funcion, mail, telefono, CUIT o DNI.
+- **Filtrar** por rubro y por tipo (personas / proveedores / equipamiento).
+- **Disponibilidad**: se elige un rango de fechas y dice quien esta **libre** y
+  quien **ocupado**, con en que proyecto y cuantas jornadas. Mira **todas las
+  productoras**: el mismo gaffer puede estar tomado por otra que tambien
+  administras. Hay un "mostrar solo los libres" para armar equipo rapido.
+
+### Armar el catalogo desde callsheets viejos
+
+Boton **⬇ Importar de callsheets**: se sueltan los archivos y de cada uno se
+sacan nombre, funcion, telefono y mail. Acepta PDF, Word, RTF y txt, varios a
+la vez.
+
+- **Unifica**: la misma persona aparece en todos los callsheets del rodaje. Se
+  junta por mail, telefono o nombre, completando los campos que falten entre
+  apariciones, y dice en cuantos archivos aparecio.
+- **No pisa lo que ya esta**: marca los que ya estan en el catalogo.
+- **Se revisa antes de guardar**: cada candidato muestra la linea cruda de la
+  que salio, y se tildan los que van. La lectura es heuristica y algun nombre
+  puede salir cortado.
+- Lo que tiene funcion reconocida entra como **persona**; lo demas (el hospital,
+  la casa de alquiler) como **proveedor**.
+- Si la funcion existe en el convenio, la tarifa de referencia arranca en el
+  piso del SICA.
+
+> Dos callsheets de 24 lineas cada uno dan 24 contactos unicos, no 48.
+
 ### Tags: que cosas hay en el proyecto
 
 `Desglose -> Tags`. No son etiquetas decorativas: **cada una arrastra permisos,
