@@ -271,6 +271,11 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .clip{font-size:11px;opacity:.7;margin-left:4px}
 .barra{display:block;height:7px;background:var(--bg4);border-radius:4px;overflow:hidden;min-width:60px}
 .barra i{display:block;height:100%;border-radius:4px;transition:width .2s}
+.barra2{display:flex}
+.barra2 i{border-radius:0}
+.filtros{display:flex;gap:7px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line)}
+.filtros select{width:auto;min-width:120px;max-width:260px}
+.filtros input[type=text]{width:auto;min-width:170px;flex:1;max-width:320px}
 .adj{display:flex;flex-direction:column;gap:5px}
 .adj img{max-width:100%;max-height:230px;object-fit:contain;border:1px solid var(--line);
   border-radius:var(--r);background:var(--bg)}
@@ -336,6 +341,11 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
   select.emom{padding:7px 20px 7px 8px;font-size:12px;background-image:none}
   .pasos{flex-direction:column}
   .paso{padding:7px 11px}
+  /* con 5 sub-solapas la barra no entra: que scrollee en vez de desbordar */
+  .seg{max-width:100%;overflow-x:auto;scrollbar-width:none;flex:1 1 100%}
+  .seg::-webkit-scrollbar{display:none}
+  .seg button{flex:none}
+  .filtros select,.filtros input[type=text]{flex:1 1 100%;max-width:none}
   .cst input{padding:8px 6px;font-size:14px;border-color:var(--line);background:var(--bg3)}
   .cst th,.cst td{padding:5px 7px}
   .csttl{font-size:17px}
@@ -621,7 +631,7 @@ function nuevoProyecto(o={}){
     desglose:o.desglose||nuevoDesglose(),
     contactos:o.contactos||{porLinea:{}, extra:[]},
     configRodaje:o.configRodaje||nuevaConfigRodaje(),
-    comprobantes:o.comprobantes||[]};
+    comprobantes:o.comprobantes||[], ocs:o.ocs||[], cajas:o.cajas||[]};
 }
 function nuevaProductora(o={}){
   return {id:uid('pr'), nombre:o.nombre||'Productora nueva', cuit:o.cuit||'',
@@ -787,8 +797,97 @@ function nuevoComprobante(o={}){
     tipo:o.tipo||'', numero:o.numero||'', fecha:o.fecha||hoy(),
     importe:o.importe??0, moneda:o.moneda||'ARS',
     circuito:o.circuito||'', lineaId:o.lineaId||null, jornada:o.jornada??null,
+    ocId:o.ocId||null, cajaId:o.cajaId||null,
     estado:o.estado||'cargado', cargadoPor:o.cargadoPor||null, cargadoEl:o.cargadoEl||hoy(),
     historial:o.historial||[], adjunto:o.adjunto||null, notas:o.notas||''};
+}
+
+/* --- Orden de compra ------------------------------------------------------
+   Es el compromiso ANTES de que llegue la factura: se cerró el trato con el
+   proveedor por tanta plata. Sin esto el presupuesto miente, porque muestra
+   disponible lo que en realidad ya está comprometido.                        */
+const ESTADOS_OC = [
+  {k:'borrador', l:'Borrador', d:'Todavía no se mandó', c:'#9ba1ac'},
+  {k:'emitida',  l:'Emitida',  d:'Comprometida con el proveedor', c:'#e0a92e'},
+  {k:'cumplida', l:'Cumplida', d:'Ya llegaron las facturas', c:'#3fb27f'},
+  {k:'anulada',  l:'Anulada',  d:'Se dio de baja', c:'#e05a5a'},
+];
+const EST_OC = k => ESTADOS_OC.find(e=>e.k===k) || ESTADOS_OC[0];
+
+function nuevaOC(o={}){
+  return {id:uid('oc'), numero:o.numero||'', rubro:o.rubro||'', subrubro:o.subrubro||'',
+    concepto:o.concepto||'', proveedor:o.proveedor||'', cuit:o.cuit||'',
+    importe:o.importe??0, moneda:o.moneda||'ARS',
+    fecha:o.fecha||hoy(), entrega:o.entrega||'', condicion:o.condicion||'',
+    estado:o.estado||'borrador', emitidaPor:o.emitidaPor||null,
+    historial:o.historial||[], notas:o.notas||''};
+}
+const getOCs = () => { const py=getPy(); if(!py) return []; py.ocs ||= []; return py.ocs; };
+function proximoNumeroOC(py){
+  const ns = (py.ocs||[]).map(o=>parseInt(String(o.numero).replace(/\D/g,''),10)).filter(x=>x);
+  return 'OC-' + String((ns.length?Math.max(...ns):0) + 1).padStart(4,'0');
+}
+/* Cuánto de una OC ya llegó facturado. */
+function facturadoDeOC(py, ocId, base, tc){
+  return (py.comprobantes||[]).filter(c=>c.ocId===ocId && c.estado!=='rechazado')
+    .reduce((s,c)=>s + conv(n(c.importe), c.moneda||'ARS', base, tc), 0);
+}
+/* Lo comprometido es la OC emitida menos lo que ya llegó como factura: si no
+   se resta, el mismo gasto contaría dos veces.                               */
+function comprometidoDeOC(py, oc, base, tc){
+  if(oc.estado!=='emitida') return 0;
+  const total = conv(n(oc.importe), oc.moneda||'ARS', base, tc);
+  return Math.max(0, total - facturadoDeOC(py, oc.id, base, tc));
+}
+
+/* --- Caja chica -----------------------------------------------------------
+   Se le adelanta plata a alguien, esa persona gasta y después rinde. Es donde
+   más se pierde plata en un rodaje si no se lleva al día.                     */
+function nuevaCaja(o={}){
+  return {id:uid('cj'), nombre:o.nombre||'', responsable:o.responsable||null,
+    jornada:o.jornada??null, moneda:o.moneda||'ARS',
+    adelantos:o.adelantos||[],   /* [{id, fecha, importe, circuito, entregadoPor, nota}] */
+    estado:o.estado||'abierta',  /* abierta | rendida */
+    rendidaEl:o.rendidaEl||'', rendidaPor:o.rendidaPor||null,
+    devuelto:o.devuelto??0, reintegro:o.reintegro??0, notas:o.notas||''};
+}
+const getCajas = () => { const py=getPy(); if(!py) return []; py.cajas ||= []; return py.cajas; };
+
+function saldoCaja(py, caja){
+  const cs = (py.comprobantes||[]).filter(c=>c.cajaId===caja.id && c.estado!=='rechazado');
+  /* la caja lleva una sola moneda, así que acá no hay conversión que hacer */
+  const entregado = (caja.adelantos||[]).reduce((s,a)=>s+n(a.importe), 0);
+  const gastado = cs.reduce((s,c)=>s+n(c.importe), 0);
+  const conComprobante = cs.filter(c=>c.tipo && c.tipo!=='ninguno')
+    .reduce((s,c)=>s+n(c.importe), 0);
+  return {entregado, gastado, saldo: entregado - gastado, cant: cs.length,
+    conComprobante, sinComprobante: gastado - conComprobante, comprobantes: cs};
+}
+
+/* --- El tablero de plata --------------------------------------------------
+   Presupuestado / Comprometido / Real / Pagado / Disponible, rubro por rubro.
+   Es la vista que mira un productor todos los días.                          */
+function resumenPlata(py, v){
+  const base = v ? v.monedaBase : 'ARS', tc = v ? n(v.tc) : 1000;
+  const enBase = (m, mon) => conv(n(m), mon||'ARS', base, tc);
+  const cs = (py.comprobantes||[]).filter(c=>c.estado!=='rechazado');
+  const ocs = py.ocs || [];
+
+  const filas = (v?v.rubros:[]).map(r=>{
+    const presu = totalRubro(r, v);
+    const real = cs.filter(c=>c.rubro===r.codigo).reduce((s,c)=>s+enBase(c.importe,c.moneda), 0);
+    const pagado = cs.filter(c=>c.rubro===r.codigo && c.estado==='pagado')
+      .reduce((s,c)=>s+enBase(c.importe,c.moneda), 0);
+    const comp = ocs.filter(o=>o.rubro===r.codigo)
+      .reduce((s,o)=>s+comprometidoDeOC(py, o, base, tc), 0);
+    const cant = cs.filter(c=>c.rubro===r.codigo).length;
+    return {codigo:r.codigo, nombre:r.nombre, presu, comp, real, pagado, cant,
+      disponible: presu - comp - real, desvio: (comp + real) - presu};
+  });
+  const T = k => filas.reduce((s,f)=>s+f[k], 0);
+  return {filas, base,
+    presu:T('presu'), comp:T('comp'), real:T('real'), pagado:T('pagado'),
+    disponible:T('disponible'), desvio: T('comp')+T('real')-T('presu')};
 }
 
 /* --- sesión simulada ---------------------------------------------------- */
@@ -1623,7 +1722,7 @@ function migrar(){
   DB.catalogo ||= {personas:[]};
   DB.ui ||= {vista:'interna', tab:'presu'};
   (DB.productoras||[]).forEach(pr=>{ pr.usuarios ||= []; (pr.proyectos||[]).forEach(py=>{
-    py.comprobantes ||= [];
+    py.comprobantes ||= []; py.ocs ||= []; py.cajas ||= [];
     py.desglose ||= nuevoDesglose();
     py.desglose.escenas ||= []; py.desglose.jornadas ||= [];
     py.desglose.jornadas.forEach(normalizarJornada);
@@ -2338,20 +2437,233 @@ function vistaGastos(pr,py,v){
   const sub = DB.ui.subGasto || 'bandeja';
   const pend = cs.filter(c=>accionesDe(c,u).length);
   const mios = cs.filter(c=>c.cargadoPor===u.id);
+  const abiertas = getCajas().filter(x=>x.estado==='abierta').length;
   const S = [['bandeja',`Mi bandeja${pend.length?' · '+pend.length:''}`],
-             ['todos',`Todos · ${cs.length}`],['control','Presupuesto vs real']];
-  const lista = sub==='bandeja' ? (puede(u,'revisar') ? pend : mios) : cs;
+             ['todos',`Comprobantes · ${cs.length}`],
+             ['oc',`Órdenes de compra${getOCs().length?' · '+getOCs().length:''}`],
+             ['caja',`Caja chica${abiertas?' · '+abiertas:''}`],
+             ['control','Tablero']];
+  let lista = sub==='bandeja' ? (puede(u,'revisar') ? pend : mios) : cs;
+  /* filtros: administración necesita ver "todas las facturas de arte" */
+  const F = DB.ui.fGasto || {rubro:'', estado:'', q:''};
+  if(sub!=='bandeja'){
+    if(F.rubro)  lista = lista.filter(c=>c.rubro===F.rubro);
+    if(F.estado) lista = lista.filter(c=>c.estado===F.estado);
+    if(F.q){ const q = norm(F.q);
+      lista = lista.filter(c=>[c.proveedor,c.subrubro,c.concepto,c.numero,c.cuit]
+        .some(x=>norm(x||'').includes(q))); }
+  }
+  const nuevo = {bandeja:['+ Cargar comprobante','cargarComprobante()'],
+                 todos:['+ Cargar comprobante','cargarComprobante()'],
+                 oc:['+ Nueva orden de compra','editOC()'],
+                 caja:['+ Abrir caja chica','editCaja()'],
+                 control:['+ Cargar comprobante','cargarComprobante()']}[sub];
 
   return `<div class="noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <div class="seg">${S.map(([k,l])=>
         `<button class="${sub===k?'on':''}" onclick="setSubGasto('${k}')">${l}</button>`).join('')}</div>
       <div style="flex:1"></div>
-      <button class="btn pri" onclick="cargarComprobante()">+ Cargar comprobante</button>
+      <button class="btn pri" onclick="${nuevo[1]}">${nuevo[0]}</button>
     </div>
-    ${sub==='control' ? controlHTML(R, v) : bandejaHTML(lista, u, R, sub, pr)}`;
+    ${sub==='control' ? tableroHTML(py,v)
+    : sub==='oc'      ? ocsHTML(py,v,u)
+    : sub==='caja'    ? cajasHTML(py,v,u,pr)
+                      : bandejaHTML(lista, u, R, sub, pr, py, v, cs)}`;
 }
 
-function bandejaHTML(lista, u, R, sub, pr){
+/* --- órdenes de compra --------------------------------------------------- */
+function ocsHTML(py,v,u){
+  const ocs = getOCs();
+  const base = v?v.monedaBase:'ARS', tc = v?n(v.tc):1000;
+  const comp = ocs.reduce((s,o)=>s+comprometidoDeOC(py,o,base,tc), 0);
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Órdenes de compra</div>
+        <div class="cssub">Lo que ya se cerró con proveedores y todavía no llegó facturado</div></div>
+      <div style="text-align:right"><div class="csj">${fmt(comp,base)}</div>
+        <div class="cssub">comprometido sin facturar</div></div>
+    </div>
+    <div class="pad muted" style="font-size:12px;line-height:1.55;border-bottom:1px solid var(--line)">
+      Una OC reserva plata del presupuesto en el momento en que cerrás el trato, no cuando
+      llega la factura. A medida que llegan comprobantes imputados a la OC, el comprometido baja
+      y el real sube: la misma plata no se cuenta dos veces.
+    </div>
+    <div class="scrollx"><table class="tbl cst">
+      <thead><tr><th style="width:82px">Estado</th><th style="width:88px">Número</th>
+        <th>Concepto</th><th style="width:18%">Proveedor</th><th style="width:48px">Rubro</th>
+        <th style="width:110px;text-align:right">Importe</th>
+        <th style="width:110px;text-align:right">Facturado</th>
+        <th class="noprint">Acciones</th></tr></thead>
+      <tbody>${ocs.map(o=>{
+        const e = EST_OC(o.estado);
+        const fac = facturadoDeOC(py, o.id, base, tc);
+        const tot = conv(n(o.importe), o.moneda, base, tc);
+        return `<tr>
+          <td><span class="est" style="color:${e.c};border-color:${e.c}55;background:${e.c}18">${e.l}</span></td>
+          <td class="mono" style="font-size:11.5px">${esc(o.numero)}</td>
+          <td><b>${esc(o.subrubro||o.concepto||'—')}</b>
+            ${o.concepto&&o.subrubro?`<span class="muted" style="display:block;font-size:10.5px">${esc(o.concepto)}</span>`:''}</td>
+          <td class="muted">${esc(o.proveedor||'—')}</td>
+          <td><span class="rcode">${esc(o.rubro)}</span></td>
+          <td class="num" style="text-align:right"><b>${fmt(o.importe,o.moneda)}</b></td>
+          <td class="num" style="text-align:right">${fac?`<span style="color:${fac>=tot-1?'var(--ok)':'var(--warn)'}">${fmt(fac,base)}</span>`:'<span class="muted">—</span>'}</td>
+          <td class="noprint" style="white-space:nowrap">
+            ${o.estado==='borrador'&&puede(u,'aprobar')?`<button class="btn sm pri" onclick="emitirOC('${o.id}')">Emitir</button>`:''}
+            ${o.estado==='emitida'&&puede(u,'revisar')?`<button class="btn sm" onclick="cerrarOC('${o.id}')">Dar por cumplida</button>`:''}
+            <button class="btn sm" onclick="editOC('${o.id}')">Editar</button>
+            <button class="btn sm dgr" onclick="delOC('${o.id}')">×</button></td>
+        </tr>`;}).join('') || '<tr><td colspan="8" class="empty">Sin órdenes de compra</td></tr>'}
+      </tbody></table></div></div>`;
+}
+
+/* --- caja chica ---------------------------------------------------------- */
+function cajasHTML(py,v,u,pr){
+  const cajas = getCajas();
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Caja chica</div>
+        <div class="cssub">Plata adelantada a una persona, que después rinde</div></div>
+      <div style="text-align:right">
+        <div class="csj">${cajas.filter(c=>c.estado==='abierta').length}<span> abiertas</span></div>
+        <div class="cssub">${cajas.filter(c=>c.estado==='rendida').length} rendidas</div></div>
+    </div>
+    ${cajas.length ? cajas.map(cj=>{
+      const s = saldoCaja(py, cj);
+      const resp = (pr.usuarios||[]).find(x=>x.id===cj.responsable);
+      const rendida = cj.estado==='rendida';
+      return `<div class="csblock">
+        <h4>${esc(cj.nombre||'Caja')} ${rendida?'<span class="est" style="color:#3fb27f;border-color:#3fb27f55;background:#3fb27f18">Rendida</span>':''}
+          <span style="float:right;font-weight:600;text-transform:none;letter-spacing:0;color:var(--tx2)">
+            ${esc(resp?resp.nombre:'sin responsable')}${cj.jornada?' · J'+cj.jornada:''}</span></h4>
+        <div class="pad">
+          <div class="cshoras" style="margin:-13px -13px 11px">
+            <div><b>${fmt(s.entregado, cj.moneda)}</b><span>Entregado</span></div>
+            <div><b>${fmt(s.gastado, cj.moneda)}</b><span>Gastado · ${s.cant} cbte${s.cant==1?'':'s'}</span></div>
+            <div><b style="color:${s.saldo<0?'var(--bad)':'var(--ok)'}">${fmt(s.saldo, cj.moneda)}</b><span>${s.saldo<0?'Le deben':'Saldo en mano'}</span></div>
+            ${s.sinComprobante?`<div><b style="color:var(--warn)">${fmt(s.sinComprobante, cj.moneda)}</b><span>Sin comprobante</span></div>`:''}
+          </div>
+          ${cj.adelantos.length?`<div style="font-size:11.5px;margin-bottom:8px">
+            ${cj.adelantos.map(a=>`<div class="tot sub"><span>Adelanto ${esc(a.fecha)}
+              <span class="muted">${esc((CIRCUITOS.find(x=>x.v===a.circuito)||{l:''}).l)}${a.nota?' · '+esc(a.nota):''}</span></span>
+              <b>${fmt(a.importe, cj.moneda)}</b></div>`).join('')}</div>`:''}
+          ${s.comprobantes.length?`<div class="scrollx"><table class="tbl cst">
+            <thead><tr><th>Gasto</th><th style="width:19%">Proveedor</th><th style="width:96px">Comprobante</th>
+              <th style="width:100px;text-align:right">Importe</th></tr></thead>
+            <tbody>${s.comprobantes.map(c=>`<tr>
+              <td>${esc(c.subrubro||c.concepto||'—')}</td>
+              <td class="muted">${esc(c.proveedor||'—')}</td>
+              <td class="${c.tipo&&c.tipo!=='ninguno'?'':'muted'}" style="font-size:11px">
+                ${c.tipo?esc(TIPO_CBTE(c.tipo)):'<span style="color:var(--warn)">sin definir</span>'}</td>
+              <td class="num" style="text-align:right">${fmt(c.importe, c.moneda)}</td></tr>`).join('')}
+            </tbody></table></div>`:'<div class="muted" style="font-size:12px">Todavía no se cargó ningún gasto a esta caja.</div>'}
+          ${rendida?`<div class="sicabox" style="margin-top:11px">
+            <b>Rendida el ${esc(cj.rendidaEl)}.</b>
+            ${cj.devuelto?` Devolvió ${fmt(cj.devuelto, cj.moneda)}.`:''}
+            ${cj.reintegro?` Se le reintegraron ${fmt(cj.reintegro, cj.moneda)}.`:''}
+            ${cj.notas?`<span style="display:block;margin-top:3px">${esc(cj.notas)}</span>`:''}</div>`
+          :`<div class="noprint" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:11px">
+            <button class="btn sm" onclick="addAdelanto('${cj.id}')">+ Adelanto</button>
+            <button class="btn sm pri" onclick="cargarComprobante(null,'${cj.id}')">+ Gasto de esta caja</button>
+            <div style="flex:1"></div>
+            <button class="btn sm" onclick="rendirCaja('${cj.id}')">Rendir y cerrar</button>
+            <button class="btn sm" onclick="editCaja('${cj.id}')">Editar</button>
+            <button class="btn sm dgr" onclick="delCaja('${cj.id}')">×</button>
+          </div>`}
+        </div></div>`;
+    }).join('') : '<div class="empty">Sin cajas abiertas. Abrí una cuando le adelantes plata a alguien.</div>'}
+  </div>`;
+}
+
+/* --- tablero de plata ---------------------------------------------------- */
+function tableroHTML(py,v){
+  const P = resumenPlata(py, v);
+  const filas = P.filas.filter(f=>f.presu || f.comp || f.real);
+  const barra = f => {
+    const tot = Math.max(f.presu, f.comp+f.real) || 1;
+    const pr0 = f.real/tot*100, pc = f.comp/tot*100;
+    return `<span class="barra barra2" title="real ${Math.round(f.real/ (f.presu||1) *100)}% del presupuesto">
+      <i style="width:${pr0}%;background:${f.desvio>0?'var(--bad)':'var(--ok)'}"></i>
+      <i style="width:${pc}%;background:var(--ac);opacity:.6"></i></span>`;
+  };
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Tablero de plata</div>
+        <div class="cssub">Presupuestado · Comprometido · Real · Disponible — en ${esc(P.base)}</div></div>
+      <div style="text-align:right">
+        <div class="csj" style="color:${P.disponible<0?'var(--bad)':'var(--ac)'}">${fmt(P.disponible,P.base)}</div>
+        <div class="cssub">disponible</div></div>
+    </div>
+    <div class="cshoras">
+      <div><b>${fmt(P.presu,P.base)}</b><span>Presupuestado</span></div>
+      <div><b style="color:var(--ac)">${fmt(P.comp,P.base)}</b><span>Comprometido (OC)</span></div>
+      <div><b>${fmt(P.real,P.base)}</b><span>Real cargado</span></div>
+      <div><b style="color:var(--ok)">${fmt(P.pagado,P.base)}</b><span>Pagado</span></div>
+      <div><b style="color:${P.desvio>0?'var(--bad)':'var(--tx)'}">${P.desvio>0?'+':''}${fmt(P.desvio,P.base)}</b><span>Desvío</span></div>
+    </div>
+    <div class="scrollx"><table class="tbl cst">
+      <thead><tr><th style="width:44px">Cód.</th><th>Rubro</th>
+        <th style="width:112px;text-align:right">Presupuestado</th>
+        <th style="width:104px;text-align:right">Comprometido</th>
+        <th style="width:104px;text-align:right">Real</th>
+        <th style="width:104px;text-align:right">Pagado</th>
+        <th style="width:96px">Avance</th>
+        <th style="width:112px;text-align:right">Disponible</th></tr></thead>
+      <tbody>${filas.map(f=>`<tr class="${f.disponible<0?'conhe':''}">
+        <td><span class="rcode">${esc(f.codigo)}</span></td>
+        <td>${esc(f.nombre)}${f.cant?`<span class="muted" style="font-size:10px"> · ${f.cant}</span>`:''}</td>
+        <td class="num" style="text-align:right">${f.presu?fmt(f.presu,P.base):'—'}</td>
+        <td class="num" style="text-align:right;color:var(--ac)">${f.comp?fmt(f.comp,P.base):'—'}</td>
+        <td class="num" style="text-align:right"><b>${f.real?fmt(f.real,P.base):'—'}</b></td>
+        <td class="num muted" style="text-align:right">${f.pagado?fmt(f.pagado,P.base):'—'}</td>
+        <td>${barra(f)}</td>
+        <td class="num" style="text-align:right"><b>${fmt(f.disponible,P.base)}</b></td>
+      </tr>`).join('') || '<tr><td colspan="8" class="empty">Sin movimientos</td></tr>'}
+      </tbody>
+      <tfoot><tr><td colspan="2"><b>Total</b></td>
+        <td class="num" style="text-align:right"><b>${fmt(P.presu,P.base)}</b></td>
+        <td class="num" style="text-align:right"><b style="color:var(--ac)">${fmt(P.comp,P.base)}</b></td>
+        <td class="num" style="text-align:right"><b>${fmt(P.real,P.base)}</b></td>
+        <td class="num" style="text-align:right"><b>${fmt(P.pagado,P.base)}</b></td>
+        <td></td>
+        <td class="num" style="text-align:right"><b style="color:${P.disponible<0?'var(--bad)':'var(--ac)'}">${fmt(P.disponible,P.base)}</b></td>
+      </tr></tfoot></table></div>
+    <div class="pad muted" style="font-size:11.5px;line-height:1.55">
+      <b>Disponible = presupuestado − comprometido − real.</b> Lo que ya llegó facturado contra una
+      OC deja de contar como comprometido, así la misma plata no se cuenta dos veces. Lo rechazado
+      no suma. Las horas extra del rodaje no están acá hasta que se carguen como comprobante:
+      se ven en <b>Rodaje → Horas y extras</b>.
+    </div></div>`;
+}
+
+function bandejaHTML(lista, u, R, sub, pr, py, v, todos){
+  const F = DB.ui.fGasto || {rubro:'',estado:'',q:''};
+  /* cuántos hay por rubro, para que el filtro muestre sólo los que tienen algo */
+  const cuenta = {};
+  (todos||[]).forEach(c=>cuenta[c.rubro] = (cuenta[c.rubro]||0)+1);
+  const base = v?v.monedaBase:'ARS', tc = v?n(v.tc):1000;
+  const suma = lista.filter(c=>c.estado!=='rechazado')
+    .reduce((a,c)=>a + conv(n(c.importe), c.moneda||'ARS', base, tc), 0);
+  const filtros = sub==='bandeja' ? '' : `<div class="pad noprint filtros">
+      <select onchange="setFiltro('rubro',this.value)">
+        <option value="">Todos los rubros</option>
+        ${RUBROS_BASE.filter(r=>cuenta[r.codigo]).map(r=>
+          `<option value="${r.codigo}" ${F.rubro===r.codigo?'selected':''}>${esc(r.codigo+' · '+r.nombre)} (${cuenta[r.codigo]})</option>`).join('')}
+      </select>
+      <select onchange="setFiltro('estado',this.value)">
+        <option value="">Todos los estados</option>
+        ${ESTADOS.map(e=>`<option value="${e.k}" ${F.estado===e.k?'selected':''}>${esc(e.l)}</option>`).join('')}
+      </select>
+      <input type="text" value="${esc(F.q)}" placeholder="Buscar proveedor, concepto, número…"
+        onchange="setFiltro('q',this.value)">
+      ${(F.rubro||F.estado||F.q)?`<button class="btn sm" onclick="limpiarFiltros()">Limpiar</button>`:''}
+      <div style="flex:1"></div>
+      <span class="muted" style="font-size:11.5px;align-self:center">
+        ${lista.length} de ${(todos||[]).length} · <b style="color:var(--ac)">${fmt(suma, base)}</b></span>
+      <button class="btn sm" onclick="expGastosCSV()">⬇ CSV</button>
+    </div>`;
+  return bandejaCuerpo(lista, u, R, sub, pr, filtros);
+}
+function bandejaCuerpo(lista, u, R, sub, pr, filtros){
   const chip = c => { const e=EST(c.estado);
     return `<span class="est" style="color:${e.c};border-color:${e.c}55;background:${e.c}18">${e.l}</span>`; };
   return `<div class="cs">
@@ -2370,6 +2682,7 @@ function bandejaHTML(lista, u, R, sub, pr){
          <span class="muted">${fmt(R.porEstado[e.k].total, R.base)}</span></span>`).join('')
         || '<span class="muted">Todavía no se cargó ningún comprobante.</span>'}
     </div>
+    ${filtros}
     <div class="scrollx"><table class="tbl cst">
       <thead><tr><th style="width:88px">Estado</th><th>Concepto</th><th style="width:19%">Proveedor</th>
         <th style="width:52px">Rubro</th><th style="width:110px;text-align:right">Importe</th>
@@ -3554,14 +3867,216 @@ function delUsuario(id){
   R();
 }
 
+/* ---------- filtros y export de gastos ---------- */
+function setFiltro(campo, val){
+  DB.ui.fGasto = {...(DB.ui.fGasto||{rubro:'',estado:'',q:''}), [campo]:val}; R();
+}
+function limpiarFiltros(){ DB.ui.fGasto = {rubro:'',estado:'',q:''}; R(); }
+
+/* Lo que administración le pasa al contador: una fila por comprobante, con su
+   rubro, para que se impute donde corresponde.                              */
+function expGastosCSV(){
+  const py = getPy(), pr = getPr();
+  const F = DB.ui.fGasto || {rubro:'',estado:'',q:''};
+  let cs = getComprobantes();
+  if(F.rubro)  cs = cs.filter(c=>c.rubro===F.rubro);
+  if(F.estado) cs = cs.filter(c=>c.estado===F.estado);
+  if(F.q){ const q=norm(F.q);
+    cs = cs.filter(c=>[c.proveedor,c.subrubro,c.concepto,c.numero,c.cuit].some(x=>norm(x||'').includes(q))); }
+  const q0 = s => '"'+String(s??'').replace(/"/g,'""')+'"';
+  const usr = id => ((pr.usuarios||[]).find(x=>x.id===id)||{nombre:''}).nombre;
+  const L = [['Rubro','Cód. rubro','Subrubro','Detalle','Proveedor','CUIT','Comprobante','Número',
+    'Fecha','Importe','Moneda','Circuito de pago','Estado','Cargado por','Orden de compra',
+    'Caja chica','Jornada','Notas'].map(q0).join(',')];
+  cs.forEach(c=>L.push([
+    (RUBROS_BASE.find(r=>r.codigo===c.rubro)||{nombre:''}).nombre, c.rubro, c.subrubro, c.concepto,
+    c.proveedor, c.cuit, TIPO_CBTE(c.tipo), c.numero, c.fecha, c.importe, c.moneda,
+    (CIRCUITOS.find(x=>x.v===c.circuito)||{l:''}).l, EST(c.estado).l, usr(c.cargadoPor),
+    (getOCs().find(x=>x.id===c.ocId)||{numero:''}).numero,
+    (getCajas().find(x=>x.id===c.cajaId)||{nombre:''}).nombre,
+    c.jornada||'', c.notas].map(q0).join(',')));
+  bajar(`gastos-${py.nombre}.csv`, '﻿'+L.join('\n'), 'text/csv;charset=utf-8');
+  toast(`${cs.length} comprobante(s) exportado(s)`);
+}
+
+/* ---------- órdenes de compra ---------- */
+function editOC(id){
+  const py = getPy(), v = getV();
+  const o = id ? getOCs().find(x=>x.id===id)
+              : nuevaOC({numero:proximoNumeroOC(py), moneda:v?v.monedaBase:'ARS'});
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+    <h3>${id?'Editar orden de compra':'Nueva orden de compra'}</h3><div class="mbody">
+      <div class="grid2">
+        ${campo('Número','numero',o.numero)}
+        ${campo('Fecha','fecha',o.fecha,'date')}
+        <label class="f"><span>Rubro</span>
+          <select name="rubro" onchange="alCambiarRubro(this.value)">
+            <option value="">— elegir —</option>
+            ${RUBROS_BASE.map(r=>`<option value="${r.codigo}" ${r.codigo===o.rubro?'selected':''}>${esc(r.codigo+' · '+r.nombre)}</option>`).join('')}
+          </select></label>
+        <label class="f"><span>Subrubro</span>
+          <select name="subrubro" id="csub">${subrubroOpts(o.rubro, o.subrubro)}</select></label>
+        ${campo('Detalle','concepto',o.concepto,'text','placeholder="qué se le encargó"')}
+        ${campo('Proveedor','proveedor',o.proveedor)}
+        ${campo('CUIT','cuit',o.cuit)}
+        ${campo('Importe','importe',o.importe,'number','step="any"')}
+        ${sel('Moneda','moneda',o.moneda,['ARS','USD'])}
+        ${campo('Entrega / fecha de servicio','entrega',o.entrega,'text','placeholder="cuándo"')}
+        ${campo('Condición de pago','condicion',o.condicion,'text','placeholder="50% anticipo, 50% contra entrega"')}
+      </div>
+      <label class="f" style="margin-top:12px"><span>Notas</span>
+        <textarea name="notas" rows="2">${esc(o.notas)}</textarea></label>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="saveOC('${id||''}')">Guardar</button></div>
+  </div></div>`);
+}
+function saveOC(id){
+  const d = datos(); const py = getPy(); py.ocs ||= [];
+  let o = id ? py.ocs.find(x=>x.id===id) : nuevaOC();
+  const nuevo = !id;
+  Object.assign(o, {numero:d.numero, fecha:d.fecha, rubro:d.rubro, subrubro:d.subrubro,
+    concepto:d.concepto, proveedor:d.proveedor, cuit:d.cuit, importe:n(d.importe),
+    moneda:d.moneda, entrega:d.entrega, condicion:d.condicion, notas:d.notas});
+  if(!o.rubro || !o.importe){ alert('Falta el rubro o el importe.'); return; }
+  if(nuevo){ py.ocs.push(o); toast(`${o.numero} creada en borrador — emitila para que comprometa presupuesto`); }
+  cerrar();
+}
+function emitirOC(id){
+  const o = getOCs().find(x=>x.id===id); const u = getUsuario();
+  o.estado = 'emitida';
+  o.emitidaPor = u?u.id:null;
+  o.historial.push({a:'emitida', usuario:u?u.nombre:'—', fecha:hoy()});
+  toast(`${o.numero} emitida — compromete ${fmt(o.importe, o.moneda)}`); R();
+}
+function cerrarOC(id){
+  const o = getOCs().find(x=>x.id===id); const u = getUsuario();
+  o.estado = 'cumplida';
+  o.historial.push({a:'cumplida', usuario:u?u.nombre:'—', fecha:hoy()});
+  toast(`${o.numero} dada por cumplida — deja de comprometer`); R();
+}
+function delOC(id){
+  const py = getPy(); const o = py.ocs.find(x=>x.id===id);
+  const imputados = (py.comprobantes||[]).filter(c=>c.ocId===id).length;
+  if(imputados){ if(!confirm(`${o.numero} tiene ${imputados} comprobante(s) imputado(s). Se van a quedar sin OC. ¿Seguir?`)) return;
+    py.comprobantes.forEach(c=>{ if(c.ocId===id) c.ocId = null; }); }
+  else if(!confirm(`Eliminar ${o.numero}?`)) return;
+  py.ocs = py.ocs.filter(x=>x.id!==id); R();
+}
+
+/* ---------- caja chica ---------- */
+function editCaja(id){
+  const py = getPy(), pr = getPr(), v = getV();
+  const cj = id ? getCajas().find(x=>x.id===id)
+                : nuevaCaja({nombre:'Caja '+((py.cajas||[]).length+1), moneda:v?v.monedaBase:'ARS',
+                             responsable:getUsuario()?.id||null});
+  const jorn = (py.desglose?.jornadas)||[];
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:540px">
+    <h3>${id?'Editar caja':'Abrir caja chica'}</h3><div class="mbody">
+      <div class="grid2">
+        ${campo('Nombre','nombre',cj.nombre,'text','placeholder="Caja de arte, Caja jornada 2…"')}
+        ${sel('Responsable','responsable',cj.responsable||'',
+          [{v:'',l:'— elegir —'},...(pr.usuarios||[]).filter(x=>x.activo).map(x=>({v:x.id,l:x.nombre+' · '+x.depto}))])}
+        ${sel('Moneda','moneda',cj.moneda,['ARS','USD'])}
+        ${jorn.length?sel('Jornada','jornada',cj.jornada??'',[{v:'',l:'— sin jornada —'},...jorn.map(j=>({v:j.numero,l:'Jornada '+j.numero}))]):''}
+      </div>
+      ${id?'':`<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Primer adelanto</div>
+      <div class="grid2">
+        ${campo('Importe','adelanto',0,'number','step="any"')}
+        ${sel('Cómo se entrega','circuito','efectivo',CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
+      </div>`}
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="saveCaja('${id||''}')">${id?'Guardar':'Abrir caja'}</button></div>
+  </div></div>`);
+}
+function saveCaja(id){
+  const d = datos(); const py = getPy(); py.cajas ||= [];
+  let cj = id ? py.cajas.find(x=>x.id===id) : nuevaCaja();
+  Object.assign(cj, {nombre:d.nombre||'Caja', responsable:d.responsable||null,
+    moneda:d.moneda, jornada: d.jornada ? parseInt(d.jornada,10) : null});
+  if(!id){
+    py.cajas.push(cj);
+    if(n(d.adelanto) > 0) cj.adelantos.push({id:uid('ad'), fecha:hoy(), importe:n(d.adelanto),
+      circuito:d.circuito, entregadoPor:getUsuario()?.id||null, nota:''});
+    toast(`${cj.nombre} abierta`);
+  }
+  cerrar();
+}
+function addAdelanto(id){
+  const cj = getCajas().find(x=>x.id===id);
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:440px">
+    <h3>Adelanto a ${esc(cj.nombre)}</h3><div class="mbody"><div class="grid2">
+      ${campo('Importe','importe',0,'number','step="any"')}
+      ${sel('Cómo se entrega','circuito','efectivo',CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
+      ${campo('Fecha','fecha',hoy(),'date')}
+      ${campo('Nota','nota','','text')}
+    </div></div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="saveAdelanto('${id}')">Agregar</button></div>
+  </div></div>`);
+}
+function saveAdelanto(id){
+  const d = datos(); const cj = getCajas().find(x=>x.id===id);
+  if(n(d.importe) <= 0){ alert('Poné un importe.'); return; }
+  cj.adelantos.push({id:uid('ad'), fecha:d.fecha||hoy(), importe:n(d.importe),
+    circuito:d.circuito, entregadoPor:getUsuario()?.id||null, nota:d.nota||''});
+  toast(`Adelanto de ${fmt(n(d.importe), cj.moneda)}`); cerrar();
+}
+function rendirCaja(id){
+  const py = getPy(), cj = getCajas().find(x=>x.id===id);
+  const s = saldoCaja(py, cj);
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+    <h3>Rendir ${esc(cj.nombre)}</h3><div class="mbody">
+      <div class="cshoras" style="margin:-16px -16px 14px">
+        <div><b>${fmt(s.entregado, cj.moneda)}</b><span>Entregado</span></div>
+        <div><b>${fmt(s.gastado, cj.moneda)}</b><span>Gastado</span></div>
+        <div><b style="color:${s.saldo<0?'var(--bad)':'var(--ok)'}">${fmt(Math.abs(s.saldo), cj.moneda)}</b>
+          <span>${s.saldo<0?'A reintegrarle':'A devolver'}</span></div>
+      </div>
+      ${s.sinComprobante>0?`<div class="avisomodo"><b>${fmt(s.sinComprobante, cj.moneda)} sin comprobante definido.</b>
+        Se puede rendir igual, pero conviene marcar de cada gasto qué respaldo tiene antes de cerrar.</div>`:''}
+      ${s.saldo<0
+        ? `<div class="sicabox">Gastó <b>${fmt(-s.saldo, cj.moneda)}</b> más de lo que se le adelantó. Hay que reintegrárselo.</div>`
+        : s.saldo>0 ? `<div class="sicabox">Tiene que devolver <b>${fmt(s.saldo, cj.moneda)}</b>.</div>`
+        : `<div class="sicabox">La caja cierra justo.</div>`}
+      <label class="f" style="margin-top:12px"><span>Notas de la rendición</span>
+        <textarea name="notas" rows="3">${esc(cj.notas)}</textarea></label>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="confirmarRendicion('${id}')">Cerrar la caja</button></div>
+  </div></div>`);
+}
+function confirmarRendicion(id){
+  const d = datos(); const py = getPy(), cj = getCajas().find(x=>x.id===id);
+  const s = saldoCaja(py, cj);
+  cj.estado = 'rendida'; cj.rendidaEl = hoy();
+  cj.rendidaPor = getUsuario()?.id||null;
+  cj.devuelto = s.saldo > 0 ? s.saldo : 0;
+  cj.reintegro = s.saldo < 0 ? -s.saldo : 0;
+  cj.notas = d.notas || '';
+  toast(`${cj.nombre} rendida`); cerrar();
+}
+function delCaja(id){
+  const py = getPy(), cj = py.cajas.find(x=>x.id===id);
+  const gastos = (py.comprobantes||[]).filter(c=>c.cajaId===id).length;
+  if(gastos){ if(!confirm(`${cj.nombre} tiene ${gastos} gasto(s). Se van a quedar sin caja. ¿Seguir?`)) return;
+    py.comprobantes.forEach(c=>{ if(c.cajaId===id) c.cajaId = null; }); }
+  else if(!confirm(`Eliminar ${cj.nombre}?`)) return;
+  py.cajas = py.cajas.filter(x=>x.id!==id); R();
+}
+
 /* ---------- comprobantes ---------- */
 function setSubGasto(k){ DB.ui.subGasto = k; R(); }
 
-function cargarComprobante(id){
+function cargarComprobante(id, cajaId){
   const py = getPy(), v = getV(), u = getUsuario();
   if(!u){ toast('Primero cargá el equipo'); setTab('equipo'); return; }
-  const c = id ? getComprobantes().find(x=>x.id===id) : nuevoComprobante({rubro:'', moneda: v?v.monedaBase:'ARS'});
+  const c = id ? getComprobantes().find(x=>x.id===id)
+               : nuevoComprobante({rubro:'', moneda: v?v.monedaBase:'ARS', cajaId:cajaId||null});
   const jorn = (py.desglose?.jornadas)||[];
+  const ocsAbiertas = getOCs().filter(o=>o.estado==='emitida' || o.id===c.ocId);
+  const cajasAbiertas = getCajas().filter(x=>x.estado==='abierta' || x.id===c.cajaId);
   abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
     <h3>${id?'Editar comprobante':'Cargar comprobante'}
       <span class="spacer"></span>
@@ -3585,6 +4100,10 @@ function cargarComprobante(id){
         ${sel('Moneda','moneda',c.moneda,['ARS','USD'])}
         ${sel('Cómo se paga','circuito',c.circuito,CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
         ${jorn.length?sel('Jornada','jornada',c.jornada??'',[{v:'',l:'— sin jornada —'},...jorn.map(j=>({v:j.numero,l:'Jornada '+j.numero}))]):''}
+        ${ocsAbiertas.length?sel('Contra qué orden de compra','ocId',c.ocId||'',
+          [{v:'',l:'— sin OC —'},...ocsAbiertas.map(o=>({v:o.id,l:o.numero+' · '+(o.proveedor||o.subrubro||'')+' · '+fmt(o.importe,o.moneda)}))]):''}
+        ${cajasAbiertas.length?sel('¿Sale de una caja chica?','cajaId',c.cajaId||'',
+          [{v:'',l:'— no, se paga aparte —'},...cajasAbiertas.map(x=>({v:x.id,l:x.nombre}))]):''}
       </div>
       <label class="f" style="margin-top:12px"><span>Notas</span>
         <textarea name="notas" rows="2" placeholder="Lo que producción necesite saber para revisarlo">${esc(c.notas)}</textarea></label>
@@ -3636,8 +4155,16 @@ function saveComprobante(id){
   Object.assign(c, {rubro:d.rubro, subrubro:d.subrubro, concepto:d.concepto,
     proveedor:d.proveedor, cuit:d.cuit, tipo:d.tipo, numero:d.numero, fecha:d.fecha,
     importe:n(d.importe), moneda:d.moneda, circuito:d.circuito,
-    jornada: d.jornada ? parseInt(d.jornada,10) : null, notas:d.notas});
+    jornada: d.jornada ? parseInt(d.jornada,10) : null, notas:d.notas,
+    ocId: d.ocId || null, cajaId: d.cajaId || null});
   if(_adjTmp){ c.adjunto = _adjTmp; _adjTmp = null; }
+  /* Si va contra una OC, los datos salen de ahí: el rubro ya lo decidió quien
+     emitió la orden. Va ANTES de validar, si no pide algo que ya está.       */
+  if(c.ocId){
+    const o = getOCs().find(x=>x.id===c.ocId);
+    if(o){ c.rubro = c.rubro || o.rubro; c.subrubro = c.subrubro || o.subrubro;
+           c.proveedor = c.proveedor || o.proveedor; c.cuit = c.cuit || o.cuit; }
+  }
   if(!c.rubro || !c.importe){ alert('Falta el rubro o el importe.'); return; }
   if(nuevo){
     c.cargadoPor = u.id; c.cargadoEl = hoy(); c.estado = 'cargado';
@@ -3676,7 +4203,9 @@ function verComprobante(id){
            ['Comprobante', (TIPO_CBTE(c.tipo)||'—')+(c.numero?' '+c.numero:'')],
            ['Fecha', c.fecha],['Importe', fmt(c.importe, c.moneda)],
            ['Cómo se paga', (CIRCUITOS.find(x=>x.v===c.circuito)||{l:'—'}).l],
-           ['Jornada', c.jornada?('Jornada '+c.jornada):'—']].map(([k,val])=>
+           ['Jornada', c.jornada?('Jornada '+c.jornada):'—'],
+           ['Orden de compra', (getOCs().find(x=>x.id===c.ocId)||{numero:'—'}).numero],
+           ['Caja chica', (getCajas().find(x=>x.id===c.cajaId)||{nombre:'—'}).nombre]].map(([k,val])=>
           `<div><span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700;display:block">${esc(k)}</span>${esc(val)}</div>`).join('')}
       </div>
       ${c.notas?`<div class="sicabox" style="margin-top:12px"><b>Nota de quien lo cargó:</b> ${esc(c.notas)}</div>`:''}

@@ -203,6 +203,34 @@ carga el departamento -> revisa produccion -> aprueba el ejecutivo -> paga admin
 > los definitivos: cuando haya backend se reemplaza el selector por un login y no
 > cambia nada mas.
 
+### El modulo de plata
+
+Cinco sub-vistas en **Gastos**:
+
+- **Mi bandeja** — lo que espera algo de vos, segun tu rol.
+- **Comprobantes** — todos, con **filtro por rubro, por estado y buscador**, el
+  total de lo filtrado y export a CSV para el contador (una fila por
+  comprobante, con su rubro para que se impute donde corresponde).
+- **Ordenes de compra** — el compromiso ANTES de la factura. Una OC emitida
+  reserva plata del presupuesto; a medida que llegan comprobantes imputados a
+  ella, el comprometido baja y el real sube, asi **la misma plata no se cuenta
+  dos veces**. Cargar una factura contra una OC arrastra rubro, subrubro y
+  proveedor: no hay que volver a elegirlos.
+- **Caja chica** — se le adelanta plata a alguien, esa persona gasta y despues
+  rinde. Muestra entregado, gastado, saldo en mano y **cuanto no tiene
+  comprobante**. Al rendir calcula si tiene que devolver o si hay que
+  reintegrarle, y queda cerrada con fecha y notas.
+- **Tablero** — Presupuestado · Comprometido · Real · Pagado · **Disponible**,
+  rubro por rubro.
+
+```
+Disponible = presupuestado - comprometido - real
+```
+
+> Cada comprobante lleva **rubro obligatorio** (no deja guardar sin el) y
+> subrubro de la taxonomia. Por eso todo suma solo, y administracion puede
+> sacar "todas las facturas de arte" con un filtro.
+
 ### Rubros internos
 
 **17 rubros y 234 subrubros**, en `RUBROS_BASE` y `FUNCIONES`. Es la misma
@@ -236,8 +264,8 @@ de `productoraId`, así que el schema ya es multi-tenant.
 4. **Rodaje** ✅ — citaciones, parte del dia y horas extra.
 5. **Seguros** — generar el alta (nómina para el broker) desde el crew ya cargado;
    guardar pólizas y certificados. AP, ART, RC, todo riesgo equipos.
-6. **Caja y pagos** ✅ parcial — circuito de aprobacion y presupuesto vs real.
-   Falta: ordenes de compra, caja chica por jornada y rendiciones. — órdenes de compra, caja chica por jornada, rendiciones, y el
+6. **Caja y pagos** ✅ — circuito de aprobacion, ordenes de compra, caja chica,
+   rendiciones y tablero presupuestado/comprometido/real. — órdenes de compra, caja chica por jornada, rendiciones, y el
    tablero Presupuestado / Comprometido / Real.
 7. **Backend** — Supabase, usuarios, adjuntos, acceso de sólo lectura para el cliente.
 8. **Tarifario histórico** — al cerrar un proyecto, el catálogo aprende cuánto salió
@@ -259,6 +287,7 @@ node test/run.js test/contactos.js # lista de contactos y su circuito con catalo
 node test/run.js test/rodaje.js    # citaciones, fichadas, horas extra y turnaround
 node test/run.js test/sica.js      # escala de convenio y su uso como referencia
 node test/run.js test/gastos.js    # rubros, roles y circuito de aprobacion
+node test/run.js test/plata.js     # ordenes de compra, caja chica y tablero
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```
