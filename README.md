@@ -231,6 +231,29 @@ Disponible = presupuestado - comprometido - real
 > subrubro de la taxonomia. Por eso todo suma solo, y administracion puede
 > sacar "todas las facturas de arte" con un filtro.
 
+### Tags: que cosas hay en el proyecto
+
+`Desglose -> Tags`. No son etiquetas decorativas: **cada una arrastra permisos,
+seguros o gente especializada**, y eso es lo que hay que resolver antes de rodar.
+
+Se detectan solas del guion y dicen **por que** y **en que escena**:
+
+```
+Menores de edad     detectado en el guion     Escenas 2 · por: nena
+   ☐ Permiso de trabajo de menores
+   ☐ Tutor o adulto responsable en set
+   ☐ Jornada reducida y horario permitido
+   ☐ Autorizacion de los padres
+```
+
+16 tags: menores, animales, drone, armeria, riesgo, efectos, nocturno, via
+publica, vehiculos, agua, altura, multitud, construccion, VFX, estudio y rodaje
+fuera de la ciudad. Se agregan y se sacan a mano — sacar uno detectado sirve
+para descartar un falso positivo, y queda registrado.
+
+Los chips aparecen en la **portada**, y tocando cualquiera se llega a lo que
+pide.
+
 ### Areas (rubros dentro de rubros)
 
 El **rubro** dice QUE es el gasto; el **area** dice DE QUIEN es. Sin eso, la

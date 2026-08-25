@@ -273,6 +273,18 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .diagf.no i{color:var(--bad)}
 .diagf.no{background:rgba(224,90,90,.08)}
 
+/* tags del proyecto */
+.tagdot{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:7px;vertical-align:baseline}
+.tagorig{font-size:9px;font-weight:600;color:var(--tx3);text-transform:none;letter-spacing:0;margin-left:8px}
+.pide{margin:0 0 0 4px;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.pide li{font-size:12.5px;padding-left:18px;position:relative;line-height:1.45}
+.pide li::before{content:'☐';position:absolute;left:0;color:var(--tx3)}
+.tagadd{font-size:11.5px;padding:5px 10px;border:1px dashed;border-radius:14px;background:transparent}
+.tagadd:hover{background:var(--bg3)}
+.tagchip{font-size:11.5px;font-weight:600;padding:4px 10px;border:1px solid;border-radius:14px;
+  background:transparent}
+.tagchip:hover{background:var(--bg3)}
+
 /* instructivo */
 .guiawrap{display:grid;grid-template-columns:250px 1fr;gap:0}
 .guianav{border-right:1px solid var(--line);padding:9px 0;background:var(--bg)}
@@ -517,7 +529,7 @@ const uid = p => (p||'x') + '_' + Math.random().toString(36).slice(2,9);
    JORNADA y es un área en sí mismo. Lo mismo los seguros o la seguridad, que
    son de la producción entera.                                               */
 const RUBROS_BASE = [
-  {codigo:'01', nombre:'Preproducción y Desarrollo',       aplicaFee:true,  area:'produccion'},
+  {codigo:'01', nombre:'Preproducción y Desarrollo',       aplicaFee:true,  area:'preproduccion'},
   {codigo:'02', nombre:'Dirección',                        aplicaFee:true,  area:'direccion'},
   {codigo:'03', nombre:'Equipo de Producción',             aplicaFee:true,  area:'produccion'},
   {codigo:'04', nombre:'Fotografía y Cámara',              aplicaFee:true,  area:'camara'},
@@ -619,6 +631,7 @@ let SUBRUBROS = Object.entries(FUNCIONES).flatMap(([r,xs])=>xs.map(x=>({r, s:x})
    QUIÉN es. Sin esto, la nafta de arte y la de producción caen en la misma
    bolsa y después no se sabe quién se pasó.                                  */
 const AREAS = [
+  {k:'preproduccion', l:'Preproducción',     r:'01'},
   {k:'produccion', l:'Producción',           r:'03'},
   {k:'direccion',  l:'Dirección',            r:'02'},
   {k:'camara',     l:'Fotografía y Cámara',  r:'04'},
@@ -763,6 +776,7 @@ function nuevoProyecto(o={}){
     jornadas:o.jornadas??1, versiones:o.versiones||[nuevaVersion()], versionActiva:null,
     desglose:o.desglose||nuevoDesglose(),
     contactos:o.contactos||{porLinea:{}, extra:[]},
+    tags:o.tags||{manual:[], descartados:[]},
     configRodaje:o.configRodaje||nuevaConfigRodaje(),
     comprobantes:o.comprobantes||[], ocs:o.ocs||[], cajas:o.cajas||[]};
 }
@@ -1783,6 +1797,103 @@ function desglosar(txt){
   return {escenas:libres, modo: libres.length>1 ? 'parrafos' : libres.length ? 'bloque' : 'nada'};
 }
 
+/* --------------------------- TAGS DEL PROYECTO ----------------------------
+   Qué cosas hay en este trabajo. No son categorías decorativas: cada una
+   arrastra permisos, seguros o gente especializada. Se detectan solas del
+   desglose y se pueden agregar o sacar a mano.                              */
+const TAGS = [
+  {k:'menores', l:'Menores de edad', c:'#e05a5a',
+   re:/\b(nin[oa]s?|nen[ea]s?|chic[oa]s?|bebe|bebes|adolescente|hij[oa]|alumn[oa]s?|colegial)\b/,
+   pide:['Permiso de trabajo de menores','Tutor o adulto responsable en set',
+         'Jornada reducida y horario permitido','Autorización de los padres']},
+  {k:'animales', l:'Animales', c:'#b58150', dep:'animales',
+   pide:['Adiestrador','Seguro específico','Veterinario de guardia si es jornada larga',
+         'Permiso si es en vía pública']},
+  {k:'drone', l:'Drone', c:'#5b9bd5', dep:'equipo', sub:/dron/i,
+   pide:['Piloto habilitado ANAC','Autorización de vuelo en la zona','Seguro de responsabilidad civil']},
+  {k:'armas', l:'Armería', c:'#e05a5a',
+   re:/\b(arma|armas|pistola|revolver|escopeta|rifle|fusil|balazo|disparo|disparos)\b/,
+   pide:['Armero matriculado','Aviso a la policía de la jurisdicción','Utilería no funcional o fogueo',
+         'Ensayo de seguridad con todo el equipo']},
+  {k:'riesgo', l:'Escenas de riesgo', c:'#e0913e', dep:'stunts',
+   pide:['Coordinador de riesgo','Dobles','Seguro de accidentes ampliado','Ambulancia en set']},
+  {k:'efectos', l:'Efectos especiales', c:'#4a9fd4', dep:'sfx',
+   pide:['Técnico de efectos','Matafuegos y plan de evacuación si hay fuego',
+         'Permiso especial si hay pirotecnia']},
+  {k:'nocturno', l:'Rodaje nocturno', c:'#8dc0ea',
+   momento:/NOCHE|MADRUGADA/,
+   pide:['Permiso de ruidos molestos','Iluminación y generador','Descanso entre jornadas',
+         'Adicional por horario nocturno']},
+  {k:'viaPublica', l:'Vía pública', c:'#4fae7a',
+   lugar:/calle|avenida|vereda|ruta|autopista|plaza|parque|esquina|puente|estacion/i,
+   pide:['Permiso municipal de filmación','Corte de calle si hace falta','Personal de tránsito',
+         'Seguro de responsabilidad civil']},
+  {k:'vehiculos', l:'Vehículos en movimiento', c:'#4fae7a', dep:'vehiculos',
+   pide:['Seguro de los vehículos','Chofer profesional','Permiso si se filma en movimiento',
+         'Car mount o vehículo de arrastre']},
+  {k:'agua', l:'Agua', c:'#5b9bd5',
+   re:/\b(pileta|piscina|rio|mar|lago|laguna|bajo el agua|subacuatic|nada|nadan|se ahoga)\b/,
+   pide:['Guardavidas','Buzo de seguridad si es subacuático','Carcasa acuática',
+         'Toallas y lugar para entrar en calor']},
+  {k:'altura', l:'Trabajo en altura', c:'#e0913e',
+   re:/\b(techo|azotea|andamio|escalera|balcon|terraza|grua|puente|torre|acantilado)\b/,
+   pide:['Arnés y línea de vida','Rigger','Seguro de altura','Cerco de seguridad abajo']},
+  {k:'multitud', l:'Extras y multitud', c:'#d4bc45', dep:'extras',
+   pide:['Coordinador de extras','Cesión de imagen firmada por cada uno','Catering y baños para todos',
+         'Espacio de espera']},
+  {k:'construccion', l:'Construcción de set', c:'#8f7ad4',
+   sub:/construcci[óo]n|escenograf|carpinter/i,
+   pide:['Taller y tiempo de armado','Seguro de la construcción','Desarme y retiro de materiales']},
+  {k:'vfx', l:'VFX y croma', c:'#3fb8b2', dep:'vfx',
+   pide:['Supervisor de VFX en set','Croma y su iluminación','Marcadores de tracking',
+         'Placas limpias de cada plano']},
+  {k:'estudio', l:'Estudio / plató', c:'#a97ad4',
+   lugar:/estudio|plato|set\b/i,
+   pide:['Reserva del estudio','Seguro del piso','Horarios de carga y descarga']},
+  {k:'viaje', l:'Rodaje fuera de la ciudad', c:'#e0a92e',
+   pide:['Pasajes y hotel','Viáticos','Traslados en destino','Seguro de viaje']},
+];
+const TAG = k => TAGS.find(t=>t.k===k) || null;
+
+/* Detecta los tags mirando el desglose. Devuelve cuáles y por qué escena,
+   así se puede justificar cada uno y no aparece magia.                       */
+function tagsDetectados(py){
+  const escenas = (py.desglose?.escenas)||[];
+  const hallado = {};
+  const marcar = (k, esc, motivo) => {
+    hallado[k] ||= {escenas:new Set(), motivos:new Set()};
+    if(esc) hallado[k].escenas.add(esc.numero);
+    if(motivo) hallado[k].motivos.add(motivo);
+  };
+  escenas.forEach(e=>{
+    const txt = norm(e.texto + ' ' + e.encabezado);
+    TAGS.forEach(t=>{
+      if(t.dep && (e.elementos[t.dep]||[]).length)
+        marcar(t.k, e, (e.elementos[t.dep]||[]).slice(0,3).join(', '));
+      if(t.sub && Object.values(e.elementos).flat().some(x=>t.sub.test(x)))
+        marcar(t.k, e, Object.values(e.elementos).flat().filter(x=>t.sub.test(x)).join(', '));
+      if(t.re && t.re.test(txt)) marcar(t.k, e, (txt.match(t.re)||[])[0]);
+      if(t.momento && t.momento.test(e.momento)) marcar(t.k, e, e.momento);
+      if(t.lugar && t.lugar.test(norm(e.locacion))) marcar(t.k, e, e.locacion);
+    });
+  });
+  return hallado;
+}
+
+/* Los que están en el proyecto: los detectados más los puestos a mano, menos
+   los que alguien descartó.                                                  */
+function tagsDelProyecto(py){
+  py.tags ||= {manual:[], descartados:[]};
+  const det = tagsDetectados(py);
+  return TAGS.filter(t=>
+    (det[t.k] && !py.tags.descartados.includes(t.k)) || py.tags.manual.includes(t.k)
+  ).map(t=>({...t,
+    auto: !!det[t.k],
+    manual: py.tags.manual.includes(t.k),
+    escenas: det[t.k] ? [...det[t.k].escenas] : [],
+    motivos: det[t.k] ? [...det[t.k].motivos] : []}));
+}
+
 /* Sugiere elementos por diccionario. Marca lo detectado en `auto` para poder
    distinguir lo propuesto por la máquina de lo confirmado por una persona.   */
 function detectar(e){
@@ -2010,6 +2121,8 @@ function migrar(){
     py.contactos ||= {porLinea:{}, extra:[]};
     py.contactos.porLinea ||= {}; py.contactos.extra ||= [];
     py.configRodaje ||= nuevaConfigRodaje();
+    py.tags ||= {manual:[], descartados:[]};
+    py.tags.manual ||= []; py.tags.descartados ||= [];
     py.desglose.jornadas.forEach(j=>{ j.parte ||= nuevoParte();
       j.parte.fichadas ||= {}; j.parte.citados ||= {}; j.parte.filmadas ||= []; });
   }); });
@@ -2543,7 +2656,7 @@ function vistaDesglose(py){
   if(!d.escenas.length) return importadorHTML();
   const r = resumenDesglose(d);
   const sub = DB.ui.subDesglose || 'escenas';
-  const S=[['escenas','Escenas'],['deptos','Por departamento'],['plan','Plan de rodaje']];
+  const S=[['escenas','Escenas'],['deptos','Por departamento'],['tags','Tags'],['plan','Plan de rodaje']];
   return `<div class="card">
     <div class="resu">
       <div><b>${r.escenas}</b><span>Escenas</span></div>
@@ -2563,7 +2676,7 @@ function vistaDesglose(py){
       <button class="btn sm pri noprint" onclick="aPresupuesto()">→ Presupuesto</button>
     </div>
     <div class="pad">${
-      sub==='deptos' ? deptosHTML(r) : sub==='plan' ? planHTML(py,d,r) :
+      sub==='deptos' ? deptosHTML(r) : sub==='tags' ? tagsHTML(py) : sub==='plan' ? planHTML(py,d,r) :
       (d.modo && d.modo!=='encabezados' ? avisoModoHTML(d) : '') + d.escenas.map(e=>escHTML(e,d)).join('') +
       (sub==='escenas' ? `<button class="btn sm noprint" style="margin-top:4px" onclick="addEscena()">+ Escena al final</button>` : '')
     }</div></div>`;
@@ -2700,6 +2813,51 @@ function elHTML(eid, dep, val, color, sugerido){
     <button class="noprint" onclick="delEl('${eid}','${dep}',${JSON.stringify(val).replace(/"/g,'&quot;')})">×</button></span>`;
 }
 
+/* Qué tiene este proyecto y qué hay que resolver por cada cosa. */
+function tagsHTML(py){
+  const tags = tagsDelProyecto(py);
+  py.tags ||= {manual:[], descartados:[]};
+  const sinUsar = TAGS.filter(t=>!tags.some(x=>x.k===t.k));
+  const pendientes = tags.flatMap(t=>t.pide);
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Qué tiene este proyecto</div>
+        <div class="cssub">Cada cosa arrastra permisos, seguros o gente especializada</div></div>
+      <div style="text-align:right"><div class="csj">${tags.length}</div>
+        <div class="cssub">${pendientes.length} cosas para resolver</div></div>
+    </div>
+    ${tags.length ? tags.map(t=>`<div class="csblock">
+      <h4 style="color:${t.c}">
+        <span class="tagdot" style="background:${t.c}"></span>${esc(t.l)}
+        ${t.auto?'<span class="tagorig">detectado en el guion</span>'
+                :'<span class="tagorig">agregado a mano</span>'}
+        <span class="spacer"></span>
+        <button class="btn sm noprint" onclick="quitarTag('${t.k}')">Quitar</button></h4>
+      <div class="pad">
+        ${t.escenas.length?`<div class="muted" style="font-size:11.5px;margin-bottom:8px">
+          Escenas ${t.escenas.join(', ')}${t.motivos.length?` · por: ${esc(t.motivos.slice(0,4).join(', '))}`:''}</div>`:''}
+        <ul class="pide">${t.pide.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>
+      </div></div>`).join('')
+      : `<div class="empty">Todavía no hay nada detectado.<br>
+         <span style="font-size:12px">Cargá el guion en el desglose, o agregá a mano lo que este trabajo tenga.</span></div>`}
+    ${sinUsar.length?`<div class="csblock noprint"><h4>Agregar lo que falte</h4>
+      <div class="pad" style="display:flex;gap:5px;flex-wrap:wrap">
+        ${sinUsar.map(t=>`<button class="tagadd" style="border-color:${t.c}55;color:${t.c}"
+          onclick="agregarTag('${t.k}')">+ ${esc(t.l)}</button>`).join('')}
+      </div></div>`:''}
+  </div>`;
+}
+
+/* Los mismos tags, en chiquito, para la portada. */
+function tagsChipsHTML(py){
+  const tags = tagsDelProyecto(py);
+  if(!tags.length) return '';
+  return `<div style="display:flex;gap:5px;flex-wrap:wrap">
+    ${tags.map(t=>`<button class="tagchip" style="border-color:${t.c}66;color:${t.c}"
+      onclick="setTab('desglose');setSub('tags')" title="${esc(t.pide.join(' · '))}">${esc(t.l)}</button>`).join('')}
+  </div>`;
+}
+
 function deptosHTML(r){
   const filas = [];
   filas.push(bloqueDep({k:'elenco',l:'Elenco',c:DEPTO('elenco').c},
@@ -2833,6 +2991,10 @@ function vistaResumen(pr,py,v){
         <span class="pendn">${x.n}</span><span>${esc(x.t)}</span><span class="pendir">→</span></button>`).join('')}
     </div>`) : bloque('Esperan algo', `<div class="pad muted" style="font-size:12.5px">
       Nada pendiente. ${u?'':'Cargá el equipo para que aparezcan las bandejas.'}</div>`)}
+
+    ${(()=>{const ch = tagsChipsHTML(py); return ch ? bloque('Qué tiene este proyecto',
+      `<div class="pad">${ch}
+       <div class="muted" style="font-size:11px;margin-top:8px">Tocá cualquiera para ver qué hay que resolver.</div></div>`) : '';})()}
 
     ${bloque('El proyecto', `<div class="pad grid2" style="gap:14px">
       <div>
@@ -4461,6 +4623,18 @@ function addPersona(rid, pid){
 
 /* ---------- desglose ---------- */
 function setSub(k){ DB.ui.subDesglose=k; R(); }
+function agregarTag(k){
+  const py=getPy(); py.tags ||= {manual:[], descartados:[]};
+  py.tags.descartados = py.tags.descartados.filter(x=>x!==k);
+  if(!py.tags.manual.includes(k)) py.tags.manual.push(k);
+  toast(TAG(k).l+' agregado'); R();
+}
+function quitarTag(k){
+  const py=getPy(); py.tags ||= {manual:[], descartados:[]};
+  py.tags.manual = py.tags.manual.filter(x=>x!==k);
+  if(!py.tags.descartados.includes(k)) py.tags.descartados.push(k);
+  R();
+}
 /* Aviso permanente cuando el guion se leyó sin encabezados: que quede claro
    que lo de abajo es una propuesta y no una lectura exacta.                  */
 function avisoModoHTML(d){
