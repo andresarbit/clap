@@ -2110,6 +2110,36 @@ function sbCargar(){
   try{ const raw = localStorage.getItem(KEY_SB);
     if(raw) SB = {...SB, ...JSON.parse(raw)};
   }catch(e){ /* config corrupta: se arranca desconectado */ }
+  sbDesdeUrl();
+}
+
+/* La conexión puede venir en el link: ?sb=https://xxx.supabase.co&k=eyJ...
+   Sirve para pasarle a alguien un link ya configurado y que sólo tenga que
+   entrar con su mail. La clave anónima está hecha para ser pública, así que
+   viajar en la URL no la expone más de lo que ya está.
+   Después de leerla se limpia la barra de direcciones, para que no quede
+   colgada en el historial ni se comparta sin querer.                         */
+function sbDesdeUrl(){
+  try{
+    const q = new URLSearchParams(location.search);
+    const url = sbNormalizarUrl(q.get('sb')||''), anon = (q.get('k')||'').trim();
+    if(!url || !anon) return;
+    if(/service_role|^sb_secret_/i.test(anon)) return;   /* nunca la secreta */
+    if(SB.url !== url || SB.anon !== anon){
+      SB.url = url; SB.anon = anon; SB.access = null; SB.refresh = null; SB.user = null;
+      sbGuardar();
+    }
+    q.delete('sb'); q.delete('k');
+    const limpia = location.pathname + (q.toString() ? '?'+q : '') + location.hash;
+    if(history.replaceState) history.replaceState(null, '', limpia);
+  }catch(e){}
+}
+
+/* Arma el link para compartir con el equipo. */
+function sbLinkConfigurado(){
+  if(!sbConfigurado()) return '';
+  const base = location.origin + location.pathname;
+  return `${base}?sb=${encodeURIComponent(SB.url)}&k=${encodeURIComponent(SB.anon)}`;
 }
 function sbGuardar(){
   try{ localStorage.setItem(KEY_SB, JSON.stringify(SB)); }catch(e){}
@@ -6116,6 +6146,7 @@ function menuNube(){
       ${!cfg ? `<button class="btn pri" onclick="sbGuardarConfig()">Guardar y probar</button>` : ''}
       ${cfg && !con ? `<button class="btn" onclick="sbAccion('registrar')">Crear cuenta</button>
                        <button class="btn pri" onclick="sbAccion('entrar')">Entrar</button>` : ''}
+      ${cfg ? `<button class="btn" onclick="copiarLinkEquipo()">Copiar link para el equipo</button>` : ''}
       ${con ? `<button class="btn" onclick="sbCorrerDiagnostico()">Revisar estado</button>
                <button class="btn" onclick="sbCerrarSesion()">Cerrar sesión</button>` : ''}
     </div>
@@ -6155,6 +6186,16 @@ async function sbAccion(cual){
   }catch(e){
     if(cont) cont.innerHTML = `<div class="avisomodo turno-mal"><b>No pude entrar.</b> ${esc(e.message)}</div>`;
   }
+}
+function copiarLinkEquipo(){
+  const l = sbLinkConfigurado();
+  if(!l){ toast('Primero configurá la conexión'); return; }
+  if(location.protocol === 'file:'){
+    alert('Este archivo está abierto desde el disco, así que el link no le va a servir a nadie más.\n\n' +
+          'Subilo a un hosting primero (mirá backend/PASOS.md) y copiá el link desde ahí.');
+    return;
+  }
+  alPortapapeles(l, 'Link copiado — el que lo abra ya queda apuntando a tu Supabase');
 }
 async function sbCerrarSesion(){ await sbSalir(); cerrar(); menuNube(); toast('Sesión cerrada'); }
 function sbDesconectar(){
