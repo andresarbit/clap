@@ -261,6 +261,36 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .ctab input{width:100%}
 .ctab input[type=email]{font-size:11.5px}
 .csblock>h4 .btn{font-weight:600;letter-spacing:0;text-transform:none}
+/* instructivo */
+.guiawrap{display:grid;grid-template-columns:250px 1fr;gap:0}
+.guianav{border-right:1px solid var(--line);padding:9px 0;background:var(--bg)}
+.guianav button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  padding:9px 14px;font-size:12.5px;color:var(--tx2);border-left:2px solid transparent;line-height:1.35}
+.guianav button:hover{background:var(--bg3);color:var(--tx)}
+.guianav button.on{background:var(--bg3);color:var(--ac);border-left-color:var(--ac);font-weight:600}
+.guian{width:19px;height:19px;border-radius:50%;background:var(--bg4);color:var(--tx3);
+  display:grid;place-items:center;font:800 10.5px var(--mono);flex:none}
+.guianav button.on .guian{background:var(--ac);color:#161005}
+/* min-width:0 es obligatorio: sin eso el item de grid crece hasta el
+   min-content del <pre> y el texto se corta contra el borde. */
+.guiacont{padding:18px 22px;max-width:760px;font-size:13.5px;line-height:1.65;min-width:0;overflow-wrap:anywhere}
+.guiawrap{min-width:0}
+.guiacont>*{max-width:100%}
+.guiah{font-size:17px;font-weight:700;margin-bottom:12px;color:var(--ac)}
+.guiacont p{margin-bottom:11px}
+.guiacont ul,.guiacont ol{margin:0 0 12px 20px}
+.guiacont li{margin-bottom:6px}
+.guiacont pre{background:var(--bg);border:1px solid var(--line);border-radius:var(--r);
+  padding:10px 12px;font:12px/1.6 var(--mono);color:var(--tx2);overflow-x:auto;margin-bottom:12px}
+.guiacont code{font-family:var(--mono);background:var(--bg4);padding:1px 5px;border-radius:3px;font-size:12px}
+.guiacont b{color:var(--tx)}
+.pasos-guia li{padding-left:4px}
+.tip{background:rgba(224,169,46,.08);border-left:3px solid var(--ac);padding:9px 12px;
+  border-radius:0 var(--r) var(--r) 0}
+.guiapasos{display:flex;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--line);flex-wrap:wrap}
+.guiapasos .btn{min-width:0;max-width:100%;white-space:normal;text-align:left}
+.guiasp{flex:1}
+
 /* portada / resumen */
 .resl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);font-weight:800;margin-bottom:4px}
 .resd{font-size:12.5px;line-height:1.5}
@@ -354,6 +384,18 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
   select.emom{padding:7px 20px 7px 8px;font-size:12px;background-image:none}
   .pasos{flex-direction:column}
   .paso{padding:7px 11px}
+  .guiawrap{grid-template-columns:1fr}
+  .guianav{border-right:none;border-bottom:1px solid var(--line);display:flex;overflow-x:auto;
+    scrollbar-width:none;padding:7px 8px;gap:5px}
+  .guianav::-webkit-scrollbar{display:none}
+  .guianav button{width:auto;flex:none;border-left:none;border-radius:16px;padding:8px 13px;
+    background:var(--bg3);white-space:nowrap}
+  .guianav button.on{border-left:none;background:var(--ac);color:#161005}
+  .guianav button.on .guian{background:rgba(0,0,0,.2);color:#161005}
+  .guiacont{padding:15px 14px}
+  /* con títulos largos los botones no entran en una fila: que ocupen el ancho */
+  .guiapasos .btn{flex:1 1 100%;text-align:center}
+  .guiasp{display:none}
   /* con 5 sub-solapas la barra no entra: que scrollee en vez de desbordar */
   .seg{max-width:100%;overflow-x:auto;scrollbar-width:none;flex:1 1 100%}
   .seg::-webkit-scrollbar{display:none}
@@ -1930,7 +1972,7 @@ function render(){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['resumen','Resumen'],['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
+  const TABS=[['resumen','Resumen'],['guia','Instructivo'],['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -1968,6 +2010,7 @@ function header(pr,py,v){
 function cuerpo(pr,py,v){
   if(!pr) return `<div class="card"><div class="empty">No hay productoras cargadas.<br><br>
     <button class="btn pri" onclick="editProductora()">Crear la primera productora</button></div></div>`;
+  if(DB.ui.tab==='guia')     return vistaGuia();
   if(DB.ui.tab==='equipo')   return vistaEquipo(pr);
   if(DB.ui.tab==='catalogo') return vistaCatalogo();
   if(DB.ui.tab==='config')   return vistaConfig(pr);
@@ -2607,6 +2650,185 @@ function vistaResumen(pr,py,v){
         </tbody></table></div>`) : ''}
 
     <div class="csfoot">${esc(pr.nombre)} · ${esc(py.nombre)} · resumen al ${hoy()}</div>
+  </div>`;
+}
+
+/* ---------- instructivo ----------
+   Vive adentro del sistema a propósito: un manual aparte no lo abre nadie.    */
+const GUIA = [
+  {t:'Cómo se usa, en orden', c:`
+    <p>El sistema sigue el orden real de un trabajo. Cada paso usa lo que cargaste en el anterior,
+    así que <b>no hay que cargar nada dos veces</b>.</p>
+    <ol class="pasos-guia">
+      <li><b>Productoras</b> — creá tu productora con su CUIT y condición de IVA. Podés tener
+        todas las que manejes; cada una está aislada de las otras.</li>
+      <li><b>Equipo</b> — cargá a las personas con su rol. Sin esto no funciona el circuito de gastos.</li>
+      <li><b>Desglose</b> — pegá el guion. De ahí salen las escenas, el elenco, los elementos y el plan de rodaje.</li>
+      <li><b>Presupuesto</b> — armalo a mano o mandá el desglose con el botón <i>→ Presupuesto</i>.</li>
+      <li><b>Callsheet</b> — se arma solo con el guion, el presupuesto y el catálogo.</li>
+      <li><b>Rodaje</b> — citaciones, parte del día y horas extra.</li>
+      <li><b>Gastos</b> — órdenes de compra, comprobantes, caja chica y el tablero de plata.</li>
+    </ol>
+    <p class="tip">La solapa <b>Resumen</b> es la portada: te dice cómo viene la plata y qué está
+    esperando algo tuyo. Todo lo que aparece ahí es clickeable y te lleva al lugar.</p>`},
+
+  {t:'Presupuesto', c:`
+    <p>Se arma por <b>rubros</b> (17) y cada rubro tiene sus <b>subrubros</b> (234 en total).
+    Al agregar una línea podés elegir del catálogo de funciones o traer una persona del catálogo,
+    que arrastra su tarifa.</p>
+    <p><b>Multi-moneda:</b> cada línea puede ir en pesos o en dólares. El total se expresa en la
+    moneda base usando el tipo de cambio de la versión. <b>Guardá la fecha de la cotización</b>:
+    es lo que después te permite reclamar el reajuste por diferencia de cambio.</p>
+    <p><b>Las capas van en este orden:</b></p>
+    <pre>subtotal → fee → contingencia → IIBB → IVA → TOTAL</pre>
+    <p>El fee se aplica sólo sobre los rubros marcados. Elenco y seguros van sin fee por defecto,
+    que es como se presupuesta en publicidad.</p>
+    <p><b>Versiones:</b> cuando el cliente pide bajar, tocá <i>Duplicar v.</i> La anterior queda
+    intacta y las podés comparar.</p>
+    <p><b>Vista Cliente / Interna:</b> la del cliente muestra sólo el resumen por rubro, sin el
+    detalle de líneas ni el circuito de pago.</p>`},
+
+  {t:'Desglose de guion', c:`
+    <p>Pegá el guion o subí el archivo: acepta <b>PDF, Word (.docx), .doc, RTF, Final Draft (.fdx),
+    .txt y Fountain</b>. Mientras escribís, un cartel te dice en vivo qué está encontrando.</p>
+    <p><b>Si el guion tiene encabezados</b> (<code>INT. COCINA - DÍA</code>, o de publicidad como
+    <code>PLANO 1</code>), los usa y el resultado es exacto.</p>
+    <p><b>Si no tiene ninguno</b> —como la mayoría de los guiones de publicidad— corta por párrafo
+    e <b>infiere</b> la locación, el INT/EXT y el momento del texto. Eso es una <b>propuesta</b>:
+    aparece un aviso arriba y hay que revisarla. El INT/EXT se cambia con un click, la locación y
+    el momento se editan en el lugar, y abajo de cada escena tenés <i>Unir</i>, <i>Dividir</i> y
+    <i>Eliminar</i>.</p>
+    <p>Los <b>elementos</b> (utilería, vestuario, vehículos, animales, efectos, riesgo) se proponen
+    con un diccionario. Los que salen <b>con borde punteado son sugerencias</b>: confirmalas
+    dejándolas o borralas con la ×. Vas a ver falsos positivos, es esperable.</p>
+    <p class="tip">Desglosar <b>no toca el presupuesto</b>. Sólo va si tocás <i>→ Presupuesto</i>
+    y confirmás en la lista con checkboxes.</p>`},
+
+  {t:'Callsheet y contactos', c:`
+    <p>Son <b>dos documentos distintos</b> en la misma solapa:</p>
+    <p><b>Hoja de citación</b> — por jornada. Se arma sola: las escenas salen del guion, el equipo
+    técnico de las líneas de los rubros 02 a 08 del presupuesto, y los teléfonos del catálogo.
+    Encima cargás lo que no sale de ningún lado: horarios, direcciones, hospital, emergencias.</p>
+    <p><b>Lista de contactos</b> — del proyecto entero. Todos los implicados con teléfono y mail.
+    Lo que está enlazado al catálogo viene completo; lo que cargás a mano lo podés mandar al
+    catálogo con <i>+cat</i> y lo reusás en el próximo proyecto.</p>
+    <p class="tip">Una persona se carga <b>una sola vez</b>. Si está enlazada al catálogo, cambiarle
+    el teléfono acá lo cambia en el catálogo y se ve en todos lados.</p>`},
+
+  {t:'Rodaje: citaciones, parte y horas', c:`
+    <p><b>Citaciones</b> — la lista de todos los que trabajan ese día con su hora. Cada uno tiene
+    botón de <b>WhatsApp</b> y de <b>mail</b> que abren el mensaje ya escrito con su citación, la
+    locación con dirección, las escenas, el wrap y el hospital.</p>
+    <p class="tip">El sistema <b>prepara y abre</b> el mensaje; lo mandás vos desde tu WhatsApp o tu
+    mail. No manda nada por su cuenta.</p>
+    <p><b>Parte del día</b> — lo que llena un asistente de producción en el set: horarios reales,
+    qué escenas se filmaron, y las entradas y salidas de cada uno. Los botones
+    <i>Entrada = citación</i> y <i>Salida = wrap</i> cargan todo de una y después corregís las
+    excepciones; no pisan lo que ya tocaste a mano.</p>
+    <p><b>Horas y extras</b> — horas netas descontando la comida, extras sobre la jornada base y
+    cuánto cuestan, usando el valor de jornada de la línea del presupuesto y en su moneda.
+    También avisa si el descanso hasta la jornada siguiente queda por debajo del mínimo.</p>
+    <p>Por defecto: <b>8 horas de jornada base y extras al 50%</b>, que es lo que fija el convenio
+    del SICA para publicidad. Se cambia por proyecto en <i>Condiciones ⚙</i>.</p>`},
+
+  {t:'Gastos: el circuito de una factura', c:`
+    <p>Cada comprobante recorre esto, y <b>cada paso queda firmado</b> con quién y cuándo:</p>
+    <pre>carga el departamento → revisa producción → aprueba el ejecutivo → paga administración
+                       ↘ rechaza (con motivo, vuelve a quien la cargó)</pre>
+    <p>Cada uno abre en <b>su bandeja</b>: quien carga ve lo suyo, quien revisa ve lo que espera
+    algo de él. El <b>rubro es obligatorio</b>, por eso administración puede filtrar
+    "todas las facturas de arte" y exportarlas al contador.</p>
+    <p><b>Órdenes de compra</b> — el compromiso <i>antes</i> de la factura. Sin esto el presupuesto
+    miente, porque te muestra disponible plata que ya cerraste. Una OC emitida reserva; cuando
+    llegan facturas imputadas a ella, el comprometido baja y el real sube.
+    <b>La misma plata no se cuenta dos veces.</b></p>
+    <p><b>Caja chica</b> — le adelantás plata a alguien, esa persona gasta y después rinde. Te
+    muestra entregado, gastado, saldo en mano y cuánto <b>no tiene comprobante</b>. Al rendir
+    calcula si tiene que devolver o si hay que reintegrarle.</p>
+    <p><b>Tablero</b> — <code>Disponible = presupuestado − comprometido − real</code>, rubro por rubro.</p>`},
+
+  {t:'Plata en blanco y en efectivo', c:`
+    <p>Cada línea y cada comprobante llevan <b>dos campos separados</b>:</p>
+    <ul>
+      <li><b>Circuito de pago</b> — transferencia, cheque, débito, Mercado Pago, efectivo,
+        USD billete, cripto.</li>
+      <li><b>Respaldo documental</b> — factura A, factura B/C, recibo oficial, recibo simple,
+        sin comprobante.</li>
+    </ul>
+    <p>Con eso entra todo el espectro real: el DF que factura A, el fijador que cobra en efectivo
+    con recibo simple, el flete que cobra y chau. Y ganás el <b>reconciliado</b>: cuánto está
+    bancarizado y cuánto tiene respaldo fiscal.</p>
+    <p class="tip">Esto sirve para <b>registrar</b> la realidad, que es lo que te salva en una
+    inspección. Registrar todo con trazabilidad es lo correcto; ocultar es otra cosa y el sistema
+    no está hecho para eso.</p>`},
+
+  {t:'Roles y qué puede cada uno', c:`
+    <div class="scrollx"><table class="tbl cst"><thead><tr><th>Rol</th><th>Puede</th><th>Para qué</th></tr></thead>
+      <tbody>${ROLES.map(r=>`<tr><td><b>${esc(r.l)}</b></td>
+        <td class="mono" style="font-size:11px">${r.puede.filter(x=>x!=='equipo').join(' · ')}</td>
+        <td class="muted">${esc(r.d)}</td></tr>`).join('')}</tbody></table></div>
+    <p style="margin-top:11px">Los permisos son <b>acumulativos</b>: administración puede todo lo
+    que puede producción, más pagar.</p>
+    <div class="avisomodo"><b>Ojo: esto todavía no es seguridad.</b> Sin servidor no hay
+    contraseñas. El selector <b>Soy</b> de arriba simula quién sos para que cada uno vea su bandeja,
+    pero cualquiera que abra el archivo puede cambiarse de rol y ver todo. El circuito y los datos
+    ya son los definitivos: cuando haya backend se reemplaza el selector por un login de verdad y
+    no cambia nada más.</div>`},
+
+  {t:'Tus datos: dónde están y cómo no perderlos', c:`
+    <p>Todo se guarda <b>en este navegador</b>, en esta computadora. No hay servidor todavía.
+    Eso significa tres cosas:</p>
+    <ul>
+      <li>Si borrás los datos del navegador o usás el modo incógnito, <b>se pierde</b>.</li>
+      <li>Otra persona con el mismo archivo tiene <b>sus propios datos</b>, no los tuyos.</li>
+      <li>El espacio es de unos <b>5 MB</b>. Las fotos de comprobantes son lo que más ocupa; se
+        achican solas al cargarlas. Hay un medidor en la solapa <b>Equipo</b>.</li>
+    </ul>
+    <p class="tip"><b>Exportá el respaldo seguido</b> desde <i>Datos → Exportar todo</i>. Ese
+    <code>.json</code> es tu copia de seguridad <b>y</b> la forma de pasarle el trabajo a otra
+    persona, hasta que montemos el backend.</p>
+    <p>Para arrancar un proyecto real: <i>Datos → Borrar todo y volver al ejemplo</i>, o creá una
+    productora nueva desde <b>Productoras</b>. Si no, tus números conviven con los de mentira.</p>`},
+
+  {t:'Lo que todavía no hace', c:`
+    <p>Para que no te lleves sorpresas:</p>
+    <ul>
+      <li><b>No hay usuarios reales</b> ni contraseñas. El rol se simula.</li>
+      <li><b>No factura ni toca ARCA/AFIP.</b> Eso necesita certificado digital y servidor; lo hace
+        tu contador o un facturador. CLAP maneja el circuito y te exporta el CSV.</li>
+      <li><b>No manda mails ni WhatsApp solo.</b> Prepara el mensaje y lo abre; lo enviás vos.</li>
+      <li><b>No sincroniza entre dispositivos.</b> Se pasa con el export/import de JSON.</li>
+      <li>El desglose de un guion sin encabezados es una <b>propuesta</b>, no una lectura exacta.</li>
+      <li>Un <b>PDF escaneado</b> es una imagen: no tiene texto que leer y te avisa que necesita OCR.</li>
+      <li>La escala del SICA <b>vence</b>: los valores dicen hasta cuándo rigen.</li>
+    </ul>`},
+];
+
+function vistaGuia(){
+  const i = DB.ui.guia ?? 0;
+  return `<div class="cs">
+    <div class="cshead">
+      <div><div class="csttl">Cómo se usa CLAP</div>
+        <div class="cssub">Instructivo · lo que hace, lo que no, y en qué orden conviene cargarlo</div></div>
+      <div style="text-align:right" class="noprint">
+        <button class="btn sm" onclick="window.print()">Imprimir</button></div>
+    </div>
+    <div class="guiawrap">
+      <div class="guianav noprint">
+        ${GUIA.map((g,k)=>`<button class="${k===i?'on':''}" onclick="setGuia(${k})">
+          <span class="guian">${k+1}</span>${esc(g.t)}</button>`).join('')}
+      </div>
+      <div class="guiacont">
+        <h4 class="guiah">${esc(GUIA[i].t)}</h4>
+        ${GUIA[i].c}
+        <div class="noprint guiapasos">
+          ${i>0?`<button class="btn" onclick="setGuia(${i-1})">← ${esc(GUIA[i-1].t)}</button>`:''}
+          <div class="guiasp"></div>
+          ${i<GUIA.length-1?`<button class="btn pri" onclick="setGuia(${i+1})">${esc(GUIA[i+1].t)} →</button>`:''}
+        </div>
+      </div>
+    </div>
+    <div class="csfoot">CLAP · ${GUIA.length} secciones · github.com/andresarbit/clap</div>
   </div>`;
 }
 
@@ -4423,6 +4645,7 @@ function delComprobante(id){
 
 /* ---------- tarifario de convenio ---------- */
 function setSubCat(k){ DB.ui.subCat = k; R(); }
+function setGuia(i){ DB.ui.guia = i; R(); }
 /* Crear una ficha del catálogo a partir de un cargo de la escala. La tarifa
    arranca en el piso de convenio y se ajusta a lo que cobra la persona.      */
 function desdeSica(cargo, rubro, valor){

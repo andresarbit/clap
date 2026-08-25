@@ -267,8 +267,11 @@ de `productoraId`, así que el schema ya es multi-tenant.
 6. **Caja y pagos** ✅ — circuito de aprobacion, ordenes de compra, caja chica,
    rendiciones y tablero presupuestado/comprometido/real. — órdenes de compra, caja chica por jornada, rendiciones, y el
    tablero Presupuestado / Comprometido / Real.
-7. **Backend** — Supabase, usuarios, adjuntos, acceso de sólo lectura para el cliente.
-8. **Tarifario histórico** — al cerrar un proyecto, el catálogo aprende cuánto salió
+7. **Backend** — el esquema esta escrito en `backend/esquema.sql` (Postgres/Supabase),
+   con Row Level Security para que el aislamiento entre productoras y los permisos
+   los haga cumplir la base y no la interfaz. Falta montarlo y migrar el JSON.
+8. **Antes: Backend** — Supabase, usuarios, adjuntos, acceso de sólo lectura para el cliente.
+9. **Tarifario histórico** — al cerrar un proyecto, el catálogo aprende cuánto salió
    cada rubro de verdad.
 
 ## Pruebas
@@ -289,6 +292,7 @@ node test/run.js test/sica.js      # escala de convenio y su uso como referencia
 node test/run.js test/gastos.js    # rubros, roles y circuito de aprobacion
 node test/run.js test/plata.js     # ordenes de compra, caja chica y tablero
 node test/run.js test/resumen.js   # portada, pendientes y datos de ejemplo
+node test/run.js test/guia.js      # instructivo: contenido, navegacion y que no mienta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
 ```
