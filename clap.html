@@ -6464,6 +6464,7 @@ let _prodsElegibles = [];
    false = la busqué y no tengo. Se guarda para que el header pueda dibujar
    el aviso sin tener que ir al servidor en cada render.                     */
 let _miFicha = null;
+let _miProductora = null;   /* {id, nombre} del servidor, para el menú */
 
 /* Al abrir la app: si hay sesión y falta el alta, abrirla. Y dejar el aviso
    puesto en el header, que es lo que evita quedarse colgado. */
@@ -6471,6 +6472,7 @@ async function revisarAlta(){
   if(!sbConectado()) return;
   try{ _miFicha = (await sbMiFicha()) || false; }
   catch(e){ return; }
+  if(_miFicha) await traerMiProductora();
   render();
   if(_miFicha === false){
     try{ _prodsElegibles = await sbProductorasParaElegir() || []; }catch(e){ _prodsElegibles = []; }
@@ -6602,6 +6604,7 @@ async function confirmarAlta(){
     }
     const ficha = await sbMiFicha();
     _miFicha = ficha || false;      /* para que el aviso del header se apague */
+    if(ficha) await traerMiProductora();
     cerrar();
     if(ficha && ficha.pendiente){
       alert('Listo. Tu alta quedó esperando que un administrador de la productora la apruebe.\n\n' +
@@ -6633,7 +6636,14 @@ async function confirmarAlta(){
    Cuando esté la sincronización completa, esto se va.                        */
 function espejarFichaLocal(ficha, extra = {}){
   if(!ficha) return;
-  const pr = getPr(); if(!pr) return;
+  /* La productora de la ficha es la del servidor. Antes esto sumaba a la
+     persona a la productora que estuviera seleccionada —normalmente la Demo—
+     y la suya no aparecía nunca en el menú de arriba. Ahora se busca por el
+     id del servidor; si no está en este navegador, se crea con ESE id, que es
+     lo que después va a permitir sincronizar sin duplicar nada.             */
+  const pr = productoraLocal(ficha);
+  if(!pr) return;
+  DB.ui.productoraId = pr.id;
   pr.usuarios ||= [];
   let u = pr.usuarios.find(x=>x.authUid === ficha.auth_uid)
        || pr.usuarios.find(x=>norm(x.email)===norm(ficha.email||''));
@@ -6644,6 +6654,38 @@ function espejarFichaLocal(ficha, extra = {}){
   DB.ui.usuarioId = u.id;
   alCatalogo(u, extra);
   guardar();
+}
+
+/* El nombre de mi productora, para que el menú de arriba no diga
+   "Mi productora". Con RLS sólo veo la mía, así que esto no filtra nada. */
+async function traerMiProductora(){
+  const id = _miFicha && _miFicha.productora_id;
+  if(!id) return null;
+  try{
+    const r = await sbFetch(`/rest/v1/productora?select=id,nombre&id=eq.${id}&limit=1`);
+    _miProductora = (r && r[0]) || null;
+  }catch(e){ _miProductora = null; }
+  if(_miProductora) espejarFichaLocal(_miFicha);
+  return _miProductora;
+}
+
+/* La productora del servidor, en este navegador. Si no está, se crea con el
+   mismo id que allá: el día que sincronicemos, son la misma fila y no hay
+   nada que reconciliar. El nombre lo trae `_miProductora`, que se busca al
+   entrar; si todavía no llegó, entra con un nombre provisorio y se corrige
+   en cuanto responda el servidor.                                           */
+function productoraLocal(ficha){
+  DB.productoras ||= [];
+  const id = ficha.productora_id;
+  if(!id) return getPr();
+  let pr = DB.productoras.find(p => p.id === id);
+  const nombre = (_miProductora && _miProductora.id === id && _miProductora.nombre) || null;
+  if(!pr){
+    pr = nuevaProductora({nombre: nombre || 'Mi productora'});
+    pr.id = id;
+    DB.productoras.push(pr);
+  } else if(nombre && pr.nombre !== nombre) pr.nombre = nombre;
+  return pr;
 }
 
 /* Quien entra queda en el catálogo. El catálogo es de dónde salen las líneas

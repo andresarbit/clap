@@ -319,6 +319,30 @@ const cargarForm = campos => {
   ok('y el teléfono', corregida.tel === '11 6112-1250');
   ok('sin duplicar la ficha', TB.usuario.filter(u => u.auth_uid === 'auth-andres').length === 1);
 
+  /* --- 6e. mi productora aparece en el menu ------------------------------ */
+  console.log('\n--- 6e. MI PRODUCTORA, EN EL MENU DE ARRIBA ---');
+  /* Le pasó a Andrés: creó Neto Films, pero el menú seguía mostrando sólo la
+     Productora Demo del ejemplo. El alta lo sumaba a la que estuviera
+     seleccionada en vez de traer la suya. */
+  SESION = 'auth-andres';
+  await conectar();
+  _miFicha = null; _miProductora = null;
+  await revisarAlta();
+  const miPr = DB.productoras.find(p => p.id === _miFicha.productora_id);
+  ok('la productora del servidor está en este navegador', !!miPr);
+  ok('con su nombre de verdad', miPr && miPr.nombre === 'Plata o Mierda', miPr && miPr.nombre);
+  ok('y con el MISMO id que en el servidor', miPr && miPr.id === _miFicha.productora_id);
+  ok('queda seleccionada', DB.ui.productoraId === miPr.id);
+  ok('aparece en el menú de arriba', new RegExp(miPr.nombre).test(header(getPr(), getPy(), getV())));
+  ok('la Demo sigue estando, no se borró nada',
+    DB.productoras.some(p => p.nombre === 'Productora Demo'));
+  ok('estoy en el equipo de la mía, no en la Demo',
+    miPr.usuarios.some(u => u.authUid === 'auth-andres'));
+  /* repetirlo no crea otra */
+  await revisarAlta();
+  ok('revisar de nuevo no duplica la productora',
+    DB.productoras.filter(p => p.id === _miFicha.productora_id).length === 1);
+
   /* --- 6d. quien entra queda en el catalogo ------------------------------ */
   console.log('\n--- 6d. QUIEN ENTRA QUEDA EN EL CATALOGO ---');
   const enCat = n => DB.catalogo.personas.find(p => p.nombre === n);
