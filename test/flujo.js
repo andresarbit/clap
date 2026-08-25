@@ -256,14 +256,21 @@ ok('el rubro 12 las junta a todas', P0.filas.find(f => f.codigo === '12').real =
 
 /* ── los rubros transversales enteros, no sólo la nafta ─────────────────── */
 console.log('\n    Rubros transversales: ' + RUBROS_BASE.filter(r => r.transversal).map(r => r.codigo).join(', '));
-ok('varios rubros están marcados como transversales',
-  RUBROS_BASE.filter(r => r.transversal).length >= 6,
+ok('sólo alquileres y transporte son transversales',
+  RUBROS_BASE.filter(r => r.transversal).map(r => r.codigo).join(',') === '11,12',
   RUBROS_BASE.filter(r => r.transversal).map(r => r.nombre.split(',')[0]).join(' · '));
 ok('viajes es transversal', esTransversal('12'));
 ok('alquileres es transversal', esTransversal('11'));
-ok('catering es transversal', esTransversal('13'));
-ok('varios/administración es transversal', esTransversal('17'));
+/* el catering NO lo gasta un departamento: se gasta por jornada */
+ok('catering NO es transversal', !esTransversal('13'));
+ok('catering es un área en sí mismo', areaDeRubro('13') === 'catering', areaDeRubro('13'));
+ok('catering se mide por jornada', esPorJornada('13'));
+ok('seguridad también se mide por jornada', esPorJornada('16'));
+ok('los viajes NO se miden por jornada', !esPorJornada('12'));
 ok('dirección NO es transversal', !esTransversal('02'));
+ok('cada rubro no transversal tiene su área',
+  RUBROS_BASE.filter(r => !r.transversal).every(r => r.area),
+  RUBROS_BASE.filter(r => !r.transversal && !r.area).map(r => r.codigo).join(',') || 'todos');
 
 /* el mismo gasto cruzado, en varios rubros a la vez */
 const gasto = (rubro, sub, area, importe, quien = uProd) => {
@@ -327,11 +334,15 @@ ok('la línea etiquetada va a su área', (MP.celdaP['11'] || {}).camara > 0,
 /* una línea de un rubro NO transversal sin área se deduce del rubro */
 ok('sin área, un rubro no transversal se deduce', (MP.celdaP['02'] || {}).direccion > 0,
   'dirección ' + fmt((MP.celdaP['02'] || {}).direccion || 0));
-ok('pero un transversal sin área queda como "sin área"',
-  esTransversal('13') && (MP.celdaP['13'] || {}).__sin > 0,
-  'catering sin área ' + fmt((MP.celdaP['13'] || {}).__sin || 0));
-ok('avisa de las líneas de presupuesto sin área en transversales', MP.huecosPresu > 0,
-  MP.huecosPresu + ' líneas');
+ok('el catering cae solo en su área, no en "sin área"',
+  (MP.celdaP['13'] || {}).catering > 0 && !(MP.celdaP['13'] || {}).__sin,
+  'catering ' + fmt((MP.celdaP['13'] || {}).catering || 0));
+/* dejar una línea transversal sin área para probar el aviso */
+v.rubros.find(r => r.codigo === '11').lineas.push(nuevaLinea({ concepto: 'Grúa', valorUnit: 300000 }));
+const MP2 = matrizRubroArea(py, v);
+ok('avisa de las líneas de presupuesto sin área en transversales', MP2.huecosPresu === 1,
+  MP2.huecosPresu + ' líneas');
+v.rubros.find(r => r.codigo === '11').lineas.pop();
 /* el presupuestado por área tiene que sumar el subtotal del presupuesto */
 const sumaPresuAreas = Object.values(MP.totAreaP).reduce((s, x) => s + x, 0);
 ok('el presupuestado por área suma el subtotal del presupuesto',
@@ -372,12 +383,54 @@ ok('un rubro no transversal sí se puede guardar sin área', py.comprobantes.len
 py.comprobantes.pop();
 
 /* y detecta los huecos que quedaron */
-const huerfano = gasto('13', 'Almuerzo', '', 60000);
+const huerfano = gasto('11', 'Grúa', '', 60000);
 huerfano.area = '';
 const M2 = matrizRubroArea(py, v);
 ok('detecta transversales sin área', M2.huecos === 1 && M2.huecosMonto === 60000,
   M2.huecos + ' por ' + fmt(M2.huecosMonto));
 py.comprobantes = py.comprobantes.filter(c => c.id !== huerfano.id);
+
+/* ── el catering se mide por jornada, no por área ──────────────────────── */
+console.log('');
+const cateringJ = (jornada, imp) => {
+  const c = nuevoComprobante({ rubro: '13', subrubro: 'Almuerzo', area: 'catering', jornada,
+    importe: imp, proveedor: 'Catering La Mesa', tipo: 'facBC', cargadoPor: uProd.id, estado: 'cargado' });
+  c.historial = [{ de: null, a: 'cargado', accion: 'cargar', usuario: uProd.nombre, usuarioId: uProd.id, rol: 'produccion', fecha: hoy(), nota: '' }];
+  py.comprobantes.push(c); return c;
+};
+cateringJ(1, 420000); cateringJ(2, 385000); cateringJ(3, 410000);
+const J = resumenJornadas(py, v);
+console.log('    COSTO POR JORNADA');
+console.log('    ' + 'jornada'.padEnd(12) + 'catering'.padStart(12) + 'seguridad'.padStart(12) +
+  'otros'.padStart(12) + 'total'.padStart(13) + 'p/ cabeza'.padStart(12));
+J.filas.filter(f => f.total).forEach(f => console.log('    ' + ('J' + f.numero).padEnd(12) +
+  Math.round(f.porRubro['13']).toLocaleString('es-AR').padStart(12) +
+  Math.round(f.porRubro['16']).toLocaleString('es-AR').padStart(12) +
+  Math.round(f.otros).toLocaleString('es-AR').padStart(12) +
+  Math.round(f.total).toLocaleString('es-AR').padStart(13) +
+  (f.porCabeza ? Math.round(f.porCabeza).toLocaleString('es-AR') : '—').padStart(12)));
+ok('separa el gasto por jornada', J.filas.filter(f => f.total).length === 3,
+  J.filas.filter(f => f.total).length + ' jornadas con movimiento');
+ok('el catering de cada día va a su jornada',
+  J.filas[0].porRubro['13'] === 420000 && J.filas[1].porRubro['13'] === 385000,
+  fmt(J.filas[0].porRubro['13']) + ' · ' + fmt(J.filas[1].porRubro['13']));
+ok('calcula el catering por cabeza', J.filas[0].porCabeza > 0,
+  fmt(J.filas[0].porCabeza) + ' por persona · ' + J.filas[0].cabezas + ' citadas');
+ok('el por cabeza es el catering dividido la gente',
+  Math.abs(J.filas[0].porCabeza - J.filas[0].porRubro['13'] / J.filas[0].cabezas) < 1);
+ok('el total por jornada suma catering + lo demás',
+  J.filas.every(f => Math.abs(f.total - (f.especificos + f.otros)) < 1));
+/* uno sin jornada tiene que quedar marcado */
+const sinJ = cateringJ(null, 90000); sinJ.jornada = null;
+const J2 = resumenJornadas(py, v);
+ok('detecta catering sin jornada', J2.sinJornada === 1 && J2.sinJornadaMonto === 90000,
+  J2.sinJornada + ' por ' + fmt(J2.sinJornadaMonto));
+py.comprobantes = py.comprobantes.filter(c => c.id !== sinJ.id);
+/* y el catering NO se reparte entre departamentos */
+const MC = matrizRubroArea(py, v);
+ok('el catering queda entero en su área',
+  Object.keys(MC.celda['13']).length === 1 && Object.keys(MC.celda['13'])[0] === 'catering',
+  Object.keys(MC.celda['13']).join(', '));
 
 /* filtrar por área, que es lo que hace administración */
 DB.ui.fGasto = { rubro: '', estado: '', q: '', area: 'arte' };

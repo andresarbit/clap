@@ -509,29 +509,36 @@ const uid = p => (p||'x') + '_' + Math.random().toString(36).slice(2,9);
 
 /* Rubros por defecto — estructura de presupuesto publicitario argentino.
    aplicaFee: si el fee de producción se calcula sobre este rubro.            */
-/* `transversal` = rubro donde gastan TODOS los departamentos. En esos, el
-   área no es un detalle: sin ella el número no dice nada. Viajes, fletes,
-   alquileres, catering y varios son los casos tipicos.                       */
+/* Cada rubro pertenece a un área, salvo los `transversal`, donde gastan varios
+   departamentos y hay que decir cuál. Sólo el alquiler de equipos y el
+   transporte lo son: cámara alquila cámara y arte alquila utilería, cada uno
+   pone su nafta.
+   El catering NO es transversal: no lo gasta un departamento, se gasta por
+   JORNADA y es un área en sí mismo. Lo mismo los seguros o la seguridad, que
+   son de la producción entera.                                               */
 const RUBROS_BASE = [
-  {codigo:'01', nombre:'Preproducción y Desarrollo',       aplicaFee:true,  transversal:true},
-  {codigo:'02', nombre:'Dirección',                        aplicaFee:true},
-  {codigo:'03', nombre:'Equipo de Producción',             aplicaFee:true},
-  {codigo:'04', nombre:'Fotografía y Cámara',              aplicaFee:true},
-  {codigo:'05', nombre:'Eléctrica y Grip',                 aplicaFee:true},
-  {codigo:'06', nombre:'Arte, Utilería y Ambientación',    aplicaFee:true},
-  {codigo:'07', nombre:'Vestuario, Maquillaje y Peinado',  aplicaFee:true},
-  {codigo:'08', nombre:'Sonido',                           aplicaFee:true},
-  {codigo:'09', nombre:'Elenco y Derechos de Imagen',      aplicaFee:false},
-  {codigo:'10', nombre:'Locaciones y Permisos',            aplicaFee:true},
+  {codigo:'01', nombre:'Preproducción y Desarrollo',       aplicaFee:true,  area:'produccion'},
+  {codigo:'02', nombre:'Dirección',                        aplicaFee:true,  area:'direccion'},
+  {codigo:'03', nombre:'Equipo de Producción',             aplicaFee:true,  area:'produccion'},
+  {codigo:'04', nombre:'Fotografía y Cámara',              aplicaFee:true,  area:'camara'},
+  {codigo:'05', nombre:'Eléctrica y Grip',                 aplicaFee:true,  area:'electrica'},
+  {codigo:'06', nombre:'Arte, Utilería y Ambientación',    aplicaFee:true,  area:'arte'},
+  {codigo:'07', nombre:'Vestuario, Maquillaje y Peinado',  aplicaFee:true,  area:'vestuario'},
+  {codigo:'08', nombre:'Sonido',                           aplicaFee:true,  area:'sonido'},
+  {codigo:'09', nombre:'Elenco y Derechos de Imagen',      aplicaFee:false, area:'elenco'},
+  {codigo:'10', nombre:'Locaciones y Permisos',            aplicaFee:true,  area:'locaciones'},
   {codigo:'11', nombre:'Equipamiento y Alquileres',        aplicaFee:true,  transversal:true},
   {codigo:'12', nombre:'Transporte, Viáticos y Viajes',    aplicaFee:true,  transversal:true},
-  {codigo:'13', nombre:'Catering',                         aplicaFee:true,  transversal:true},
-  {codigo:'14', nombre:'Postproducción',                   aplicaFee:true},
-  {codigo:'15', nombre:'Seguros y Legales',                aplicaFee:false, transversal:true},
-  {codigo:'16', nombre:'Seguridad, Higiene y Salud',       aplicaFee:true,  transversal:true},
-  {codigo:'17', nombre:'Administración y Gastos Bancarios',aplicaFee:false, transversal:true},
+  {codigo:'13', nombre:'Catering',                         aplicaFee:true,  area:'catering', porJornada:true},
+  {codigo:'14', nombre:'Postproducción',                   aplicaFee:true,  area:'post'},
+  {codigo:'15', nombre:'Seguros y Legales',                aplicaFee:false, area:'admin'},
+  {codigo:'16', nombre:'Seguridad, Higiene y Salud',       aplicaFee:true,  area:'produccion', porJornada:true},
+  {codigo:'17', nombre:'Administración y Gastos Bancarios',aplicaFee:false, area:'admin'},
 ];
-const esTransversal = cod => !!(RUBROS_BASE.find(r=>r.codigo===cod)||{}).transversal;
+const RUBRO = cod => RUBROS_BASE.find(r=>r.codigo===cod) || {};
+const esTransversal = cod => !!RUBRO(cod).transversal;
+/* rubros que se miden por día de rodaje, no por departamento */
+const esPorJornada  = cod => !!RUBRO(cod).porJornada;
 
 /* Catálogo de subrubros internos, por rubro. Es la taxonomía con la que se
    carga una línea de presupuesto Y con la que se clasifica cada factura que
@@ -628,7 +635,7 @@ const AREAS = [
 const AREA = k => AREAS.find(a=>a.k===k) || null;
 const areaLbl = k => (AREA(k)||{l:'— sin área —'}).l;
 /* Área probable a partir del rubro, para no obligar a elegir dos veces. */
-const areaDeRubro = r => (AREAS.find(a=>a.r===r)||{}).k || '';
+const areaDeRubro = r => RUBRO(r).area || '';
 
 /* Gastos que existen en TODAS las áreas: la nafta de arte, la de producción,
    el flete de vestuario. Se agregan a cada rubro de departamento para poder
@@ -3342,6 +3349,81 @@ function matrizHTML(py,v){
   </div>`;
 }
 
+/* Hay rubros que no se miden por departamento sino por DIA DE RODAJE: el
+   catering, la seguridad, el enfermero. Ahí la pregunta no es "cuánto gastó
+   arte" sino "cuánto me sale la jornada, y cuánto por cabeza".               */
+function resumenJornadas(py, v){
+  const base = v?v.monedaBase:'ARS', tc = v?n(v.tc):1000;
+  const enBase = c => conv(n(c.importe), c.moneda||'ARS', base, tc);
+  const cs = (py.comprobantes||[]).filter(c=>c.estado!=='rechazado');
+  const js = (py.desglose?.jornadas)||[];
+  const rubrosJ = RUBROS_BASE.filter(r=>r.porJornada);
+
+  const filas = js.map(j=>{
+    const delDia = cs.filter(c=>c.jornada===j.numero);
+    const porRubro = {};
+    rubrosJ.forEach(r=>{ porRubro[r.codigo] =
+      delDia.filter(c=>c.rubro===r.codigo).reduce((s,c)=>s+enBase(c),0); });
+    const especificos = Object.values(porRubro).reduce((s,x)=>s+x,0);
+    const total = delDia.reduce((s,c)=>s+enBase(c),0);
+    /* cuánta gente hubo ese día, para el costo por cabeza */
+    let cabezas = 0;
+    try{ cabezas = gentePorJornada(py, v, j.numero).gente.length; }catch(e){}
+    return {numero:j.numero, fecha:j.fecha, porRubro, especificos, total, cabezas,
+      otros: total - especificos,
+      porCabeza: cabezas ? porRubro['13']/cabezas : 0};
+  });
+  const sinJornada = cs.filter(c=>!c.jornada && esPorJornada(c.rubro));
+  return {filas, rubrosJ, base,
+    total: filas.reduce((s,f)=>s+f.total,0),
+    sinJornada: sinJornada.length,
+    sinJornadaMonto: sinJornada.reduce((s,c)=>s+enBase(c),0)};
+}
+
+function jornadasHTML(py,v){
+  const J = resumenJornadas(py, v);
+  if(!J.filas.length) return `<div class="pad muted" style="font-size:12.5px">
+    Todavía no hay jornadas planificadas. Armá el plan en <b>Desglose → Plan de rodaje</b>.</div>`;
+  const conMov = J.filas.filter(f=>f.total);
+  return `${J.sinJornada?`<div class="pad"><div class="avisomodo turno-mal">
+      <b>${J.sinJornada} comprobante${J.sinJornada==1?'':'s'} de catering o seguridad sin jornada · ${fmt(J.sinJornadaMonto,J.base)}</b>
+      Esos rubros se miden por día de rodaje, así que sin la jornada no entran en el costo del día.
+      <button class="btn sm noprint" style="margin-top:7px"
+        onclick="setSubGasto('todos');setFiltro('rubro','13')">Ver los de catering</button>
+    </div></div>`:''}
+    <div class="scrollx"><table class="tbl cst">
+      <thead><tr><th style="width:130px">Jornada</th>
+        ${J.rubrosJ.map(r=>`<th style="width:118px;text-align:right">${esc(r.nombre)}</th>`).join('')}
+        <th style="width:118px;text-align:right">Otros del día</th>
+        <th style="width:122px;text-align:right">Total del día</th>
+        <th style="width:130px;text-align:right">Catering p/ cabeza</th></tr></thead>
+      <tbody>${conMov.map(f=>`<tr>
+        <td><b>Jornada ${f.numero}</b>${f.fecha?`<span class="muted" style="display:block;font-size:10.5px">${esc(f.fecha)}</span>`:''}</td>
+        ${J.rubrosJ.map(r=>`<td class="num" style="text-align:right">${f.porRubro[r.codigo]?fmt(f.porRubro[r.codigo],J.base):'—'}</td>`).join('')}
+        <td class="num muted" style="text-align:right">${f.otros?fmt(f.otros,J.base):'—'}</td>
+        <td class="num" style="text-align:right"><b>${fmt(f.total,J.base)}</b></td>
+        <td class="num" style="text-align:right">${f.porCabeza
+          ? `<b>${fmt(f.porCabeza,J.base)}</b><span class="muted" style="font-size:10px"> · ${f.cabezas} personas</span>`
+          : '<span class="muted">—</span>'}</td></tr>`).join('')
+        || '<tr><td colspan="5" class="empty">Todavía no se cargó ningún gasto con jornada</td></tr>'}
+      </tbody>
+      ${conMov.length>1?`<tfoot><tr><td><b>Total</b></td>
+        ${J.rubrosJ.map(r=>`<td class="num" style="text-align:right"><b>${fmt(conMov.reduce((s,f)=>s+f.porRubro[r.codigo],0),J.base)}</b></td>`).join('')}
+        <td class="num" style="text-align:right"><b>${fmt(conMov.reduce((s,f)=>s+f.otros,0),J.base)}</b></td>
+        <td class="num" style="text-align:right"><b style="color:var(--ac)">${fmt(J.total,J.base)}</b></td>
+        <td class="num" style="text-align:right"><b>${(()=>{
+          const cat = conMov.reduce((s,f)=>s+f.porRubro['13'],0);
+          const cab = conMov.reduce((s,f)=>s+f.cabezas,0);
+          return cab ? fmt(cat/cab, J.base) : '—';})()}</b>
+          <span class="muted" style="font-size:10px"> · promedio</span></td></tr></tfoot>`:''}
+    </table></div>
+    <div class="pad muted" style="font-size:11.5px;line-height:1.55">
+      El catering y la seguridad no los gasta un departamento: se gastan por día de rodaje.
+      Por eso acá la pregunta no es de quién es el gasto sino <b>cuánto sale la jornada</b>,
+      y el catering por cabeza sale de dividir por la gente citada ese día.
+    </div>`;
+}
+
 function areasHTML(py,v){
   const A = resumenAreas(py, v);
   const M = matrizRubroArea(py, v);
@@ -3365,6 +3447,10 @@ function areasHTML(py,v){
     </div></div>` : ''}
 
     <div class="csblock"><h4>Matriz rubro × área</h4>${matrizHTML(py,v)}</div>
+
+    <div class="csblock"><h4>Por jornada de rodaje
+      <span style="float:right;font-weight:600;text-transform:none;letter-spacing:0;color:var(--tx2)">
+        catering y seguridad no se dividen por área</span></h4>${jornadasHTML(py,v)}</div>
 
     <div class="csblock"><h4>Presupuestado vs real, por área</h4>
     <div class="scrollx"><table class="tbl cst">
@@ -4955,7 +5041,10 @@ function cargarComprobante(id, cajaId){
         ${campo('Importe','importe',c.importe,'number','step="any"')}
         ${sel('Moneda','moneda',c.moneda,['ARS','USD'])}
         ${sel('Cómo se paga','circuito',c.circuito,CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
-        ${jorn.length?sel('Jornada','jornada',c.jornada??'',[{v:'',l:'— sin jornada —'},...jorn.map(j=>({v:j.numero,l:'Jornada '+j.numero}))]):''}
+        ${jorn.length?`<label class="f"><span id="clabjor">Jornada${etiquetaJornada(c.rubro)}</span>
+          <select name="jornada"><option value="">— sin jornada —</option>
+          ${jorn.map(j=>`<option value="${j.numero}" ${j.numero===c.jornada?'selected':''}>Jornada ${j.numero}</option>`).join('')}
+          </select></label>`:''}
         ${ocsAbiertas.length?sel('Contra qué orden de compra','ocId',c.ocId||'',
           [{v:'',l:'— sin OC —'},...ocsAbiertas.map(o=>({v:o.id,l:o.numero+' · '+(o.proveedor||o.subrubro||'')+' · '+fmt(o.importe,o.moneda)}))]):''}
         ${cajasAbiertas.length?sel('¿Sale de una caja chica?','cajaId',c.cajaId||'',
@@ -4979,6 +5068,8 @@ function cargarComprobante(id, cajaId){
 /* el subrubro sigue al rubro elegido */
 const etiquetaArea = rubro => esTransversal(rubro)
   ? ' <b style="color:var(--warn)">· obligatoria</b>' : '';
+const etiquetaJornada = rubro => esPorJornada(rubro)
+  ? ' <b style="color:var(--warn)">· se mide por día</b>' : '';
 
 function alCambiarRubro(rubro){
   const t = document.getElementById('csub');
@@ -4986,6 +5077,8 @@ function alCambiarRubro(rubro){
   /* avisar YA si el rubro es transversal, no recién al guardar */
   const lab = document.getElementById('clabarea');
   if(lab) lab.innerHTML = 'Área que lo gastó' + etiquetaArea(rubro);
+  const labJ = document.getElementById('clabjor');
+  if(labJ) labJ.innerHTML = 'Jornada' + etiquetaJornada(rubro);
   /* el área se propone sola, pero se puede cambiar: la nafta va al rubro 12
      y el área dice si fue de arte o de producción */
   const a = document.getElementById('carea');
@@ -5037,6 +5130,14 @@ function saveComprobante(id){
            c.proveedor = c.proveedor || o.proveedor; c.cuit = c.cuit || o.cuit; }
   }
   if(!c.rubro || !c.importe){ alert('Falta el rubro o el importe.'); return; }
+  if(esPorJornada(c.rubro) && !c.jornada && (getPy().desglose?.jornadas||[]).length){
+    const rb = RUBRO(c.rubro);
+    alert(`"${rb.nombre}" se mide por día de rodaje.
+
+` +
+          'Poné de qué jornada es, si no no entra en el costo del día.');
+    return;
+  }
   if(esTransversal(c.rubro) && !c.area){
     const rb = RUBROS_BASE.find(r=>r.codigo===c.rubro);
     alert(`"${rb.nombre}" es un rubro transversal: gastan todos los departamentos.

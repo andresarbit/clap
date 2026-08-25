@@ -254,11 +254,27 @@ fletes, compras varias, viaticos, alquiler de vehiculo) se agregan como
 subrubro a cada rubro de departamento, asi la nafta se puede presupuestar
 dentro de arte si la productora lo prefiere.
 
-**Rubros transversales.** No es solo la nafta: hay rubros ENTEROS donde gastan
-todos los departamentos — viajes, equipamiento y alquileres, catering, seguros,
-seguridad, preproduccion y administracion. Estan marcados como `transversal` y
-en ellos **el area es obligatoria**: sin ella el numero no dice de quien es el
-gasto. El formulario lo avisa al elegir el rubro, no recien al guardar.
+**Cada rubro tiene su area**, salvo dos que son transversales: **equipamiento y
+alquileres** y **transporte y viajes**. Ahi gastan varios departamentos — camara
+alquila camara, arte alquila utileria, cada uno pone su nafta — y el **area es
+obligatoria**: sin ella el numero no dice de quien es el gasto. El formulario lo
+avisa al elegir el rubro, no recien al guardar.
+
+**Y hay rubros que no se miden por area sino por DIA DE RODAJE:** el catering y
+la seguridad no los gasta un departamento, se gastan por jornada. En esos la
+**jornada es obligatoria** y la pregunta no es de quien es el gasto sino cuanto
+sale el dia:
+
+```
+jornada     catering   seguridad   otros del dia   total     p/ cabeza
+J1           420.000      80.000          45.000   545.000    52.500 · 8 personas
+J2           385.000           —          78.000   463.000    48.125 · 8 personas
+J3           410.000           —               —   410.000    51.250 · 8 personas
+Total      1.215.000      80.000         123.000 1.418.000    50.625 · promedio
+```
+
+El **catering por cabeza** sale de dividir por la gente citada ese dia, que ya
+esta en el callsheet.
 
 **Matriz rubro × area.** La vista que contesta las dos preguntas a la vez:
 
