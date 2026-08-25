@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<title>CLAP</title>
+<!-- El hosting sirve index.html en la raíz. CLAP vive en clap.html, así que
+     esto sólo redirige y se lleva la query string intacta: el link del equipo
+     (?sb=…&k=…) tiene que seguir funcionando aunque lo abran en la raíz. -->
+<link rel="canonical" href="clap.html">
+<meta name="robots" content="noindex">
+<script>location.replace('clap.html' + location.search + location.hash);</script>
+<noscript><meta http-equiv="refresh" content="0; url=clap.html"></noscript>
+<body style="background:#0e0f11;color:#9ba1ac;font:14px/1.6 system-ui,sans-serif;padding:40px">
+  Abriendo CLAP… <a href="clap.html" style="color:#e0a92e">entrar</a>
+</body>
+</html>

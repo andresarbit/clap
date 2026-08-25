@@ -4,3 +4,6 @@ test/muestras/binario.doc
 test/muestras/roto.docx
 test/muestras/escaneado.pdf
 test/muestras/vacio.xyz
+
+# Datos de conexion propios: no van al repo publico
+MI-CONEXION.txt

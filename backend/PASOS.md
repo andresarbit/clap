@@ -23,80 +23,53 @@ está protegido y qué no.
    necesitás para CLAP** — es para conectarte por SQL desde afuera.
 4. Esperá unos minutos a que termine de crearse.
 
-### A2. Correr el esquema
+### A2, A2b, A2c y A3 — ✅ YA ESTÁN HECHOS
 
-1. En el panel de Supabase: **SQL Editor** → **New query**.
-2. Abrí `backend/esquema.sql`, copiá **todo** y pegalo.
-3. **Run**.
+Los corrí yo el 25/08/2026 sobre tu proyecto **Clap** (org `andresarbit`).
+Estado verificado contra la base, no de memoria:
 
-> **Si aparece el cartel "Potential issue detected"**, elegí **"Run without
-> RLS"**. No es lo que suena: el script **ya prende Row Level Security en las
-> 23 tablas y define sus 35 políticas**. Esa opción quiere decir "corré mi
-> query tal como está", que es justamente lo que hace falta.
->
-> La otra opción, *"Run and enable RLS"*, agrega por su cuenta un `enable row
-> level security` sin políticas: la base quedaría cerrada y la app no podría
-> leer nada.
+| | |
+|---|---|
+| Tablas | **23** |
+| Con Row Level Security | **23 de 23** |
+| Políticas | **39** |
+| `usuario.pendiente` / `usuario.area` | presentes |
+| `productora.requiere_aprobacion` | presente, en `false` (candado abierto) |
+| `productoras_para_elegir()` | creada |
 
-### A2b. Comprobar que quedó bien
+Y la prueba que importa: **con la clave pública y sin login, la base devuelve
+lista vacía**. O sea que RLS no es decorativo — un desconocido con el link no
+lee nada.
 
-Pegá esto en una query nueva. **No tiene que devolver ninguna fila.** Si alguna
-tabla aparece, le falta RLS o le faltan políticas:
+Tus datos de conexión **no están en este repo a propósito**, porque el repo es
+público. Están en `MI-CONEXION.txt`, en tu carpeta `D:\Cuadro`, que git ignora.
 
-```sql
-select c.relname as tabla,
-       c.relrowsecurity as tiene_rls,
-       count(p.polname) as politicas
-  from pg_class c
-  join pg_namespace n on n.oid = c.relnamespace
-  left join pg_policy p on p.polrelid = c.oid
- where n.nspname = 'public' and c.relkind = 'r'
- group by 1,2
-having c.relrowsecurity = false or count(p.polname) = 0;
-```
+Si lo perdés, se sacan del panel de Supabase: botón **Connect** arriba, o
+**Settings → API Keys** (la *publishable*) e **Integrations → Data API** (la URL).
 
-Si tira un error en el paso 3, copiámelo tal cual y lo arreglo. Para empezar de
-nuevo, andá a **Database → Tables** y borrá las tablas primero.
+La clave publishable no es un secreto — Supabase la marca como *"can be safely
+shared publicly"* y lo que protege los datos es el login más RLS, no ella. Pero
+tampoco hace falta regalarla en un repo público que cualquiera puede clonar.
+La `sb_secret_…` que está al lado **no la toqué, no la tengo y no tiene que
+salir nunca del panel**.
 
-### A3. Copiar la URL y la clave
+### A4. Lo único que falta de esta parte, y sólo lo podés hacer vos
 
-Supabase movió esto de lugar, así que van los dos caminos.
+Crear tu cuenta pide elegir una contraseña. Eso no lo hago yo por vos: es tuya
+y no la quiero ni ver. Son dos minutos.
 
-**El corto:** arriba del dashboard hay un botón **`Connect`**. Abrilo y ahí
-tenés la **Project URL** y la clave, juntas. Es de donde conviene copiarlas.
+1. Abrí el link que está en `MI-CONEXION.txt` — ya lleva la conexión adentro
+   y no tenés que copiar nada. O abrí `clap.html` normal, botón **☁**, y pegá
+   la URL y la clave de ese archivo.
 
-**El largo, si preferís ir a la fuente:**
+2. Botón **☁** → **Crear cuenta** con tu mail y una contraseña.
 
-- **La URL** → menú lateral **Integrations → Data API**
-  (algo como `https://abcdefgh.supabase.co`)
-- **La clave** → **Settings** (el engranaje abajo a la izquierda) → **API Keys**
-  - Buscá la **publishable** (`sb_publishable_...`)
-  - Si tu proyecto todavía usa las viejas, está en la pestaña **Legacy API
-    Keys** como **anon** (`eyJ...`). Las dos sirven.
+3. **Supabase te va a mandar un mail para confirmar la dirección.** Confirmalo
+   y volvé a entrar. Puede tardar y puede caer en spam.
 
-> ⚠️ **Sólo esa clave.** La **`service_role`** / **`secret`** y la contraseña de
-> la base **no van en CLAP ni me las pases a mí**: quien las tiene se saltea
-> todos los permisos y puede leer y borrar todo. CLAP la rechaza si la pegás
-> por error.
+4. Aparece **"Primera vez acá"**: tu nombre, creás tu productora, elegís
+   **Administración**. Quedás activo al toque.
 
-### A2c. Correr el alta propia
-
-Pegá y corré **`backend/alta-propia.sql`** en una query nueva. Agrega lo que
-hace falta para que cada uno se dé de alta solo la primera vez que entra.
-
-Va a aparecer otra vez el cartel de *"destructive operations"*: es por los
-`drop policy if exists` y los `revoke`, que sirven para que el script se pueda
-correr más de una vez sin romper. **No borra datos ni tablas.** Dale **Run
-query**.
-
-### A4. Conectar y darte de alta
-
-1. Abrí `clap.html`, botón **☁** arriba a la derecha.
-2. Pegá la URL y la clave → **Guardar y probar**.
-3. **Crear cuenta** con tu mail y una contraseña.
-4. Aparece la pantalla **"Primera vez acá"**: ponés tu nombre, creás tu
-   productora y elegís tu rol y tu área. Como sos el primero, quedás
-   **administrador**.
 5. El diagnóstico tiene que quedar así:
 
 ```
@@ -105,8 +78,6 @@ query**.
 ✓ Sesión iniciada
 ✓ Esquema cargado
 ```
-
-Si el último da rojo, te va a decir **qué tablas faltan**: volvé al paso A2.
 
 ---
 
@@ -190,6 +161,34 @@ La clave anónima viaja en el link, y está bien: está hecha para ser pública.
 que protege los datos no es esa clave, es el login y las políticas de la base.
 
 ---
+
+## Una cosa que tenés que saber antes de repartir el link
+
+El candado abierto y el alta libre juntos significan esto, textual:
+
+> **Cualquiera que tenga el link puede crear una cuenta, declararse
+> Administración, y ver todo.**
+
+Es exactamente lo que pediste para arrancar, y está bien mientras son ustedes
+dos. Pero conviene tenerlo dicho en voz alta antes de mandar el link por
+WhatsApp a un grupo grande.
+
+Hoy lo único que frena a un desconocido es que **Supabase pide confirmar el
+mail** — hay que tener una casilla real. Por eso **dejé esa confirmación
+prendida** aunque haga más lento el alta: ahora mismo es tu única puerta.
+
+Cuando quieras cerrar de verdad, son dos switches independientes:
+
+```sql
+-- 1) el que entra queda esperando aprobación en vez de entrar como admin
+update productora set requiere_aprobacion = true;
+```
+
+Y en el panel de Supabase, **Authentication → Sign In / Providers → Email**:
+apagar **Allow new users to sign up**. A partir de ahí las cuentas las creás
+vos desde **Authentication → Users → Add user**.
+
+Recomendación: apretá los dos el día que el link salga del círculo de dos.
 
 ## El candado del alta
 
