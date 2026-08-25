@@ -530,8 +530,22 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
 
 /* ===========================  MODEL  ====================================== */
 
-const SCHEMA_VERSION = 1;
-const uid = p => (p||'x') + '_' + Math.random().toString(36).slice(2,9);
+const SCHEMA_VERSION = 2;
+
+/* Los ids se generan acá, en el navegador, no en el servidor. Es lo que
+   permite seguir trabajando sin señal en una locación y sincronizar después
+   sin que nada se duplique: el id con el que nació la línea es el mismo con
+   el que va a entrar en la base. Por eso son UUID de verdad y no `ln_a1b2c3`,
+   que era lo de antes: la clave primaria de Postgres es uuid.
+   El prefijo sigue aceptándose como argumento y se ignora, para no tener que
+   tocar las cien llamadas que ya existen.                                    */
+const uid = _p => (globalThis.crypto && crypto.randomUUID) ? crypto.randomUUID()
+  : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = Math.random()*16|0;
+      return (c==='x' ? r : (r&0x3|0x8)).toString(16);
+    });
+const esUuid = s => typeof s === 'string' &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 
 /* Rubros por defecto — estructura de presupuesto publicitario argentino.
    aplicaFee: si el fee de producción se calcula sobre este rubro.            */
@@ -2344,6 +2358,47 @@ function cargar(){
   }catch(e){ console.warn('DB corrupta, arranco limpio', e); }
   DB = dbVacia(); sembrar(); guardar();
 }
+/* v1 → v2: los ids pasan a ser UUID.
+   Antes eran `ln_a1b2c3`, que no entran en una clave primaria uuid de
+   Postgres. Reescribirlos es delicado porque el id de una línea aparece
+   también como referencia en otros lados —el comprobante que la paga, el
+   contacto de esa línea, la ficha de la persona— y algunos de esos lugares
+   son CLAVES de objeto, no valores. Si se reescribe el id y se olvida una
+   referencia, el dato queda huérfano en silencio, que es la peor forma de
+   romperse.
+   Por eso el barrido es en dos tiempos: primero se juntan los ids reales
+   (todo objeto que tenga `id`), y recién después se reemplaza cada aparición
+   exacta de esos strings, sea valor o clave. Nada se adivina por forma.     */
+function migrarIdsAUuid(){
+  const mapa = new Map();
+
+  /* 1. juntar: sólo lo que de verdad es un id */
+  (function juntar(x){
+    if(Array.isArray(x)) return x.forEach(juntar);
+    if(!x || typeof x !== 'object') return;
+    if(typeof x.id === 'string' && !esUuid(x.id) && !mapa.has(x.id)) mapa.set(x.id, uid());
+    Object.values(x).forEach(juntar);
+  })(DB);
+  if(!mapa.size) return 0;
+
+  /* 2. reemplazar cada aparición, tanto en valores como en claves */
+  const nuevo = v => mapa.get(v) || v;
+  (function reescribir(x){
+    if(Array.isArray(x)) return x.forEach(reescribir);
+    if(!x || typeof x !== 'object') return;
+    for(const k of Object.keys(x)){
+      const v = x[k];
+      if(typeof v === 'string' && mapa.has(v)) x[k] = mapa.get(v);
+      else reescribir(v);
+      /* las claves también: contactos.porLinea y las fichadas del parte
+         están indexadas por id */
+      if(mapa.has(k)){ x[nuevo(k)] = x[k]; delete x[k]; }
+    }
+  })(DB);
+
+  return mapa.size;
+}
+
 function migrar(){
   if(!DB.schemaVersion) DB.schemaVersion = 1;
   /* rubros agregados despues: se suman a los presupuestos que ya existian */
@@ -2368,6 +2423,13 @@ function migrar(){
     py.desglose.jornadas.forEach(j=>{ j.parte ||= nuevoParte();
       j.parte.fichadas ||= {}; j.parte.citados ||= {}; j.parte.filmadas ||= []; });
   }); });
+
+  /* Última, y una sola vez: los ids a UUID para que la base los acepte. */
+  if(DB.schemaVersion < 2){
+    const cuantos = migrarIdsAUuid();
+    DB.schemaVersion = 2;
+    if(cuantos) console.info(`CLAP: ${cuantos} ids migrados a UUID`);
+  }
 }
 let _t;
 function guardar(){
