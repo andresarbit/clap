@@ -2232,6 +2232,55 @@ async function sbSalir(){
   SB.access = null; SB.refresh = null; SB.user = null; SB.expira = 0; sbGuardar();
 }
 
+/* --- alta propia al entrar por primera vez -------------------------------
+   Quien entra por primera vez declara su rol, su área y a qué productora se
+   suma. Si la productora tiene el candado abierto queda activo al toque; si
+   está cerrado, queda pendiente hasta que un admin lo apruebe.
+   Quién puede qué lo decide la base, no esta pantalla.                       */
+
+async function sbMiFicha(){
+  if(!await sbSesionViva()) return null;
+  const r = await sbFetch(`/rest/v1/usuario?select=*&auth_uid=eq.${SB.user.id}&limit=1`);
+  return (r && r[0]) || null;
+}
+async function sbProductorasParaElegir(){
+  return await sbFetch('/rest/v1/rpc/productoras_para_elegir', {method:'POST', body:'{}'});
+}
+async function sbCandado(productoraId){
+  const r = await sbFetch('/rest/v1/rpc/productora_pide_aprobacion', {method:'POST',
+    body: JSON.stringify({p: productoraId})});
+  return r === true;
+}
+/* Crear productora nueva: hace falta una organización que la contenga. */
+async function sbCrearProductora(nombre){
+  const orgs = await sbFetch('/rest/v1/organizacion?select=id&limit=1');
+  let orgId = orgs && orgs[0] && orgs[0].id;
+  if(!orgId){
+    const o = await sbFetch('/rest/v1/organizacion', {method:'POST',
+      headers:{'Prefer':'return=representation'}, body: JSON.stringify({nombre:'Mi estudio'})});
+    orgId = o[0].id;
+  }
+  const p = await sbFetch('/rest/v1/productora', {method:'POST',
+    headers:{'Prefer':'return=representation'},
+    body: JSON.stringify({org_id: orgId, nombre})});
+  return p[0];
+}
+async function sbAltaPropia({productoraId, nombre, rol, area, tel}){
+  const pide = await sbCandado(productoraId);
+  const fila = {auth_uid: SB.user.id, productora_id: productoraId, nombre, rol,
+    area, tel, email: SB.user.email, activo: true, pendiente: pide};
+  const r = await sbFetch('/rest/v1/usuario', {method:'POST',
+    headers:{'Prefer':'return=representation'}, body: JSON.stringify(fila)});
+  return r[0];
+}
+async function sbAprobar(usuarioId){
+  return await sbFetch(`/rest/v1/usuario?id=eq.${usuarioId}`, {method:'PATCH',
+    headers:{'Prefer':'return=representation'}, body: JSON.stringify({pendiente:false})});
+}
+async function sbPendientes(){
+  return await sbFetch('/rest/v1/usuario?select=*&pendiente=eq.true&order=alta_el');
+}
+
 /* --- diagnóstico --------------------------------------------------------
    Antes de sincronizar nada conviene saber qué falta. Devuelve una lista de
    pasos con su estado, para mostrarla y no adivinar.                        */
@@ -6116,8 +6165,11 @@ function menuNube(){
       ${con ? `<div class="sicabox"><b>${esc(SB.user.email)}</b>
         <span style="display:block;margin-top:3px" class="muted">${esc(SB.url)}</span></div>`
       : `<div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">
-          Pegá los datos de tu proyecto de Supabase. Están en
-          <b>Project Settings → API</b>: la <b>URL</b> y la clave <b>anon / publishable</b>.
+          Pegá los datos de tu proyecto de Supabase. El camino corto: el botón
+          <b>Connect</b> arriba del panel te muestra las dos cosas juntas. Si preferís
+          ir a la fuente, la <b>URL</b> está en <b>Integrations → Data API</b> y la clave
+          en <b>Settings → API Keys</b> (la <b>publishable</b>; si tu proyecto usa las
+          viejas, es la <b>anon</b> en la pestaña <i>Legacy API Keys</i>).
           <div class="avisomodo" style="margin-top:9px">
             <b>Sólo la clave anónima.</b> Esa está hecha para vivir en el navegador.
             La <code>service_role</code> y la contraseña de la base <b>no van acá nunca</b>:
@@ -6147,11 +6199,35 @@ function menuNube(){
       ${cfg && !con ? `<button class="btn" onclick="sbAccion('registrar')">Crear cuenta</button>
                        <button class="btn pri" onclick="sbAccion('entrar')">Entrar</button>` : ''}
       ${cfg ? `<button class="btn" onclick="copiarLinkEquipo()">Copiar link para el equipo</button>` : ''}
-      ${con ? `<button class="btn" onclick="sbCorrerDiagnostico()">Revisar estado</button>
+      ${con ? `<button class="btn" onclick="menuPendientes()">Altas pendientes</button>
+               <button class="btn" onclick="sbCorrerDiagnostico()">Revisar estado</button>
                <button class="btn" onclick="sbCerrarSesion()">Cerrar sesión</button>` : ''}
     </div>
   </div></div>`);
   if(cfg) setTimeout(sbCorrerDiagnostico, 60);
+  if(con) setTimeout(()=>{ if(!modal) return; mostrarMiFicha(); }, 400);
+}
+
+/* Debajo del diagnóstico, en qué situación estoy: alta hecha, esperando, o falta. */
+async function mostrarMiFicha(){
+  const cont = document.getElementById('sbdiag'); if(!cont) return;
+  let f = null; try{ f = await sbMiFicha(); }catch(e){ return; }
+  if(!document.getElementById('sbdiag')) return;
+  const caja = document.createElement('div');
+  caja.style.marginTop = '10px';
+  if(!f){
+    caja.innerHTML = `<div class="avisomodo"><b>Todavía no te diste de alta.</b>
+      Falta decir a qué productora te sumás y qué hacés.
+      <button class="btn sm pri" style="margin-left:8px" onclick="pantallaAlta()">Darme de alta</button></div>`;
+  } else if(f.pendiente){
+    caja.innerHTML = `<div class="avisomodo">Tu alta como <b>${esc(ROL(f.rol).l)}</b>
+      está esperando que un administrador la apruebe.</div>`;
+  } else {
+    caja.innerHTML = `<div class="sicabox">Entrás como <b>${esc(f.nombre)}</b> ·
+      ${esc(ROL(f.rol).l)}${f.area?' · '+esc(areaLbl(f.area)):''}</div>`;
+    espejarFichaLocal(f);
+  }
+  cont.appendChild(caja);
 }
 
 function sbGuardarConfig(){
@@ -6181,8 +6257,9 @@ async function sbAccion(cual){
         return;
       }
     } else await sbLogin(mail, pass);
-    cerrar(); menuNube();
     toast('Conectado como ' + SB.user.email);
+    cerrar(); menuNube();          /* deja el menú con el diagnóstico */
+    setTimeout(pantallaAlta, 80);  /* y si le falta la ficha, la pide */
   }catch(e){
     if(cont) cont.innerHTML = `<div class="avisomodo turno-mal"><b>No pude entrar.</b> ${esc(e.message)}</div>`;
   }
@@ -6197,6 +6274,178 @@ function copiarLinkEquipo(){
   }
   alPortapapeles(l, 'Link copiado — el que lo abra ya queda apuntando a tu Supabase');
 }
+/* ---------- alta propia: la pantalla de primera vez ---------- */
+let _prodsElegibles = [];
+async function pantallaAlta(){
+  const cont = document.getElementById('sbdiag');
+  if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Buscando tus datos…</div>';
+  let ficha = null;
+  try{ ficha = await sbMiFicha(); }
+  catch(e){ if(cont) cont.innerHTML = `<div class="avisomodo turno-mal">${esc(e.message)}</div>`; return; }
+
+  if(ficha && !ficha.pendiente){
+    if(cont) cont.innerHTML = `<div class="sicabox"><b>Ya estás dado de alta.</b>
+      ${esc(ficha.nombre)} · ${esc(ROL(ficha.rol).l)}${ficha.area?' · '+esc(ficha.area):''}</div>`;
+    return;
+  }
+  if(ficha && ficha.pendiente){
+    if(cont) cont.innerHTML = `<div class="avisomodo">
+      <b>Tu alta está esperando aprobación.</b>
+      Pediste entrar como <b>${esc(ROL(ficha.rol).l)}</b>${ficha.area?' en '+esc(ficha.area):''}.
+      Un administrador de la productora tiene que darte el visto bueno. Mientras tanto
+      podés entrar pero no vas a ver los datos.</div>`;
+    return;
+  }
+  /* no tiene ficha: primera vez */
+  try{ _prodsElegibles = await sbProductorasParaElegir() || []; }
+  catch(e){ _prodsElegibles = []; }
+  cerrar(); formAlta();
+}
+
+function formAlta(){
+  const mail = SB.user ? SB.user.email : '';
+  abrir(`<div class="ov"><div class="mod" style="max-width:620px">
+    <h3>Primera vez acá — contanos quién sos</h3>
+    <div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:14px">
+        Entraste como <b>${esc(mail)}</b>. Falta decir a qué productora te sumás y qué hacés,
+        para que el sistema sepa qué mostrarte y qué podés aprobar.
+      </div>
+      <div class="grid2">
+        ${campo('Tu nombre','nombre', mail.split('@')[0].replace(/[._]/g,' ')
+          .replace(/\b\p{Ll}/gu,c=>c.toUpperCase()))}
+        ${campo('Teléfono','tel','','text','placeholder="11 5555-1234"')}
+      </div>
+      <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Productora</div>
+      ${_prodsElegibles.length ? `
+        <label class="f"><span>Sumarme a</span>
+          <select name="productoraId" onchange="alCambiarProductora(this.value)">
+            ${_prodsElegibles.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}
+            <option value="__nueva">— Crear una productora nueva —</option>
+          </select></label>
+        <div id="prodnueva" style="display:none;margin-top:9px">
+          ${campo('Nombre de la productora nueva','productoraNombre','')}
+        </div>`
+      : `<div class="sicabox" style="margin-bottom:9px">Todavía no hay ninguna productora cargada.
+          La primera la creás vos y quedás como su administrador.</div>
+        ${campo('Nombre de tu productora','productoraNombre','')}
+        <input type="hidden" name="productoraId" value="__nueva">`}
+
+      <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Qué hacés</div>
+      <div class="grid2">
+        ${sel('Rol','rol','produccion',ROLES.map(r=>({v:r.k,l:r.l})))}
+        ${sel('Área / departamento','area','produccion',
+          [{v:'',l:'— sin área —'},...AREAS.map(a=>({v:a.k,l:a.l}))])}
+      </div>
+      <div class="sicabox" style="margin-top:12px">
+        ${ROLES.map(r=>`<div style="margin-bottom:4px"><b>${esc(r.l)}</b> — ${esc(r.d)}</div>`).join('')}
+      </div>
+      <div id="altadiag" style="margin-top:12px"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn" onclick="cerrar()">Después</button>
+      <div style="flex:1"></div>
+      <button class="btn pri" onclick="confirmarAlta()">Darme de alta</button>
+    </div>
+  </div></div>`);
+}
+function alCambiarProductora(v){
+  const d = document.getElementById('prodnueva');
+  if(d) d.style.display = v === '__nueva' ? '' : 'none';
+}
+
+async function confirmarAlta(){
+  const d = datos();
+  const cont = document.getElementById('altadiag');
+  const nombre = (d.nombre||'').trim();
+  if(!nombre){ if(cont) cont.innerHTML = '<div class="avisomodo turno-mal">Poné tu nombre.</div>'; return; }
+  const nueva = d.productoraId === '__nueva';
+  if(nueva && !(d.productoraNombre||'').trim()){
+    if(cont) cont.innerHTML = '<div class="avisomodo turno-mal">Poné el nombre de la productora.</div>'; return; }
+  if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Dando de alta…</div>';
+  try{
+    let pid = d.productoraId, esMia = false;
+    if(nueva){
+      const p = await sbCrearProductora(d.productoraNombre.trim());
+      pid = p.id; esMia = true;
+      /* el trigger ya me dio de alta como admin de lo que acabo de crear */
+      const ficha = await sbMiFicha();
+      if(ficha) await sbFetch(`/rest/v1/usuario?id=eq.${ficha.id}`, {method:'PATCH',
+        body: JSON.stringify({nombre, tel:d.tel, area:d.area, rol:d.rol})});
+    } else {
+      await sbAltaPropia({productoraId:pid, nombre, rol:d.rol, area:d.area, tel:d.tel});
+    }
+    const ficha = await sbMiFicha();
+    cerrar();
+    if(ficha && ficha.pendiente){
+      alert('Listo. Tu alta quedó esperando que un administrador de la productora la apruebe.\n\n' +
+            'Podés entrar, pero hasta que te aprueben no vas a ver los datos.');
+    } else {
+      toast(`Bienvenido, ${nombre}` + (esMia ? ' — sos administrador de esta productora' : ''));
+    }
+    espejarFichaLocal(ficha);
+    R();
+  }catch(e){
+    if(cont) cont.innerHTML = `<div class="avisomodo turno-mal"><b>No pude darte de alta.</b> ${esc(e.message)}</div>`;
+  }
+}
+
+/* Mientras el resto del sistema siga siendo local, la ficha de Supabase se
+   copia al equipo local para que las bandejas y los permisos funcionen igual.
+   Cuando esté la sincronización completa, esto se va.                        */
+function espejarFichaLocal(ficha){
+  if(!ficha) return;
+  const pr = getPr(); if(!pr) return;
+  pr.usuarios ||= [];
+  let u = pr.usuarios.find(x=>x.authUid === ficha.auth_uid)
+       || pr.usuarios.find(x=>norm(x.email)===norm(ficha.email||''));
+  if(!u){ u = nuevoUsuario(); pr.usuarios.push(u); }
+  Object.assign(u, {authUid: ficha.auth_uid, nombre: ficha.nombre, rol: ficha.rol,
+    depto: ficha.area ? areaLbl(ficha.area) : u.depto, email: ficha.email,
+    tel: ficha.tel || u.tel, activo: !ficha.pendiente});
+  DB.ui.usuarioId = u.id;
+  guardar();
+}
+
+/* ---------- aprobar a los que se dieron de alta ---------- */
+async function menuPendientes(){
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:640px">
+    <h3>Altas esperando aprobación</h3>
+    <div class="mbody" id="pendcont">
+      <div class="muted" style="font-size:12px">Buscando…</div>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div>
+  </div></div>`);
+  const cont = document.getElementById('pendcont');
+  try{
+    const ps = await sbPendientes();
+    if(!ps || !ps.length){
+      cont.innerHTML = `<div class="sicabox">No hay nadie esperando.
+        <span class="muted" style="display:block;margin-top:4px">
+        Si la productora tiene el candado abierto, el que entra queda activo directo.</span></div>`;
+      return;
+    }
+    cont.innerHTML = `<div class="scrollx"><table class="tbl cst">
+      <thead><tr><th>Quién</th><th>Pidió entrar como</th><th>Área</th><th></th></tr></thead>
+      <tbody>${ps.map(u=>`<tr>
+        <td><b>${esc(u.nombre)}</b><span class="muted" style="display:block;font-size:10.5px">${esc(u.email||'')}</span></td>
+        <td><span class="est" style="color:var(--info);border-color:rgba(91,155,213,.4);background:rgba(91,155,213,.12)">${esc(ROL(u.rol).l)}</span></td>
+        <td class="muted">${esc(u.area?areaLbl(u.area):'—')}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn sm pri" onclick="aprobarAlta('${u.id}')">Aprobar</button></td>
+      </tr>`).join('')}</tbody></table></div>
+      <div class="muted" style="font-size:11.5px;margin-top:10px">
+        Al aprobar entra con el rol que pidió. Si no corresponde, aprobalo igual y
+        cambiáselo en <b>Equipo</b>.</div>`;
+  }catch(e){
+    cont.innerHTML = `<div class="avisomodo turno-mal">${esc(e.message)}</div>`;
+  }
+}
+async function aprobarAlta(id){
+  try{ await sbAprobar(id); toast('Alta aprobada'); menuPendientes(); }
+  catch(e){ alert('No pude aprobarlo.\n\n'+e.message); }
+}
+
 async function sbCerrarSesion(){ await sbSalir(); cerrar(); menuNube(); toast('Sesión cerrada'); }
 function sbDesconectar(){
   if(!confirm('Se borra la URL y la clave de este navegador.\n\nTus datos locales no se tocan. ¿Seguir?')) return;

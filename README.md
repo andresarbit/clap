@@ -370,6 +370,33 @@ lugar. Al elegir el rubro, el desplegable de subrubro se llena solo.
 
 Se regenera con `python test/gen-rubros.py`.
 
+### Alta propia: la primera vez que alguien entra
+
+Nadie carga usuarios a mano. El que entra con su mail por primera vez ve una
+pantalla que le pregunta tres cosas: **a que productora se suma**, **que rol
+cumple** y **de que area es**. Si todavia no hay ninguna productora, la crea el
+y queda como su administrador.
+
+**El candado arranca abierto.** Mientras son dos o tres y se conocen, el que
+entra elige su rol —incluso Administracion— y queda activo al toque. Cuando la
+herramienta se abra a mas gente se cierra con un switch en la base:
+
+```sql
+update productora set requiere_aprobacion = true;
+```
+
+Desde ahi el que se da de alta queda **pendiente**: entra, ve que esta
+esperando, y no accede a ningun dato hasta que un admin lo aprueba desde
+**☁ → Altas pendientes**. Los que ya estaban no se tocan.
+
+Lo importante es donde vive la regla: **en la base, no en esta pantalla**. Con
+el candado cerrado, la politica `usuario_autoalta` solo acepta filas con
+`pendiente = true`, y solo con el `auth_uid` de quien esta logueado. Aunque
+alguien abra la consola del navegador y mande el insert a mano, no puede
+declararse admin ni darse de alta por otro. El test lo prueba intentandolo.
+
+Vive en `backend/alta-propia.sql`, que se corre despues de `esquema.sql`.
+
 ## Arquitectura
 
 Todo en `clap.html`, en cuatro bloques marcados en el código:
@@ -424,6 +451,7 @@ node test/run.js test/plata.js     # ordenes de compra, caja chica y tablero
 node test/run.js test/resumen.js   # portada, pendientes y datos de ejemplo
 node test/run.js test/guia.js      # instructivo: contenido, navegacion y que no mienta
 node test/run.js test/backend.js   # conexion, login, renovacion de sesion y diagnostico
+node test/run.js test/alta.js      # alta propia, el candado y la cola de aprobacion
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)

@@ -51,6 +51,9 @@ create table productora (
   contingencia_default numeric(6,3) not null default 5,
   iva_default          numeric(6,3) not null default 21,
   iibb_default         numeric(6,3) not null default 0,
+  -- false = el que entra elige su rol y queda activo (comodo mientras son
+  -- pocos y se conocen). true = queda pendiente hasta que un admin lo apruebe.
+  requiere_aprobacion boolean not null default false,
   creado_el      timestamptz not null default now()
 );
 create index on productora (org_id);
@@ -65,7 +68,12 @@ create table usuario (
   depto        text,
   email        text,
   tel          text,
-  activo       boolean not null default true
+  activo       boolean not null default true,
+  -- se dio de alta solo y todavia nadie de la productora lo aprobo. Mientras
+  -- este pendiente no tiene acceso a nada: puede entrar y esperar, nada mas.
+  pendiente    boolean not null default false,
+  area         text,                              -- el departamento que declara
+  alta_el      timestamptz not null default now()
 );
 create index on usuario (productora_id);
 create index on usuario (auth_uid);
@@ -390,19 +398,21 @@ create index on contacto_proyecto (proyecto_id);
 
 create or replace function mis_productoras() returns setof uuid
 language sql stable security definer set search_path = public as $$
-  select productora_id from usuario where auth_uid = auth.uid() and activo
+  select productora_id from usuario
+   where auth_uid = auth.uid() and activo and not pendiente
 $$;
 
 create or replace function mis_orgs() returns setof uuid
 language sql stable security definer set search_path = public as $$
   select distinct p.org_id from productora p
-  where p.id in (select productora_id from usuario where auth_uid = auth.uid() and activo)
+  where p.id in (select productora_id from usuario
+                  where auth_uid = auth.uid() and activo and not pendiente)
 $$;
 
 create or replace function mi_rol(p uuid) returns rol_usuario
 language sql stable security definer set search_path = public as $$
   select rol from usuario
-  where auth_uid = auth.uid() and productora_id = p and activo limit 1
+  where auth_uid = auth.uid() and productora_id = p and activo and not pendiente limit 1
 $$;
 
 -- ¿Puedo ver este proyecto? Es el pivote: casi todo cuelga de acá.
@@ -411,7 +421,7 @@ language sql stable security definer set search_path = public as $$
   select exists(
     select 1 from proyecto
     where id = p and productora_id in (select productora_id from usuario
-                                       where auth_uid = auth.uid() and activo))
+                                       where auth_uid = auth.uid() and activo and not pendiente))
 $$;
 
 -- El rol que tengo en la productora dueña de este proyecto.
@@ -419,7 +429,7 @@ create or replace function mi_rol_en_proyecto(p uuid) returns rol_usuario
 language sql stable security definer set search_path = public as $$
   select u.rol from proyecto pr
   join usuario u on u.productora_id = pr.productora_id
-  where pr.id = p and u.auth_uid = auth.uid() and u.activo limit 1
+  where pr.id = p and u.auth_uid = auth.uid() and u.activo and not u.pendiente limit 1
 $$;
 
 -- ---------------------------------------------------------- prender RLS
@@ -472,8 +482,27 @@ create policy productora_crear on productora for insert to authenticated with ch
 
 create policy usuario_ver on usuario for select
   using (productora_id in (select mis_productoras()));
+-- siempre puedo ver MI propia ficha, aunque este pendiente: es lo que me deja
+-- saber en que estado quedo mi solicitud.
+create policy usuario_ver_mia on usuario for select
+  using (auth_uid = auth.uid());
 create policy usuario_alta on usuario for insert
   with check (mi_rol(productora_id) in ('admin','ejecutivo'));
+-- Alta propia al entrar por primera vez: uno declara su rol, su area y a que
+-- productora se suma, pero entra PENDIENTE. Si pudiera declararse admin y
+-- quedar activo, el circuito de aprobacion no valdria nada.
+create policy usuario_autoalta on usuario for insert to authenticated
+  with check (
+    auth_uid = auth.uid()
+    and (pendiente = true or not productora_pide_aprobacion(productora_id))
+  );
+-- y puedo corregir mis propios datos mientras espero, sin tocar el rol
+create policy usuario_editar_mia on usuario for update
+  using (auth_uid = auth.uid() and pendiente)
+  with check (auth_uid = auth.uid() and pendiente);
+-- cerrar el candado es cosa de un admin de esa productora
+create policy productora_candado on productora for update
+  using (mi_rol(id) = 'admin') with check (mi_rol(id) = 'admin');
 create policy usuario_editar on usuario for update
   using (mi_rol(productora_id) in ('admin','ejecutivo'))
   with check (mi_rol(productora_id) in ('admin','ejecutivo'));
@@ -599,6 +628,23 @@ create policy adjunto_mio on adjunto for all
 create policy contacto_mio on contacto_proyecto for all
   using (puedo_proyecto(proyecto_id)) with check (puedo_proyecto(proyecto_id));
 
+-- Al darse de alta hay que elegir a que productora sumarse, pero RLS todavia
+-- no deja ver ninguna. Esta funcion devuelve SOLO id y nombre, nada mas.
+create or replace function productora_pide_aprobacion(p uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select coalesce((select requiere_aprobacion from productora where id = p), false)
+$$;
+revoke all on function productora_pide_aprobacion(uuid) from public;
+grant execute on function productora_pide_aprobacion(uuid) to authenticated;
+
+create or replace function productoras_para_elegir()
+returns table(id uuid, nombre text)
+language sql stable security definer set search_path = public as $$
+  select p.id, p.nombre from productora p order by p.nombre
+$$;
+revoke all on function productoras_para_elegir() from public;
+grant execute on function productoras_para_elegir() to authenticated;
+
 -- ------------------------------------------------------------- arranque
 -- Al crear una productora, quien la crea queda como su administrador. Sin
 -- esto, el primero que entra crea una productora que después no puede ver.
@@ -608,12 +654,13 @@ language plpgsql security definer set search_path = public as $$
 begin
   if auth.uid() is not null
      and not exists(select 1 from usuario where productora_id = new.id) then
-    insert into usuario (auth_uid, productora_id, nombre, rol, email)
+    insert into usuario (auth_uid, productora_id, nombre, rol, email, pendiente)
     values (auth.uid(), new.id,
             coalesce((select raw_user_meta_data->>'nombre' from auth.users where id = auth.uid()),
                      (select email from auth.users where id = auth.uid()), 'Yo'),
             'admin',
-            (select email from auth.users where id = auth.uid()));
+            (select email from auth.users where id = auth.uid()),
+            false);   -- quien crea la productora no espera aprobacion de nadie
   end if;
   return new;
 end $$;

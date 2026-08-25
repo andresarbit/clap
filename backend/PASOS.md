@@ -58,23 +58,46 @@ having c.relrowsecurity = false or count(p.polname) = 0;
 Si tira un error en el paso 3, copiámelo tal cual y lo arreglo. Para empezar de
 nuevo, andá a **Database → Tables** y borrá las tablas primero.
 
-### A3. Copiar las dos claves
+### A3. Copiar la URL y la clave
 
-**Project Settings → API**. Necesitás dos cosas:
+Supabase movió esto de lugar, así que van los dos caminos.
 
-- **Project URL** — algo como `https://abcdefgh.supabase.co`
-- **anon / publishable key** — empieza con `eyJ...` o `sb_publishable_...`
+**El corto:** arriba del dashboard hay un botón **`Connect`**. Abrilo y ahí
+tenés la **Project URL** y la clave, juntas. Es de donde conviene copiarlas.
 
-> ⚠️ **Sólo la clave anónima.** La `service_role` y la contraseña de la base
-> **no van en CLAP ni me las pases a mí**: quien las tiene se saltea todos los
-> permisos y puede leer y borrar todo. CLAP la rechaza si la pegás por error.
+**El largo, si preferís ir a la fuente:**
 
-### A4. Conectar
+- **La URL** → menú lateral **Integrations → Data API**
+  (algo como `https://abcdefgh.supabase.co`)
+- **La clave** → **Settings** (el engranaje abajo a la izquierda) → **API Keys**
+  - Buscá la **publishable** (`sb_publishable_...`)
+  - Si tu proyecto todavía usa las viejas, está en la pestaña **Legacy API
+    Keys** como **anon** (`eyJ...`). Las dos sirven.
+
+> ⚠️ **Sólo esa clave.** La **`service_role`** / **`secret`** y la contraseña de
+> la base **no van en CLAP ni me las pases a mí**: quien las tiene se saltea
+> todos los permisos y puede leer y borrar todo. CLAP la rechaza si la pegás
+> por error.
+
+### A2c. Correr el alta propia
+
+Pegá y corré **`backend/alta-propia.sql`** en una query nueva. Agrega lo que
+hace falta para que cada uno se dé de alta solo la primera vez que entra.
+
+Va a aparecer otra vez el cartel de *"destructive operations"*: es por los
+`drop policy if exists` y los `revoke`, que sirven para que el script se pueda
+correr más de una vez sin romper. **No borra datos ni tablas.** Dale **Run
+query**.
+
+### A4. Conectar y darte de alta
 
 1. Abrí `clap.html`, botón **☁** arriba a la derecha.
-2. Pegá la URL y la clave anónima → **Guardar y probar**.
+2. Pegá la URL y la clave → **Guardar y probar**.
 3. **Crear cuenta** con tu mail y una contraseña.
-4. El diagnóstico tiene que quedar así:
+4. Aparece la pantalla **"Primera vez acá"**: ponés tu nombre, creás tu
+   productora y elegís tu rol y tu área. Como sos el primero, quedás
+   **administrador**.
+5. El diagnóstico tiene que quedar así:
 
 ```
 ✓ Conexión configurada
@@ -167,6 +190,24 @@ La clave anónima viaja en el link, y está bien: está hecha para ser pública.
 que protege los datos no es esa clave, es el login y las políticas de la base.
 
 ---
+
+## El candado del alta
+
+Arranca **abierto**: el que entra elige su rol —incluso Administración— y queda
+activo al toque. Es lo cómodo mientras son dos o tres y se conocen.
+
+Cuando la herramienta se abra a más gente, se cierra desde el SQL Editor:
+
+```sql
+update productora set requiere_aprobacion = true;
+```
+
+Desde ahí, el que se da de alta queda **pendiente**: puede entrar y ver que
+está esperando, pero no accede a ningún dato hasta que un admin lo apruebe
+desde **☁ → Altas pendientes**. Los que ya estaban no se tocan.
+
+Lo hace cumplir la **base**, no la interfaz: con el candado cerrado nadie se
+declara admin ni se aprueba a sí mismo, aunque toque el navegador.
 
 ## Qué está protegido y qué no
 
