@@ -253,6 +253,41 @@ const cargarForm = campos => {
   ok('al que ya está no le vuelve a preguntar', modal === null, String(modal).slice(0, 40));
   ok('sigue siendo el mismo', (await sbMiFicha()).nombre === 'Andrés');
 
+  /* --- 6b. no quedarse en el pozo del alta a medias ---------------------- */
+  console.log('\n--- 6b. CUENTA CREADA PERO ALTA SIN TERMINAR ---');
+  /* Le pasó a Andrés: la cuenta quedó hecha, la productora no, y la pantalla
+     del alta salía una sola vez. Al recargar no volvía nunca. */
+  SESION = 'auth-colgado';
+  await conectar('colgado@x.com');
+  _miFicha = null;
+  await revisarAlta();
+  ok('al abrir detecta que falta el alta', _miFicha === false);
+  ok('y le abre la pantalla solo', modal !== null && /Primera vez acá/.test(modal || ''));
+  cerrar();
+  const barra = avisoAlta();
+  ok('deja un aviso fijo en el header', /Falta terminar tu alta/.test(barra));
+  ok('con un botón para volver', /Completar ahora/.test(barra));
+  ok('y explica por qué importa', /no sabe qué mostrarte/.test(barra));
+  /* el que ya está no ve ningún aviso */
+  SESION = 'auth-andres';
+  await conectar();
+  _miFicha = null; await revisarAlta();
+  ok('al que ya completó no le muestra nada', avisoAlta() === '', avisoAlta().slice(0, 40));
+  ok('y no le vuelve a abrir el formulario', modal === null);
+
+  console.log('\n--- 6c. CORREGIR MIS DATOS DESPUES ---');
+  modal = null; editarMiFicha();
+  ok('la pantalla de mis datos abre', /Mis datos/.test(modal || ''));
+  ok('trae mi nombre cargado', new RegExp('value="' + _miFicha.nombre + '"').test(modal));
+  ok('deja cambiar el rol', /name="rol"/.test(modal));
+  ok('y el área', /name="area"/.test(modal));
+  cargarForm({ nombre: 'Andrés Arbit', tel: '11 6112-1250', rol: 'admin', area: 'produccion' });
+  await guardarMiFicha();
+  const corregida = await sbMiFicha();
+  ok('guardó el nombre nuevo', corregida.nombre === 'Andrés Arbit', corregida.nombre);
+  ok('y el teléfono', corregida.tel === '11 6112-1250');
+  ok('sin duplicar la ficha', TB.usuario.filter(u => u.auth_uid === 'auth-andres').length === 1);
+
   /* --- 7. si falta arranque.sql, que lo diga ------------------------------ */
   console.log('\n--- 7. SI FALTA arranque.sql, EL MENSAJE AYUDA ---');
   const fetchBueno = global.fetch;

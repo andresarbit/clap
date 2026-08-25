@@ -343,6 +343,14 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .pick.sesion{border-color:rgba(224,169,46,.45);background:rgba(224,169,46,.07)}
 .pick.sesion label{color:var(--ac)}
 .pick.sesion select{background:transparent}
+/* Quedarse con la cuenta creada y sin productora es un pozo: hay que verlo
+   siempre, no en un cartel que se cierra y no vuelve. */
+.barra-alta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:9px 14px;font-size:12.5px;line-height:1.5;
+  background:rgba(224,169,46,.14);border-bottom:1px solid rgba(224,169,46,.45);color:var(--tx)}
+.barra-alta.esperando{background:rgba(91,155,213,.12);border-bottom-color:rgba(91,155,213,.4)}
+.barra-alta .btn{margin-left:auto}
+@media(max-width:640px){ .barra-alta .btn{margin-left:0;width:100%} }
 /* Sin login no hay identidad real: se ve gente de ejemplo. Que se note. */
 .pick.sesion.simulando{border-color:rgba(155,161,172,.4);background:rgba(155,161,172,.07);border-style:dashed}
 .pick.sesion.simulando label{color:var(--tx3)}
@@ -2645,6 +2653,7 @@ function render(){
   if(v)  DB.ui.versionId=v.id;
 
   app.innerHTML = `<div class="app">
+    ${avisoAlta()}
     ${header(pr,py,v)}
     <main><div class="wrap" id="vista">${cuerpo(pr,py,v)}</div></main>
     ${v && DB.ui.tab==='presu' ? barraTotal(v) : ''}
@@ -6372,7 +6381,8 @@ function menuNube(){
       ${cfg && !con ? `<button class="btn" onclick="sbAccion('registrar')">Crear cuenta</button>
                        <button class="btn pri" onclick="sbAccion('entrar')">Entrar</button>` : ''}
       ${cfg ? `<button class="btn" onclick="copiarLinkEquipo()">Copiar link para el equipo</button>` : ''}
-      ${con ? `<button class="btn" onclick="menuPendientes()">Altas pendientes</button>
+      ${con ? `<button class="btn" onclick="cerrar();editarMiFicha()">Mis datos</button>
+               <button class="btn" onclick="menuPendientes()">Altas pendientes</button>
                <button class="btn" onclick="sbCorrerDiagnostico()">Revisar estado</button>
                <button class="btn" onclick="sbCerrarSesion()">Cerrar sesión</button>` : ''}
     </div>
@@ -6385,6 +6395,7 @@ function menuNube(){
 async function mostrarMiFicha(){
   const cont = document.getElementById('sbdiag'); if(!cont) return;
   let f = null; try{ f = await sbMiFicha(); }catch(e){ return; }
+  _miFicha = f || false;
   if(!document.getElementById('sbdiag')) return;
   const caja = document.createElement('div');
   caja.style.marginTop = '10px';
@@ -6449,11 +6460,46 @@ function copiarLinkEquipo(){
 }
 /* ---------- alta propia: la pantalla de primera vez ---------- */
 let _prodsElegibles = [];
+/* Lo que sé de mi ficha en el servidor. null = no la busqué todavía;
+   false = la busqué y no tengo. Se guarda para que el header pueda dibujar
+   el aviso sin tener que ir al servidor en cada render.                     */
+let _miFicha = null;
+
+/* Al abrir la app: si hay sesión y falta el alta, abrirla. Y dejar el aviso
+   puesto en el header, que es lo que evita quedarse colgado. */
+async function revisarAlta(){
+  if(!sbConectado()) return;
+  try{ _miFicha = (await sbMiFicha()) || false; }
+  catch(e){ return; }
+  render();
+  if(_miFicha === false){
+    try{ _prodsElegibles = await sbProductorasParaElegir() || []; }catch(e){ _prodsElegibles = []; }
+    if(!modal) formAlta();
+  }
+}
+
+/* La barra que aparece arriba de todo cuando falta terminar el alta. */
+function avisoAlta(){
+  if(!sbConectado()) return '';
+  if(_miFicha === false) return `<div class="barra-alta">
+    <b>Falta terminar tu alta.</b> Tu cuenta está creada pero todavía no dijiste
+    a qué productora te sumás ni qué hacés, así que el sistema no sabe qué mostrarte.
+    <button class="btn sm pri" onclick="abrirAlta()">Completar ahora</button></div>`;
+  if(_miFicha && _miFicha.pendiente) return `<div class="barra-alta esperando">
+    <b>Tu alta está esperando aprobación.</b> Pediste entrar como
+    ${esc(ROL(_miFicha.rol).l)}. Hasta que un administrador te apruebe no vas a ver los datos.
+    <button class="btn sm" onclick="editarMiFicha()">Corregir mis datos</button></div>`;
+  return '';
+}
+async function abrirAlta(){
+  try{ _prodsElegibles = await sbProductorasParaElegir() || []; }catch(e){ _prodsElegibles = []; }
+  formAlta();
+}
 async function pantallaAlta(){
   const cont = document.getElementById('sbdiag');
   if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Buscando tus datos…</div>';
   let ficha = null;
-  try{ ficha = await sbMiFicha(); }
+  try{ ficha = await sbMiFicha(); _miFicha = ficha || false; }
   catch(e){ if(cont) cont.innerHTML = `<div class="avisomodo turno-mal">${esc(e.message)}</div>`; return; }
 
   if(ficha && !ficha.pendiente){
@@ -6555,6 +6601,7 @@ async function confirmarAlta(){
       await sbAltaPropia({productoraId:pid, nombre, rol:d.rol, area:d.area, tel:d.tel});
     }
     const ficha = await sbMiFicha();
+    _miFicha = ficha || false;      /* para que el aviso del header se apague */
     cerrar();
     if(ficha && ficha.pendiente){
       alert('Listo. Tu alta quedó esperando que un administrador de la productora la apruebe.\n\n' +
@@ -6596,6 +6643,63 @@ function espejarFichaLocal(ficha){
     tel: ficha.tel || u.tel, activo: !ficha.pendiente});
   DB.ui.usuarioId = u.id;
   guardar();
+}
+
+/* ---------- corregir mis propios datos ----------
+   El alta se llena apurado y con el celu en la mano. Tiene que poder
+   corregirse después: el nombre, el teléfono, el área, y el rol.
+   Cambiarse el rol a uno que ve todo no es gratis: si la productora no es
+   mía, vuelve a quedar pendiente de aprobación. Eso lo decide la base. */
+function editarMiFicha(){
+  const f = _miFicha;
+  if(!f){ abrirAlta(); return; }
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+    <h3>Mis datos</h3>
+    <div class="mbody">
+      <div class="muted" style="font-size:12.5px;margin-bottom:12px">
+        Entrás como <b>${esc(f.email||SB.user.email)}</b>.
+        ${f.pendiente?'<span style="display:block;margin-top:4px">Tu alta todavía espera aprobación.</span>':''}
+      </div>
+      <div class="grid2">
+        ${campo('Tu nombre','nombre', f.nombre||'')}
+        ${campo('Teléfono','tel', f.tel||'','text','placeholder="11 5555-1234"')}
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        ${sel('Rol','rol', f.rol||'equipo', ROLES.map(r=>({v:r.k,l:r.l})))}
+        ${sel('Área / departamento','area', f.area||'',
+          [{v:'',l:'— sin área —'},...AREAS.map(a=>({v:a.k,l:a.l}))])}
+      </div>
+      <div class="sicabox" style="margin-top:12px">
+        ${ROLES.map(r=>`<div style="margin-bottom:4px"><b>${esc(r.l)}</b> — ${esc(r.d)}</div>`).join('')}
+      </div>
+      <div id="fichadiag" style="margin-top:12px"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn" onclick="cerrar()">Cancelar</button>
+      <div style="flex:1"></div>
+      <button class="btn pri" onclick="guardarMiFicha()">Guardar</button>
+    </div>
+  </div></div>`);
+}
+
+async function guardarMiFicha(){
+  const d = datos(), cont = document.getElementById('fichadiag');
+  const nombre = (d.nombre||'').trim();
+  if(!nombre){ if(cont) cont.innerHTML = '<div class="avisomodo turno-mal">Poné tu nombre.</div>'; return; }
+  if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Guardando…</div>';
+  try{
+    await sbFetch(`/rest/v1/usuario?id=eq.${_miFicha.id}`, {method:'PATCH',
+      body: JSON.stringify({nombre, tel:d.tel, area:d.area, rol:d.rol})});
+    _miFicha = await sbMiFicha();
+    espejarFichaLocal(_miFicha);
+    cerrar(); toast('Datos guardados'); R();
+  }catch(e){
+    const m = String(e.message||'');
+    if(cont) cont.innerHTML = `<div class="avisomodo turno-mal"><b>No pude guardar.</b> ${esc(m)}
+      ${/no te deja/i.test(m) ? `<div style="margin-top:6px">Para ponerte
+      Administración o Productor Ejecutivo en una productora que no es tuya,
+      tiene que aprobarte alguien de adentro.</div>` : ''}</div>`;
+  }
 }
 
 /* ---------- aprobar a los que se dieron de alta ---------- */
@@ -6715,6 +6819,11 @@ function resetDB(){
 sbCargar();
 cargar();
 render();
+/* Si hay sesión pero todavía no completaste el alta, esto lo detecta al
+   abrir. Antes la pantalla del alta salía una sola vez, justo después de
+   entrar: si la cerrabas o recargabas, no volvía nunca y quedabas con la
+   cuenta creada y sin productora, sin ninguna forma de terminar. */
+revisarAlta();
 window.addEventListener('beforeunload', ()=>{ clearTimeout(_t);
   try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} });
 </script>
