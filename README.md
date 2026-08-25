@@ -254,6 +254,26 @@ fletes, compras varias, viaticos, alquiler de vehiculo) se agregan como
 subrubro a cada rubro de departamento, asi la nafta se puede presupuestar
 dentro de arte si la productora lo prefiere.
 
+**Rubros transversales.** No es solo la nafta: hay rubros ENTEROS donde gastan
+todos los departamentos — viajes, equipamiento y alquileres, catering, seguros,
+seguridad, preproduccion y administracion. Estan marcados como `transversal` y
+en ellos **el area es obligatoria**: sin ella el numero no dice de quien es el
+gasto. El formulario lo avisa al elegir el rubro, no recien al guardar.
+
+**Matriz rubro × area.** La vista que contesta las dos preguntas a la vez:
+
+```
+rubro                        Producción  Fotografía        Arte  Sin área      TOTAL
+11 Equipamiento y Alquileres     90.000           ·     120.000   300.000    510.000
+12 Transporte y Viajes           78.000     272.000     320.000         ·    670.000
+13 Catering                           ·           ·           ·   508.000    508.000
+TOTAL POR ÁREA                  168.000     272.000     440.000   883.000  1.778.000
+```
+
+Cuanto mas pesa una celda dentro de su rubro, mas fuerte se pinta. La columna
+**Sin area** aparece resaltada, y arriba hay un aviso con cuantos comprobantes
+transversales quedaron sin asignar y un boton para ir a corregirlos.
+
 ### Rubros internos
 
 **17 rubros y 234 subrubros**, en `RUBROS_BASE` y `FUNCIONES`. Es la misma

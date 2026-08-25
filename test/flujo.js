@@ -254,12 +254,114 @@ const P0 = resumenPlata(py, v);
 ok('el rubro 12 las junta a todas', P0.filas.find(f => f.codigo === '12').real === 155000,
   fmt(P0.filas.find(f => f.codigo === '12').real));
 
+/* ── los rubros transversales enteros, no sólo la nafta ─────────────────── */
+console.log('\n    Rubros transversales: ' + RUBROS_BASE.filter(r => r.transversal).map(r => r.codigo).join(', '));
+ok('varios rubros están marcados como transversales',
+  RUBROS_BASE.filter(r => r.transversal).length >= 6,
+  RUBROS_BASE.filter(r => r.transversal).map(r => r.nombre.split(',')[0]).join(' · '));
+ok('viajes es transversal', esTransversal('12'));
+ok('alquileres es transversal', esTransversal('11'));
+ok('catering es transversal', esTransversal('13'));
+ok('varios/administración es transversal', esTransversal('17'));
+ok('dirección NO es transversal', !esTransversal('02'));
+
+/* el mismo gasto cruzado, en varios rubros a la vez */
+const gasto = (rubro, sub, area, importe, quien = uProd) => {
+  const c = nuevoComprobante({
+    rubro, subrubro: sub, area, importe, proveedor: 'Varios', tipo: 'facBC',
+    circuito: 'transferencia', cargadoPor: quien.id, estado: 'cargado'
+  });
+  c.historial = [{ de: null, a: 'cargado', accion: 'cargar', usuario: quien.nombre, usuarioId: quien.id, rol: quien.rol, fecha: hoy(), nota: '' }];
+  py.comprobantes.push(c); return c;
+};
+/* viajes: arte viaja a comprar, cámara viaja con el equipo */
+gasto('12', 'Pasajes aéreos', 'arte', 180000);
+gasto('12', 'Pasajes aéreos', 'camara', 240000);
+gasto('12', 'Hotel', 'arte', 95000);
+gasto('12', 'Hotel', 'camara', 130000);
+/* alquileres: cada área alquila lo suyo */
+gasto('11', 'Alquiler de vehículo', 'arte', 120000);
+gasto('11', 'Alquiler de vehículo', 'produccion', 90000);
+/* varios de administración */
+gasto('17', 'Comisiones bancarias', 'admin', 15000);
+
+const M = matrizRubroArea(py, v);
+console.log('\n    MATRIZ RUBRO × ÁREA');
+const cols = [...M.areas.map(a => a.k), ...(M.haySin ? ['__sin'] : [])];
+console.log('    ' + 'rubro'.padEnd(26) + cols.map(c => (c === '__sin' ? 'sin área' : areaLbl(c)).slice(0, 11).padStart(13)).join('') + 'TOTAL'.padStart(13));
+M.rubros.forEach(r => console.log('    ' + (r.codigo + ' ' + r.nombre).slice(0, 25).padEnd(26) +
+  cols.map(c => { const x = (M.celda[r.codigo] || {})[c] || 0; return (x ? Math.round(x).toLocaleString('es-AR') : '·').padStart(13); }).join('') +
+  Math.round(M.totRubro[r.codigo]).toLocaleString('es-AR').padStart(13)));
+console.log('    ' + 'TOTAL POR ÁREA'.padEnd(26) +
+  cols.map(c => Math.round(M.totArea[c] || 0).toLocaleString('es-AR').padStart(13)).join('') +
+  Math.round(M.total).toLocaleString('es-AR').padStart(13));
+
+ok('la matriz cruza rubros con áreas', M.rubros.length > 1 && M.areas.length > 1,
+  M.rubros.length + ' rubros × ' + M.areas.length + ' áreas');
+/* viajes repartido */
+ok('viajes se abre por área', Object.keys(M.celda['12']).length >= 3,
+  Object.entries(M.celda['12']).map(([a, x]) => areaLbl(a) + ' ' + fmt(x)).join(' · '));
+ok('arte suma su nafta + sus viajes + su hotel + su alquiler',
+  M.celda['12'].arte === 45000 + 180000 + 95000 && M.celda['11'].arte === 120000,
+  'viajes ' + fmt(M.celda['12'].arte) + ' · alquileres ' + fmt(M.celda['11'].arte));
+/* los totales tienen que cerrar por las dos vías */
+const sumaFilas = M.rubros.reduce((s, r) => s + M.totRubro[r.codigo], 0);
+const sumaCols = cols.reduce((s, c) => s + (M.totArea[c] || 0), 0);
+ok('la suma por filas = la suma por columnas', Math.abs(sumaFilas - sumaCols) < 1,
+  fmt(sumaFilas) + ' vs ' + fmt(sumaCols));
+ok('y las dos dan el total de la matriz', Math.abs(sumaFilas - M.total) < 1, fmt(M.total));
+ok('cada celda suma sus comprobantes', (() => {
+  const cbs = py.comprobantes.filter(c => c.estado !== 'rechazado' && c.rubro === '12' && c.area === 'arte');
+  return Math.abs(M.celda['12'].arte - cbs.reduce((s, c) => s + n(c.importe), 0)) < 1;
+})());
+/* el total del área tiene que ser lo mismo que da resumenAreas */
+const A2 = resumenAreas(py, v);
+ok('el total de arte coincide con la vista por área',
+  Math.abs(M.totArea.arte - A2.porArea.arte) < 1, fmt(M.totArea.arte));
+
+/* el área es obligatoria en los transversales */
+console.log('');
+let alertado = null; const _alert = global.alert; global.alert = m => alertado = m;
+global.document.querySelectorAll = sel => String(sel).includes('[name]')
+  ? [{ name: 'rubro', value: '12' }, { name: 'subrubro', value: 'Hotel' }, { name: 'area', value: '' },
+  { name: 'importe', value: '50000' }, { name: 'moneda', value: 'ARS' }] : [];
+const antesN = py.comprobantes.length;
+saveComprobante('');
+global.alert = _alert;
+ok('no deja guardar un transversal sin área', py.comprobantes.length === antesN && !!alertado,
+  (alertado || '').split('\n')[0]);
+/* pero sí uno no transversal */
+alertado = null; global.alert = m => alertado = m;
+global.document.querySelectorAll = sel => String(sel).includes('[name]')
+  ? [{ name: 'rubro', value: '02' }, { name: 'subrubro', value: 'Director' }, { name: 'area', value: '' },
+  { name: 'importe', value: '50000' }, { name: 'moneda', value: 'ARS' }] : [];
+saveComprobante('');
+global.alert = _alert;
+ok('un rubro no transversal sí se puede guardar sin área', py.comprobantes.length === antesN + 1 && !alertado);
+py.comprobantes.pop();
+
+/* y detecta los huecos que quedaron */
+const huerfano = gasto('13', 'Almuerzo', '', 60000);
+huerfano.area = '';
+const M2 = matrizRubroArea(py, v);
+ok('detecta transversales sin área', M2.huecos === 1 && M2.huecosMonto === 60000,
+  M2.huecos + ' por ' + fmt(M2.huecosMonto));
+py.comprobantes = py.comprobantes.filter(c => c.id !== huerfano.id);
+
 /* filtrar por área, que es lo que hace administración */
 DB.ui.fGasto = { rubro: '', estado: '', q: '', area: 'arte' };
 const soloArte = py.comprobantes.filter(c => c.area === 'arte');
-ok('se puede filtrar por área', soloArte.length === 1 && soloArte[0].importe === 45000);
+ok('se puede filtrar por área', soloArte.length === 4,
+  soloArte.length + ' de arte: ' + soloArte.map(c => c.subrubro).join(', '));
+ok('y suman lo que dice la matriz',
+  soloArte.reduce((s, c) => s + c.importe, 0) === M.totArea.arte, fmt(M.totArea.arte));
 DB.ui.fGasto = { rubro: '12', estado: '', q: '', area: '' };
-ok('y por rubro, que las trae todas', py.comprobantes.filter(c => c.rubro === '12').length === 3);
+const soloViajes = py.comprobantes.filter(c => c.rubro === '12');
+ok('y por rubro, que trae las de todas las áreas', soloViajes.length === 7,
+  soloViajes.length + ' en viajes, de ' + new Set(soloViajes.map(c => c.area)).size + ' áreas');
+ok('cruzar rubro Y área da la celda de la matriz',
+  py.comprobantes.filter(c => c.rubro === '12' && c.area === 'arte')
+    .reduce((s, c) => s + c.importe, 0) === M.celda['12'].arte, fmt(M.celda['12'].arte));
 limpiarFiltros();
 
 /* ─────────────────────────── 11. el circuito de una factura entera */
@@ -383,7 +485,8 @@ ok('todo el proyecto persiste', (() => {
     p2.desglose.escenas.length === 4 && crudo.productoras[0].usuarios.length === 4;
 })(), Math.round(JSON.stringify(DB).length / 1024) + ' KB');
 const cbtesArte = crudo.productoras[0].proyectos[0].comprobantes.filter(c => c.area === 'arte');
-ok('las áreas persisten', cbtesArte.length === 4, cbtesArte.length + ' comprobantes de arte');
+ok('las áreas persisten', cbtesArte.length === 7,
+  cbtesArte.length + ' de arte: ' + [...new Set(cbtesArte.map(c => c.rubro))].sort().join(', '));
 ok('y siguen separadas por área tras recargar',
   crudo.productoras[0].proyectos[0].comprobantes.filter(c => c.subrubro === 'Combustible')
     .map(c => c.area).sort().join(',') === 'arte,camara,produccion');
