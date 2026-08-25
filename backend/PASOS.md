@@ -53,6 +53,14 @@ tampoco hace falta regalarla en un repo público que cualquiera puede clonar.
 La `sb_secret_…` que está al lado **no la toqué, no la tengo y no tiene que
 salir nunca del panel**.
 
+### A2d. Correr sincronizacion.sql — ✅ YA ESTÁ HECHO
+
+Corrido el 25/08/2026. Le agrega a las 23 tablas una columna `actualizado_el`
+con trigger e índice —para saber cuándo cambió cada fila— y crea la tabla
+`borrado`, con RLS, para que las bajas viajen entre navegadores. Verificado
+contra la base: la tabla existe, tapa sin login, y se puede pedir "lo que
+cambió desde tal fecha".
+
 ### A4. Lo único que falta de esta parte, y sólo lo podés hacer vos
 
 Crear tu cuenta pide elegir una contraseña. Eso no lo hago yo por vos: es tuya
