@@ -427,6 +427,54 @@ muchas— y su rol puede ser distinto en cada una. El menu de arriba las agrupa
 en *mis productoras*, *en la web* (elegir una te suma) y *solo en esta
 computadora*.
 
+### Sub-proyectos: varios spots en una campana
+
+Un proyecto casi nunca es UNA pieza. Una campana son tres spots; una serie, ocho
+capitulos. Cada tipo trae su unidad: **Spot** (publicidad), **Episodio** (serie),
+**Video** (videoclip), **Pieza** (redes/institucional), y en cine la unidad del
+desglose es la **Escena**.
+
+**El modelo no es un presupuesto por spot.** Es UNO donde cada linea dice de que
+pieza es:
+
+```
+linea.piezaId = null   -> COMPARTIDA: es de todo el proyecto
+linea.piezaId = <id>   -> PROPIA de esa pieza
+```
+
+Eso resuelve las dos cosas a la vez:
+
+- **El general suma cada cosa UNA vez.** El DF que hace los tres spots en una
+  jornada se paga una jornada, no tres.
+- **Si un spot tiene algo que otro no, queda solo en ese.** Nunca se iguala
+  hacia arriba ni se comparte el numero del elemento.
+
+Para saber cuanto sale cada spot, lo compartido se **prorratea** segun el peso de
+cada pieza (iguales por defecto). Eso es una **imputacion**, no plata nueva: la
+suma de los imputados da exactamente el subtotal.
+
+| | Propio | Parte de lo comun | Imputado |
+|---|---|---|---|
+| Spot Playa | 650.000 | 500.000 | 1.150.000 |
+| Spot Ciudad | 300.000 | 500.000 | 800.000 |
+| Spot 3 | 0 | 500.000 | 500.000 |
+| **Suma** | 950.000 | 1.500.000 | **2.450.000** |
+
+En **Presupuesto** hay una solapa por spot mas la de **General**. Parado en un
+spot se ve lo suyo y lo compartido, y la linea que agregas queda de ese spot.
+En **Desglose** esta el boton **+ Spot** (o la unidad que corresponda), cada
+escena se asigna a la suya, y la barra de arriba filtra.
+
+Al pasar el desglose al presupuesto se aplica la regla: **lo que aparece en un
+solo spot es de ese spot; lo que aparece en varios queda compartido y va una
+vez**. Los rubros que se agrupan en un renglon (utileria, vestuario) se parten
+por pieza, si no la torta del spot A y la pelota del B terminaban en un
+"Utileria - 2 elementos" que parecia compartido y escondia que eran cosas
+distintas.
+
+> Borrar una pieza **no borra su plata**: sus lineas vuelven a ser compartidas
+> y se avisa cuantas. Un proyecto sin piezas funciona exactamente como antes.
+
 ### La cartera de proyectos
 
 Arriba del Resumen esta la lista de los proyectos de la productora: cada uno con
@@ -558,6 +606,7 @@ node test/run.js test/quien-entra.js  # aprobar y cambiar roles sin tocar la bas
 node test/run.js test/modo-prueba.js  # todos entran con permisos, para probar
 node test/run.js test/menu-productoras.js # el menu de productoras sale de la base
 node test/run.js test/invitar-link.js # invitar por link: mensaje, alta y aceptacion
+node test/run.js test/piezas.js     # spots/episodios: reparto, no duplicar, desglose por pieza
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)

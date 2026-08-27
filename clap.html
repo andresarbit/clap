@@ -359,6 +359,22 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 /* Invitar: al lado del proyecto y en TODAS las solapas. Estaba sólo adentro
    del Presupuesto y la app abre en Resumen, asi que no se veia nunca. */
 .invbtn{border-color:rgba(224,169,46,.5);color:var(--ac);font-weight:700}
+
+/* ---------- solapas por pieza (spots, episodios) ---------- */
+.pzbar{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.pztabs{display:flex;gap:4px;overflow-x:auto;flex:1;min-width:0;padding-bottom:2px;scrollbar-width:thin}
+.pztab{display:flex;flex-direction:column;align-items:flex-start;gap:1px;flex:none;
+  padding:7px 13px;border:1px solid var(--line);border-radius:8px;background:var(--bg2);
+  color:var(--tx2);white-space:nowrap}
+.pztab span{font-size:12px;font-weight:600}
+.pztab b{font:600 12px var(--mono);color:var(--tx3)}
+.pztab:hover{border-color:var(--line2);background:var(--bg3);color:var(--tx)}
+.pztab.on{border-color:var(--ac);background:rgba(224,169,46,.10);color:var(--tx)}
+.pztab.on b{color:var(--ac)}
+.pzvacio{flex:1;min-width:0;font-size:11.5px;color:var(--tx3);line-height:1.5}
+/* el chip de pieza en cada linea */
+.chip.pz-si{background:rgba(143,122,212,.18);color:#b39ce4}
+.chip.pz-com{background:rgba(155,161,172,.13);color:var(--tx2)}
 .invbtn:hover{background:rgba(224,169,46,.14);border-color:var(--ac);color:var(--ac2)}
 .pick.sesion{border-color:rgba(224,169,46,.45);background:rgba(224,169,46,.07)}
 .pick.sesion label{color:var(--ac)}
@@ -497,6 +513,8 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
   .mod select{background-position:calc(100% - 13px) 19px,calc(100% - 8px) 19px}
   .mfoot .btn{padding:10px 14px}
   .tcbox{justify-content:flex-start;gap:6px}
+  .pztab{padding:9px 12px}
+  .pztab span{font-size:13px}
   .pyfila{flex-wrap:wrap;gap:4px 10px;padding:12px 12px}
   .pynom{flex:1 1 100%}
   .pyest{flex:1}
@@ -612,6 +630,7 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
     padding:0;font-size:11px;-webkit-appearance:none;appearance:none;background-image:none!important}
   .tcbox .tcval{color:#000!important}
   .tcbox .tcfec::-webkit-calendar-picker-indicator{display:none}
+  .pzbar{display:none!important}
   .pyfila{border-bottom:1px solid #ddd}
   .pyfila.on{background:none;box-shadow:none}
   .pysub,.pyest{color:#555}
@@ -899,7 +918,9 @@ function nuevaLinea(o={}){
     area:o.area||'',
     cantidad:o.cantidad??1, dias:o.dias??1, unidad:o.unidad||'jornada',
     valorUnit:o.valorUnit??0, moneda:o.moneda||'ARS',
-    circuito:o.circuito||'', comprobante:o.comprobante||'', notas:o.notas||''};
+    circuito:o.circuito||'', comprobante:o.comprobante||'', notas:o.notas||'',
+    /* null = compartida por todo el proyecto. Un id = propia de esa pieza. */
+    piezaId:o.piezaId||null};
 }
 function nuevaVersion(o={}){
   return {id:uid('v'), nombre:o.nombre||'v1', fecha:o.fecha||hoy(), estado:o.estado||'borrador',
@@ -908,8 +929,59 @@ function nuevaVersion(o={}){
     notas:o.notas||'',
     rubros:o.rubros|| RUBROS_BASE.map(r=>({id:uid('rb'),...r, lineas:[], abierto:false}))};
 }
+/* ===========================  TIPOS Y PIEZAS  =============================
+   Un proyecto casi nunca es UNA sola pieza audiovisual. Una campaña de
+   publicidad son tres spots; una serie, ocho capítulos; un videoclip a veces
+   trae la versión larga y los cortes para redes. Cada pieza tiene lo suyo
+   —duración, elementos, a veces elenco propio— y su presupuesto individual,
+   pero comparten el grueso: el mismo equipo, el mismo día de rodaje, el mismo
+   alquiler de cámara.
+
+   Por eso el modelo NO es un presupuesto por pieza. Es UN presupuesto donde
+   cada línea dice a qué pieza pertenece:
+
+     linea.piezaId = null   -> COMPARTIDA: es de todo el proyecto
+     linea.piezaId = <id>   -> PROPIA de esa pieza
+
+   Así el total general suma cada cosa UNA vez —el DF que hace los tres spots
+   en una jornada se paga una jornada, no tres— y si un spot tiene más cosas
+   que otro, esas líneas se cuelgan sólo de él y no se reparten ni se igualan.
+   Para saber "cuánto sale cada spot" se prorratea lo compartido, que es una
+   imputación, y se muestra separado de lo propio para que nunca se confunda
+   con plata que se gasta de nuevo.                                          */
+
+const TIPOS_PROYECTO = [
+  {k:'publicidad',   l:'Publicidad',        u:'Spot',     us:'Spots',     varias:true},
+  {k:'cine',         l:'Cine',              u:'Unidad',   us:'Unidades',  varias:false},
+  {k:'serie',        l:'Serie',             u:'Episodio', us:'Episodios', varias:true},
+  {k:'videoclip',    l:'Videoclip',         u:'Video',    us:'Videos',    varias:true},
+  {k:'redes',        l:'Contenido / Redes', u:'Pieza',    us:'Piezas',    varias:true},
+  {k:'institucional',l:'Institucional',     u:'Pieza',    us:'Piezas',    varias:true},
+  {k:'contenido',    l:'Contenido',         u:'Pieza',    us:'Piezas',    varias:true},
+];
+const TIPO = k => TIPOS_PROYECTO.find(t => t.k === k) || TIPOS_PROYECTO[0];
+/* Cómo se llama la unidad de este proyecto: "Spot", "Episodio", "Escena"… */
+const unidadDe  = py => TIPO(py?.tipo).u;
+const unidadesDe = py => TIPO(py?.tipo).us;
+/* En cine la unidad del desglose es la escena, no la pieza. */
+const unidadDesglose = py => py?.tipo === 'cine' ? 'Escena' : unidadDe(py);
+
+function nuevaPieza(o={}){
+  return {id:uid('pz'), nombre:o.nombre||'', numero:o.numero??1,
+    duracion:o.duracion||'', notas:o.notas||''};
+}
+/* Las piezas de un proyecto, siempre al menos una lista utilizable. */
+const piezasDe = py => (py && py.piezas) || [];
+const piezaDe  = (py, id) => piezasDe(py).find(p => p.id === id) || null;
+const nombrePieza = (py, id) => {
+  const p = piezaDe(py, id);
+  if(!p) return 'Compartido';
+  return p.nombre || `${unidadDe(py)} ${p.numero}`;
+};
+
 function nuevoProyecto(o={}){
   return {id:uid('py'), nombre:o.nombre||'Proyecto nuevo', tipo:o.tipo||'publicidad',
+    piezas:o.piezas||[],
     cliente:o.cliente||'', agencia:o.agencia||'', producto:o.producto||'',
     territorio:o.territorio||'Argentina', plazo:o.plazo||'12 meses', medios:o.medios||'Digital',
     jornadas:o.jornadas??1, versiones:o.versiones||[nuevaVersion()], versionActiva:null,
@@ -1033,7 +1105,8 @@ function nuevaEscena(o={}){
   return {id:uid('es'), numero:o.numero||'', encabezado:o.encabezado||'',
     intExt:o.intExt||'INT', locacion:o.locacion||'', momento:o.momento||'DÍA',
     texto:o.texto||'', octavos:o.octavos??1, personajes:o.personajes||[],
-    elementos:o.elementos||{}, auto:o.auto||{}, jornada:o.jornada??null, notas:o.notas||''};
+    elementos:o.elementos||{}, auto:o.auto||{}, jornada:o.jornada??null, notas:o.notas||'',
+    piezaId:o.piezaId||null};
 }
 function nuevoDesglose(o={}){
   return {guion:o.guion||'', escenas:o.escenas||[], jornadas:o.jornadas||[],
@@ -2824,6 +2897,15 @@ function migrar(){
         v.rubros.push({id:uid('rb'), ...rb, lineas:[], abierto:false}); });
       v.rubros.sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo)));
     })));
+  /* Piezas: los proyectos de antes no las tenían. No se les inventa ninguna
+     —un proyecto sin piezas es un proyecto de una sola pieza y funciona
+     igual— pero el array tiene que existir para no chequear en cada lugar.
+     Las líneas viejas quedan con piezaId null, que es "compartida": el
+     presupuesto general sigue dando exactamente lo mismo que antes.        */
+  (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(py=>{
+    py.piezas ||= [];
+    py.piezas.forEach((p,i)=>{ p.numero ??= i+1; p.peso ??= 1; });
+  }));
   DB.catalogo ||= {personas:[]};
   DB.ui ||= {vista:'interna', tab:'resumen'};
   (DB.productoras||[]).forEach(pr=>{ pr.usuarios ||= []; (pr.proyectos||[]).forEach(py=>{
@@ -2964,12 +3046,17 @@ function totalRubro(r, v){ return r.lineas.reduce((s,l)=>s+totalLinea(l,v), 0); 
 /* Motor: subtotal → fee → contingencia → IIBB → IVA → total.
    El fee sólo se aplica sobre los rubros marcados aplicaFee (el elenco y los
    seguros normalmente se pasan a costo, sin fee).                            */
-function calcular(v){
+/* `filtro` deja calcular el mismo presupuesto mirando sólo una parte —una
+   pieza— sin tocar los datos ni duplicar el motor. Sin filtro es el general:
+   cada línea entra UNA vez, sea compartida o propia de un spot.             */
+function calcular(v, filtro){
   let subtotal=0, baseFee=0;
+  const pasa = l => !filtro || filtro(l);
   const porRubro = v.rubros.map(r=>{
-    const t = totalRubro(r,v);
+    const ls = r.lineas.filter(pasa);
+    const t = ls.reduce((s,l)=>s+totalLinea(l,v), 0);
     subtotal += t; if(r.aplicaFee) baseFee += t;
-    return {id:r.id, codigo:r.codigo, nombre:r.nombre, total:t, lineas:r.lineas.length};
+    return {id:r.id, codigo:r.codigo, nombre:r.nombre, total:t, lineas:ls.length};
   });
   const c = v.capas;
   const fee          = baseFee  * n(c.fee)/100;
@@ -2981,6 +3068,47 @@ function calcular(v){
   const total        = neto + iva;
   return {porRubro, subtotal, baseFee, fee, contingencia, iibb, neto, iva, total};
 }
+
+/* ---------- lo que cuesta cada pieza ----------
+   Tres números, y separarlos es todo el punto:
+
+     propio       lo que se gasta SÓLO por esa pieza. Si un spot tiene un
+                  animal y otro no, el animal está acá y en ninguna otra.
+     compartido   la parte que le toca de lo común. Es una IMPUTACIÓN, no
+                  plata nueva: el mismo peso está en las otras piezas y en el
+                  general se cuenta una sola vez.
+     imputado     propio + compartido. Sirve para decirle al cliente cuánto
+                  sale cada spot, no para sumar.
+
+   Por eso `sum(imputado)` da el total y NO lo infla: lo compartido se reparte,
+   no se multiplica. El reparto es en partes iguales por defecto —es lo honesto
+   cuando no hay una regla mejor— y se puede pesar por pieza.               */
+function costoPorPieza(py, v){
+  const piezas = piezasDe(py);
+  const gen = calcular(v);
+  const compartido = calcular(v, l => !l.piezaId).subtotal;
+  const pesos = piezas.map(p => Math.max(0, n(p.peso) || 1));
+  const sumaPesos = pesos.reduce((a,b)=>a+b, 0) || 1;
+
+  const filas = piezas.map((p, i) => {
+    const propio = calcular(v, l => l.piezaId === p.id).subtotal;
+    const parte  = compartido * (pesos[i] / sumaPesos);
+    return {pieza:p, id:p.id, nombre:nombrePieza(py, p.id),
+      propio, compartido:parte, imputado: propio + parte,
+      lineas: v.rubros.reduce((s,r)=>s + r.lineas.filter(l=>l.piezaId===p.id).length, 0)};
+  });
+  /* líneas colgadas de una pieza que ya no existe: se avisan, no se pierden */
+  const ids = new Set(piezas.map(p=>p.id));
+  const huerfanas = v.rubros.reduce((s,r)=>
+    s + r.lineas.filter(l => l.piezaId && !ids.has(l.piezaId)).length, 0);
+
+  return {filas, compartido, propioTotal: filas.reduce((s,f)=>s+f.propio,0),
+    subtotal: gen.subtotal, total: gen.total, huerfanas};
+}
+
+/* El filtro que usa la solapa de una pieza: lo propio más lo compartido,
+   porque en la vista de un spot hay que ver el equipo que también lo hace. */
+const filtroPieza = id => l => !l.piezaId || l.piezaId === id;
 
 /* Exposición documental: cuánto del costo directo tiene respaldo fiscal.     */
 function exposicion(v){
@@ -3148,15 +3276,124 @@ function cuerpo(pr,py,v){
 
 /* ---------- vista presupuesto ---------- */
 function vistaPresupuesto(pr,py,v){
-  const R = calcular(v);
   const cli = DB.ui.vista==='cliente';
+  const piezas = piezasDe(py);
+  /* la pieza elegida tiene que existir todavía */
+  const sel = piezas.some(p => p.id === DB.ui.pieza) ? DB.ui.pieza : null;
+  const filtro = sel ? filtroPieza(sel) : null;
+  const R = calcular(v, filtro);
   return `
   ${cabeceraProyecto(pr,py,v,cli)}
-  ${cli ? tablaCliente(v,R) : v.rubros.map(r=>rubroHTML(r,v)).join('')}
+  ${solapasPiezas(py, v, sel, cli)}
+  ${sel && !cli ? avisoPieza(py, v, sel) : ''}
+  ${cli ? tablaCliente(v,R) : v.rubros.map(r=>rubroHTML(r,v,filtro,sel)).join('')}
   ${cli?'':`<div class="pad noprint" style="padding:0 0 10px">
       <button class="btn" onclick="addRubro()">+ Agregar rubro</button></div>`}
-  ${panelTotales(v,R)}
+  ${panelTotales(v,R,sel?nombrePieza(py,sel):'')}
+  ${!cli && !sel && piezas.length ? panelPorPieza(py,v) : ''}
   ${cli?'':panelExposicion(v)}`;
+}
+
+/* Las solapas: General + una por pieza. En General se ve todo y cada cosa
+   cuenta una vez; en una pieza se ve lo suyo más lo compartido. */
+function solapasPiezas(py, v, sel, cli){
+  const piezas = piezasDe(py);
+  const u = unidadDe(py), us = unidadesDe(py);
+  if(!piezas.length){
+    if(cli || !TIPO(py.tipo).varias) return '';
+    return `<div class="pzbar noprint">
+      <div class="pzvacio">Este proyecto es una sola pieza. Si la campaña tiene
+        varios ${us.toLowerCase()}, cargalos y cada uno lleva su presupuesto.</div>
+      <button class="btn sm pri" onclick="addPiezaPreguntando()">+ ${esc(u)}</button>
+    </div>`;
+  }
+  const tab = (id, txt, tot) => `<button class="pztab${sel===id?' on':''}" onclick="setPieza(${id?`'${id}'`:'null'})">
+    <span>${esc(txt)}</span><b>${fmt(tot, v.monedaBase)}</b></button>`;
+  const C = costoPorPieza(py, v);
+  return `<div class="pzbar">
+    <div class="pztabs">
+      ${tab(null, 'General', C.total)}
+      ${C.filas.map(f => tab(f.id, f.nombre, calcular(v, filtroPieza(f.id)).total)).join('')}
+    </div>
+    ${cli?'':`<button class="btn sm" onclick="addPiezaPreguntando()" title="Agregar ${esc(u.toLowerCase())}">+ ${esc(u)}</button>`}
+  </div>`;
+}
+
+/* Parado en una pieza, hay que dejar clarísimo qué parte de lo que se ve es
+   suyo y qué parte es común, para que nadie sume dos veces. */
+function avisoPieza(py, v, id){
+  const p = piezaDe(py, id); if(!p) return '';
+  const propio = calcular(v, l => l.piezaId === id);
+  const comp   = calcular(v, l => !l.piezaId);
+  const C = costoPorPieza(py, v);
+  const fila = C.filas.find(f => f.id === id) || {compartido:0, imputado:0};
+  return `<div class="card noprint"><div class="pad" style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+    <div style="flex:1;min-width:200px">
+      <div style="font-size:15px;font-weight:700">${esc(nombrePieza(py,id))}</div>
+      <div class="muted" style="font-size:11.5px;margin-top:3px">
+        Estás viendo lo propio de ${esc(unidadDe(py).toLowerCase())} más lo que comparte con el resto.
+        Lo compartido <b>no se gasta de nuevo</b> en cada uno: en el General se cuenta una sola vez.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;align-items:center">
+        <label class="muted" style="font-size:11px">Nombre</label>
+        <input type="text" value="${esc(p.nombre)}" placeholder="${esc(unidadDe(py))} ${p.numero}"
+          style="width:auto;min-width:150px;padding:4px 7px;font-size:12.5px"
+          onchange="upPieza('${id}','nombre',this.value)">
+        <label class="muted" style="font-size:11px">Duración</label>
+        <input type="text" value="${esc(p.duracion)}" placeholder="30&quot;"
+          style="width:70px;padding:4px 7px;font-size:12.5px"
+          onchange="upPieza('${id}','duracion',this.value)">
+        <label class="muted" style="font-size:11px" title="Con cuánto peso le toca lo compartido. Iguales = 1.">Peso</label>
+        <input type="number" step="any" min="0" value="${n(p.peso)||1}"
+          style="width:58px;padding:4px 7px;font-size:12.5px;text-align:right;font-family:var(--mono)"
+          onchange="upPieza('${id}','peso',this.value)">
+        <button class="btn sm dgr" onclick="delPieza('${id}')">Eliminar</button>
+      </div>
+    </div>
+    <div style="min-width:190px">
+      <div class="tot sub"><span>Propio de ${esc(unidadDe(py).toLowerCase())}</span><b>${fmt(propio.subtotal, v.monedaBase)}</b></div>
+      <div class="tot sub"><span>Parte de lo compartido</span><b>${fmt(fila.compartido, v.monedaBase)}</b></div>
+      <div class="tot"><span><b>Imputado</b></span><b style="color:var(--ac)">${fmt(fila.imputado, v.monedaBase)}</b></div>
+      <div class="muted" style="font-size:10.5px;margin-top:4px">
+        Común del proyecto: ${fmt(comp.subtotal, v.monedaBase)}</div>
+    </div>
+  </div></div>`;
+}
+
+/* En General: cuánto sale cada pieza, sin inflar el total. */
+function panelPorPieza(py, v){
+  const C = costoPorPieza(py, v);
+  if(!C.filas.length) return '';
+  const suma = C.filas.reduce((s,f)=>s+f.imputado, 0);
+  return `<div class="card noprint"><h3>Cuánto sale cada ${esc(unidadDe(py).toLowerCase())}
+    <span class="spacer"></span>
+    <span class="muted" style="font-size:10px;text-transform:none;letter-spacing:0">costo directo</span></h3>
+    <div class="scrollx"><table class="tbl">
+      <thead><tr><th>${esc(unidadDe(py))}</th><th style="text-align:right">Propio</th>
+        <th style="text-align:right">Parte de lo común</th><th style="text-align:right">Imputado</th>
+        <th style="text-align:center;width:60px">Líneas</th></tr></thead>
+      <tbody>${C.filas.map(f=>`<tr>
+        <td><b>${esc(f.nombre)}</b>${f.pieza.duracion?` <span class="muted">· ${esc(f.pieza.duracion)}</span>`:''}</td>
+        <td style="text-align:right;font-family:var(--mono)">${fmt(f.propio, v.monedaBase)}</td>
+        <td style="text-align:right;font-family:var(--mono)" class="muted">${fmt(f.compartido, v.monedaBase)}</td>
+        <td style="text-align:right;font-family:var(--mono);font-weight:700">${fmt(f.imputado, v.monedaBase)}</td>
+        <td style="text-align:center" class="muted">${f.lineas}</td></tr>`).join('')}
+        <tr style="border-top:2px solid var(--line2)">
+          <td><b>Suma</b></td>
+          <td style="text-align:right;font-family:var(--mono)">${fmt(C.propioTotal, v.monedaBase)}</td>
+          <td style="text-align:right;font-family:var(--mono)" class="muted">${fmt(C.compartido, v.monedaBase)}</td>
+          <td style="text-align:right;font-family:var(--mono);font-weight:800;color:var(--ac)">${fmt(suma, v.monedaBase)}</td>
+          <td></td></tr>
+      </tbody></table></div>
+    <div class="pad muted" style="font-size:11.5px;line-height:1.6;padding-top:0">
+      <b>Propio</b> es lo que se gasta sólo por esa pieza. <b>Parte de lo común</b> es cuánto
+      le toca del gasto compartido —el equipo, el alquiler, la jornada— repartido según el peso
+      de cada una. Es una imputación para saber qué sale cada pieza:
+      <b>en el presupuesto ese gasto figura una sola vez</b>, por eso la suma da
+      ${fmt(C.subtotal, v.monedaBase)} y no más.
+      ${C.huerfanas?`<div style="margin-top:6px;color:var(--warn)">Hay ${C.huerfanas} línea${C.huerfanas==1?'':'s'}
+        colgada${C.huerfanas==1?'':'s'} de una pieza que ya no existe: figuran en el general.</div>`:''}
+    </div></div>`;
 }
 
 /* El tipo de cambio, editable ahí mismo.
@@ -3211,15 +3448,17 @@ function cabeceraProyecto(pr,py,v,cli){
   </div></div>`;
 }
 
-function rubroHTML(r,v){
-  const tot = totalRubro(r,v);
+function rubroHTML(r,v,filtro,piezaSel){
+  const ls = filtro ? r.lineas.filter(filtro) : r.lineas;
+  const tot = ls.reduce((s,l)=>s+totalLinea(l,v), 0);
+  const py = getPy();
   return `<div class="rubro">
     <div class="rhead" onclick="toggleRubro('${r.id}')">
       <span class="caret">${r.abierto?'▾':'▸'}</span>
       <span class="rcode">${esc(r.codigo)}</span>
       <span class="rname">${esc(r.nombre)}</span>
       ${!r.aplicaFee?'<span class="chip c-otr" title="No se le aplica fee de producción">s/fee</span>':''}
-      <span class="muted" style="font-size:11px">${r.lineas.length}</span>
+      <span class="muted" style="font-size:11px">${ls.length}</span>
       <span class="rtot">${fmt(tot, v.monedaBase)}</span>
     </div>
     ${r.abierto?`<div class="rbody">
@@ -3227,10 +3466,10 @@ function rubroHTML(r,v){
         <span>Concepto</span><span>Unidad</span><span class="num">Cant.</span><span class="num">Días</span>
         <span class="num">Valor unit.</span><span>Mon.</span><span class="num">Total</span><span></span>
       </div>
-      ${r.lineas.map(l=>lineaHTML(l,r,v)).join('') ||
-        '<div class="empty" style="padding:16px">Sin líneas todavía</div>'}
+      ${ls.map(l=>lineaHTML(l,r,v,py)).join('') ||
+        `<div class="empty" style="padding:16px">${filtro?'Nada de esta pieza ni compartido en este rubro':'Sin líneas todavía'}</div>`}
       <div class="addln noprint">
-        <button class="btn sm pri" onclick="addLinea('${r.id}')">+ Línea</button>
+        <button class="btn sm pri" onclick="addLinea('${r.id}')">+ Línea${piezaSel?' en '+esc(nombrePieza(py,piezaSel)):''}</button>
         <button class="btn sm" onclick="pickFuncion('${r.id}')">+ Del catálogo de funciones</button>
         <button class="btn sm" onclick="pickPersona('${r.id}')">+ Persona / proveedor</button>
         <div class="spacer" style="flex:1"></div>
@@ -3240,10 +3479,11 @@ function rubroHTML(r,v){
   </div>`;
 }
 
-function lineaHTML(l,r,v){
+function lineaHTML(l,r,v,py){
   const cir = CIRCUITOS.find(c=>c.v===(l.circuito||'')) || CIRCUITOS[7];
   const doc = COMPROBANTES.find(c=>c.v===(l.comprobante||'')) || COMPROBANTES[5];
   const E=`'${r.id}','${l.id}'`;
+  const piezas = piezasDe(py);
   return `<div class="ln">
     <div style="display:flex;flex-direction:column;gap:3px">
       <input type="text" value="${esc(l.concepto)}" placeholder="Concepto"
@@ -3255,6 +3495,12 @@ function lineaHTML(l,r,v){
         <select class="chipsel chip d-${doc.k}" onchange="upLinea(${E},'comprobante',this.value)">
           ${COMPROBANTES.map(c=>`<option value="${c.v}" ${c.v===(l.comprobante||'')?'selected':''}>${c.l}</option>`).join('')}
         </select>
+        ${piezas.length?`<select class="chipsel chip ${l.piezaId?'pz-si':'pz-com'}"
+          title="A qué ${esc(unidadDe(py).toLowerCase())} pertenece. Compartida = la usan todos."
+          onchange="upLineaPieza(${E},this.value)">
+          <option value="" ${!l.piezaId?'selected':''}>Compartida</option>
+          ${piezas.map(p=>`<option value="${p.id}" ${p.id===l.piezaId?'selected':''}>${esc(nombrePieza(py,p.id))}</option>`).join('')}
+        </select>`:''}
         <select class="chipsel chip ${l.area?'c-area':(esTransversal(r.codigo)?'c-falta':'c-otr')}"
           title="Área que lo gasta${esTransversal(r.codigo)?' — en este rubro conviene ponerla':''}"
           onchange="upLinea(${E},'area',this.value)">
@@ -3289,14 +3535,14 @@ function tablaCliente(v,R){
     </table></div></div>`;
 }
 
-function panelTotales(v,R){
+function panelTotales(v,R,piezaNom){
   const otra = v.monedaBase==='ARS'?'USD':'ARS';
   const cap = (k,label,monto,extra='') => `<div class="tot">
     <span>${label} ${DB.ui.vista==='interna'?`<input type="number" step="any" value="${v.capas[k]}"
       style="width:56px;display:inline-block;padding:2px 5px;font-size:11.5px;text-align:right;font-family:var(--mono)"
       onchange="upCapa('${k}',this.value)"> %`:`<span class="muted">${v.capas[k]}%</span>`} ${extra}</span>
     <b>${fmt(monto, v.monedaBase)}</b></div>`;
-  return `<div class="card"><h3>Totales</h3><div class="pad">
+  return `<div class="card"><h3>Totales${piezaNom?` — ${esc(piezaNom)} <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">(propio + compartido)</span>`:''}</h3><div class="pad">
     <div class="tot sub"><span>Subtotal costo directo</span><b>${fmt(R.subtotal,v.monedaBase)}</b></div>
     ${cap('fee','Fee de producción', R.fee, `<span class="muted" style="font-size:10.5px">s/ ${fmt(R.baseFee,v.monedaBase)}</span>`)}
     ${cap('contingencia','Contingencia', R.contingencia)}
@@ -3607,6 +3853,36 @@ function vistaConfig(prActiva){
 }
 
 /* ---------- vista desglose ---------- */
+/* En publicidad el desglose se organiza por spot: cada escena pertenece a uno.
+   En cine la unidad es la escena y no hace falta nada de esto.              */
+function escenasVisibles(py, d){
+  const sel = piezaActual();
+  if(!sel) return d.escenas;
+  return d.escenas.filter(e => e.piezaId === sel);
+}
+
+function barraPiezasDesglose(py, d){
+  const piezas = piezasDe(py);
+  const u = unidadDe(py), us = unidadesDe(py);
+  if(!TIPO(py.tipo).varias) return '';
+  const sel = piezaActual();
+  if(!piezas.length) return `<div class="pzbar noprint" style="padding:0 16px 10px">
+    <div class="pzvacio">Si la campaña tiene varios ${us.toLowerCase()}, agregalos con
+      <b>+ ${esc(u)}</b> y asigná cada escena al suyo: cada uno lleva su presupuesto.</div>
+  </div>`;
+  const cuenta = id => d.escenas.filter(e => e.piezaId === id).length;
+  const sinAsignar = d.escenas.filter(e => !e.piezaId).length;
+  const tab = (id, txt, n2) => `<button class="pztab${sel===id?' on':''}" onclick="setPieza(${id?`'${id}'`:'null'})">
+    <span>${esc(txt)}</span><b>${n2} escena${n2==1?'':'s'}</b></button>`;
+  return `<div class="pzbar noprint" style="padding:0 16px 10px">
+    <div class="pztabs">
+      ${tab(null, 'Todas', d.escenas.length)}
+      ${piezas.map(p => tab(p.id, nombrePieza(py, p.id), cuenta(p.id))).join('')}
+    </div>
+    ${sinAsignar ? `<span class="muted" style="font-size:11px">${sinAsignar} sin asignar</span>` : ''}
+  </div>`;
+}
+
 function vistaDesglose(py){
   const d = py.desglose;
   if(!d.escenas.length) return importadorHTML();
@@ -3628,12 +3904,17 @@ function vistaDesglose(py){
       <div class="spacer" style="flex:1"></div>
       <button class="btn sm noprint solo-cel" onclick="plegarTodo(${!d.escenas.every(e=>e.abierta)})">${d.escenas.every(e=>e.abierta)?'Compactar':'Expandir'}</button>
       <button class="btn sm noprint" onclick="reDetectar()" title="Volver a pasar el diccionario, conservando lo que agregaste a mano">Re-detectar</button>
+      ${TIPO(py.tipo).varias?`<button class="btn sm noprint pzadd" onclick="addPiezaPreguntando()"
+        title="Agregar ${esc(unidadDe(py).toLowerCase())} a este proyecto">+ ${esc(unidadDe(py))}</button>`:''}
+      <button class="btn sm noprint" onclick="addEscena()">+ Escena</button>
       <button class="btn sm noprint" onclick="menuGuion()">Guion ▾</button>
       <button class="btn sm pri noprint" onclick="aPresupuesto()">→ Presupuesto</button>
     </div>
+    ${sub==='escenas' ? barraPiezasDesglose(py, d) : ''}
     <div class="pad">${
       sub==='deptos' ? deptosHTML(r) : sub==='tags' ? tagsHTML(py) : sub==='plan' ? planHTML(py,d,r) :
-      (d.modo && d.modo!=='encabezados' ? avisoModoHTML(d) : '') + d.escenas.map(e=>escHTML(e,d)).join('') +
+      (d.modo && d.modo!=='encabezados' ? avisoModoHTML(d) : '') +
+      escenasVisibles(py, d).map(e=>escHTML(e,d,py)).join('') +
       (sub==='escenas' ? `<button class="btn sm noprint" style="margin-top:4px" onclick="addEscena()">+ Escena al final</button>` : '')
     }</div></div>`;
 }
@@ -3707,7 +3988,9 @@ function guionInput(el){
   }, 220);
 }
 
-function escHTML(e,d){
+function escHTML(e,d,py){
+  py ||= getPy();
+  const piezas = piezasDe(py);
   const noche = /NOCHE|NIGHT|MADRUGADA/.test(e.momento);
   const deps = DEPTOS.filter(dp=>!dp.auto);
   return `<div class="esc ${e.abierta?'on':''}">
@@ -3725,6 +4008,12 @@ function escHTML(e,d){
       </select>
       <span class="epg">${octavosATexto(e.octavos)} pg</span>
       <span class="ecnt solo-cel">${e.personajes.length + Object.values(e.elementos).reduce((s,v)=>s+v.length,0)} el.</span>
+      ${piezas.length?`<span class="jda noprint" title="A qué ${esc(unidadDe(py).toLowerCase())} pertenece esta escena">
+        <span class="muted" style="font-size:9.5px;font-weight:700">${esc(unidadDe(py).slice(0,5).toUpperCase())}</span>
+        <select onclick="event.stopPropagation()" onchange="upEsc('${e.id}','piezaId',this.value||null)">
+          <option value="">—</option>
+          ${piezas.map(p=>`<option value="${p.id}" ${p.id===e.piezaId?'selected':''}>${esc(nombrePieza(py,p.id))}</option>`).join('')}
+        </select></span>`:''}
       <span class="jda noprint"><span class="muted" style="font-size:9.5px;font-weight:700">JORN.</span>
         <select onchange="setJornada('${e.id}',this.value)">
           <option value="">—</option>
@@ -5483,13 +5772,76 @@ function selProyecto(id){ DB.ui.proyectoId=id;
 function selVersion(id){ DB.ui.versionId=id; R(); }
 
 function toggleRubro(id){ const r=getV().rubros.find(x=>x.id===id); r.abierto=!r.abierto; R(); }
-function addLinea(rid){ getV().rubros.find(r=>r.id===rid).lineas.push(nuevaLinea()); R(); }
+/* La pieza en la que estoy parado, si sigue existiendo. */
+function piezaActual(){
+  const piezas = piezasDe(getPy());
+  return piezas.some(p=>p.id===DB.ui.pieza) ? DB.ui.pieza : null;
+}
+/* Si estoy parado en un spot, la línea que agrego es de ESE spot. Es lo que
+   uno espera y evita el error silencioso de cargarle a todos algo de uno. */
+function addLinea(rid){
+  getV().rubros.find(r=>r.id===rid).lineas.push(nuevaLinea({piezaId:piezaActual()})); R(); }
 function delLinea(rid,lid){ const r=getV().rubros.find(x=>x.id===rid);
   r.lineas = r.lineas.filter(l=>l.id!==lid); R(); }
 function upLinea(rid,lid,campo,val){
   const l = getV().rubros.find(r=>r.id===rid).lineas.find(x=>x.id===lid);
   l[campo] = ['cantidad','dias','valorUnit'].includes(campo) ? n(val) : val; R(); }
 function upCapa(k,val){ getV().capas[k]=n(val); R(); }
+
+/* ---------- piezas: spots, episodios, videos ---------- */
+function addPieza(nombre){
+  const py = getPy(); if(!py) return null;
+  py.piezas ||= [];
+  const num = py.piezas.reduce((m,p)=>Math.max(m, n(p.numero)||0), 0) + 1;
+  const p = nuevaPieza({numero:num, nombre:nombre||''});
+  p.peso = 1;
+  py.piezas.push(p);
+  DB.ui.pieza = p.id;
+  guardar();
+  return p;
+}
+function addPiezaPreguntando(){
+  const py = getPy(); if(!py) return;
+  const u = unidadDe(py);
+  const nombre = (prompt(`Nombre del ${u.toLowerCase()} nuevo (podés dejarlo vacío):`) || '').trim();
+  if(nombre === null) return;
+  const p = addPieza(nombre);
+  toast(`${nombrePieza(py, p.id)} agregado`);
+  R();
+}
+function upPieza(id, campo, val){
+  const p = piezaDe(getPy(), id); if(!p) return;
+  p[campo] = (campo === 'numero' || campo === 'peso') ? n(val) : val;
+  R();
+}
+/* Borrar una pieza no borra su plata: las líneas vuelven a ser compartidas.
+   Perder líneas de presupuesto en silencio sería lo peor que puede hacer. */
+function delPieza(id){
+  const py = getPy(); if(!py) return;
+  const nom = nombrePieza(py, id);
+  let cuantas = 0;
+  (py.versiones||[]).forEach(v => v.rubros.forEach(r => r.lineas.forEach(l => {
+    if(l.piezaId === id) cuantas++; })));
+  const aviso = cuantas
+    ? `\n\nSus ${cuantas} línea${cuantas==1?'':'s'} de presupuesto NO se borran: pasan a ser compartidas por todo el proyecto.`
+    : '';
+  if(!confirm(`¿Eliminar ${nom}?${aviso}`)) return;
+  (py.versiones||[]).forEach(v => v.rubros.forEach(r => r.lineas.forEach(l => {
+    if(l.piezaId === id) l.piezaId = null; })));
+  (py.desglose?.escenas||[]).forEach(e => { if(e.piezaId === id) e.piezaId = null; });
+  py.piezas = piezasDe(py).filter(p => p.id !== id);
+  if(DB.ui.pieza === id) DB.ui.pieza = null;
+  toast(cuantas ? `${nom} eliminado — sus ${cuantas} línea${cuantas==1?'':'s'} quedaron compartidas`
+                : `${nom} eliminado`);
+  R();
+}
+function setPieza(id){ DB.ui.pieza = id || null; R(); }
+/* A qué pieza pertenece una línea. '' = compartida. */
+function upLineaPieza(rid, lid, val){
+  const l = getV().rubros.find(r=>r.id===rid).lineas.find(x=>x.id===lid);
+  if(l) l.piezaId = val || null;
+  R();
+}
 
 /* Cambiar el TC reexpresa todas las líneas en USD, así que un cero silencioso
    dejaría el presupuesto en nada sin avisar. Se rechaza y se avisa. */
@@ -5577,7 +5929,7 @@ function editProyecto(id){
     <h3>${id?'Editar':'Nuevo'} proyecto — ${esc(pr.nombre)}</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre del proyecto','nombre',p.nombre)}
-        ${sel('Tipo','tipo',p.tipo,['publicidad','cine','serie','contenido','institucional','videoclip'])}
+        ${sel('Tipo','tipo',p.tipo,TIPOS_PROYECTO.map(t=>({v:t.k,l:t.l})))}
         ${campo('Cliente','cliente',p.cliente)}
         ${campo('Agencia','agencia',p.agencia)}
         ${campo('Producto','producto',p.producto)}
@@ -5740,7 +6092,7 @@ function pickFuncion(rid){
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div>
   </div></div>`); }
 function addFuncion(rid, concepto){
-  getV().rubros.find(r=>r.id===rid).lineas.push(nuevaLinea({concepto}));
+  getV().rubros.find(r=>r.id===rid).lineas.push(nuevaLinea({concepto, piezaId:piezaActual()}));
   guardar(); toast('Agregado: '+concepto);
   const m = document.querySelector('.mod'); if(m) m.scrollTop = 0; }
 
@@ -5763,6 +6115,7 @@ function pickPersona(rid){
 function addPersona(rid, pid){
   const p = DB.catalogo.personas.find(x=>x.id===pid);
   getV().rubros.find(r=>r.id===rid).lineas.push(nuevaLinea({
+    piezaId: piezaActual(),
     concepto:p.funcion||p.nombre, refId:p.id, refTipo:'persona',
     valorUnit:p.tarifaRef, moneda:p.moneda, unidad:p.unidad,
     circuito: p.condicion==='Responsable Inscripto'?'transferencia':'',
@@ -5796,7 +6149,9 @@ function avisoModoHTML(d){
 
 function addEscena(){
   const d = getD();
-  d.escenas.push(nuevaEscena({numero:String(d.escenas.length+1), locacion:'Sin locación', abierta:true}));
+  /* parado en un spot, la escena nueva es de ese spot */
+  d.escenas.push(nuevaEscena({numero:String(d.escenas.length+1), locacion:'Sin locación',
+    abierta:true, piezaId:piezaActual()}));
   R();
 }
 function delEscena(id){
@@ -6891,19 +7246,37 @@ const MAPA_RUBRO = {
   vfx:       {rubro:'14', modo:'agrupado', etiqueta:'VFX'},
   sonido:    {rubro:'14', modo:'agrupado', etiqueta:'Sonido / música'},
 };
+/* De qué pieza es una línea que sale de estas escenas.
+   La regla, que es la que pidió el productor: si el elemento aparece en un
+   solo spot, la línea es de ESE spot. Si aparece en varios, es compartida y
+   va UNA vez —no se suma por spot ni se reparte el número—. Y si un spot
+   tiene cosas que el otro no, esas quedan colgadas sólo de él: nunca se
+   igualan hacia arriba.                                                    */
+function piezaDeEscenas(escenas){
+  const ids = new Set((escenas||[]).map(e => e.piezaId || null));
+  if(ids.size === 1){ const [x] = ids; return x || null; }
+  return null;                       /* de varias, o sin asignar: compartida */
+}
+/* las escenas de un depto vienen por número, no por objeto */
+const escenasPorNumero = (d, nums) =>
+  d.escenas.filter(e => (nums||[]).map(String).includes(String(e.numero)));
+
 function propuestaPresupuesto(){
   const d=getD(), r=resumenDesglose(d), out=[];
   const jorn = d.jornadas.length || r.jornadasEstimadas;
   /* elenco: los días son las jornadas en las que realmente aparece */
   r.personajes.forEach(p=>{
     const js = new Set(d.escenas.filter(e=>e.personajes.includes(p)).map(e=>e.jornada||1));
+    const suyas = d.escenas.filter(e=>e.personajes.includes(p));
     out.push({dep:'elenco', rubro:'09', area:'elenco', concepto:p, cantidad:1, dias:js.size||1, unidad:'jornada',
-      nota:'escenas '+d.escenas.filter(e=>e.personajes.includes(p)).map(e=>e.numero).join(', ')});
+      piezaId: piezaDeEscenas(suyas),
+      nota:'escenas '+suyas.map(e=>e.numero).join(', ')});
   });
   r.locaciones.forEach(l=>{
     const es = d.escenas.filter(e=>e.locacion===l);
     out.push({dep:'locacion', rubro:'10', area:'locaciones', concepto:'Locación — '+l, cantidad:1,
       dias:new Set(es.map(e=>e.jornada||1)).size||1, unidad:'jornada',
+      piezaId: piezaDeEscenas(es),
       nota:'escenas '+es.map(e=>e.numero).join(', ')});
   });
   Object.entries(MAPA_RUBRO).forEach(([dep,cfg])=>{
@@ -6913,9 +7286,28 @@ function propuestaPresupuesto(){
     const ar = cfg.area || areaDeRubro(cfg.rubro);
     if(cfg.modo==='porItem') items.forEach(it=>out.push({dep, rubro:cfg.rubro, area:ar,
       concepto:cfg.etiqueta+' — '+it.nombre, cantidad:1, dias:new Set(it.escenas).size||1,
-      unidad:'jornada', nota:'escenas '+it.escenas.join(', ')}));
-    else out.push({dep, rubro:cfg.rubro, area:ar, concepto:cfg.etiqueta+` — ${items.length} elemento${items.length==1?'':'s'}`,
-      cantidad:1, dias:1, unidad:'global', nota:items.map(i=>i.nombre).join(', ')});
+      unidad:'jornada', piezaId: piezaDeEscenas(escenasPorNumero(d, it.escenas)),
+      nota:'escenas '+it.escenas.join(', ')}));
+    else {
+      /* Los rubros que se agrupan en una sola línea (utilería, vestuario…) hay
+         que PARTIRLOS por pieza. Si no, la torta del spot A y la pelota del B
+         terminan en un renglón "Utilería — 2 elementos" que parece compartido
+         y esconde que son cosas distintas de spots distintos. Cada grupo va
+         con lo suyo, y lo que de verdad aparece en varios queda compartido. */
+      const grupos = new Map();
+      items.forEach(it => {
+        const pz = piezaDeEscenas(escenasPorNumero(d, it.escenas)) || '';
+        (grupos.get(pz) || grupos.set(pz, []).get(pz)).push(it);
+      });
+      grupos.forEach((its, pz) => {
+        const nom = pz ? nombrePieza(getPy(), pz) : '';
+        out.push({dep, rubro:cfg.rubro, area:ar,
+          concepto: cfg.etiqueta + (nom ? ` (${nom})` : '') +
+            ` — ${its.length} elemento${its.length==1?'':'s'}`,
+          cantidad:1, dias:1, unidad:'global', piezaId: pz || null,
+          nota: its.map(i=>i.nombre).join(', ')});
+      });
+    }
   });
   return {lineas:out, jornadas:jorn, resumen:r};
 }
@@ -6942,6 +7334,8 @@ function aPresupuesto(){
               <span style="font-size:12.5px">${esc(l.concepto)}</span>
               <span class="muted" style="font-size:10.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                 ${l.cantidad} × ${l.dias} ${esc(l.unidad)}${l.nota?' · '+esc(l.nota):''}</span>
+              ${piezasDe(getPy()).length?`<span class="chip ${l.piezaId?'pz-si':'pz-com'}" style="margin-top:2px;display:inline-block">${
+                l.piezaId?esc(nombrePieza(getPy(), l.piezaId)):'Compartida'}</span>`:''}
             </span></label>`).join('')}
         </div>`;
       }).join('')}
@@ -6962,7 +7356,7 @@ function confirmarAPresupuesto(){
   marcadas.forEach(l=>{
     const rb = v.rubros.find(x=>x.codigo===l.rubro); if(!rb) return;
     rb.lineas.push(nuevaLinea({concepto:l.concepto, cantidad:l.cantidad, dias:l.dias,
-      unidad:l.unidad, valorUnit:0, notas:l.nota, area:l.area||''}));
+      unidad:l.unidad, valorUnit:0, notas:l.nota, area:l.area||'', piezaId:l.piezaId||null}));
     rb.abierto = true; creadas++;
   });
   if(setj) getPy().jornadas = jornadas;
