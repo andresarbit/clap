@@ -6571,6 +6571,16 @@ function copiarLinkEquipo(){
 }
 /* ---------- alta propia: la pantalla de primera vez ---------- */
 let _prodsElegibles = [];
+/* Que la lista venga vacia y que no haya podido traerla son DOS cosas, y
+   confundirlas manda a la persona a crear una productora que ya existe: el
+   equipo termina partido en dos productoras que no se hablan. Se guarda el
+   error aparte para poder decirlo.                                          */
+let _prodsError = null;
+async function traerProdsElegibles(){
+  try{ _prodsElegibles = await sbProductorasParaElegir() || []; _prodsError = null; }
+  catch(e){ _prodsElegibles = []; _prodsError = e.message || String(e); }
+  return _prodsElegibles;
+}
 /* Lo que sé de mi ficha en el servidor. null = no la busqué todavía;
    false = la busqué y no tengo. Se guarda para que el header pueda dibujar
    el aviso sin tener que ir al servidor en cada render.                     */
@@ -6586,7 +6596,7 @@ async function revisarAlta(){
   if(_miFicha) await traerMiProductora();
   render();
   if(_miFicha === false){
-    try{ _prodsElegibles = await sbProductorasParaElegir() || []; }catch(e){ _prodsElegibles = []; }
+    await traerProdsElegibles();
     if(!modal) formAlta();
   }
 }
@@ -6605,7 +6615,7 @@ function avisoAlta(){
   return '';
 }
 async function abrirAlta(){
-  try{ _prodsElegibles = await sbProductorasParaElegir() || []; }catch(e){ _prodsElegibles = []; }
+  await traerProdsElegibles();
   formAlta();
 }
 async function pantallaAlta(){
@@ -6629,8 +6639,7 @@ async function pantallaAlta(){
     return;
   }
   /* no tiene ficha: primera vez */
-  try{ _prodsElegibles = await sbProductorasParaElegir() || []; }
-  catch(e){ _prodsElegibles = []; }
+  await traerProdsElegibles();
   cerrar(); formAlta();
 }
 
@@ -6658,6 +6667,15 @@ function formAlta(){
         <div id="prodnueva" style="display:none;margin-top:9px">
           ${campo('Nombre de la productora nueva','productoraNombre','')}
         </div>`
+      : _prodsError ? `<div class="avisomodo turno-mal" style="margin-bottom:9px">
+          <b>No pude traer la lista de productoras.</b> ${esc(_prodsError)}
+          <div style="margin-top:6px">Esto <b>no</b> quiere decir que no haya ninguna.
+          Si sabés que tu productora ya está cargada, no crees una nueva —quedarían dos
+          separadas y el equipo partido—: probá de nuevo.</div>
+          <div style="margin-top:8px"><button class="btn sm" onclick="abrirAlta()">Reintentar</button></div>
+        </div>
+        ${campo('O creá una nueva, sólo si de verdad no existe','productoraNombre','')}
+        <input type="hidden" name="productoraId" value="__nueva">`
       : `<div class="sicabox" style="margin-bottom:9px">Todavía no hay ninguna productora cargada.
           La primera la creás vos y quedás como su administrador.</div>
         ${campo('Nombre de tu productora','productoraNombre','')}

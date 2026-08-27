@@ -229,6 +229,28 @@ const cargarForm = campos => {
     getUsuario() && getUsuario().nombre);
   ok('y sin usuario no hay permisos', !puede(getUsuario(), 'cargar'));
 
+  /* --- 10. si no puedo traer la lista, decirlo ---------------------------
+     "La lista vino vacía" y "no pude traerla" son dos cosas distintas.
+     Confundirlas manda a la persona a crear una productora que ya existe, y
+     el equipo termina partido en dos que no se hablan.                     */
+  console.log('\n--- 10. SI FALLA LA LISTA, NO DECIR QUE NO HAY NINGUNA ---');
+  const fetchBueno = global.fetch;
+  global.fetch = async (url, opts) => String(url).includes('productoras_para_elegir')
+    ? respu(500, { message: 'se cayó la conexión' })
+    : fetchBueno(url, opts);
+  SESION = 'auth-nuevo';
+  await conectar('nuevo@x.com');
+  modal = null; await abrirAlta();
+  ok('avisa que no pudo traer la lista', /No pude traer la lista/.test(modal));
+  ok('NO dice que no hay ninguna productora', !/Todav[ií]a no hay ninguna productora/.test(modal));
+  ok('avisa del riesgo de duplicar', /partido|separadas|no crees una nueva/i.test(modal));
+  ok('ofrece reintentar', /Reintentar/.test(modal));
+
+  global.fetch = fetchBueno;
+  modal = null; await abrirAlta();
+  ok('al reintentar aparece la productora', /Nuestra Productora/.test(modal));
+  ok('y ya no muestra el error', !/No pude traer la lista/.test(modal));
+
   console.log('\n' + (fallos ? '>>> ' + fallos + ' FALLAS' : '>>> TODO OK'));
   process.exitCode = fallos ? 1 : 0;
 })();
