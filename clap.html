@@ -259,6 +259,9 @@ button.eie:hover{filter:brightness(1.35)}
   color:var(--ac);background:rgba(224,169,46,.15);padding:2px 6px;border-radius:4px;
   margin-left:6px;vertical-align:middle}
 .pyest{font-size:11.5px;color:var(--tx3);white-space:nowrap;flex:none}
+.pypz{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.pypzchip{font-size:9.5px;font-weight:700;padding:2px 7px;border-radius:4px;
+  background:rgba(143,122,212,.16);color:#b39ce4;white-space:nowrap}
 .pytot{font:700 14px var(--mono);color:var(--tx);white-space:nowrap;flex:none;min-width:110px;text-align:right}
 .cst input{padding:3px 6px;font-size:12px;background:transparent;border-color:transparent}
 .cst input:hover{border-color:var(--line)}
@@ -3894,31 +3897,42 @@ function escenasVisibles(py, d){
   return d.escenas.filter(e => e.piezaId === sel);
 }
 
-function barraPiezasDesglose(py, d){
+function barraPiezasDesglose(py, d, suelta){
   const piezas = piezasDe(py);
   const u = unidadDe(py), us = unidadesDe(py);
   if(!TIPO(py.tipo).varias) return '';
   const sel = piezaActual();
-  if(!piezas.length) return `<div class="pzbar noprint" style="padding:0 16px 10px">
-    <div class="pzvacio">Si la campaña tiene varios ${us.toLowerCase()}, agregalos con
-      <b>+ ${esc(u)}</b> y asigná cada escena al suyo: cada uno lleva su presupuesto.</div>
-  </div>`;
+  /* `suelta` = no hay tarjeta alrededor (todavía no hay guion): la barra se
+     dibuja sola y tiene que traer el botón, porque no está la de sub-solapas. */
+  const btn = `<button class="btn sm pri" onclick="addPiezaPreguntando()">+ ${esc(u)}</button>`;
+  if(!piezas.length) return `<div class="card noprint"><div class="pad pzbar" style="margin:0">
+    <div class="pzvacio">¿La campaña tiene varios ${us.toLowerCase()}? Agregalos acá:
+      cada uno lleva su presupuesto y sus elementos. También podés subir un guion
+      por ${u.toLowerCase()} y se crean solos.</div>
+    ${btn}
+  </div></div>`;
   const cuenta = id => d.escenas.filter(e => e.piezaId === id).length;
   const sinAsignar = d.escenas.filter(e => !e.piezaId).length;
   const tab = (id, txt, n2) => `<button class="pztab${sel===id?' on':''}" onclick="setPieza(${id?`'${id}'`:'null'})">
     <span>${esc(txt)}</span><b>${n2} escena${n2==1?'':'s'}</b></button>`;
-  return `<div class="pzbar noprint" style="padding:0 16px 10px">
+  const barra = `<div class="pzbar noprint"${suelta?' style="margin:0"':' style="padding:0 16px 10px"'}>
     <div class="pztabs">
       ${tab(null, 'Todas', d.escenas.length)}
       ${piezas.map(p => tab(p.id, nombrePieza(py, p.id), cuenta(p.id))).join('')}
     </div>
     ${sinAsignar ? `<span class="muted" style="font-size:11px">${sinAsignar} sin asignar</span>` : ''}
+    ${suelta ? btn : ''}
   </div>`;
+  return suelta ? `<div class="card noprint"><div class="pad" style="padding:11px 13px">${barra}</div></div>` : barra;
 }
 
 function vistaDesglose(py){
   const d = py.desglose;
-  if(!d.escenas.length) return importadorHTML();
+  /* Sin guion cargado esto devolvía SOLO el importador, así que el botón de
+     agregar spot no aparecía nunca — justo cuando más se necesita, que es al
+     arrancar la campaña y antes de tener los guiones. La barra de piezas va
+     arriba del importador también.                                         */
+  if(!d.escenas.length) return barraPiezasDesglose(py, d, true) + importadorHTML();
   const r = resumenDesglose(d);
   const sub = DB.ui.subDesglose || 'escenas';
   const S=[['escenas','Escenas'],['deptos','Por departamento'],['tags','Tags'],['plan','Plan de rodaje']];
@@ -3975,9 +3989,9 @@ function importadorHTML(){
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
         <button class="btn pri grande" id="gbtn" onclick="importarGuion()">Desglosar</button>
         <span class="muted" style="font-size:10.5px">o Ctrl+Enter</span>
-        <button class="btn" onclick="document.getElementById('gfile').click()">Subir archivo</button>
-        <span class="muted" style="font-size:11px">PDF · Word · Final Draft · RTF · txt</span>
-        <input type="file" id="gfile" accept=".txt,.fountain,.fdx,.docx,.doc,.rtf,.pdf" style="display:none" onchange="subirGuion(this)">
+        <button class="btn" onclick="document.getElementById('gfile').click()">Subir archivo(s)</button>
+        <span class="muted" style="font-size:11px">PDF · Word · Final Draft · RTF · txt<br>Podés subir <b>varios a la vez</b>: cada guion es un spot</span>
+        <input type="file" id="gfile" multiple accept=".txt,.fountain,.fdx,.docx,.doc,.rtf,.pdf" style="display:none" onchange="subirGuion(this)">
         <div style="flex:1"></div>
         <button class="btn" onclick="guionEjemplo()">Probar con un guion de ejemplo</button>
       </div>
@@ -4247,10 +4261,12 @@ function listaProyectosHTML(pr, actual){
     const esActual = actual && p.id === actual.id;
     const sub = [p.cliente, p.agencia, p.jornadas ? p.jornadas + (p.jornadas==1?' jornada':' jornadas') : '']
       .filter(Boolean).join(' · ');
+    const pz = piezasDe(p);
     return `<button class="pyfila${esActual?' on':''}" onclick="selProyecto('${p.id}')">
       <span class="pynom">${esc(p.nombre)}
         ${esActual?'<span class="pyaqui">estás acá</span>':''}
-        <span class="pysub">${esc(sub||'sin datos de cliente')}</span></span>
+        <span class="pysub">${esc(sub||'sin datos de cliente')}</span>
+        ${pz.length?`<span class="pypz">${pz.map(x=>`<span class="pypzchip">${esc(nombrePieza(p,x.id))}</span>`).join('')}</span>`:''}</span>
       <span class="pyest">${v?esc(v.nombre)+' · '+esc(v.estado):'sin presupuesto'}</span>
       <span class="pytot">${R?fmt(R.total, v.monedaBase):'—'}</span>
     </button>`;
@@ -6270,25 +6286,135 @@ function importarGuion(txt){
       : `${escenas.length} bloques — sin encabezados, separé por párrafo. Revisá y ajustá.`);
   R();
 }
+/* ---------- varios guiones en un archivo ----------
+   En publicidad lo normal es que la agencia mande UN documento con los tres
+   spots adentro, uno abajo del otro. Antes eso entraba como un solo guion y
+   quedaba todo mezclado en una pieza.
+
+   Se corta por los encabezados que la industria usa de verdad: "SPOT 1",
+   "GUIÓN B", "COMERCIAL: Verano", "PIEZA 2", "VERSIÓN LARGA", "FILM 3", y
+   también por un título en mayúsculas seguido de una duración (30", 20", 15").
+   Si no encuentra ninguno, devuelve un solo guion: no inventa cortes.       */
+const RE_TITULO_GUION =
+  /^\s*(?:spot|gui[oó]n|comercial|pieza|versi[oó]n|film|corte|cap[ií]tulo|episodio)\b\s*(?:n[°º.]?\s*)?[:.\-–]?\s*(.{0,48})$/i;
+const RE_TITULO_DURACION = /^\s*(.{2,48}?)\s*[-–—:]?\s*(\d{1,3})\s*["”'′]\s*$/;
+
+function partirGuiones(txt){
+  const lineas = String(txt||'').split(/\r?\n/);
+  const cortes = [];
+  lineas.forEach((ln, i) => {
+    const t = ln.trim();
+    if(!t || t.length > 60) return;
+    /* un encabezado de escena NO es un título de guion */
+    if(/^\d*\s*\.?\s*(INT|EXT|INT\/EXT|EXT\/INT)\b/i.test(t)) return;
+    let m = t.match(RE_TITULO_GUION);
+    if(m){ cortes.push({i, titulo:t}); return; }
+    m = t.match(RE_TITULO_DURACION);
+    /* "COCINA - DÍA" no es un título con duración; exige comillas de segundos */
+    if(m && t === t.toUpperCase() && /["”'′]/.test(t)) cortes.push({i, titulo:t});
+  });
+  if(cortes.length < 2) return [{titulo:'', texto:String(txt||'')}];
+  return cortes.map((c, k) => ({
+    titulo: c.titulo,
+    texto: lineas.slice(c.i + 1, k+1 < cortes.length ? cortes[k+1].i : lineas.length).join('\n')
+  })).filter(g => g.texto.trim().length > 20);
+}
+
+/* Subir uno o varios archivos. Cada archivo es una pieza; y si un archivo trae
+   varios guiones adentro, cada uno también. */
 async function subirGuion(inp){
-  const f=inp.files[0]; if(!f) return;
+  const files = [...(inp.files||[])]; if(!files.length) return;
   inp.value='';
-  toast('Leyendo '+f.name+'…');
-  let txt;
-  try{ txt = await archivoATexto(f); }
-  catch(e){ alert('No pude leer "'+f.name+'".\n\n'+e.message); return; }
-  /* el texto extraído se muestra antes de desglosar: de un PDF o un .doc
-     puede salir sucio y conviene que lo mire una persona */
-  const ta = document.getElementById('gtxt');
-  const escenas = desglosar(txt).escenas.length;
-  if(ta){ ta.value = txt; ta.scrollTop = 0; }
-  if(!escenas){
-    alert('Leí el archivo pero no encontré encabezados de escena.\n\n' +
-      'Revisá el texto y corregí los encabezados: tienen que decir INT. o EXT.\n' +
-      'Después tocá Desglosar.');
+  const py = getPy();
+  toast(files.length>1 ? `Leyendo ${files.length} archivos…` : 'Leyendo '+files[0].name+'…');
+
+  const guiones = [];
+  for(const f of files){
+    let txt;
+    try{ txt = await archivoATexto(f); }
+    catch(e){ alert('No pude leer "'+f.name+'".\n\n'+e.message); return; }
+    const partes = partirGuiones(txt);
+    partes.forEach((g, k) => guiones.push({
+      titulo: g.titulo || (partes.length>1 ? `${f.name} (${k+1})` : f.name.replace(/\.[^.]+$/,'')),
+      texto: g.texto, archivo: f.name}));
+  }
+
+  /* uno solo: como siempre, al cuadro de texto para revisarlo antes */
+  if(guiones.length === 1){
+    const ta = document.getElementById('gtxt');
+    const escenas = desglosar(guiones[0].texto).escenas.length;
+    if(ta){ ta.value = guiones[0].texto; ta.scrollTop = 0; guionInput(ta); }
+    if(!escenas){
+      alert('Leí el archivo pero no encontré encabezados de escena.\n\n' +
+        'Revisá el texto y corregí los encabezados: tienen que decir INT. o EXT.\n' +
+        'Después tocá Desglosar.');
+      return;
+    }
+    toast(`${guiones[0].archivo}: ${escenas} escenas detectadas — revisá y tocá Desglosar`);
     return;
   }
-  toast(`${f.name}: ${escenas} escenas detectadas — revisá el texto y tocá Desglosar`);
+  /* varios: se avisa qué encontró y se confirma antes de crear nada */
+  confirmarVariosGuiones(guiones, py);
+}
+
+function confirmarVariosGuiones(guiones, py){
+  const u = unidadDe(py), us = unidadesDe(py);
+  const filas = guiones.map((g,i)=>{
+    const es = desglosar(g.texto).escenas;
+    return {...g, escenas:es.length, i};
+  });
+  const conEscenas = filas.filter(f=>f.escenas);
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:620px">
+    <h3>Encontré ${guiones.length} guiones</h3>
+    <div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">
+        Se va a crear <b>un ${u.toLowerCase()} por guion</b>, con sus escenas asignadas.
+        Cada uno lleva su presupuesto y sus elementos; lo que compartan lo cargás
+        una vez en General.
+      </div>
+      ${filas.map(f=>`<label style="display:flex;gap:9px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--line);cursor:pointer">
+        <input type="checkbox" data-g="${f.i}" ${f.escenas?'checked':''} style="width:auto;margin-top:3px;flex:none">
+        <span style="flex:1;min-width:0">
+          <b style="font-size:13px">${esc(f.titulo)}</b>
+          <span class="muted" style="display:block;font-size:11.5px">
+            ${f.escenas?`${f.escenas} escena${f.escenas==1?'':'s'}`:'sin encabezados de escena'}
+            · ${esc(f.archivo)}</span>
+        </span></label>`).join('')}
+      ${conEscenas.length<filas.length?`<div class="sicabox" style="margin-top:10px">
+        Los que no tienen encabezados de escena vienen destildados: podés crearlos igual
+        y cargarles las escenas a mano.</div>`:''}
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <div style="flex:1"></div>
+      <button class="btn pri" onclick="crearPiezasDeGuiones()">Crear ${conEscenas.length} ${us.toLowerCase()}</button></div>
+  </div></div>`);
+  _guionesPendientes = filas;
+}
+let _guionesPendientes = [];
+
+function crearPiezasDeGuiones(){
+  const marcados = [...document.querySelectorAll('.mod input[type=checkbox][data-g]')]
+    .filter(c=>c.checked).map(c=>_guionesPendientes[+c.dataset.g]);
+  if(!marcados.length){ toast('No marcaste ninguno'); return; }
+  const py = getPy(), d = getD();
+  let creadas = 0, escenasTotal = 0;
+  const textos = [];
+  marcados.forEach(g=>{
+    const p = addPieza(g.titulo);
+    const es = desglosar(g.texto).escenas;
+    es.forEach(e=>{ e.piezaId = p.id; d.escenas.push(e); escenasTotal++; });
+    textos.push(`=== ${g.titulo} ===\n${g.texto}`);
+    creadas++;
+  });
+  /* renumerar para que no queden dos escenas "1" */
+  d.escenas.forEach((e,i)=>{ if(!e.numero) e.numero = String(i+1); });
+  d.guion = (d.guion ? d.guion + '\n\n' : '') + textos.join('\n\n');
+  d.importado = hoy(); d.modo ||= 'encabezados';
+  DB.ui.pieza = null; DB.ui.subDesglose = 'escenas';
+  _guionesPendientes = [];
+  cerrar();
+  toast(`${creadas} ${unidadesDe(py).toLowerCase()} creados · ${escenasTotal} escenas`);
+  R();
 }
 function guionEjemplo(){
   importarGuion(`1. INT. COCINA DEPARTAMENTO - DÍA

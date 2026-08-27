@@ -292,5 +292,104 @@ ok('y cada línea dice el suyo', /"Spot Playa"/.test(csv) && /"Compartida"/.test
 ok('el CSV trae el cuadro por spot al pie', /CUÁNTO SALE CADA SPOT/.test(csv));
 ok('con la aclaración de que lo común va una vez', /figura UNA vez/.test(csv));
 
+/* --- 17. EL BOTON DE SPOT, ANTES DE TENER GUION -------------------------
+   Acá estaba el bug que reportó: sin escenas, vistaDesglose devolvía SOLO el
+   importador, así que el botón "+ Spot" no aparecía nunca — justo cuando más
+   se necesita, que es al arrancar la campaña.                              */
+console.log('\n--- 17. "+ SPOT" ANTES DE CARGAR NINGUN GUION ---');
+const pyV = nuevoProyecto({nombre:'Campaña vacía', tipo:'publicidad'});
+pr.proyectos.push(pyV);
+DB.ui.proyectoId = pyV.id; DB.ui.versionId = pyV.versiones[0].id;
+DB.ui.pieza = null; DB.ui.tab = 'desglose'; DB.ui.subDesglose = 'escenas';
+ok('el proyecto arranca sin escenas', pyV.desglose.escenas.length === 0);
+render();
+let hv = app.innerHTML;
+ok('BOTON "+ Spot" VISIBLE SIN GUION', /addPiezaPreguntando\(\)/.test(hv));
+ok('dice "+ Spot"', /\+ Spot/.test(hv));
+ok('y el importador sigue estando', /Desglosar/.test(hv) && /gtxt/.test(hv));
+ok('explica para qué sirve', /cada uno lleva su presupuesto/i.test(hv));
+
+/* al agregar uno, la barra pasa a mostrarlo */
+const pv1 = addPieza('Spot Uno'); render(); hv = app.innerHTML;
+ok('el spot aparece en la barra', /Spot Uno/.test(hv));
+ok('y el botón sigue para agregar más', /addPiezaPreguntando\(\)/.test(hv));
+ok('el importador no se fue', /gtxt/.test(hv));
+
+/* en cine no se ofrece, porque no aplica */
+pyV.tipo = 'cine'; render();
+ok('en cine no ofrece agregar piezas', !/addPiezaPreguntando/.test(app.innerHTML));
+pyV.tipo = 'publicidad';
+
+console.log('\n--- 18. UN ARCHIVO CON VARIOS GUIONES ---');
+const docTresSpots = [
+  'SPOT 1', '',
+  'INT. COCINA - DÍA', '', 'LUCÍA prepara un mate.', '',
+  'EXT. JARDÍN - DÍA', '', 'El PERRO corre.', '',
+  'SPOT 2', '',
+  'INT. OFICINA - DÍA', '', 'MARTÍN mira la pantalla.', '',
+  'SPOT 3', '',
+  'EXT. PLAYA - ATARDECER', '', 'LUCÍA camina por la orilla.', ''
+].join('\n');
+
+const partes = partirGuiones(docTresSpots);
+ok('RECONOCE QUE HAY TRES GUIONES', partes.length === 3, partes.length + ' encontrados');
+ok('con sus títulos', partes.map(g => g.titulo).join(' · '), partes.map(g => g.titulo).join(' · '));
+ok('el primero tiene dos escenas', desglosar(partes[0].texto).escenas.length === 2);
+ok('el segundo una', desglosar(partes[1].texto).escenas.length === 1);
+ok('el tercero una', desglosar(partes[2].texto).escenas.length === 1);
+ok('no se pierde texto', partes.every(g => g.texto.trim().length > 20));
+
+/* también corta por título con duración */
+const porDuracion = partirGuiones([
+  'VERANO 30"', '', 'INT. CASA - DÍA', '', 'Alguien entra.', '',
+  'VERANO 15"', '', 'EXT. CALLE - DÍA', '', 'Alguien sale.', ''
+].join('\n'));
+ok('corta también por título con duración', porDuracion.length === 2,
+  porDuracion.map(g => g.titulo).join(' · '));
+
+/* un guion solo NO se parte: no inventa cortes */
+const unoSolo = partirGuiones([
+  'INT. COCINA - DÍA', '', 'LUCÍA prepara un mate.', '',
+  'EXT. CALLE - NOCHE', '', 'Camina.', ''
+].join('\n'));
+ok('un guion solo queda entero', unoSolo.length === 1);
+ok('un encabezado de escena NO se confunde con título de guion',
+  partirGuiones('INT. COCINA - DÍA\n\nAlgo pasa.\n\nEXT. CALLE - DÍA\n\nOtra cosa.').length === 1);
+
+console.log('\n--- 19. Y SE CONVIERTEN EN UN SPOT CADA UNO ---');
+DB.ui.proyectoId = pyV.id; DB.ui.versionId = pyV.versiones[0].id;
+pyV.piezas = []; pyV.desglose.escenas = []; DB.ui.pieza = null;
+const guiones = partes.map((g, i) => ({titulo: g.titulo, texto: g.texto,
+  archivo: 'campaña.pdf', escenas: desglosar(g.texto).escenas.length, i}));
+_guionesPendientes = guiones;
+global.document.querySelectorAll = sel => /data-g/.test(sel)
+  ? guiones.map(g => ({checked:true, dataset:{g:String(g.i)}})) : [];
+crearPiezasDeGuiones();
+
+ok('SE CREARON TRES SPOTS', piezasDe(pyV).length === 3,
+  piezasDe(pyV).map(p => nombrePieza(pyV, p.id)).join(' · '));
+ok('con el título del guion', /SPOT 1/i.test(nombrePieza(pyV, piezasDe(pyV)[0].id)));
+ok('entraron las cuatro escenas', pyV.desglose.escenas.length === 4,
+  pyV.desglose.escenas.length + '');
+const porPieza = piezasDe(pyV).map(p => pyV.desglose.escenas.filter(e => e.piezaId === p.id).length);
+ok('repartidas 2 / 1 / 1', porPieza.join(',') === '2,1,1', porPieza.join(','));
+ok('ninguna quedó sin spot', pyV.desglose.escenas.every(e => e.piezaId));
+ok('ninguna escena quedó sin número', pyV.desglose.escenas.every(e => e.numero));
+ok('el guion quedó guardado', /SPOT 1/.test(pyV.desglose.guion));
+
+DB.ui.tab = 'desglose'; DB.ui.pieza = null; render();
+ok('la barra muestra los tres', piezasDe(pyV).every(p =>
+  app.innerHTML.includes(esc(nombrePieza(pyV, p.id)))));
+setPieza(piezasDe(pyV)[0].id);
+ok('parado en el primero se ven sus dos escenas',
+  escenasVisibles(pyV, pyV.desglose).length === 2);
+setPieza(null);
+
+console.log('\n--- 20. LOS SPOTS SE VEN EN EL RESUMEN ---');
+DB.ui.tab = 'resumen'; render();
+const hr = app.innerHTML;
+ok('la lista de proyectos muestra los spots de cada uno', /pypzchip/.test(hr));
+ok('con sus nombres', piezasDe(pyV).some(p => hr.includes(esc(nombrePieza(pyV, p.id)))));
+
 console.log('\n' + (fallos ? '>>> ' + fallos + ' FALLAS' : '>>> TODO OK'));
 process.exitCode = fallos ? 1 : 0;

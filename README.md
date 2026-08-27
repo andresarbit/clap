@@ -462,8 +462,18 @@ suma de los imputados da exactamente el subtotal.
 
 En **Presupuesto** hay una solapa por spot mas la de **General**. Parado en un
 spot se ve lo suyo y lo compartido, y la linea que agregas queda de ese spot.
-En **Desglose** esta el boton **+ Spot** (o la unidad que corresponda), cada
-escena se asigna a la suya, y la barra de arriba filtra.
+En **Desglose** esta el boton **+ Spot** (o la unidad que corresponda) **desde
+el arranque, antes de cargar ningun guion** —que es cuando mas se necesita—,
+cada escena se asigna a la suya, y la barra de arriba filtra.
+
+**Varios guiones de una.** El selector de archivos acepta **varios a la vez**, y
+ademas parte un solo documento que traiga los tres spots adentro, que es como
+suele llegar de la agencia. Corta por los encabezados que se usan de verdad
+(`SPOT 1`, `GUION B`, `COMERCIAL: Verano`, `PIEZA 2`, `VERSION LARGA`) y por un
+titulo en mayusculas con duracion (`VERANO 30"`). Si no encuentra ninguno deja
+el guion entero: no inventa cortes, y un encabezado de escena nunca se confunde
+con un titulo de guion. Antes de crear nada muestra que encontro, con cuantas
+escenas cada uno, y se confirma.
 
 Al pasar el desglose al presupuesto se aplica la regla: **lo que aparece en un
 solo spot es de ese spot; lo que aparece en varios queda compartido y va una
