@@ -822,9 +822,11 @@ function nuevoProyecto(o={}){
     comprobantes:o.comprobantes||[], ocs:o.ocs||[], cajas:o.cajas||[]};
 }
 
-/* Los dos roles que ven todo sin que nadie los invite. */
+/* Los dos roles que ven todo sin que nadie los invite. Mientras el alta espera
+   aprobación el rol declarado no vale: si valiera, alcanzaría con pedir
+   "Productor Ejecutivo" para entrar a todo sin que nadie te apruebe. */
 const VE_TODO = ['admin','ejecutivo'];
-const veTodo = u => !!u && VE_TODO.includes(u.rol);
+const veTodo = u => !!u && !u.pendiente && VE_TODO.includes(u.rol);
 
 /* ¿Este usuario entra a este proyecto? */
 function entraAlProyecto(py, u = getUsuario()){
@@ -978,7 +980,8 @@ const ROLES = [
    puede:['cargar','revisar','aprobar','pagar','equipo']},
 ];
 const ROL = k => ROLES.find(r=>r.k===k) || ROLES[0];
-const puede = (u, accion) => !!u && ROL(u.rol).puede.includes(accion);
+/* Esperando aprobación no se puede hacer nada: el rol todavía no es tuyo. */
+const puede = (u, accion) => !!u && !u.pendiente && ROL(u.rol).puede.includes(accion);
 
 /* Los estados por los que pasa un comprobante. */
 const ESTADOS = [
@@ -992,10 +995,17 @@ const EST = k => ESTADOS.find(e=>e.k===k) || ESTADOS[0];
 /* qué acción lleva de un estado al siguiente */
 const ACCION_ESTADO = {revisar:'revisado', aprobar:'aprobado', pagar:'pagado'};
 
+/* `activo` y `pendiente` son dos cosas distintas y confundirlas fue un bug:
+   activo    = forma parte del equipo (lo contrario es alguien dado de baja)
+   pendiente = está, pero todavía nadie le dio el visto bueno
+   Quien espera aprobación ESTÁ en el equipo y tiene que verse con su nombre;
+   lo que no tiene todavía son permisos. Marcarlo como inactivo lo borraba de
+   la pantalla y el header terminaba mostrando a otra persona.               */
 function nuevoUsuario(o={}){
   return {id:uid('us'), nombre:o.nombre||'', rol:o.rol||'equipo', depto:o.depto||'',
     rubros:o.rubros||[],       /* qué rubros puede cargar; vacío = todos */
-    email:o.email||'', tel:o.tel||'', activo:o.activo!==false};
+    email:o.email||'', tel:o.tel||'', activo:o.activo!==false,
+    authUid:o.authUid||null, pendiente:o.pendiente===true};
 }
 
 function nuevoComprobante(o={}){
@@ -1100,8 +1110,21 @@ function resumenPlata(py, v){
 /* --- sesión simulada ---------------------------------------------------- */
 const getUsuarios = () => { const pr=getPr(); if(!pr) return [];
   pr.usuarios ||= []; return pr.usuarios; };
+/* Con sesión iniciada, quién soy NO se elige: lo dice el mail con el que entré.
+   Antes esto caía en `us.find(u=>u.activo)` cuando no encontraba mi ficha, y
+   devolvía a la primera persona de la lista —normalmente alguien del equipo de
+   ejemplo—. Además de mostrar el nombre equivocado arriba, firmaba con ESE
+   nombre el historial de los comprobantes, que no se puede editar.
+   Si entré y todavía no tengo ficha local, la respuesta correcta es "nadie",
+   no "cualquiera": sin usuario no hay permisos y la pantalla lo dice.        */
 function getUsuario(){
   const us = getUsuarios();
+  if(sbConectado()){
+    const mail = norm(SB.user.email||'');
+    return us.find(u => u.authUid === SB.user.id)
+        || us.find(u => mail && norm(u.email) === mail)
+        || null;
+  }
   return us.find(u=>u.id===DB.ui.usuarioId && u.activo) || us.find(u=>u.activo) || null;
 }
 
@@ -2661,6 +2684,35 @@ function render(){
   if(modal) app.insertAdjacentHTML('beforeend', modal);
 }
 
+/* Quién soy, arriba a la derecha.
+   Con sesión iniciada NO es un selector: es un cartel. Mi identidad la dice el
+   mail con el que entré y no se elige de una lista —entre otras cosas porque
+   cada movimiento de un comprobante queda firmado con ese nombre en un
+   historial que no se puede editar—. El selector queda sólo para cuando nadie
+   inició sesión, que es cuando la app se mira con gente de ejemplo.          */
+function chipIdentidad(pr){
+  if(sbConectado()){
+    const u = getUsuario();
+    const mail = esc(SB.user.email||'');
+    if(!u) return `<div class="pick sesion" title="Entraste como ${mail} pero todavía no completaste tu alta.">
+      <label>Soy</label><span style="padding:0 9px 0 4px">${mail}
+      <span class="muted" style="font-size:11px">· sin alta</span></span></div>`;
+    return `<div class="pick sesion" title="Entraste como ${mail}${u.pendiente?' · esperando aprobación':''}">
+      <label>Soy</label><span style="padding:0 9px 0 4px">${esc(u.nombre)}
+      <span class="muted" style="font-size:11.5px">· ${esc(ROL(u.rol).l)}</span>
+      ${u.pendiente?'<span class="chip d-par" style="margin-left:5px">esperando aprobación</span>':''}
+      </span></div>`;
+  }
+  const us = (pr?.usuarios||[]).filter(x=>x.activo);
+  if(!us.length) return '';
+  return `<div class="pick sesion simulando"
+    title="Nadie inició sesión: esto es gente de ejemplo. Elegí un rol para ver cómo le queda la app. Para entrar de verdad, tocá ☁.">
+    <label>Viendo como</label>
+    <select onchange="setUsuario(this.value)">
+      ${us.map(x=>`<option value="${x.id}" ${x.id===getUsuario()?.id?'selected':''}>${esc(x.nombre)} · ${esc(ROL(x.rol).l)}</option>`).join('')}
+    </select></div>`;
+}
+
 /* ---------- header ---------- */
 function header(pr,py,v){
   const TABS=[['resumen','Resumen'],['guia','Instructivo'],['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
@@ -2682,14 +2734,7 @@ function header(pr,py,v){
           ${py.versiones.map(x=>`<option value="${x.id}" ${x.id===v?.id?'selected':''}>${esc(x.nombre)} · ${esc(x.estado)}</option>`).join('')}
         </select></div>`:''}
       <div class="spacer"></div>
-      ${(pr?.usuarios||[]).length?`<div class="pick sesion${sbConectado()?'':' simulando'}"
-        title="${sbConectado()
-          ? 'Entraste como '+esc(SB.user.email)+'. Podés mirar la app con los ojos de otro rol para probar; no cambia tus permisos reales.'
-          : 'Nadie inició sesión: esto es gente de ejemplo. Elegí un rol para ver cómo le queda la app. Para entrar de verdad, tocá ☁.'}">
-        <label>${sbConectado()?'Soy':'Viendo como'}</label>
-        <select onchange="setUsuario(this.value)">
-          ${pr.usuarios.filter(x=>x.activo).map(x=>`<option value="${x.id}" ${x.id===getUsuario()?.id?'selected':''}>${esc(x.nombre)} · ${esc(ROL(x.rol).l)}</option>`).join('')}
-        </select></div>`:''}
+      ${chipIdentidad(pr)}
       ${DB.ui.tab==='presu'&&v?`<div class="seg">
         <button class="${DB.ui.vista==='interna'?'on':''}" onclick="setVista('interna')">Interna</button>
         <button class="${DB.ui.vista==='cliente'?'on':''}" onclick="setVista('cliente')">Cliente</button>
@@ -5430,7 +5475,11 @@ function normalizarJornada(j){
 }
 
 /* ---------- equipo y sesión ---------- */
-function setUsuario(id){ DB.ui.usuarioId = id; DB.ui.subGasto='bandeja';
+/* Cambiar de identidad sólo tiene sentido sin sesión, mirando el ejemplo. Con
+   sesión iniciada soy quien entró y nadie más. */
+function setUsuario(id){
+  if(sbConectado()){ toast('Con sesión iniciada sos vos: no se puede cambiar.'); return; }
+  DB.ui.usuarioId = id; DB.ui.subGasto='bandeja';
   const u = getUsuarios().find(x=>x.id===id);
   toast(u ? `Ahora sos ${u.nombre} · ${ROL(u.rol).l}` : ''); R(); }
 
@@ -6648,9 +6697,13 @@ function espejarFichaLocal(ficha, extra = {}){
   let u = pr.usuarios.find(x=>x.authUid === ficha.auth_uid)
        || pr.usuarios.find(x=>norm(x.email)===norm(ficha.email||''));
   if(!u){ u = nuevoUsuario(); pr.usuarios.push(u); }
+  /* activo:true siempre. Quien espera aprobación es parte del equipo y tiene
+     que verse con su nombre; lo que le falta son permisos, y eso lo dice
+     `pendiente`. Ponerlo inactivo lo sacaba de la lista y el header pasaba a
+     mostrar a otro. */
   Object.assign(u, {authUid: ficha.auth_uid, nombre: ficha.nombre, rol: ficha.rol,
     depto: ficha.area ? areaLbl(ficha.area) : u.depto, email: ficha.email,
-    tel: ficha.tel || u.tel, activo: !ficha.pendiente});
+    tel: ficha.tel || u.tel, activo: true, pendiente: !!ficha.pendiente});
   DB.ui.usuarioId = u.id;
   alCatalogo(u, extra);
   guardar();
@@ -6658,6 +6711,14 @@ function espejarFichaLocal(ficha, extra = {}){
 
 /* El nombre de mi productora, para que el menú de arriba no diga
    "Mi productora". Con RLS sólo veo la mía, así que esto no filtra nada. */
+/* Ojo con el orden: el espejado NO puede depender de que esto conteste.
+   Mientras el alta espera aprobación la base no me deja leer la fila de mi
+   productora (`productora_mia` pasa por `mis_productoras()`, que exige
+   `activo AND NOT pendiente`), pero sí mi propia ficha. Cuando esto estaba
+   atado, el que esperaba aprobación no se espejaba nunca: no aparecía en el
+   equipo, no entraba al catálogo, y el header le mostraba a otra persona.
+   Así que primero me espejo con lo que sé, y el nombre real de la productora
+   se corrige después, si llega.                                             */
 async function traerMiProductora(){
   const id = _miFicha && _miFicha.productora_id;
   if(!id) return null;
@@ -6665,7 +6726,7 @@ async function traerMiProductora(){
     const r = await sbFetch(`/rest/v1/productora?select=id,nombre&id=eq.${id}&limit=1`);
     _miProductora = (r && r[0]) || null;
   }catch(e){ _miProductora = null; }
-  if(_miProductora) espejarFichaLocal(_miFicha);
+  espejarFichaLocal(_miFicha);
   return _miProductora;
 }
 

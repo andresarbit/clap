@@ -397,6 +397,38 @@ declararse admin ni darse de alta por otro. El test lo prueba intentandolo.
 
 Vive en `backend/alta-propia.sql`, que se corre despues de `esquema.sql`.
 
+### Quien soy yo
+
+Con sesion iniciada, **la identidad no se elige**: la dice el mail con el que
+entraste. El cartel de arriba a la derecha es un cartel, no un selector. El
+selector aparece solo cuando **nadie** inicio sesion, que es cuando la app se
+mira con la gente de ejemplo, y ahi dice **"Viendo como"** en vez de "Soy".
+
+Importa mas de lo que parece: cada movimiento de un comprobante queda firmado
+con el nombre del usuario en un historial que no se puede editar ni borrar. Si
+la pantalla puede decir que sos otro, la firma tambien.
+
+Tres reglas que sostienen esto:
+
+- `getUsuario()` con sesion busca **solo** por `auth_uid` (y por mail como
+  respaldo). Si no encuentra mi ficha devuelve `null` —"nadie"—, nunca la
+  primera de la lista. Sin usuario no hay permisos y el cartel dice *sin alta*.
+- **`activo` y `pendiente` son cosas distintas.** `activo` es formar parte del
+  equipo; `pendiente` es estar esperando el visto bueno. El que espera **esta**
+  en el equipo y se ve con su nombre: lo que no tiene son permisos. `puede()` y
+  `veTodo()` devuelven `false` mientras `pendiente` este puesto, asi que pedir
+  "Productor Ejecutivo" no abre nada hasta que alguien apruebe.
+- **El espejado local no depende de poder leer la productora.** Mientras el
+  alta espera aprobacion la base no deja leer esa fila (`productora_mia` pasa
+  por `mis_productoras()`, que exige `activo AND NOT pendiente`), pero si deja
+  leer la ficha propia (`usuario_ver_mia`). Primero me espejo con lo que se, y
+  el nombre real de la productora se corrige despues, cuando llega.
+
+> Estas tres se rompieron juntas una vez y el sintoma fue el mismo: alguien
+> entraba con su mail y la pantalla le mostraba el nombre de otra persona,
+> ademas de no aparecer en el catalogo. `test/identidad.js` reproduce ese caso
+> exacto de punta a punta.
+
 ## Arquitectura
 
 Todo en `clap.html`, en cuatro bloques marcados en el código:
@@ -452,6 +484,7 @@ node test/run.js test/resumen.js   # portada, pendientes y datos de ejemplo
 node test/run.js test/guia.js      # instructivo: contenido, navegacion y que no mienta
 node test/run.js test/backend.js   # conexion, login, renovacion de sesion y diagnostico
 node test/run.js test/alta.js      # alta propia, el candado y la cola de aprobacion
+node test/run.js test/identidad.js # quien soy al entrar con mi mail, con el alta pendiente
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
