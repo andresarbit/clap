@@ -152,6 +152,28 @@ const navegadorNuevo = () => { DB = dbVacia(); sembrar(); _miFicha=null; _miProd
   ok('EL PROYECTO SUBIO A LA BASE', TB.proyecto.some(p => p.nombre === 'Spot Verano'),
     TB.proyecto.map(p=>p.nombre).join(' · '));
 
+  /* --- 1b. el boton se ve en TODAS las solapas ---------------------------
+     Estaba metido adentro de la cabecera del Presupuesto, y la app abre en
+     Resumen: no se veia nunca. Ahora vive en el encabezado, al lado del
+     selector de Proyecto, que esta siempre.                               */
+  console.log('\n--- 1b. EL BOTON DE INVITAR SE VE SIEMPRE ---');
+  DB.ui.proyectoId = py.id;
+  DB.ui.versionId = py.versiones[0].id;
+  for(const t of ['resumen','presu','desglose','callsheet','rodaje','gastos','equipo','catalogo','config']){
+    DB.ui.tab = t; render();
+    ok('está en la solapa ' + t, /invitarAlProyecto\(\)/.test(app.innerHTML));
+  }
+  DB.ui.tab = 'resumen'; render();
+  ok('aparece una sola vez, no repetido',
+    (app.innerHTML.match(/invitarAlProyecto\(\)/g)||[]).length === 1,
+    (app.innerHTML.match(/invitarAlProyecto\(\)/g)||[]).length + ' veces');
+  ok('dice Invitar con todas las letras', /✉ Invitar/.test(app.innerHTML));
+  /* sin proyecto no tiene sentido ofrecerlo */
+  const guardados = getPr().proyectos; getPr().proyectos = [];
+  DB.ui.proyectoId = null; render();
+  ok('sin proyecto no aparece', !/invitarAlProyecto\(\)/.test(app.innerHTML));
+  getPr().proyectos = guardados; DB.ui.proyectoId = py.id; render();
+
   /* --- 2. genera el link ------------------------------------------------- */
   console.log('\n--- 2. EL LINK Y EL MENSAJE ---');
   DB.ui.proyectoId = py.id;

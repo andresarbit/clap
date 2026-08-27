@@ -340,6 +340,10 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .pendfila:hover .pendir{color:var(--ac)}
 
 /* equipo, gastos y circuito de aprobación */
+/* Invitar: al lado del proyecto y en TODAS las solapas. Estaba sólo adentro
+   del Presupuesto y la app abre en Resumen, asi que no se veia nunca. */
+.invbtn{border-color:rgba(224,169,46,.5);color:var(--ac);font-weight:700}
+.invbtn:hover{background:rgba(224,169,46,.14);border-color:var(--ac);color:var(--ac2)}
 .pick.sesion{border-color:rgba(224,169,46,.45);background:rgba(224,169,46,.07)}
 .pick.sesion label{color:var(--ac)}
 .pick.sesion select{background:transparent}
@@ -3079,6 +3083,8 @@ function header(pr,py,v){
           ${mios.map(p=>`<option value="${p.id}" ${p.id===py?.id?'selected':''}>${esc(p.nombre)}</option>`).join('')}
           ${!mios.length?`<option>${pr.proyectos.length?'— sin invitaciones —':'— ninguno —'}</option>`:''}
         </select></div>`; })():''}
+      ${py?`<button class="btn invbtn" onclick="invitarAlProyecto()"
+        title="Mandar un link para sumar a alguien a «${esc(py.nombre)}»">✉ Invitar</button>`:''}
       ${py?`<div class="pick"><label>Versión</label>
         <select onchange="selVersion(this.value)">
           ${py.versiones.map(x=>`<option value="${x.id}" ${x.id===v?.id?'selected':''}>${esc(x.nombre)} · ${esc(x.estado)}</option>`).join('')}
@@ -3173,7 +3179,6 @@ function cabeceraProyecto(pr,py,v,cli){
     </div>
     <div class="noprint" style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start">
       <button class="btn" onclick="editProyecto('${py.id}')">Proyecto</button>
-      <button class="btn" onclick="invitarAlProyecto()" title="Mandar un link para sumar a alguien a este proyecto">✉ Invitar</button>
       <button class="btn" onclick="editVersion()">Versión</button>
       <button class="btn" onclick="duplicarVersion()">Duplicar v.</button>
       <button class="btn" onclick="window.print()">PDF</button>
