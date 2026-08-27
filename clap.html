@@ -6709,13 +6709,103 @@ function menuNube(){
                        <button class="btn pri" onclick="sbAccion('entrar')">Entrar</button>` : ''}
       ${cfg ? `<button class="btn" onclick="copiarLinkEquipo()">Copiar link para el equipo</button>` : ''}
       ${con ? `<button class="btn" onclick="cerrar();editarMiFicha()">Mis datos</button>
-               <button class="btn" onclick="menuPendientes()">Altas pendientes</button>
+               <button class="btn pri" onclick="menuEquipoAccesos()">Quién entra</button>
                <button class="btn" onclick="sbCorrerDiagnostico()">Revisar estado</button>
                <button class="btn" onclick="sbCerrarSesion()">Cerrar sesión</button>` : ''}
     </div>
   </div></div>`);
   if(cfg) setTimeout(sbCorrerDiagnostico, 60);
   if(con) setTimeout(()=>{ if(!modal) return; mostrarMiFicha(); }, 400);
+}
+
+/* ---------- quién entra ----------
+   Una sola pantalla que contesta en castellano las preguntas que hasta ahora
+   sólo se podían contestar mirando la base: quién está, con qué rol, quién ve
+   los datos y quién está esperando. Y se aprueba o se cambia el rol desde acá.
+   Todo lo que se pueda resolver acá es SQL que nadie tiene que pegar.        */
+async function menuEquipoAccesos(){
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:720px">
+    <h3>Quién entra</h3>
+    <div class="mbody" id="equipocont"><div class="muted" style="font-size:12px">Buscando…</div></div>
+    <div class="mfoot"><button class="btn" onclick="menuNube()">Volver</button>
+      <div style="flex:1"></div><button class="btn" onclick="cerrar()">Cerrar</button></div>
+  </div></div>`);
+  await pintarEquipoAccesos();
+}
+
+async function pintarEquipoAccesos(){
+  const cont = document.getElementById('equipocont'); if(!cont) return;
+  let gente = [], prods = [];
+  try{
+    gente = await sbFetch('/rest/v1/usuario?select=*&order=alta_el') || [];
+    prods = await sbFetch('/rest/v1/productora?select=id,nombre') || [];
+  }catch(e){
+    cont.innerHTML = `<div class="avisomodo turno-mal"><b>No pude leer el equipo.</b> ${esc(e.message)}</div>`;
+    return;
+  }
+  const nomProd = id => (prods.find(p=>p.id===id)||{}).nombre || 'tu productora';
+  const yo = gente.find(g => g.auth_uid === (SB.user||{}).id);
+
+  if(!gente.length){
+    cont.innerHTML = `<div class="sicabox">Todavía no hay nadie dado de alta.</div>`; return;
+  }
+  /* ¿hay alguien que pueda aprobar? si no, decirlo, que es el pozo sin salida */
+  const puedenAprobar = gente.filter(g => g.activo && !g.pendiente && VE_TODO.includes(g.rol));
+  const esperando = gente.filter(g => g.pendiente);
+  const soyMandamas = yo && yo.activo && !yo.pendiente && VE_TODO.includes(yo.rol);
+
+  const fila = g => {
+    const estado = g.pendiente ? `<span class="chip d-par">esperando aprobación</span>`
+      : !g.activo ? `<span class="chip d-no">dado de baja</span>`
+      : `<span class="chip d-si">entra y ve todo</span>`;
+    const yoMismo = yo && g.id === yo.id;
+    return `<tr>
+      <td><b>${esc(g.nombre||'sin nombre')}</b>${yoMismo?' <span class="muted">(vos)</span>':''}
+        <div class="muted" style="font-size:11px">${esc(g.email||'')}</div></td>
+      <td class="muted">${esc(nomProd(g.productora_id))}</td>
+      <td>${soyMandamas && !yoMismo
+        ? `<select onchange="cambiarRolDe('${g.id}',this.value)" style="font-size:12px">
+             ${ROLES.map(r=>`<option value="${r.k}" ${r.k===g.rol?'selected':''}>${esc(r.l)}</option>`).join('')}
+           </select>`
+        : esc(ROL(g.rol).l)}</td>
+      <td>${estado}</td>
+      <td style="text-align:right;white-space:nowrap">
+        ${g.pendiente && soyMandamas
+          ? `<button class="btn sm pri" onclick="aprobarA('${g.id}')">Aprobar</button>` : ''}
+      </td></tr>`;
+  };
+
+  cont.innerHTML = `
+    ${!puedenAprobar.length ? `<div class="avisomodo turno-mal" style="margin-bottom:12px">
+      <b>Nadie puede aprobar a nadie.</b> No hay ningún administrador activo, así que
+      los que están esperando no tienen a quién esperar. Se destraba corriendo
+      <code>backend/destrabar.sql</code> una sola vez en el SQL Editor de Supabase.
+    </div>` : ''}
+    ${esperando.length && !soyMandamas ? `<div class="sicabox" style="margin-bottom:12px">
+      Hay ${esperando.length} ${esperando.length===1?'persona esperando':'personas esperando'},
+      pero para aprobar hace falta ser Administración o Productor Ejecutivo.</div>` : ''}
+    <div class="scrollx"><table class="tbl">
+      <thead><tr><th>Persona</th><th>Productora</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${gente.map(fila).join('')}</tbody></table></div>
+    <div class="muted" style="font-size:11.5px;line-height:1.6;margin-top:12px">
+      <b>Entra y ve todo</b> es Administración o Productor Ejecutivo. Producción y Equipo
+      figuran en la productora pero sólo ven los proyectos a los que se los invita,
+      desde la solapa <b>Equipo</b>.
+    </div>`;
+}
+
+async function aprobarA(id){
+  try{ await sbAprobar(id); toast('Aprobado'); }
+  catch(e){ toast('No pude aprobarlo: ' + e.message); }
+  await pintarEquipoAccesos();
+}
+async function cambiarRolDe(id, rol){
+  try{
+    await sbFetch(`/rest/v1/usuario?id=eq.${id}`, {method:'PATCH',
+      headers:{'Prefer':'return=representation'}, body: JSON.stringify({rol})});
+    toast('Rol cambiado a ' + ROL(rol).l);
+  }catch(e){ toast('No pude cambiarle el rol: ' + e.message); }
+  await pintarEquipoAccesos();
 }
 
 /* Debajo del diagnóstico, en qué situación estoy: alta hecha, esperando, o falta. */

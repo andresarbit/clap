@@ -496,6 +496,7 @@ node test/run.js test/alta.js      # alta propia, el candado y la cola de aproba
 node test/run.js test/identidad.js # quien soy al entrar con mi mail, con el alta pendiente
 node test/run.js test/tipocambio.js # TC editable arriba, recalculo y sellado de fecha
 node test/run.js test/catalogo-compartido.js # el catalogo es UNO para el equipo, contra la base
+node test/run.js test/quien-entra.js  # aprobar y cambiar roles sin tocar la base
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
