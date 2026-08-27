@@ -354,6 +354,19 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 /* Sin login no hay identidad real: se ve gente de ejemplo. Que se note. */
 .pick.sesion.simulando{border-color:rgba(155,161,172,.4);background:rgba(155,161,172,.07);border-style:dashed}
 .pick.sesion.simulando label{color:var(--tx3)}
+
+/* ---------- tipo de cambio editable, arriba del presupuesto ---------- */
+.tcbox{display:flex;align-items:center;justify-content:flex-end;gap:4px;
+  font-family:var(--mono);margin-top:3px;flex-wrap:wrap}
+.tcbox>span{white-space:nowrap}
+.tcbox select,.tcbox input{background:transparent;border:1px solid transparent;border-radius:5px;
+  color:var(--tx2);font-family:var(--mono);font-size:12px;padding:2px 5px;width:auto;text-align:right}
+.tcbox select:hover,.tcbox input:hover{border-color:var(--line);background:var(--bg3)}
+.tcbox select:focus,.tcbox input:focus{border-color:var(--ac);background:var(--bg4);color:var(--tx)}
+.tcbox .tcval{color:var(--ac);font-weight:700;width:7ch;font-size:13px}
+.tcbox .tcsel{padding-right:16px;background-position:calc(100% - 7px) 11px,calc(100% - 4px) 11px}
+.tcbox .tcfec{color:var(--tx3);font-size:11.5px}
+.tcbox .tcfec::-webkit-calendar-picker-indicator{filter:invert(.55);cursor:pointer}
 .est{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.03em;
   padding:2px 7px;border-radius:20px;border:1px solid;white-space:nowrap}
 .estdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:baseline}
@@ -422,6 +435,11 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
 
 /* ---------- celular ---------- */
 @media (max-width:860px){
+  .tcbox{justify-content:flex-start;gap:6px}
+  .tcbox select,.tcbox input{border-color:var(--line);background:var(--bg3);
+    padding:7px 8px;font-size:14px}
+  .tcbox .tcval{width:8ch;font-size:15px}
+  .tcbox .tcsel{background-position:calc(100% - 9px) 16px,calc(100% - 5px) 16px;padding-right:20px}
   .wrap{padding:10px}
   .lh{display:none}
   .ln{grid-template-columns:1fr 1fr;gap:5px;padding:9px 10px;border-bottom:1px solid var(--line);
@@ -518,6 +536,10 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
   .csfoot{border-top:1px solid #999;padding:6px 0 0}
   .scrollx{overflow:visible}
   textarea{border:none;color:#000;resize:none}
+  .tcbox select,.tcbox input{border:none!important;background:none!important;color:#000!important;
+    padding:0;font-size:11px;-webkit-appearance:none;appearance:none;background-image:none!important}
+  .tcbox .tcval{color:#000!important}
+  .tcbox .tcfec::-webkit-calendar-picker-indicator{display:none}
 }
 </style>
 </head>
@@ -2778,6 +2800,34 @@ function vistaPresupuesto(pr,py,v){
   ${cli?'':panelExposicion(v)}`;
 }
 
+/* El tipo de cambio, editable ahí mismo.
+   Estaba escondido adentro del modal de Versión y es el número que más se
+   toca: en una semana el dólar se movió tres veces y hay que reexpresar el
+   presupuesto entero. Ahora se escribe arriba y todo se recalcula solo.
+   La fecha se sella sola al cambiar el valor —un TC nuevo es de hoy— pero
+   queda a la vista y se puede corregir, que es lo que permite cargar la
+   cotización de un día pasado. Esa fecha es la que después sostiene el
+   reclamo por diferencia de cambio, así que no puede quedar mintiendo.     */
+const COTIZACIONES = ['Oficial','MEP','CCL','Blue','Tarjeta','Pactado con cliente'];
+
+function tcBox(v, cli){
+  if(cli) return `<div style="font-family:var(--mono);margin-top:3px">
+    Base ${v.monedaBase} · TC ${esc(v.tcNombre)} ${fmtC(v.tc)}
+    <span style="opacity:.6">(${esc(v.tcFecha)})</span></div>`;
+  return `<div class="tcbox">
+    <span>Base ${v.monedaBase} ·</span>
+    <select class="tcsel" title="Qué cotización estás usando"
+      onchange="upTC('tcNombre',this.value)">
+      ${COTIZACIONES.map(c=>`<option ${c===v.tcNombre?'selected':''}>${c}</option>`).join('')}
+    </select>
+    <input class="tcval" type="number" step="any" min="0" value="${n(v.tc)}"
+      title="ARS por 1 USD — escribilo acá y se recalcula todo"
+      onchange="upTC('tc',this.value)">
+    <input class="tcfec" type="date" value="${esc(v.tcFecha)}"
+      title="Fecha de la cotización" onchange="upTC('tcFecha',this.value)">
+  </div>`;
+}
+
 function cabeceraProyecto(pr,py,v,cli){
   return `<div class="card"><div class="pad" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">
     <div style="flex:1;min-width:190px">
@@ -2791,8 +2841,7 @@ function cabeceraProyecto(pr,py,v,cli){
     </div>
     <div style="text-align:right;font-size:12px" class="muted">
       <div><b style="color:var(--tx)">${esc(v.nombre)}</b> · ${esc(v.estado)}</div>
-      <div style="font-family:var(--mono);margin-top:3px">
-        Base ${v.monedaBase} · TC ${esc(v.tcNombre)} ${fmtC(v.tc)} <span style="opacity:.6">(${esc(v.tcFecha)})</span></div>
+      ${tcBox(v, cli)}
     </div>
     <div class="noprint" style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start">
       <button class="btn" onclick="editProyecto('${py.id}')">Proyecto</button>
@@ -4938,6 +4987,19 @@ function upLinea(rid,lid,campo,val){
   const l = getV().rubros.find(r=>r.id===rid).lineas.find(x=>x.id===lid);
   l[campo] = ['cantidad','dias','valorUnit'].includes(campo) ? n(val) : val; R(); }
 function upCapa(k,val){ getV().capas[k]=n(val); R(); }
+
+/* Cambiar el TC reexpresa todas las líneas en USD, así que un cero silencioso
+   dejaría el presupuesto en nada sin avisar. Se rechaza y se avisa. */
+function upTC(campo, val){
+  const v = getV(); if(!v) return;
+  if(campo === 'tc'){
+    const nuevo = n(val);
+    if(!(nuevo > 0)){ toast('El tipo de cambio tiene que ser mayor a cero'); R(); return; }
+    if(nuevo !== n(v.tc)) v.tcFecha = hoy();   /* un TC nuevo es de hoy */
+    v.tc = nuevo;
+  } else v[campo] = val;
+  R();
+}
 
 function addRubro(){
   const nom = prompt('Nombre del rubro nuevo:'); if(!nom) return;

@@ -28,7 +28,11 @@ Los datos se guardan en el navegador (`localStorage`).
   catálogo de ~90 funciones para cargar líneas rápido.
 - **Multi-moneda**: cada línea en ARS o USD, con tipo de cambio de referencia
   (Oficial / MEP / CCL / Blue / pactado) y **fecha de cotización** — es lo que después
-  permite reclamar el reajuste por diferencia de cambio.
+  permite reclamar el reajuste por diferencia de cambio. **El TC se escribe arriba
+  del presupuesto, a mano**, y todo se recalcula solo: es el número que más se toca.
+  Al cambiar el valor la fecha se sella con el día de hoy (y se puede corregir a mano,
+  para cargar la cotización de un día pasado). Un cero o un negativo se rechazan:
+  dejarían todas las líneas en USD valiendo nada, sin avisar.
 - **Capas de cálculo**: subtotal → fee (sólo sobre los rubros marcados) → contingencia
   → IIBB → IVA → total. Elenco y seguros van sin fee por defecto.
 - **Versionado**: duplicar una versión crea una copia independiente. v1 nunca se pisa.
@@ -485,6 +489,7 @@ node test/run.js test/guia.js      # instructivo: contenido, navegacion y que no
 node test/run.js test/backend.js   # conexion, login, renovacion de sesion y diagnostico
 node test/run.js test/alta.js      # alta propia, el candado y la cola de aprobacion
 node test/run.js test/identidad.js # quien soy al entrar con mi mail, con el alta pendiente
+node test/run.js test/tipocambio.js # TC editable arriba, recalculo y sellado de fecha
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
