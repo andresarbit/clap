@@ -406,6 +406,51 @@ declararse admin ni darse de alta por otro. El test lo prueba intentandolo.
 
 Vive en `backend/alta-propia.sql`, que se corre despues de `esquema.sql`.
 
+### Datos centralizados
+
+Lo que tiene que ser de todos vive en la base, no en el navegador de cada uno:
+
+| Qué | Sube cuando | Baja cuando |
+|---|---|---|
+| **Productoras** | se crean o se editan | al entrar |
+| **Proyectos** | se guardan | al entrar |
+| **Catálogo** (personas, proveedores, equipos) | se guardan, y con ⟳ Sincronizar | al entrar |
+| **Usuarios y roles** | al darse de alta | al entrar |
+
+Los ids son UUID de los dos lados, asi que la fila local y la del servidor son
+la misma y sincronizar nunca duplica. **☁ → Sincronizar todo** empuja lo que
+este navegador tenga y el servidor no: es lo que rescata el trabajo hecho antes
+de conectarse.
+
+Una persona puede figurar en **varias productoras** —un tecnico trabaja para
+muchas— y su rol puede ser distinto en cada una. El menu de arriba las agrupa
+en *mis productoras*, *en la web* (elegir una te suma) y *solo en esta
+computadora*.
+
+### Invitar a un proyecto
+
+Boton **✉ Invitar** al lado de *Proyecto*. Se elige el rol y sale un mensaje
+corto para mandar por WhatsApp o mail:
+
+```
+Te invitaron a participar del proyecto: "Spot Verano" en la productora: "Neto Films"
+https://…/clap.html?inv=…
+```
+
+El que abre el link ve **primero** una pantalla que dice de que lo invitaron
+—proyecto, productora, quien lo invito y con que rol— antes de aceptar nada. Si
+no tiene cuenta, la crea ahi mismo. Al aceptar queda anotado en el proyecto, la
+productora le aparece en el menu de arriba y el proyecto en el de proyectos.
+
+> La invitacion viaja dentro del link, no en una tabla nueva: no hay SQL que
+> correr y el que invita no necesita saber de antemano el mail del invitado.
+> Cualquiera con el link puede usarlo, asi que se manda por privado.
+
+**Ojo con el orden**: anotar a la persona en el proyecto va ANTES de
+sincronizar. Con rol Produccion o Equipo el acceso a la productora sale de
+estar anotado en alguno de sus proyectos (`productoras_con_acceso`), asi que
+sincronizar primero baja una lista vacia y el proyecto no aparece.
+
 ### Quien soy yo
 
 Con sesion iniciada, **la identidad no se elige**: la dice el mail con el que
@@ -497,6 +542,9 @@ node test/run.js test/identidad.js # quien soy al entrar con mi mail, con el alt
 node test/run.js test/tipocambio.js # TC editable arriba, recalculo y sellado de fecha
 node test/run.js test/catalogo-compartido.js # el catalogo es UNO para el equipo, contra la base
 node test/run.js test/quien-entra.js  # aprobar y cambiar roles sin tocar la base
+node test/run.js test/modo-prueba.js  # todos entran con permisos, para probar
+node test/run.js test/menu-productoras.js # el menu de productoras sale de la base
+node test/run.js test/invitar-link.js # invitar por link: mensaje, alta y aceptacion
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
