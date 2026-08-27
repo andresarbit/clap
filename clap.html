@@ -243,7 +243,23 @@ button.eie:hover{filter:brightness(1.35)}
 .cshoras span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700}
 .csblock{border-top:1px solid var(--line)}
 .csblock>h4{padding:8px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.1em;
-  color:var(--ac);background:var(--bg3);font-weight:800}
+  color:var(--ac);background:var(--bg3);font-weight:800;
+  display:flex;align-items:center;gap:8px}
+
+/* ---------- la cartera de proyectos, en el Resumen ---------- */
+.pylista{display:flex;flex-direction:column}
+.pyfila{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+  padding:11px 16px;border-bottom:1px solid rgba(44,47,54,.6);color:var(--tx)}
+.pyfila:last-child{border-bottom:none}
+.pyfila:hover{background:var(--bg3)}
+.pyfila.on{background:rgba(224,169,46,.07);box-shadow:inset 3px 0 0 var(--ac)}
+.pynom{flex:1;min-width:0;font-size:14px;font-weight:700;line-height:1.3}
+.pysub{display:block;font-size:11.5px;font-weight:400;color:var(--tx3);margin-top:2px}
+.pyaqui{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--ac);background:rgba(224,169,46,.15);padding:2px 6px;border-radius:4px;
+  margin-left:6px;vertical-align:middle}
+.pyest{font-size:11.5px;color:var(--tx3);white-space:nowrap;flex:none}
+.pytot{font:700 14px var(--mono);color:var(--tx);white-space:nowrap;flex:none;min-width:110px;text-align:right}
 .cst input{padding:3px 6px;font-size:12px;background:transparent;border-color:transparent}
 .cst input:hover{border-color:var(--line)}
 .cst input:focus{background:var(--bg4);border-color:var(--ac)}
@@ -481,6 +497,11 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
   .mod select{background-position:calc(100% - 13px) 19px,calc(100% - 8px) 19px}
   .mfoot .btn{padding:10px 14px}
   .tcbox{justify-content:flex-start;gap:6px}
+  .pyfila{flex-wrap:wrap;gap:4px 10px;padding:12px 12px}
+  .pynom{flex:1 1 100%}
+  .pyest{flex:1}
+  .pytot{min-width:0;font-size:15px}
+  .csblock>h4{flex-wrap:wrap;padding:10px 12px}
   .tcpanel{gap:10px;padding:11px 12px}
   .tcp-tit{width:100%}
   input.tcp-val{font-size:22px;padding:9px 10px}
@@ -591,6 +612,10 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
     padding:0;font-size:11px;-webkit-appearance:none;appearance:none;background-image:none!important}
   .tcbox .tcval{color:#000!important}
   .tcbox .tcfec::-webkit-calendar-picker-indicator{display:none}
+  .pyfila{border-bottom:1px solid #ddd}
+  .pyfila.on{background:none;box-shadow:none}
+  .pysub,.pyest{color:#555}
+  .pyaqui{color:#000;background:#eee}
   .tcpanel{background:none;border-left:2px solid #999;break-inside:avoid}
   .tcp-tit{color:#000}
   input.tcp-val,select.tcp-sel,input.tcp-fec{border:none!important;background:none!important;color:#000!important;
@@ -3881,6 +3906,44 @@ function tcPanel(v, R){
   </div>`;
 }
 
+/* Los proyectos de la productora, arriba de todo en el Resumen.
+   Antes crear un proyecto sólo se podía desde la solapa Productoras, que es el
+   último lugar donde alguien lo busca: el que abre la app y quiere arrancar
+   algo nuevo se quedaba sin saber por dónde. Acá se ve la cartera entera —cada
+   uno con su cliente, sus jornadas, el estado y cuánto da— se salta de uno a
+   otro con un toque, y el botón de crear está donde se lo necesita.
+
+   Se listan sólo los proyectos a los que entro: `proyectosDe` respeta las
+   invitaciones, así que un técnico no ve la cartera completa de la productora. */
+function listaProyectosHTML(pr, actual){
+  const mios = proyectosDe(pr);
+  const nuevo = `<span class="spacer" style="flex:1"></span>
+    <button class="btn sm pri" onclick="editProyecto()">+ Nuevo proyecto</button>`;
+  const fila = p => {
+    const v = p.versiones && p.versiones[p.versiones.length-1];
+    const R = v ? calcular(v) : null;
+    const esActual = actual && p.id === actual.id;
+    const sub = [p.cliente, p.agencia, p.jornadas ? p.jornadas + (p.jornadas==1?' jornada':' jornadas') : '']
+      .filter(Boolean).join(' · ');
+    return `<button class="pyfila${esActual?' on':''}" onclick="selProyecto('${p.id}')">
+      <span class="pynom">${esc(p.nombre)}
+        ${esActual?'<span class="pyaqui">estás acá</span>':''}
+        <span class="pysub">${esc(sub||'sin datos de cliente')}</span></span>
+      <span class="pyest">${v?esc(v.nombre)+' · '+esc(v.estado):'sin presupuesto'}</span>
+      <span class="pytot">${R?fmt(R.total, v.monedaBase):'—'}</span>
+    </button>`;
+  };
+  const cuerpo = mios.length
+    ? `<div class="pylista">${mios.map(fila).join('')}</div>`
+    : `<div class="pad muted" style="font-size:12.5px">
+        ${(pr.proyectos||[]).length
+          ? 'Esta productora tiene proyectos, pero todavía no te invitaron a ninguno.'
+          : 'Todavía no hay ningún proyecto. Creá el primero con el botón de arriba.'}</div>`;
+  return `<div class="csblock"><h4>Proyectos de ${esc(pr.nombre)}
+    <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400;margin-left:6px">
+      ${mios.length || ''}</span>${nuevo}</h4>${cuerpo}</div>`;
+}
+
 function vistaResumen(pr,py,v){
   const u = getUsuario();
   const P = resumenPlata(py, v);
@@ -3948,6 +4011,8 @@ function vistaResumen(pr,py,v){
       ${dato(fmt(P.pagado,P.base), 'Pagado', 'var(--ok)')}
       ${dato(fmt(P.disponible,P.base), 'Disponible', P.disponible<0?'var(--bad)':'var(--ac)')}
     </div>
+
+    ${listaProyectosHTML(pr, py)}
 
     ${pend.length ? bloque('Esperan algo', `<div class="pad" style="display:flex;flex-direction:column;gap:1px">
       ${pend.map(x=>`<button class="pendfila ${x.urg?'urg':''}" onclick="${x.ir}">

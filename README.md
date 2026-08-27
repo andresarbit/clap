@@ -427,6 +427,19 @@ muchas— y su rol puede ser distinto en cada una. El menu de arriba las agrupa
 en *mis productoras*, *en la web* (elegir una te suma) y *solo en esta
 computadora*.
 
+### La cartera de proyectos
+
+Arriba del Resumen esta la lista de los proyectos de la productora: cada uno con
+su cliente, sus jornadas, el estado de la ultima version y cuanto da. Se salta de
+uno a otro con un toque y el que estas mirando queda marcado.
+
+**El boton `+ Nuevo proyecto` esta ahi**, sobre la lista. Antes crear un proyecto
+solo se podia desde la solapa Productoras, que es el ultimo lugar donde alguien
+lo busca.
+
+Se listan solo los proyectos a los que entras: `proyectosDe` respeta las
+invitaciones, asi que un tecnico no ve la cartera completa de la productora.
+
 ### Invitar a un proyecto
 
 Boton **✉ Invitar** al lado de *Proyecto*. Se elige el rol y sale un mensaje

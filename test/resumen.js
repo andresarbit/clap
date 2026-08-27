@@ -96,5 +96,53 @@ ok('render de todas las solapas', (() => {
   return errs.length ? errs.join(' | ') : true;
 })() === true);
 
+/* --- la cartera de proyectos, y desde donde se crea uno -------------------
+   Crear un proyecto sólo se podía desde la solapa Productoras, que es el
+   último lugar donde alguien lo busca. Ahora la lista y el botón están en el
+   Resumen, que es lo primero que se abre.                                   */
+console.log('\n--- 6. LOS PROYECTOS, EN EL RESUMEN ---');
+DB.ui.tab = 'resumen'; render();
+let h = app.innerHTML;
+ok('hay un bloque con los proyectos de la productora',
+  new RegExp('Proyectos de ' + pr.nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(h));
+ok('BOTON DE PROYECTO NUEVO', /editProyecto\(\)/.test(h));
+ok('dice "Nuevo proyecto"', /\+ Nuevo proyecto/.test(h));
+ok('lista el proyecto que hay', h.includes(esc(py.nombre)), py.nombre);
+ok('marca en cuál estoy parado', /pyaqui/.test(h) && /estás acá/.test(h));
+ok('muestra el cliente', h.includes(py.cliente));
+ok('y el total de la última versión', /class="pytot"/.test(h));
+ok('se puede saltar a otro con un toque', /selProyecto\('/.test(h));
+ok('el botón está ARRIBA de la lista',
+  h.indexOf('+ Nuevo proyecto') < h.indexOf('class="pylista"'));
+
+/* con varios proyectos, están todos y sólo uno queda marcado */
+const otro = nuevoProyecto({nombre:'Corto de prueba', cliente:'Cliente B', jornadas:2});
+pr.proyectos.push(otro); render(); h = app.innerHTML;
+ok('con dos proyectos aparecen los dos',
+  h.includes(esc(py.nombre)) && h.includes('Corto de prueba'));
+ok('sólo uno dice "estás acá"', (h.match(/estás acá/g)||[]).length === 1);
+ok('el que no tiene presupuesto no rompe', /sin presupuesto|—/.test(h));
+
+/* crear uno de verdad desde ahí */
+const antes = pr.proyectos.length;
+global.document.querySelectorAll = s => /\[name\]/.test(s)
+  ? Object.entries({nombre:'Nuevo desde el Resumen', tipo:'publicidad', cliente:'Marca Z',
+      agencia:'', producto:'', jornadas:'1', medios:'Digital', territorio:'Argentina',
+      plazo:'12 meses'}).map(([name,value])=>({name,value})) : [];
+saveProyecto();
+ok('crear desde ahí lo agrega', pr.proyectos.length === antes + 1);
+const creado = pr.proyectos.find(p => p.nombre === 'Nuevo desde el Resumen');
+ok('con su nombre y cliente', creado && creado.cliente === 'Marca Z');
+ok('y con una versión lista para presupuestar', creado && creado.versiones.length === 1);
+ok('queda elegido', DB.ui.proyectoId === creado.id);
+DB.ui.tab = 'resumen'; render();
+ok('y aparece en la lista', app.innerHTML.includes('Nuevo desde el Resumen'));
+
+/* sin ningún proyecto, la pantalla lo dice y ofrece crear */
+const guardados = pr.proyectos;
+pr.proyectos = []; DB.ui.proyectoId = null; DB.ui.tab = 'resumen'; render();
+ok('sin proyectos ofrece crear igual', /editProyecto\(\)/.test(app.innerHTML));
+pr.proyectos = guardados; DB.ui.proyectoId = py.id; render();
+
 console.log('\n' + (fallos ? '>>> ' + fallos + ' FALLAS' : '>>> TODO OK'));
 process.exitCode = fallos ? 1 : 0;
