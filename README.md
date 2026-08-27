@@ -21,8 +21,13 @@ Los datos se guardan en el navegador (`localStorage`).
 - **Multi-productora**: cada una con su CUIT, condición de IVA, jurisdicción y
   porcentajes por defecto (fee, contingencia, IVA, IIBB). Los proyectos viven adentro
   de cada productora, aislados.
-- **Catálogo compartido** de personas, proveedores y equipamiento — vive a nivel del
-  estudio, no de cada productora. Incluye los datos fiscales y de seguro (DNI, CUIT,
+- **Catálogo compartido de verdad**: personas, proveedores y equipamiento viven en la
+  **base**, no en cada navegador. El que se da de alta queda en el catálogo solo, lo que
+  cargás a mano sube, y lo que carga un compañero desde otra máquina aparece cuando
+  entrás. Los ids son UUID de los dos lados, así que sincronizar no duplica.
+  Arriba del listado se dice siempre si el catálogo es compartido, si es sólo de esa
+  computadora (sin sesión), o si no se ve el del equipo porque el alta espera aprobación.
+  Vive a nivel del estudio, no de cada productora. Incluye los datos fiscales y de seguro (DNI, CUIT,
   fecha de nacimiento) que después alimentan el alta de la aseguradora.
 - **Presupuesto por rubros** (15 rubros de publicidad argentina precargados) con
   catálogo de ~90 funciones para cargar líneas rápido.
@@ -490,6 +495,7 @@ node test/run.js test/backend.js   # conexion, login, renovacion de sesion y dia
 node test/run.js test/alta.js      # alta propia, el candado y la cola de aprobacion
 node test/run.js test/identidad.js # quien soy al entrar con mi mail, con el alta pendiente
 node test/run.js test/tipocambio.js # TC editable arriba, recalculo y sellado de fecha
+node test/run.js test/catalogo-compartido.js # el catalogo es UNO para el equipo, contra la base
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)

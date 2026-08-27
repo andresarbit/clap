@@ -307,7 +307,9 @@ const cargarForm = campos => {
   ok('y no le vuelve a abrir el formulario', modal === null);
 
   console.log('\n--- 6c. CORREGIR MIS DATOS DESPUES ---');
-  modal = null; editarMiFicha();
+  /* con await: ahora el alta deja `catalogo_id` puesto, así que editarMiFicha
+     va de verdad al servidor a buscar la ficha del catálogo antes de dibujar. */
+  modal = null; await editarMiFicha();
   ok('la pantalla de mis datos abre', /Mis datos/.test(modal || ''));
   ok('trae mi nombre cargado', new RegExp('value="' + _miFicha.nombre + '"').test(modal));
   ok('deja cambiar el rol', /name="rol"/.test(modal));

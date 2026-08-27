@@ -20,6 +20,25 @@ ok('están las cotizaciones que se usan',
 ok('la fecha también se edita', /class="tcfec"[^>]*type="date"/.test(p));
 ok('dice cuál es la moneda base', /Base ARS/.test(p));
 
+console.log('\n--- 1b. Y SOBRE TODO, EN EL RESUMEN ---');
+DB.ui.tab = 'resumen'; render();
+let pr_ = app.innerHTML;
+ok('el panel del dólar está en el Resumen', /class="tcpanel"/.test(pr_));
+ok('dice "Tipo de cambio" con todas las letras', /Tipo de cambio/.test(pr_));
+ok('se lee "1 USD ="', /1 USD =/.test(pr_));
+ok('el valor es editable', /class="tcp-val"[^>]*value="1420"/.test(pr_));
+ok('la cotización se elige ahí', /class="tcp-sel"/.test(pr_));
+ok('y la fecha también', /class="tcp-fec"[^>]*type="date"/.test(pr_));
+ok('muestra el total convertido', /total en USD/.test(pr_));
+ok('aparece antes que los números del proyecto',
+  pr_.indexOf('tcpanel') < pr_.indexOf('cshoras'));
+/* editarlo desde el Resumen tiene que funcionar igual */
+upTC('tc', 1500);
+ok('editarlo desde el Resumen recalcula', n(getV().tc) === 1500, String(getV().tc));
+DB.ui.tab = 'presu'; render();
+ok('en el presupuesto el TC está rotulado', /class="tclbl"[^>]*>Base ARS · dólar/.test(app.innerHTML));
+upTC('tc', 1420); getV().tcFecha = hoy();
+
 console.log('\n--- 2. CAMBIARLO REEXPRESA EL PRESUPUESTO ---');
 const antes = calcular(v).total;
 const elenco = v.rubros.find(r => r.codigo === '09');

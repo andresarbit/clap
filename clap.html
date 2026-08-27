@@ -367,6 +367,33 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .tcbox .tcsel{padding-right:16px;background-position:calc(100% - 7px) 11px,calc(100% - 4px) 11px}
 .tcbox .tcfec{color:var(--tx3);font-size:11.5px}
 .tcbox .tcfec::-webkit-calendar-picker-indicator{filter:invert(.55);cursor:pointer}
+/* el rotulo, para que se entienda que ese numero es el dolar y no otra cosa */
+.tcbox .tclbl{font-size:9px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);
+  font-weight:700;font-family:var(--sans)}
+
+/* ---------- el dolar en el Resumen: una barra sola, imposible de no ver ---- */
+.tcpanel{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:12px 14px;border-top:1px solid var(--line);
+  background:linear-gradient(90deg,rgba(224,169,46,.09),rgba(224,169,46,.02));
+  border-left:3px solid var(--ac)}
+.tcp-tit{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ac);
+  font-weight:800;flex:none}
+.tcp-eq{display:flex;align-items:center;gap:7px;flex:none}
+.tcp-uno{font:600 13px var(--mono);color:var(--tx2);white-space:nowrap}
+.tcp-mon{font:600 13px var(--mono);color:var(--tx2)}
+input.tcp-val{width:9ch;background:var(--bg);border:1px solid var(--line2);border-radius:7px;
+  padding:7px 9px;font:800 21px var(--mono);color:var(--ac);text-align:right}
+input.tcp-val:hover{border-color:var(--ac)}
+input.tcp-val:focus{border-color:var(--ac);background:var(--bg4);outline:2px solid rgba(224,169,46,.25)}
+.tcp-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+select.tcp-sel,input.tcp-fec{background:var(--bg3);border:1px solid var(--line);border-radius:6px;
+  padding:5px 8px;font:500 12px var(--mono);color:var(--tx2);width:auto}
+select.tcp-sel{padding-right:22px;background-position:calc(100% - 11px) 14px,calc(100% - 6px) 14px}
+select.tcp-sel:hover,input.tcp-fec:hover{border-color:var(--line2)}
+.tcp-fec::-webkit-calendar-picker-indicator{filter:invert(.55);cursor:pointer}
+.tcp-tot{margin-left:auto;text-align:right;flex:none}
+.tcp-tot b{display:block;font:700 17px var(--mono);color:var(--tx);line-height:1.2}
+.tcp-tot span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700}
 .est{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.03em;
   padding:2px 7px;border-radius:20px;border:1px solid;white-space:nowrap}
 .estdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:baseline}
@@ -436,6 +463,12 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
 /* ---------- celular ---------- */
 @media (max-width:860px){
   .tcbox{justify-content:flex-start;gap:6px}
+  .tcpanel{gap:10px;padding:11px 12px}
+  .tcp-tit{width:100%}
+  input.tcp-val{font-size:22px;padding:9px 10px}
+  select.tcp-sel,input.tcp-fec{padding:8px 9px;font-size:13px}
+  select.tcp-sel{background-position:calc(100% - 12px) 17px,calc(100% - 7px) 17px}
+  .tcp-tot{margin-left:0;width:100%;text-align:left;border-top:1px solid var(--line);padding-top:8px}
   .tcbox select,.tcbox input{border-color:var(--line);background:var(--bg3);
     padding:7px 8px;font-size:14px}
   .tcbox .tcval{width:8ch;font-size:15px}
@@ -540,6 +573,11 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
     padding:0;font-size:11px;-webkit-appearance:none;appearance:none;background-image:none!important}
   .tcbox .tcval{color:#000!important}
   .tcbox .tcfec::-webkit-calendar-picker-indicator{display:none}
+  .tcpanel{background:none;border-left:2px solid #999;break-inside:avoid}
+  .tcp-tit{color:#000}
+  input.tcp-val,select.tcp-sel,input.tcp-fec{border:none!important;background:none!important;color:#000!important;
+    padding:0;font-size:12px;-webkit-appearance:none;appearance:none;background-image:none!important}
+  .tcp-fec::-webkit-calendar-picker-indicator{display:none}
 }
 </style>
 </head>
@@ -2198,7 +2236,7 @@ function resumenDesglose(d){
    contraseña de la base NO van acá nunca.                                    */
 
 const KEY_SB = 'clap.backend';
-let SB = {url:'', anon:'', access:null, refresh:null, user:null, expira:0};
+let SB = {url:'', anon:'', access:null, refresh:null, user:null, expira:0, orgId:null};
 
 function sbCargar(){
   try{ const raw = localStorage.getItem(KEY_SB);
@@ -2384,6 +2422,93 @@ async function sbAprobar(usuarioId){
 }
 async function sbPendientes(){
   return await sbFetch('/rest/v1/usuario?select=*&pendiente=eq.true&order=alta_el');
+}
+
+/* --- el catálogo, contra la base ----------------------------------------
+   El catálogo es la base de datos de trabajadores y proveedores: de ahí salen
+   las líneas del presupuesto, las citaciones y las órdenes de pago. Tiene que
+   ser UNO SOLO para todo el equipo, no una copia por navegador.
+
+   Hasta acá vivía sólo en el localStorage de cada uno: el que entraba se
+   agregaba a su propia lista y nadie más lo veía nunca. Ahora sube y baja.
+   Los ids ya son UUID, así que la fila local y la del servidor son la misma
+   y sincronizar no duplica nada.
+
+   La tabla usa snake_case y el modelo local camelCase; se traduce en un solo
+   lugar para no ensuciar el resto.                                          */
+const CAT_CAMPOS = [['tipo','tipo'],['nombre','nombre'],['funcion','funcion'],['rubro','rubro'],
+  ['dni','dni'],['cuit','cuit'],['fecha_nac','fechaNac'],['condicion','condicion'],
+  ['tarifa_ref','tarifaRef'],['moneda','moneda'],['unidad','unidad'],['tel','tel'],
+  ['email','email'],['banco','banco'],['alias','alias']];
+
+const catDesdeServidor = f => { const p = {id:f.id};
+  CAT_CAMPOS.forEach(([s,l]) => p[l] = f[s]); p.tarifaRef = n(p.tarifaRef); return p; };
+const catHaciaServidor = (p, orgId) => { const f = {id:p.id, org_id:orgId};
+  CAT_CAMPOS.forEach(([s,l]) => f[s] = p[l] === '' ? null : p[l]);
+  f.nombre = p.nombre || 'Sin nombre';        /* la tabla lo exige */
+  f.tarifa_ref = n(p.tarifaRef); return f; };
+
+/* Mi organización. Sin esto no puedo escribir en el catálogo, porque la
+   política `catalogo_mio` filtra por org_id. */
+async function sbMiOrg(){
+  if(SB.orgId) return SB.orgId;
+  const id = _miFicha && _miFicha.productora_id; if(!id) return null;
+  try{
+    const r = await sbFetch(`/rest/v1/productora?select=org_id&id=eq.${id}&limit=1`);
+    SB.orgId = (r && r[0] && r[0].org_id) || null;
+  }catch(e){ SB.orgId = null; }
+  return SB.orgId;
+}
+
+async function sbBajarCatalogo(){
+  if(!await sbSesionViva()) return [];
+  /* RLS ya lo recorta a mi organización: no hace falta filtrar acá. */
+  return await sbFetch('/rest/v1/catalogo_persona?select=*&order=nombre') || [];
+}
+
+/* Upsert: si la fila ya está, la pisa; si no, la crea. Con el mismo id de
+   este lado y del otro, nunca hay dos. */
+async function sbSubirPersona(p){
+  const org = await sbMiOrg(); if(!org) throw new Error('Todavía no sé de qué organización sos.');
+  if(!esUuid(p.id)) p.id = uid('pe');
+  const r = await sbFetch('/rest/v1/catalogo_persona', {method:'POST',
+    headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
+    body: JSON.stringify(catHaciaServidor(p, org))});
+  return (r && r[0]) || null;
+}
+async function sbBorrarPersona(id){
+  if(!esUuid(id)) return;
+  await sbFetch(`/rest/v1/catalogo_persona?id=eq.${id}`, {method:'DELETE'});
+}
+
+/* Fusiona lo que vino del servidor con lo que hay en este navegador.
+   Por id primero, y por mail después: el mail es lo que identifica a una
+   persona entre productoras, y es lo que evita que quede duplicada cuando la
+   cargaron a mano de los dos lados antes de conectarse.                     */
+function fusionarCatalogo(filas){
+  DB.catalogo ||= {personas:[]}; DB.catalogo.personas ||= [];
+  const locales = DB.catalogo.personas;
+  let nuevos = 0, tocados = 0;
+  (filas||[]).forEach(f => {
+    const p = catDesdeServidor(f);
+    let l = locales.find(x => x.id === p.id)
+         || (p.email && locales.find(x => norm(x.email) === norm(p.email)));
+    if(!l){ locales.push(Object.assign(nuevaPersona(), p)); nuevos++; return; }
+    l.id = p.id;                              /* el id del servidor manda */
+    /* no pisar con vacío lo que acá ya está cargado */
+    CAT_CAMPOS.forEach(([,k]) => { if(p[k] !== null && p[k] !== undefined && p[k] !== '') l[k] = p[k]; });
+    tocados++;
+  });
+  if(nuevos || tocados) guardar();
+  return {nuevos, tocados, total: locales.length};
+}
+
+/* Traer el catálogo del equipo. Si estoy pendiente la base no me deja verlo
+   —es lo mismo que no ver los datos— y no es un error: devuelve vacío. */
+async function sincronizarCatalogo(){
+  if(!sbConectado()) return null;
+  try{ return fusionarCatalogo(await sbBajarCatalogo()); }
+  catch(e){ return null; }
 }
 
 /* --- diagnóstico --------------------------------------------------------
@@ -2815,7 +2940,7 @@ function tcBox(v, cli){
     Base ${v.monedaBase} · TC ${esc(v.tcNombre)} ${fmtC(v.tc)}
     <span style="opacity:.6">(${esc(v.tcFecha)})</span></div>`;
   return `<div class="tcbox">
-    <span>Base ${v.monedaBase} ·</span>
+    <span class="tclbl">Base ${v.monedaBase} · dólar</span>
     <select class="tcsel" title="Qué cotización estás usando"
       onchange="upTC('tcNombre',this.value)">
       ${COTIZACIONES.map(c=>`<option ${c===v.tcNombre?'selected':''}>${c}</option>`).join('')}
@@ -3063,6 +3188,39 @@ function tarifarioHTML(){
   </div>`;
 }
 
+/* Que se vea si el catálogo es de todos o sólo de esta máquina. Antes no se
+   decía en ningún lado y era imposible saber por qué un compañero no aparecía. */
+function avisoCatalogo(){
+  if(!sbConectado()) return `<div class="pad" style="border-bottom:1px solid var(--line)">
+    <div class="sicabox" style="margin:0"><b>Este catálogo vive sólo en esta computadora.</b>
+    Para que sea uno solo para todo el equipo hay que iniciar sesión: tocá ☁ arriba.</div></div>`;
+  if(_miFicha && _miFicha.pendiente) return `<div class="pad" style="border-bottom:1px solid var(--line)">
+    <div class="sicabox" style="margin:0"><b>Estás viendo sólo lo de esta computadora.</b>
+    Hasta que un administrador apruebe tu alta, el servidor no te muestra el catálogo del equipo.</div></div>`;
+  return `<div class="pad" style="border-bottom:1px solid var(--line)">
+    <div class="sicabox" style="margin:0"><b>Catálogo compartido.</b> Lo que cargás acá lo ven
+    todos los de tu organización, y lo que cargan ellos aparece cuando entrás.
+    ${_catUltima?`<span class="muted" style="display:block;margin-top:4px;font-size:10.5px">
+      Última sincronización: ${esc(_catUltima)}</span>`:''}</div></div>`;
+}
+let _catUltima = null;
+
+async function sincronizarCatalogoAhora(){
+  if(!sbConectado()){ toast('Primero iniciá sesión (☁ arriba).'); return; }
+  toast('Sincronizando…');
+  try{
+    const sub = await subirCatalogoEntero();
+    const baj = await sincronizarCatalogo();
+    _catUltima = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+    const partes = [];
+    if(sub.subidas) partes.push(`${sub.subidas} subida${sub.subidas==1?'':'s'}`);
+    if(baj && baj.nuevos) partes.push(`${baj.nuevos} nueva${baj.nuevos==1?'':'s'} del equipo`);
+    if(sub.fallos) partes.push(`${sub.fallos} no pude subirla${sub.fallos==1?'':'s'}`);
+    toast(partes.length ? 'Catálogo: ' + partes.join(' · ') : 'Catálogo al día');
+  }catch(e){ toast('No pude sincronizar: ' + e.message); }
+  R();
+}
+
 function catalogoGenteHTML(){
   const F = DB.ui.fCat ||= {q:'', rubro:'', tipo:'', desde:'', hasta:'', soloLibres:false};
   let ps = DB.catalogo.personas;
@@ -3081,8 +3239,12 @@ function catalogoGenteHTML(){
 
   return `<div class="card"><h3>Catálogo — personas, proveedores y equipos
     <span class="spacer"></span>
+    ${sbConectado()?`<button class="btn sm" onclick="sincronizarCatalogoAhora()"
+      title="Traer del servidor lo que cargaron los demás y subir lo que falte">⟳ Sincronizar</button>`:''}
     <button class="btn sm" onclick="menuCallsheets()">⬇ Importar de callsheets</button>
     <button class="btn sm pri" onclick="editPersona()">+ Nuevo</button></h3>
+
+    ${avisoCatalogo()}
 
     <div class="pad filtros" style="border-bottom:1px solid var(--line)">
       <input type="text" value="${esc(F.q)}" placeholder="Buscar por nombre, función, mail o teléfono…"
@@ -3452,6 +3614,36 @@ function planHTML(py,d,r){
 /* ---------- portada: resumen del proyecto ----------
    Lo primero que se ve al abrir. Contesta dos preguntas: cómo viene la plata
    y qué está esperando algo de mí.                                           */
+/* El dólar, arriba de todo y grande.
+   En el presupuesto vive al lado del título y ahí queda apretado entre otras
+   cosas. Acá es una barra sola: se ve de una, se escribe de una, y muestra
+   al lado cuánto da el total convertido, que es para lo que uno lo toca.   */
+function tcPanel(v, R){
+  const otra = v.monedaBase === 'ARS' ? 'USD' : 'ARS';
+  const equiv = R ? conv(R.total, v.monedaBase, otra, n(v.tc)) : 0;
+  return `<div class="tcpanel">
+    <div class="tcp-tit">Tipo de cambio</div>
+    <div class="tcp-eq">
+      <span class="tcp-uno">1 USD =</span>
+      <input class="tcp-val" type="number" step="any" min="0" value="${n(v.tc)}"
+        title="Escribí el valor y se recalcula todo el presupuesto"
+        onchange="upTC('tc',this.value)">
+      <span class="tcp-mon">ARS</span>
+    </div>
+    <div class="tcp-meta">
+      <select class="tcp-sel" onchange="upTC('tcNombre',this.value)">
+        ${COTIZACIONES.map(c=>`<option ${c===v.tcNombre?'selected':''}>${c}</option>`).join('')}
+      </select>
+      <input class="tcp-fec" type="date" value="${esc(v.tcFecha)}"
+        title="Fecha de la cotización" onchange="upTC('tcFecha',this.value)">
+    </div>
+    <div class="tcp-tot">
+      <b>${R ? fmt(equiv, otra) : '—'}</b>
+      <span>total en ${otra}</span>
+    </div>
+  </div>`;
+}
+
 function vistaResumen(pr,py,v){
   const u = getUsuario();
   const P = resumenPlata(py, v);
@@ -3509,6 +3701,8 @@ function vistaResumen(pr,py,v){
         <div class="csj">${R?fmt(R.total, v.monedaBase):'—'}</div>
         <div class="cssub">presupuesto ${esc(v?v.nombre:'')} · ${esc(v?v.estado:'')}</div></div>
     </div>
+
+    ${v ? tcPanel(v, R) : ''}
 
     <div class="cshoras">
       ${dato(fmt(P.presu,P.base), 'Costo directo')}
@@ -5177,15 +5371,37 @@ function editPersona(id){
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
       <button class="btn pri" onclick="savePersona('${id||''}')">Guardar</button></div>
   </div></div>`); }
+/* Lo que se carga a mano también sube: el catálogo es del equipo, no de este
+   navegador. Si no hay sesión queda local y sube cuando alguien se conecte.  */
 function savePersona(id){
   const d = datos();
   let p = id ? DB.catalogo.personas.find(x=>x.id===id) : nuevaPersona();
   Object.assign(p, d, {tarifaRef:n(d.tarifaRef)});
   if(!id) DB.catalogo.personas.push(p);
-  cerrar(); }
+  cerrar();
+  if(sbConectado()) sbSubirPersona(p)
+    .catch(e => toast('Guardado acá, pero no pude subirlo: ' + e.message));
+}
 function delPersona(id){ const p=DB.catalogo.personas.find(x=>x.id===id);
   if(!confirm(`Eliminar "${p.nombre}" del catálogo?`)) return;
-  DB.catalogo.personas = DB.catalogo.personas.filter(x=>x.id!==id); R(); }
+  DB.catalogo.personas = DB.catalogo.personas.filter(x=>x.id!==id);
+  if(sbConectado()) sbBorrarPersona(id)
+    .catch(e => toast('Borrado acá, pero no pude borrarlo del servidor: ' + e.message));
+  R(); }
+
+/* Subir todo lo que este navegador tenga cargado y el servidor no. Es lo que
+   rescata el catálogo que se armó antes de conectarse. */
+async function subirCatalogoEntero(){
+  if(!sbConectado()) return {subidas:0, fallos:0};
+  const yaEstan = new Set(((await sbBajarCatalogo().catch(()=>[]))||[]).map(f=>f.id));
+  let subidas = 0, fallos = 0;
+  for(const p of (DB.catalogo.personas||[])){
+    if(yaEstan.has(p.id)) continue;
+    try{ await sbSubirPersona(p); subidas++; }catch(e){ fallos++; }
+  }
+  guardar();
+  return {subidas, fallos};
+}
 
 /* Elegir función del catálogo maestro (carga rápida de líneas) */
 function pickFuncion(rid){
@@ -6598,7 +6814,14 @@ async function revisarAlta(){
   if(_miFicha === false){
     await traerProdsElegibles();
     if(!modal) formAlta();
+    return;
   }
+  /* El catálogo del equipo. Es lo que hace que la base de trabajadores sea
+     una sola y no una copia por navegador: acá aparecen los compañeros que
+     se dieron de alta desde otra máquina. Va después del render para no
+     demorar la pantalla; cuando llega, se vuelve a dibujar. */
+  const s = await sincronizarCatalogo();
+  if(s && (s.nuevos || s.tocados)) render();
 }
 
 /* La barra que aparece arriba de todo cuando falta terminar el alta. */
@@ -6731,6 +6954,17 @@ async function confirmarAlta(){
     } else {
       await sbAltaPropia({productoraId:pid, nombre, rol:d.rol, area:d.area, tel:d.tel});
     }
+    /* Quedar en el catálogo es parte del alta, no un trámite aparte: de ahí
+       salen las líneas del presupuesto, las citaciones y las órdenes de pago.
+       Va por la función de la base porque el que recién entra —y más si quedó
+       pendiente— todavía no tiene permiso para escribir en el catálogo de la
+       organización. Si falla, el alta igual vale: se reintenta al entrar.   */
+    try{
+      await sbFetch('/rest/v1/rpc/guardar_mis_datos', {method:'POST',
+        body: JSON.stringify({p_nombre: nombre, p_tel: d.tel, p_area: d.area,
+          p_rubro: rubroDeArea(d.area)})});
+    }catch(e){ console.warn('no pude dejarte en el catálogo todavía:', e.message); }
+
     const ficha = await sbMiFicha();
     _miFicha = ficha || false;      /* para que el aviso del header se apague */
     if(ficha) await traerMiProductora();
@@ -6742,6 +6976,7 @@ async function confirmarAlta(){
       toast(`Bienvenido, ${nombre}` + (esMia ? ' — sos administrador de esta productora' : ''));
     }
     espejarFichaLocal(ficha);
+    await sincronizarCatalogo();      /* traer el catálogo del equipo */
     R();
   }catch(e){
     /* El error crudo de Postgres no le sirve a nadie. Los dos que de verdad
