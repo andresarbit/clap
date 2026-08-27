@@ -3365,7 +3365,9 @@ function panelPorPieza(py, v){
   const C = costoPorPieza(py, v);
   if(!C.filas.length) return '';
   const suma = C.filas.reduce((s,f)=>s+f.imputado, 0);
-  return `<div class="card noprint"><h3>Cuánto sale cada ${esc(unidadDe(py).toLowerCase())}
+  /* SIN noprint: cuánto sale cada spot es lo primero que pregunta el cliente,
+     así que tiene que salir en el PDF y no sólo en la pantalla. */
+  return `<div class="card"><h3>Cuánto sale cada ${esc(unidadDe(py).toLowerCase())}
     <span class="spacer"></span>
     <span class="muted" style="font-size:10px;text-transform:none;letter-spacing:0">costo directo</span></h3>
     <div class="scrollx"><table class="tbl">
@@ -3523,7 +3525,8 @@ function lineaHTML(l,r,v,py){
 
 /* vista cliente: sólo rubros agrupados, sin detalle ni circuito de pago */
 function tablaCliente(v,R){
-  return `<div class="card"><h3>Presupuesto — resumen por rubro</h3>
+  const py = getPy();
+  return `${clientePorPieza(py, v)}<div class="card"><h3>Presupuesto — resumen por rubro</h3>
     <div class="scrollx"><table class="tbl">
       <thead><tr><th style="width:44px">Cód.</th><th>Rubro</th><th style="text-align:right">Importe</th><th style="text-align:right;width:52px">%</th></tr></thead>
       <tbody>${R.porRubro.filter(r=>r.total>0).map(r=>`<tr>
@@ -3533,6 +3536,36 @@ function tablaCliente(v,R){
         <td class="num muted" style="text-align:right">${pct(r.total,R.subtotal)}%</td></tr>`).join('')
         || '<tr><td colspan="4" class="empty">Sin importes cargados</td></tr>'}</tbody>
     </table></div></div>`;
+}
+
+/* Lo que el cliente quiere saber cuando la campaña tiene varios spots: cuánto
+   sale cada uno. Va en la vista Cliente y en el PDF, no sólo en la interna. */
+function clientePorPieza(py, v){
+  const C = costoPorPieza(py, v);
+  if(!C.filas.length) return '';
+  const U = unidadDe(py);
+  return `<div class="card"><h3>Cuánto sale cada ${esc(U.toLowerCase())}</h3>
+    <div class="scrollx"><table class="tbl">
+      <thead><tr><th>${esc(U)}</th><th style="text-align:right">Propio</th>
+        <th style="text-align:right">Parte de lo común</th>
+        <th style="text-align:right">Imputado</th></tr></thead>
+      <tbody>${C.filas.map(f=>`<tr>
+        <td><b>${esc(f.nombre)}</b>${f.pieza.duracion?` <span class="muted">· ${esc(f.pieza.duracion)}</span>`:''}</td>
+        <td style="text-align:right;font-family:var(--mono)">${fmt(f.propio, v.monedaBase)}</td>
+        <td style="text-align:right;font-family:var(--mono)" class="muted">${fmt(f.compartido, v.monedaBase)}</td>
+        <td style="text-align:right;font-family:var(--mono);font-weight:700">${fmt(f.imputado, v.monedaBase)}</td>
+      </tr>`).join('')}
+      <tr style="border-top:2px solid var(--line2)">
+        <td><b>Suma</b></td>
+        <td style="text-align:right;font-family:var(--mono)">${fmt(C.propioTotal, v.monedaBase)}</td>
+        <td style="text-align:right;font-family:var(--mono)" class="muted">${fmt(C.compartido, v.monedaBase)}</td>
+        <td style="text-align:right;font-family:var(--mono);font-weight:800">${fmt(C.filas.reduce((s,f)=>s+f.imputado,0), v.monedaBase)}</td>
+      </tr></tbody></table></div>
+    <div class="pad muted" style="font-size:11.5px;line-height:1.6;padding-top:0">
+      Los costos comunes —equipo técnico, alquileres, jornada de rodaje— se reparten
+      entre las piezas para saber qué sale cada una, pero <b>se facturan una sola vez</b>:
+      por eso el presupuesto suma ${fmt(C.subtotal, v.monedaBase)} de costo directo y no la
+      suma de los ${esc(unidadesDe(py).toLowerCase())} por separado.</div></div>`;
 }
 
 function panelTotales(v,R,piezaNom){
@@ -8436,9 +8469,12 @@ function impJSON(inp){
 function expCSV(){
   const v=getV(), py=getPy(); if(!v) return;
   const q = s => '"'+String(s??'').replace(/"/g,'""')+'"';
-  const L = [['Rubro','Código','Concepto','Unidad','Cantidad','Días','Valor unit.','Moneda',
+  const U = unidadDe(py);
+  const L = [['Rubro','Código','Concepto',U,'Unidad','Cantidad','Días','Valor unit.','Moneda',
               'Total '+v.monedaBase,'Circuito','Comprobante'].map(q).join(',')];
-  v.rubros.forEach(r=>r.lineas.forEach(l=>L.push([r.nombre,r.codigo,l.concepto,l.unidad,l.cantidad,
+  v.rubros.forEach(r=>r.lineas.forEach(l=>L.push([r.nombre,r.codigo,l.concepto,
+    l.piezaId ? nombrePieza(py, l.piezaId) : 'Compartida',
+    l.unidad,l.cantidad,
     l.dias,l.valorUnit,l.moneda,Math.round(totalLinea(l,v)),
     (CIRCUITOS.find(c=>c.v===l.circuito)||{}).l||'',
     (COMPROBANTES.find(c=>c.v===l.comprobante)||{}).l||''].map(q).join(','))));
@@ -8448,6 +8484,17 @@ function expCSV(){
   L.push([q(`Contingencia ${v.capas.contingencia}%`),'','','','','','','',Math.round(R2.contingencia)].join(','));
   L.push([q(`IVA ${v.capas.iva}%`),'','','','','','','',Math.round(R2.iva)].join(','));
   L.push([q('TOTAL'),'','','','','','','',Math.round(R2.total)].join(','));
+  /* y cuánto sale cada pieza, aclarando que lo común no se gasta de nuevo */
+  const CP = costoPorPieza(py, v);
+  if(CP.filas.length){
+    L.push('', [q('CUÁNTO SALE CADA '+U.toUpperCase())].join(','));
+    L.push([q(U),q('Propio'),q('Parte de lo común'),q('Imputado')].join(','));
+    CP.filas.forEach(f=>L.push([q(f.nombre),Math.round(f.propio),
+      Math.round(f.compartido),Math.round(f.imputado)].join(',')));
+    L.push([q('Suma'),Math.round(CP.propioTotal),Math.round(CP.compartido),
+      Math.round(CP.filas.reduce((x,f)=>x+f.imputado,0))].join(','));
+    L.push([q('Lo común figura UNA vez en el presupuesto: el subtotal es '+Math.round(CP.subtotal))].join(','));
+  }
   bajar(`${py.nombre}-${v.nombre}.csv`, '﻿'+L.join('\n'), 'text/csv;charset=utf-8');
   toast('CSV descargado'); }
 function resetDB(){

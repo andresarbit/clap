@@ -256,5 +256,41 @@ ok('A y B no dan lo mismo, porque no tienen lo mismo',
   C3.filas[0].propio !== C3.filas[1].propio,
   fmt(C3.filas[0].propio) + ' vs ' + fmt(C3.filas[1].propio));
 
+console.log('\n--- 15. EL PRESUPUESTO GENERAL: TODO SUMADO, UNA VEZ ---');
+DB.ui.proyectoId = py.id; DB.ui.versionId = v.id; DB.ui.pieza = null;
+DB.ui.tab = 'presu'; DB.ui.vista = 'interna';
+const vg = getV();
+const todasLasLineas = vg.rubros.flatMap(r => r.lineas);
+const sumaManual = todasLasLineas.reduce((s, l) => s + totalLinea(l, vg), 0);
+ok('el general incluye TODAS las líneas', calcular(vg).subtotal === sumaManual,
+  fmt(calcular(vg).subtotal) + ' = ' + todasLasLineas.length + ' líneas');
+ok('las propias de cada spot están adentro',
+  todasLasLineas.some(l => l.piezaId) && todasLasLineas.some(l => !l.piezaId));
+vg.rubros.forEach(r => { if(r.lineas.length) r.abierto = true; });
+render();
+const hg = app.innerHTML;
+ok('en pantalla se ven las de todos los spots',
+  /Actriz — Playa/.test(hg) && /Actor — Ciudad/.test(hg) && /Director de Fotografía/.test(hg));
+ok('cada línea dice de qué spot es', /Compartida/.test(hg) && /pz-si/.test(hg));
+
+console.log('\n--- 16. LO QUE SE ENTREGA: CLIENTE, PDF Y CSV ---');
+DB.ui.vista = 'cliente'; render();
+const hc = app.innerHTML;
+ok('vista cliente trae el desglose por spot', /Cuánto sale cada spot/i.test(hc));
+ok('con propio, común e imputado',
+  /Propio/.test(hc) && /Parte de lo común/.test(hc) && /Imputado/.test(hc));
+ok('y aclara que lo común se factura una vez', /se facturan una sola vez/.test(hc));
+ok('sigue estando el resumen por rubro', /resumen por rubro/i.test(hc));
+DB.ui.vista = 'interna'; render();
+ok('el panel por spot sale en el PDF (no es noprint)',
+  !/card noprint"><h3>Cuánto sale/.test(app.innerHTML));
+
+let csv = null; const _bajar = bajar; bajar = (nom, c) => csv = c; expCSV(); bajar = _bajar;
+const cab = csv.split('\n')[0];
+ok('el CSV tiene columna de Spot', /"Spot"/.test(cab), cab.slice(0, 95));
+ok('y cada línea dice el suyo', /"Spot Playa"/.test(csv) && /"Compartida"/.test(csv));
+ok('el CSV trae el cuadro por spot al pie', /CUÁNTO SALE CADA SPOT/.test(csv));
+ok('con la aclaración de que lo común va una vez', /figura UNA vez/.test(csv));
+
 console.log('\n' + (fallos ? '>>> ' + fallos + ' FALLAS' : '>>> TODO OK'));
 process.exitCode = fallos ? 1 : 0;

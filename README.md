@@ -472,6 +472,13 @@ por pieza, si no la torta del spot A y la pelota del B terminaban en un
 "Utileria - 2 elementos" que parecia compartido y escondia que eran cosas
 distintas.
 
+El **presupuesto General** es el presupuesto entero: estan TODAS las lineas de
+todos los spots mas las compartidas, cada una con su valor y cada una contada
+una sola vez. En pantalla cada linea lleva el chip que dice de que spot es o si
+es compartida. Lo mismo va al cliente: la **vista Cliente** y el **PDF** llevan
+el cuadro de cuanto sale cada spot, y el **CSV** trae una columna con el spot de
+cada linea mas ese cuadro al pie.
+
 > Borrar una pieza **no borra su plata**: sus lineas vuelven a ser compartidas
 > y se avisa cuantas. Un proyecto sin piezas funciona exactamente como antes.
 
