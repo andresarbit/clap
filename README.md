@@ -427,6 +427,45 @@ muchas— y su rol puede ser distinto en cada una. El menu de arriba las agrupa
 en *mis productoras*, *en la web* (elegir una te suma) y *solo en esta
 computadora*.
 
+### Los dos presupuestos: Real y Produccion
+
+En una productora conviven dos presupuestos del mismo proyecto, y no es un
+truco: es como se trabaja.
+
+| Nivel | Quien lo ve |
+|---|---|
+| **Real** | Administracion y Productor Ejecutivo. Tiene la plata que de verdad hay, con el colchon adentro |
+| **Produccion** | + el jefe de produccion. Es con lo que gasta |
+| **Cliente** | + Equipo. El que se presenta afuera |
+
+No se resuelve escondiendo lineas —son numeros distintos— asi que **son
+versiones distintas**, y quien ve cual **lo decide el rol**. `getV()` nunca
+devuelve una version fuera del alcance: un id guardado no alcanza para caer en
+el Real. Si a alguien no le toca ninguna, la pantalla lo dice en vez de romper.
+
+Boton **→ Produccion** sobre una version Real: la copia recortando un % y la
+marca como Produccion. El jefe ve **todas** las lineas —tiene que saber que hay
+que contratar— pero con la plata que se le asigna. Y un panel **Real vs
+Produccion** con el colchon en un numero, que solo ven Administracion y PE, con
+aviso si el de Produccion quedo por encima del Real.
+
+### Lo que no lleva IVA
+
+No todo esta gravado: los seguros estan exentos y hay rubros que se pasan a
+costo. Se marca por rubro (`aplicaIva`, junto al `aplicaFee` que ya estaba) y
+esa plata sale de la base imponible. El fee y la contingencia si van gravados,
+porque son servicio de la productora. El rubro de Seguros nace exento.
+
+```
+Subtotal costo directo        $ 2.500.000
+Fee 15% s/ $2.000.000         $   300.000     <- seguros sin fee
+Contingencia 5%               $   125.000
+Neto                          $ 2.925.000
+Exento de IVA                 - $ 500.000
+IVA 21% s/ $2.425.000         $   509.250     <- no sobre el total
+TOTAL                         $ 3.434.250
+```
+
 ### Sub-proyectos: varios spots en una campana
 
 Un proyecto casi nunca es UNA pieza. Una campana son tres spots; una serie, ocho
@@ -624,6 +663,7 @@ node test/run.js test/modo-prueba.js  # todos entran con permisos, para probar
 node test/run.js test/menu-productoras.js # el menu de productoras sale de la base
 node test/run.js test/invitar-link.js # invitar por link: mensaje, alta y aceptacion
 node test/run.js test/piezas.js     # spots/episodios: reparto, no duplicar, desglose por pieza
+node test/run.js test/dos-presupuestos.js # Real vs Produccion por rol, y el IVA exento
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)

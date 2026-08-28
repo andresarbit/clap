@@ -378,6 +378,12 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 /* el chip de pieza en cada linea */
 .chip.pz-si{background:rgba(143,122,212,.18);color:#b39ce4}
 .chip.pz-com{background:rgba(155,161,172,.13);color:var(--tx2)}
+/* los tres niveles de presupuesto */
+.chip.niv-real{background:rgba(224,90,90,.16);color:#ef8b8b}
+.chip.niv-produccion{background:rgba(224,169,46,.16);color:var(--ac2)}
+.chip.niv-cliente{background:rgba(91,155,213,.16);color:#8dc0ea}
+.pick.niv-real{border-color:rgba(224,90,90,.45);background:rgba(224,90,90,.06)}
+.pick.niv-real label{color:#ef8b8b}
 .invbtn:hover{background:rgba(224,169,46,.14);border-color:var(--ac);color:var(--ac2)}
 .pick.sesion{border-color:rgba(224,169,46,.45);background:rgba(224,169,46,.07)}
 .pick.sesion label{color:var(--ac)}
@@ -704,7 +710,7 @@ const RUBROS_BASE = [
   {codigo:'12', nombre:'Transporte, Viáticos y Viajes',    aplicaFee:true,  transversal:true},
   {codigo:'13', nombre:'Catering',                         aplicaFee:true,  area:'catering', porJornada:true},
   {codigo:'14', nombre:'Postproducción',                   aplicaFee:true,  area:'post'},
-  {codigo:'15', nombre:'Seguros y Legales',                aplicaFee:false, area:'admin'},
+  {codigo:'15', nombre:'Seguros y Legales',                aplicaFee:false, area:'admin', aplicaIva:false},
   {codigo:'16', nombre:'Seguridad, Higiene y Salud',       aplicaFee:true,  area:'produccion', porJornada:true},
   {codigo:'17', nombre:'Administración y Gastos Bancarios',aplicaFee:false, area:'admin'},
 ];
@@ -925,8 +931,41 @@ function nuevaLinea(o={}){
     /* null = compartida por todo el proyecto. Un id = propia de esa pieza. */
     piezaId:o.piezaId||null};
 }
+/* ===================  LOS DOS PRESUPUESTOS  ===============================
+   En una productora conviven dos presupuestos del mismo proyecto, y no es un
+   truco: es como se trabaja.
+
+     REAL        el que tienen el productor y los dueños. Tiene la plata que
+                 de verdad hay, con el colchón adentro.
+     PRODUCCIÓN  el que se le pasa al jefe de producción para que gaste. Va
+                 recortado: si el jefe ve el colchón, el colchón desaparece.
+     CLIENTE     el que se presenta afuera.
+
+   No se resuelve escondiendo líneas: son números distintos, así que son
+   versiones distintas. Y quién ve cuál lo decide el rol, no un checkbox:
+   Administración y Productor Ejecutivo ven los tres; Producción ve el suyo y
+   el del cliente; Equipo, sólo el del cliente.                              */
+const NIVELES = [
+  {k:'real',       l:'Real',       d:'Sólo lo ven Administración y Productor Ejecutivo', roles:['admin','ejecutivo']},
+  {k:'produccion', l:'Producción', d:'El que maneja el jefe de producción',              roles:['admin','ejecutivo','produccion']},
+  {k:'cliente',    l:'Cliente',    d:'El que se presenta afuera',                        roles:['admin','ejecutivo','produccion','equipo']},
+];
+const NIVEL = k => NIVELES.find(x=>x.k===k) || NIVELES[1];
+/* ¿Este usuario puede abrir esta versión? Sin usuario -mirando el ejemplo sin
+   sesión- se ve todo, porque no hay a quién esconderle nada. */
+function veVersion(v, u = getUsuario()){
+  if(!v) return false;
+  const niv = v.nivel || 'produccion';
+  if(!u) return true;
+  if(u.pendiente) return false;
+  return NIVEL(niv).roles.includes(u.rol);
+}
+const versionesQueVeo = (py, u = getUsuario()) =>
+  (py?.versiones||[]).filter(v => veVersion(v, u));
+
 function nuevaVersion(o={}){
   return {id:uid('v'), nombre:o.nombre||'v1', fecha:o.fecha||hoy(), estado:o.estado||'borrador',
+    nivel:o.nivel||'produccion',
     monedaBase:o.monedaBase||'ARS', tc:o.tc??1000, tcFecha:o.tcFecha||hoy(), tcNombre:o.tcNombre||'MEP',
     capas:o.capas||{fee:15, contingencia:5, iibb:0, iva:21},
     notas:o.notas||'',
@@ -2906,6 +2945,9 @@ function migrar(){
      Las líneas viejas quedan con piezaId null, que es "compartida": el
      presupuesto general sigue dando exactamente lo mismo que antes.        */
   (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(py=>{
+    /* las versiones de antes no tenían nivel: son las de producción, que es
+       lo que se venía usando. Nadie pierde acceso a lo que ya tenía. */
+    (py.versiones||[]).forEach(v=>{ v.nivel ||= 'produccion'; });
     py.piezas ||= [];
     py.piezas.forEach((p,i)=>{ p.numero ??= i+1; p.peso ??= 1; });
   }));
@@ -3027,7 +3069,10 @@ const getPr = () => DB.productoras.find(p=>p.id===DB.ui.productoraId) || DB.prod
 const getPy = () => { const pr=getPr(); if(!pr) return null;
   return pr.proyectos.find(p=>p.id===DB.ui.proyectoId) || pr.proyectos[0] || null; };
 const getV  = () => { const py=getPy(); if(!py) return null;
-  return py.versiones.find(v=>v.id===DB.ui.versionId) || py.versiones[0] || null; };
+  /* nunca devolver una versión que este usuario no puede ver: el jefe de
+     producción no tiene que caer en el presupuesto Real por un id guardado */
+  const mias = versionesQueVeo(py);
+  return mias.find(v=>v.id===DB.ui.versionId) || mias[0] || null; };
 
 /* ===========================  CALC  ======================================= */
 
@@ -3067,9 +3112,18 @@ function calcular(v, filtro){
   const netoPrevio   = subtotal + fee + contingencia;
   const iibb         = netoPrevio * n(c.iibb)/100;
   const neto         = netoPrevio + iibb;
-  const iva          = neto * n(c.iva)/100;
+  /* No todo lleva IVA. Los seguros están exentos, los cachets de actores en
+     relación de dependencia tampoco lo llevan, y hay rubros que se pasan a
+     costo tal cual. Se marca por rubro (`aplicaIva`) y esa plata sale de la
+     base imponible; el fee y la contingencia sí van gravados, porque son
+     servicio de la productora.                                              */
+  const exento = v.rubros.reduce((sm,r)=>
+    r.aplicaIva === false ? sm + (r.lineas.filter(pasa).reduce((x,l)=>x+totalLinea(l,v),0)) : sm, 0);
+  const baseIva      = Math.max(0, neto - exento);
+  const iva          = baseIva * n(c.iva)/100;
   const total        = neto + iva;
-  return {porRubro, subtotal, baseFee, fee, contingencia, iibb, neto, iva, total};
+  return {porRubro, subtotal, baseFee, fee, contingencia, iibb, neto,
+    exento, baseIva, iva, total};
 }
 
 /* ---------- lo que cuesta cada pieza ----------
@@ -3241,10 +3295,11 @@ function header(pr,py,v){
         </select></div>`; })():''}
       ${py?`<button class="btn invbtn" onclick="invitarAlProyecto()"
         title="Mandar un link para sumar a alguien a «${esc(py.nombre)}»">✉ Invitar</button>`:''}
-      ${py?`<div class="pick"><label>Versión</label>
+      ${py?(()=>{ const vs = versionesQueVeo(py); return `<div class="pick niv-${esc((v&&v.nivel)||'produccion')}"><label>Versión</label>
         <select onchange="selVersion(this.value)">
-          ${py.versiones.map(x=>`<option value="${x.id}" ${x.id===v?.id?'selected':''}>${esc(x.nombre)} · ${esc(x.estado)}</option>`).join('')}
-        </select></div>`:''}
+          ${vs.map(x=>`<option value="${x.id}" ${x.id===v?.id?'selected':''}>${esc(NIVEL(x.nivel).l)} · ${esc(x.nombre)} · ${esc(x.estado)}</option>`).join('')}
+          ${!vs.length?'<option>— ninguna a tu alcance —</option>':''}
+        </select></div>`; })():''}
       <div class="spacer"></div>
       ${chipIdentidad(pr)}
       ${DB.ui.tab==='presu'&&v?`<div class="seg">
@@ -3269,6 +3324,19 @@ function cuerpo(pr,py,v){
   if(DB.ui.tab==='config')   return vistaConfig(pr);
   if(!py) return `<div class="card"><div class="empty">"${esc(pr.nombre)}" no tiene proyectos.<br><br>
     <button class="btn pri" onclick="editProyecto()">Crear proyecto</button></div></div>`;
+  /* Puede pasar que el proyecto tenga presupuestos y ninguno sea para vos: un
+     técnico invitado no ve ni el Real ni el de Producción. Eso se dice, no se
+     rompe la pantalla. */
+  if(!getV() && ['presu','resumen','gastos'].includes(DB.ui.tab)){
+    const hay = (py.versiones||[]).length;
+    return `<div class="card"><div class="empty">
+      ${hay ? `Este proyecto tiene ${hay} presupuesto${hay==1?'':'s'}, pero ninguno es para tu rol
+              (${esc(ROL(getUsuario()?.rol).l)}).<br><br>
+              <span class="muted" style="font-size:12px">Pedile a Administración o al Productor
+              Ejecutivo que te habilite el que te corresponda.</span>`
+            : `Este proyecto todavía no tiene presupuesto.`}
+    </div></div>`;
+  }
   if(DB.ui.tab==='desglose')  return vistaDesglose(py);
   if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,v);
   if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,v);
@@ -3294,6 +3362,7 @@ function vistaPresupuesto(pr,py,v){
       <button class="btn" onclick="addRubro()">+ Agregar rubro</button></div>`}
   ${panelTotales(v,R,sel?nombrePieza(py,sel):'')}
   ${!cli && !sel && piezas.length ? panelPorPieza(py,v) : ''}
+  ${cli?'':panelColchon(py,v)}
   ${cli?'':panelExposicion(v)}`;
 }
 
@@ -3448,6 +3517,8 @@ function cabeceraProyecto(pr,py,v,cli){
       <button class="btn" onclick="editProyecto('${py.id}')">Proyecto</button>
       <button class="btn" onclick="editVersion()">Versión</button>
       <button class="btn" onclick="duplicarVersion()">Duplicar v.</button>
+      ${(veTodo(getUsuario())||!getUsuario()) && (v.nivel||'produccion')==='real'
+        ? `<button class="btn" onclick="derivarProduccion()" title="Copiar este Real a una versión de Producción, recortada">→ Producción</button>` : ''}
       <button class="btn" onclick="window.print()">PDF</button>
     </div>
   </div></div>`;
@@ -3463,6 +3534,7 @@ function rubroHTML(r,v,filtro,piezaSel){
       <span class="rcode">${esc(r.codigo)}</span>
       <span class="rname">${esc(r.nombre)}</span>
       ${!r.aplicaFee?'<span class="chip c-otr" title="No se le aplica fee de producción">s/fee</span>':''}
+      ${r.aplicaIva===false?'<span class="chip c-otr" title="Este rubro no paga IVA">s/IVA</span>':''}
       <span class="muted" style="font-size:11px">${ls.length}</span>
       <span class="rtot">${fmt(tot, v.monedaBase)}</span>
     </div>
@@ -3478,6 +3550,10 @@ function rubroHTML(r,v,filtro,piezaSel){
         <button class="btn sm" onclick="pickFuncion('${r.id}')">+ Del catálogo de funciones</button>
         <button class="btn sm" onclick="pickPersona('${r.id}')">+ Persona / proveedor</button>
         <div class="spacer" style="flex:1"></div>
+        <button class="btn sm" onclick="upRubro('${r.id}','aplicaFee',${!r.aplicaFee})"
+          title="Si este rubro entra en la base del fee de producción">${r.aplicaFee?'Quitar del fee':'Incluir en el fee'}</button>
+        <button class="btn sm" onclick="upRubro('${r.id}','aplicaIva',${r.aplicaIva===false})"
+          title="Si este rubro paga IVA">${r.aplicaIva===false?'Gravar con IVA':'Marcar exento de IVA'}</button>
         <button class="btn sm dgr" onclick="delRubro('${r.id}')">Eliminar rubro</button>
       </div>
     </div>`:''}
@@ -3584,7 +3660,9 @@ function panelTotales(v,R,piezaNom){
     ${cap('contingencia','Contingencia', R.contingencia)}
     ${R.iibb||v.capas.iibb?cap('iibb','Ingresos Brutos', R.iibb):''}
     <div class="tot sub"><span>Neto</span><b>${fmt(R.neto,v.monedaBase)}</b></div>
-    ${cap('iva','IVA', R.iva)}
+    ${R.exento?`<div class="tot sub"><span class="muted">Exento de IVA</span>
+      <b class="muted">− ${fmt(R.exento, v.monedaBase)}</b></div>`:''}
+    ${cap('iva','IVA', R.iva, R.exento?`<span class="muted" style="font-size:10.5px">s/ ${fmt(R.baseIva,v.monedaBase)}</span>`:'')}
     <div class="tot big"><span>TOTAL ${v.monedaBase}</span><b>${fmt(R.total,v.monedaBase)}</b></div>
     <div class="tot sub" style="border:none;padding-top:6px">
       <span class="muted">Equivalente en ${otra} · TC ${esc(v.tcNombre)} ${fmtC(v.tc)}</span>
@@ -5836,6 +5914,9 @@ function upLinea(rid,lid,campo,val){
   const l = getV().rubros.find(r=>r.id===rid).lineas.find(x=>x.id===lid);
   l[campo] = ['cantidad','dias','valorUnit'].includes(campo) ? n(val) : val; R(); }
 function upCapa(k,val){ getV().capas[k]=n(val); R(); }
+function upRubro(id, campo, val){
+  const r = getV().rubros.find(x=>x.id===id); if(!r) return;
+  r[campo] = val; R(); }
 
 /* ---------- piezas: spots, episodios, videos ---------- */
 function addPieza(nombre){
@@ -5913,11 +5994,87 @@ function delRubro(id){ const v=getV(); const r=v.rubros.find(x=>x.id===id);
   if(r.lineas.length && !confirm(`Eliminar "${r.nombre}" con ${r.lineas.length} línea(s)?`)) return;
   v.rubros = v.rubros.filter(x=>x.id!==id); R(); }
 
+/* Derivar el presupuesto de producción del real, recortando un %. Nadie va a
+   retipear 80 líneas: si es incómodo, no se usa y el jefe termina viendo el
+   real. El recorte se aplica a los valores, no a las líneas, porque el jefe
+   tiene que ver TODO lo que hay que contratar, sólo que con menos plata. */
+function derivarProduccion(){
+  const py = getPy(), v = getV(); if(!py || !v) return;
+  if(!veTodo(getUsuario()) && getUsuario()){ toast('Esto lo hace Administración o el Productor Ejecutivo.'); return; }
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+    <h3>Generar el presupuesto de Producción</h3>
+    <div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">
+        Copia <b>${esc(v.nombre)}</b> (${esc(NIVEL(v.nivel).l)}) a una versión nueva marcada
+        <b>Producción</b>, recortando los valores. El jefe de producción ve todas las líneas
+        —tiene que saber qué hay que contratar— pero con la plata que le asignás.
+        El colchón queda sólo en el Real.
+      </div>
+      <div class="grid2">
+        ${campo('Nombre de la versión nueva','nombre', v.nombre + ' — Producción')}
+        ${campo('Recorte %','recorte','10','number','step="any" min="0" max="90"')}
+      </div>
+      <div class="sicabox" style="margin-top:12px">
+        Se recortan los valores unitarios. Después la ajustás línea por línea:
+        esto es un punto de partida, no un número final.
+      </div>
+      <div id="derdiag" style="margin-top:10px"></div>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <div style="flex:1"></div>
+      <button class="btn pri" onclick="confirmarDerivar()">Generar</button></div>
+  </div></div>`);
+}
+function confirmarDerivar(){
+  const d = datos(), py = getPy(), v = getV();
+  const rec = Math.min(90, Math.max(0, n(d.recorte)));
+  const copia = JSON.parse(JSON.stringify(v));
+  copia.id = uid('v'); copia.fecha = hoy(); copia.estado = 'borrador';
+  copia.nivel = 'produccion';
+  copia.nombre = (d.nombre||'').trim() || (v.nombre + ' — Producción');
+  copia.derivadaDe = v.id; copia.recorte = rec;
+  copia.rubros.forEach(r=>{ r.id=uid('rb');
+    r.lineas.forEach(l=>{ l.id=uid('ln'); l.valorUnit = n(l.valorUnit) * (1 - rec/100); }); });
+  py.versiones.push(copia);
+  DB.ui.versionId = copia.id;
+  cerrar();
+  toast(`${copia.nombre} creada — ${rec}% menos que el Real`);
+  R();
+}
+
+/* Real vs Producción, lado a lado: el colchón en un número. */
+function panelColchon(py, v){
+  const u = getUsuario();
+  if(u && !veTodo(u)) return '';                 /* el jefe no ve esto */
+  const reales = (py.versiones||[]).filter(x=>x.nivel==='real');
+  const prods  = (py.versiones||[]).filter(x=>x.nivel==='produccion');
+  if(!reales.length || !prods.length) return '';
+  const real = reales[reales.length-1], prod = prods[prods.length-1];
+  const Rr = calcular(real), Rp = calcular(prod);
+  const dif = Rr.subtotal - Rp.subtotal;
+  return `<div class="card noprint"><h3>Real vs Producción
+    <span class="spacer"></span>
+    <span class="muted" style="font-size:10px;text-transform:none;letter-spacing:0">sólo lo ven Administración y PE</span></h3>
+    <div class="pad">
+      <div class="tot sub"><span>${esc(real.nombre)} <span class="chip niv-real">Real</span></span>
+        <b>${fmt(Rr.subtotal, real.monedaBase)}</b></div>
+      <div class="tot sub"><span>${esc(prod.nombre)} <span class="chip niv-produccion">Producción</span></span>
+        <b>${fmt(Rp.subtotal, prod.monedaBase)}</b></div>
+      <div class="tot"><span><b>Colchón</b></span>
+        <b style="color:${dif>=0?'var(--ok)':'var(--bad)'}">${fmt(dif, real.monedaBase)}
+        <span class="muted" style="font-weight:400">· ${pct(Math.abs(dif), Rr.subtotal||1)}%</span></b></div>
+      ${dif < 0 ? `<div class="avisomodo turno-mal" style="margin-top:8px">
+        El de Producción está <b>por encima</b> del Real. Alguien tiene más plata asignada
+        de la que hay.</div>` : ''}
+    </div></div>`;
+}
+
 function duplicarVersion(){
   const py=getPy(), v=getV();
   const copia = JSON.parse(JSON.stringify(v));
   copia.id = uid('v'); copia.fecha = hoy(); copia.estado = 'borrador';
   copia.nombre = 'v' + (py.versiones.length+1);
+  copia.nivel = v.nivel || 'produccion';
   copia.rubros.forEach(r=>{ r.id=uid('rb'); r.lineas.forEach(l=>l.id=uid('ln')); });
   py.versiones.push(copia); DB.ui.versionId = copia.id;
   toast(`Creada ${copia.nombre} — la anterior queda intacta`); R(); }
@@ -6027,6 +6184,15 @@ function editVersion(){
       <div class="grid2">
         ${campo('Nombre','nombre',v.nombre)}
         ${sel('Estado','estado',v.estado,['borrador','enviado','aprobado','rechazado','cerrado'])}
+      </div>
+      <div class="grid2" style="margin-top:12px">
+        ${veTodo(getUsuario()) || !getUsuario()
+          ? sel('Para quién es','nivel',v.nivel||'produccion',NIVELES.map(x=>({v:x.k,l:x.l})))
+          : `<label class="f"><span>Para quién es</span>
+              <input type="text" value="${esc(NIVEL(v.nivel).l)}" disabled>
+              <input type="hidden" name="nivel" value="${esc(v.nivel||'produccion')}"></label>`}
+        <div class="f"><span>&nbsp;</span><div class="muted" style="font-size:11px;line-height:1.4;padding-top:6px">
+          ${esc(NIVEL(v.nivel).d)}</div></div>
         ${campo('Fecha','fecha',v.fecha,'date')}
         ${sel('Moneda base','monedaBase',v.monedaBase,['ARS','USD'])}
       </div>
@@ -6050,7 +6216,8 @@ function editVersion(){
 function saveVersion(){
   const d = datos(); const v = getV();
   Object.assign(v,{nombre:d.nombre||'v1', estado:d.estado, fecha:d.fecha, monedaBase:d.monedaBase,
-    tcNombre:d.tcNombre, tc:n(d.tc), tcFecha:d.tcFecha, notas:d.notas});
+    tcNombre:d.tcNombre, tc:n(d.tc), tcFecha:d.tcFecha, notas:d.notas,
+    nivel:d.nivel||v.nivel||'produccion'});
   cerrar(); }
 
 function editPersona(id){
