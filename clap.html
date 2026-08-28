@@ -89,7 +89,7 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 
 /* fila de línea: grid que colapsa en celu */
 .lh,.ln{display:grid;gap:6px;align-items:center;padding:6px 11px;
-  grid-template-columns:1fr 88px 62px 62px 108px 74px 116px 30px}
+  grid-template-columns:1fr 84px 56px 56px 100px 66px 108px 108px 30px}
 .lh{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--tx3);
   background:var(--bg);border-bottom:1px solid var(--line);font-weight:700;position:sticky;top:0;z-index:2}
 .ln{border-bottom:1px solid rgba(44,47,54,.5)}
@@ -99,6 +99,13 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 .ln input:focus,.ln select:focus{background:var(--bg4);border-color:var(--ac)}
 .num{text-align:right;font-family:var(--mono)}
 .ltot{font:600 12.5px var(--mono);text-align:right;padding-right:4px}
+.lreal{font:600 12.5px var(--mono);text-align:right;padding-right:4px}
+.lreal .vacio{color:var(--line2)}
+.lreal .pasado{color:var(--bad)}
+.lreal .dentro{color:var(--ok)}
+.rreal{font:600 12px var(--mono);color:var(--tx3);flex:none;min-width:96px;text-align:right}
+.rreal.pasado{color:var(--bad)}
+.rreal.vacio{color:var(--line2)}
 .del{color:var(--tx3);font-size:15px;line-height:1;text-align:center;padding:4px}
 .del:hover{color:var(--bad)}
 .addln{padding:7px 11px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line);background:var(--bg)}
@@ -382,6 +389,7 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .chip.niv-real{background:rgba(224,90,90,.16);color:#ef8b8b}
 .chip.niv-produccion{background:rgba(224,169,46,.16);color:var(--ac2)}
 .chip.niv-cliente{background:rgba(91,155,213,.16);color:#8dc0ea}
+.hedet{display:block;font-size:9.5px;color:var(--tx3);font-weight:600;margin-top:1px;white-space:nowrap}
 .pick.niv-real{border-color:rgba(224,90,90,.45);background:rgba(224,90,90,.06)}
 .pick.niv-real label{color:#ef8b8b}
 .invbtn:hover{background:rgba(224,169,46,.14);border-color:var(--ac);color:var(--ac2)}
@@ -546,7 +554,11 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
   .ln>*:nth-child(1){grid-column:1/-1;padding-right:26px}
   .ln input,.ln select{border-color:var(--line);background:var(--bg3);padding:9px 8px;font-size:15px}
   .ln select{background-position:calc(100% - 13px) 17px,calc(100% - 8px) 17px}
+  /* apilados y rotulados: en 375px no entran lado a lado sin achicar el número */
   .ln .ltot{grid-column:1/-1;text-align:right;font-size:15px;padding-top:5px;border-top:1px solid var(--line)}
+  .ln .lreal{grid-column:1/-1;text-align:right;font-size:15px}
+  .ln .ltot.mlbl::before,.ln .lreal.mlbl::before{text-align:right}
+  .rreal{min-width:0}
   .ln .del{position:absolute;top:2px;right:2px;font-size:20px;width:34px;height:34px}
   .btn,.btn.sm{padding:9px 13px;font-size:13px}
   .solo-esc{display:none!important}
@@ -1443,11 +1455,74 @@ function nuevoParte(o={}){
 }
 /* Condiciones de la jornada. Se configuran por proyecto porque cambian según
    el convenio y el tipo de trabajo.                                          */
+/* Las horas extra no son un único recargo: se liquidan por TRAMOS, y cada
+   tramo vale más que el anterior. La primera hora después de la jornada no se
+   paga igual que la quinta, y a partir de cierto punto la escala salta al
+   100%, al 200% y al 300%.
+
+   Se guarda como una lista de tramos {hasta, recargo}, donde `hasta` son horas
+   acumuladas de extra y `hasta:null` es "de ahí en adelante". Así la escala se
+   ajusta al convenio que corresponda sin tocar el cálculo.
+
+   Los valores por defecto son los que se usan habitualmente en publicidad; se
+   editan por proyecto, porque cambian según convenio y tipo de trabajo.     */
+/* El default es UN tramo al 50%: es lo que habia antes de que existieran los
+   tramos, y cambiarlo haria que a todo el mundo le saltaran los numeros sin
+   haber pedido nada. La escala por tramos esta a un click (boton "50/100/200/
+   300%") y hay que ponerla segun el convenio que corresponda, porque los
+   topes cambian de un convenio a otro.                                     */
+const TRAMOS_HE_DEFAULT = [{hasta:null, recargo:50}];
+/* La escala clasica de publicidad, como preset. */
+const TRAMOS_HE_ESCALADO = [
+  {hasta:2,    recargo:50},
+  {hasta:4,    recargo:100},
+  {hasta:6,    recargo:200},
+  {hasta:null, recargo:300},
+];
 function nuevaConfigRodaje(o={}){
   return {horasJornada:o.horasJornada??8, recargoHE:o.recargoHE??50,
+    tramosHE:o.tramosHE || TRAMOS_HE_DEFAULT.map(t=>({...t})),
+    /* jornada de scouting/preproducción: más corta y con su propio valor */
+    horasScouting:o.horasScouting??8,
     descontarComida:o.descontarComida!==false, minTurnaround:o.minTurnaround??12,
     telProduccion:o.telProduccion||''};
 }
+
+/* Reparte `horasExtra` en los tramos y devuelve cuánto cae en cada uno.
+   Devolver el detalle y no sólo el total es lo que permite mostrar el recibo:
+   "2 h al 50% + 2 h al 100% + 1 h al 200%", que es como se discute con el
+   técnico y con el contador.                                                */
+/* La escala efectiva. Si hay tramos de verdad, mandan ellos; si es un solo
+   tramo, manda `recargoHE`, que es el campo simple de toda la vida. Así los
+   dos conviven sin que uno le pise el número al otro. */
+function escalaDe(cfg){
+  const t = cfg && cfg.tramosHE;
+  if(t && t.length > 1) return t;
+  return [{hasta:null, recargo: n(cfg && cfg.recargoHE) || (t && t[0] ? n(t[0].recargo) : 50)}];
+}
+function repartirHE(horasExtra, tramos){
+  const ts = (tramos && tramos.length ? tramos : TRAMOS_HE_DEFAULT);
+  const out = []; let restan = Math.max(0, n(horasExtra)), desde = 0;
+  for(const t of ts){
+    if(restan <= 0) break;
+    const tope = (t.hasta == null) ? Infinity : Math.max(0, n(t.hasta));
+    const cabe = Math.max(0, tope - desde);
+    const h = Math.min(restan, cabe);
+    if(h > 0) out.push({horas:h, recargo:n(t.recargo)});
+    restan -= h; desde = tope;
+    if(tope === Infinity) break;
+  }
+  /* si la escala no llega a cubrir todo, el sobrante va al último recargo */
+  if(restan > 0) out.push({horas:restan, recargo:n(ts[ts.length-1].recargo)});
+  return out;
+}
+const costoHEDe = (horasExtra, valorHora, tramos) =>
+  repartirHE(horasExtra, tramos).reduce((s,t)=> s + t.horas * valorHora * (1 + t.recargo/100), 0);
+/* "50/100/200/300%" — para mostrar la escala de un vistazo. */
+const escalaTexto = cfg => escalaDe(cfg).map(t=>'+'+t.recargo+'%').join(' / ');
+/* fmtHoras habla en minutos y el reparto en horas: si no se convierte, el
+   recibo dice "0:02 al 50%" en vez de "2:00 al 50%". */
+const textoHE = reparto => reparto.map(t=>`${fmtHoras(t.horas*60)} al ${t.recargo}%`).join(' + ');
 
 const hhmm = t => { const m=String(t||'').match(/^(\d{1,2}):?(\d{2})$/); return m ? (+m[1])*60 + (+m[2]) : null; };
 const minAHoras = m => (m/60);
@@ -1476,9 +1551,11 @@ function horasDe(clave, j, cfg, valorJornada, moneda){
   const base = cfg.horasJornada*60;
   const extra = Math.max(0, netos - base);
   const valorHora = valorJornada ? valorJornada / Math.max(1,cfg.horasJornada) : 0;
-  const costoHE = extra/60 * valorHora * (1 + n(cfg.recargoHE)/100);
+  const reparto = repartirHE(extra/60, escalaDe(cfg));
+  const costoHE = reparto.reduce((sm,t)=> sm + t.horas * valorHora * (1 + t.recargo/100), 0);
   return {sinDatos:false, entrada:f.entrada, salida:f.salida, nota:f.nota||'',
-    brutos, comida, netos, extra, valorHora, costoHE, moneda:moneda||'ARS'};
+    brutos, comida, netos, extra, valorHora, costoHE, reparto,
+    detalleHE: textoHE(reparto), moneda:moneda||'ARS'};
 }
 
 /* Todos los que participan de una jornada, técnicos y elenco, con lo que hace
@@ -2948,6 +3025,14 @@ function migrar(){
     /* las versiones de antes no tenían nivel: son las de producción, que es
        lo que se venía usando. Nadie pierde acceso a lo que ya tenía. */
     (py.versiones||[]).forEach(v=>{ v.nivel ||= 'produccion'; });
+    /* la escala de horas extra por tramos: los proyectos viejos tenían un
+       recargo único, se convierte en una escala de un solo tramo para no
+       cambiarle el número a nadie de un día para el otro */
+    const cr = py.configRodaje;
+    if(cr && !cr.tramosHE){
+      cr.tramosHE = [{hasta:null, recargo:n(cr.recargoHE)||50}];
+      cr.horasScouting ??= 8;
+    }
     py.piezas ||= [];
     py.piezas.forEach((p,i)=>{ p.numero ??= i+1; p.peso ??= 1; });
   }));
@@ -3163,6 +3248,25 @@ function costoPorPieza(py, v){
     subtotal: gen.subtotal, total: gen.total, huerfanas};
 }
 
+/* ---------- Estimado vs Actual ----------
+   Al lado de lo que estimaste, lo que llevas gastado de verdad. Los
+   comprobantes ya traen `lineaId`, asi que el real se cuelga de la linea
+   exacta. Los que solo tienen rubro -cargados rapido- suman al rubro pero no
+   a ninguna linea; por eso el rubro puede no cuadrar con la suma de sus
+   lineas, y se guarda aparte para poder decirlo.                           */
+function realPorLinea(py, v){
+  const porLinea = {}, porRubro = {}, sueltoRubro = {};
+  const tc = v ? n(v.tc) : 1000, base = v ? v.monedaBase : 'ARS';
+  (py?.comprobantes||[]).forEach(c=>{
+    if(c.estado === 'rechazado') return;
+    const t = conv(n(c.importe), c.moneda||'ARS', base, tc);
+    if(c.rubro) porRubro[c.rubro] = (porRubro[c.rubro]||0) + t;
+    if(c.lineaId) porLinea[c.lineaId] = (porLinea[c.lineaId]||0) + t;
+    else if(c.rubro) sueltoRubro[c.rubro] = (sueltoRubro[c.rubro]||0) + t;
+  });
+  return {porLinea, porRubro, sueltoRubro, base};
+}
+
 /* El filtro que usa la solapa de una pieza: lo propio más lo compartido,
    porque en la vista de un spot hay que ver el equipo que también lo hace. */
 const filtroPieza = id => l => !l.piezaId || l.piezaId === id;
@@ -3357,7 +3461,8 @@ function vistaPresupuesto(pr,py,v){
   ${cabeceraProyecto(pr,py,v,cli)}
   ${solapasPiezas(py, v, sel, cli)}
   ${sel && !cli ? avisoPieza(py, v, sel) : ''}
-  ${cli ? tablaCliente(v,R) : v.rubros.map(r=>rubroHTML(r,v,filtro,sel)).join('')}
+  ${cli ? tablaCliente(v,R) : (()=>{ const RL = realPorLinea(py,v);
+      return v.rubros.map(r=>rubroHTML(r,v,filtro,sel,RL)).join(''); })()}
   ${cli?'':`<div class="pad noprint" style="padding:0 0 10px">
       <button class="btn" onclick="addRubro()">+ Agregar rubro</button></div>`}
   ${panelTotales(v,R,sel?nombrePieza(py,sel):'')}
@@ -3524,7 +3629,7 @@ function cabeceraProyecto(pr,py,v,cli){
   </div></div>`;
 }
 
-function rubroHTML(r,v,filtro,piezaSel){
+function rubroHTML(r,v,filtro,piezaSel,RL){
   const ls = filtro ? r.lineas.filter(filtro) : r.lineas;
   const tot = ls.reduce((s,l)=>s+totalLinea(l,v), 0);
   const py = getPy();
@@ -3537,13 +3642,18 @@ function rubroHTML(r,v,filtro,piezaSel){
       ${r.aplicaIva===false?'<span class="chip c-otr" title="Este rubro no paga IVA">s/IVA</span>':''}
       <span class="muted" style="font-size:11px">${ls.length}</span>
       <span class="rtot">${fmt(tot, v.monedaBase)}</span>
+      ${(()=>{ const real = RL && RL.porRubro[r.codigo];
+        if(!real) return '<span class="rreal vacio">—</span>';
+        return `<span class="rreal ${real>tot?'pasado':''}"
+          title="Gastado de verdad · comprobantes cargados${RL.sueltoRubro[r.codigo]?` · ${fmt(RL.sueltoRubro[r.codigo],v.monedaBase)} sin asignar a una línea`:''}">${fmt(real, v.monedaBase)}</span>`;
+      })()}
     </div>
     ${r.abierto?`<div class="rbody">
       <div class="lh">
         <span>Concepto</span><span>Unidad</span><span class="num">Cant.</span><span class="num">Días</span>
-        <span class="num">Valor unit.</span><span>Mon.</span><span class="num">Total</span><span></span>
+        <span class="num">Valor unit.</span><span>Mon.</span><span class="num">Estimado</span><span class="num">Actual</span><span></span>
       </div>
-      ${ls.map(l=>lineaHTML(l,r,v,py)).join('') ||
+      ${ls.map(l=>lineaHTML(l,r,v,py,RL)).join('') ||
         `<div class="empty" style="padding:16px">${filtro?'Nada de esta pieza ni compartido en este rubro':'Sin líneas todavía'}</div>`}
       <div class="addln noprint">
         <button class="btn sm pri" onclick="addLinea('${r.id}')">+ Línea${piezaSel?' en '+esc(nombrePieza(py,piezaSel)):''}</button>
@@ -3560,7 +3670,7 @@ function rubroHTML(r,v,filtro,piezaSel){
   </div>`;
 }
 
-function lineaHTML(l,r,v,py){
+function lineaHTML(l,r,v,py,RL){
   const cir = CIRCUITOS.find(c=>c.v===(l.circuito||'')) || CIRCUITOS[7];
   const doc = COMPROBANTES.find(c=>c.v===(l.comprobante||'')) || COMPROBANTES[5];
   const E=`'${r.id}','${l.id}'`;
@@ -3597,7 +3707,12 @@ function lineaHTML(l,r,v,py){
     <div class="mlbl" data-l="Valor unit."><input type="number" class="num" step="any" value="${l.valorUnit}" onchange="upLinea(${E},'valorUnit',this.value)"></div>
     <div class="mlbl" data-l="Moneda"><select onchange="upLinea(${E},'moneda',this.value)">
       <option ${l.moneda==='ARS'?'selected':''}>ARS</option><option ${l.moneda==='USD'?'selected':''}>USD</option></select></div>
-    <div class="ltot">${fmt(totalLinea(l,v), v.monedaBase)}</div>
+    <div class="ltot mlbl" data-l="Estimado">${fmt(totalLinea(l,v), v.monedaBase)}</div>
+    <div class="lreal mlbl" data-l="Actual">${(()=>{ const real = RL && RL.porLinea[l.id];
+      if(!real) return '<span class="vacio">—</span>';
+      const est = totalLinea(l,v), d = real - est;
+      return `<b class="${d>0?'pasado':'dentro'}" title="${d>0?'Se pasó ':'Queda '}${fmt(Math.abs(d), v.monedaBase)}">${fmt(real, v.monedaBase)}</b>`;
+    })()}</div>
     <button class="del noprint" onclick="delLinea(${E})" title="Eliminar">×</button>
   </div>`;
 }
@@ -4456,7 +4571,7 @@ function vistaResumen(pr,py,v){
         ${d.jornadas.length
           ? `<div class="resd">${d.jornadas.length} jornada${d.jornadas.length==1?'':'s'} planificada${d.jornadas.length==1?'':'s'}</div>
              <div class="resd ${HE.totalExtra?'':'muted'}">Horas extra acumuladas: <b>${fmtHoras(HE.totalExtra)}</b>${HE.totalARS?' · '+fmt(HE.totalARS):''}</div>
-             <div class="resd muted">Jornada base ${cfg.horasJornada} h · extras +${cfg.recargoHE}%</div>`
+             <div class="resd muted">Jornada base ${cfg.horasJornada} h · extras ${esc(escalaTexto(cfg))}</div>`
           : `<div class="resd muted">Sin plan de rodaje</div>`}
         <button class="btn sm" onclick="setTab('rodaje')" style="margin-top:6px">Ir al rodaje</button>
       </div>
@@ -5592,7 +5707,7 @@ function horasHTML(pr,py,v,j,gente,cfg){
   return `<div class="cs">
     <div class="cshead">
       <div><div class="csttl">Horas y extras · Jornada ${j.numero}</div>
-        <div class="cssub">Jornada base ${cfg.horasJornada} h · extra +${cfg.recargoHE}%
+        <div class="cssub">Jornada base ${cfg.horasJornada} h · extra ${esc(escalaTexto(cfg))}
           ${cfg.descontarComida?'· se descuenta la comida':'· la comida no se descuenta'}</div></div>
       <div style="text-align:right"><div class="csj">${fmtHoras(totalHE)}<span> extras</span></div>
         <div class="cssub">${conHE.length} de ${filas.length} pasaron la jornada</div></div>
@@ -5611,7 +5726,8 @@ function horasHTML(pr,py,v,j,gente,cfg){
           <td class="${x.nombre?'':'muted'}">${esc(x.nombre||'—')}</td>
           <td class="num muted">${esc(x.h.entrada)}</td><td class="num muted">${esc(x.h.salida)}</td>
           <td class="num">${fmtHoras(x.h.netos)}</td>
-          <td class="num"><b>${x.h.extra?fmtHoras(x.h.extra):'—'}</b></td>
+          <td class="num"><b>${x.h.extra?fmtHoras(x.h.extra):'—'}</b>
+            ${x.h.detalleHE?`<span class="hedet">${esc(x.h.detalleHE)}</span>`:''}</td>
           <td class="num muted">${x.h.valorHora?fmt(x.h.valorHora,x.moneda):'—'}</td>
           <td class="num"><b>${x.h.costoHE?fmt(x.h.costoHE,x.moneda):'—'}</b></td></tr>`).join('')
           || '<tr><td colspan="8" class="empty">Cargá las entradas y salidas en el <b>Parte del día</b></td></tr>'}
@@ -5621,7 +5737,7 @@ function horasHTML(pr,py,v,j,gente,cfg){
           <b>${costoARS?fmt(costoARS,'ARS'):''}${costoARS&&costoUSD?' + ':''}${costoUSD?fmt(costoUSD,'USD'):''}</b></div>
         <div class="muted" style="font-size:11px;margin-top:5px">
           No está en el presupuesto: es desvío. Con ${cfg.horasJornada} h de jornada base
-          y +${cfg.recargoHE}% de recargo.</div></div>`:''}
+          y escala ${esc(escalaTexto(cfg))}.</div></div>`:''}
     </div>
     ${proy.jornadas.length>1 ? `<div class="csblock"><h4>Acumulado del proyecto</h4>
       <div class="scrollx"><table class="tbl cst">
@@ -7428,6 +7544,53 @@ function alPortapapeles(txt, msg){
   if(navigator.clipboard?.writeText) navigator.clipboard.writeText(txt).then(ok, ()=>prompt('Copiá el texto:', txt));
   else prompt('Copiá el texto:', txt);
 }
+/* Lee los tramos del formulario. Se ordenan por tope y el último queda
+   abierto, para que no quede una escala con un agujero al final. */
+function leerTramosDelForm(d){
+  const out = [];
+  Object.keys(d).filter(k=>/^he_hasta_/.test(k)).forEach(k=>{
+    const i = k.slice('he_hasta_'.length);
+    const hasta = String(d[k]).trim() === '' ? null : n(d[k]);
+    out.push({hasta, recargo: n(d['he_recargo_'+i])});
+  });
+  if(!out.length) return null;
+  const cerrados = out.filter(t=>t.hasta!=null).sort((a,b)=>a.hasta-b.hasta);
+  const abiertos = out.filter(t=>t.hasta==null);
+  const fin = abiertos.length ? abiertos[abiertos.length-1] : {hasta:null, recargo:cerrados.length?cerrados[cerrados.length-1].recargo:50};
+  return [...cerrados, {...fin, hasta:null}];
+}
+/* Un ejemplo con números, que es como se entiende una escala. */
+function previewTramos(tramos, horasJornada){
+  const ej = 5;   /* 5 horas extra */
+  const rep = repartirHE(ej, tramos);
+  return `<b>Ejemplo:</b> alguien con ${n(horasJornada)+ej} h trabajadas
+    (${ej} h extra sobre ${n(horasJornada)}) cobra ${esc(textoHE(rep))}.`;
+}
+function presetTramos(){
+  cfgActual().tramosHE = TRAMOS_HE_ESCALADO.map(t=>({...t}));
+  cerrar(); cfgRodaje(); }
+function presetPlano(){
+  const c = cfgActual();
+  c.tramosHE = [{hasta:null, recargo:n(c.recargoHE)||50}];
+  cerrar(); cfgRodaje(); }
+function agregarTramo(){
+  const c = cfgActual();
+  const t = leerTramosDelForm(datos()) || (c.tramosHE||TRAMOS_HE_DEFAULT);
+  const ult = t[t.length-1];
+  c.tramosHE = [...t.slice(0,-1), {hasta:(ult.hasta==null? (t.length*2) : ult.hasta+2), recargo:ult.recargo},
+    {hasta:null, recargo:Math.min(300, ult.recargo+100)}];
+  cerrar(); cfgRodaje();
+}
+function quitarTramo(i){
+  const c = cfgActual();
+  const t = leerTramosDelForm(datos()) || (c.tramosHE||TRAMOS_HE_DEFAULT);
+  if(t.length<=1){ toast('Tiene que quedar al menos un tramo'); return; }
+  const nuevo = t.filter((_,k)=>k!==i);
+  nuevo[nuevo.length-1] = {...nuevo[nuevo.length-1], hasta:null};
+  c.tramosHE = nuevo;
+  cerrar(); cfgRodaje();
+}
+
 function cfgRodaje(){
   const c = cfgActual();
   abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
@@ -7437,13 +7600,46 @@ function cfgRodaje(){
         así que se configura por proyecto.</div>
       <div class="grid2">
         ${campo('Horas de jornada base','horasJornada',c.horasJornada,'number','step="any" min="1"')}
-        ${campo('Recargo hora extra %','recargoHE',c.recargoHE,'number','step="any"')}
+        ${campo('Horas de jornada de scouting','horasScouting',c.horasScouting??8,'number','step="any" min="1"')}
+        ${campo('Recargo hora extra % (si usás uno solo)','recargoHE',c.recargoHE,'number','step="any"')}
         ${campo('Descanso mínimo entre jornadas (h)','minTurnaround',c.minTurnaround,'number','step="any"')}
         ${campo('Teléfono de producción','telProduccion',c.telProduccion,'text','placeholder="va en la citación"')}
       </div>
       <label style="display:flex;gap:8px;align-items:center;margin-top:14px;cursor:pointer">
         <input type="checkbox" name="descontarComida" ${c.descontarComida?'checked':''} style="width:auto;flex:none">
         <span style="font-size:12.5px">Descontar la comida de las horas trabajadas</span></label>
+
+      <div style="margin:18px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
+        Escala de horas extra</div>
+      <div class="muted" style="font-size:11.5px;line-height:1.6;margin-bottom:9px">
+        Se liquidan por tramos: la primera hora después de la jornada no vale lo mismo que
+        la quinta. <b>Hasta</b> son horas extra acumuladas; el último tramo, vacío, es
+        «de ahí en adelante».
+      </div>
+      <div id="tramos">
+        ${(c.tramosHE||TRAMOS_HE_DEFAULT).map((t,i)=>`
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+            <span class="muted" style="font-size:11px;width:38px">Hasta</span>
+            <input type="number" step="any" min="0" name="he_hasta_${i}"
+              value="${t.hasta==null?'':t.hasta}" placeholder="∞"
+              style="width:70px;text-align:right;font-family:var(--mono)">
+            <span class="muted" style="font-size:11px">h extra →</span>
+            <input type="number" step="any" min="0" name="he_recargo_${i}" value="${n(t.recargo)}"
+              style="width:70px;text-align:right;font-family:var(--mono)">
+            <span class="muted" style="font-size:11px">% de recargo</span>
+            <div style="flex:1"></div>
+            <button class="btn sm dgr" onclick="quitarTramo(${i})">×</button>
+          </div>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn sm" onclick="agregarTramo()">+ Tramo</button>
+        <button class="btn sm" onclick="presetTramos()"
+          title="La escala clásica: 2 h al 50%, 2 al 100%, 2 al 200% y el resto al 300%">Usar 50/100/200/300%</button>
+        <button class="btn sm" onclick="presetPlano()">Volver a un solo recargo</button>
+      </div>
+      <div class="sicabox" style="margin-top:10px" id="hepreview">
+        ${previewTramos(escalaDe(c), c.horasJornada)}
+      </div>
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
       <button class="btn pri" onclick="saveCfgRodaje()">Guardar</button></div>
@@ -7452,7 +7648,9 @@ function cfgRodaje(){
 function saveCfgRodaje(){
   const d = datos(); const c = cfgActual();
   const chk = document.querySelector('.mod [name=descontarComida]');
-  Object.assign(c, {horasJornada:Math.max(1,n(d.horasJornada)), recargoHE:n(d.recargoHE),
+  Object.assign(c, {horasJornada:Math.max(1,n(d.horasJornada)),
+    horasScouting:Math.max(1,n(d.horasScouting)||8), recargoHE:n(d.recargoHE),
+    tramosHE: leerTramosDelForm(d) || c.tramosHE,
     minTurnaround:n(d.minTurnaround), telProduccion:d.telProduccion,
     descontarComida: chk ? chk.checked : true});
   cerrar();

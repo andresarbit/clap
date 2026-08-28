@@ -427,6 +427,32 @@ muchas— y su rol puede ser distinto en cada una. El menu de arriba las agrupa
 en *mis productoras*, *en la web* (elegir una te suma) y *solo en esta
 computadora*.
 
+### Horas extra por tramos
+
+Las horas extra no se liquidan con un recargo unico: van por **tramos**, y cada
+uno vale mas que el anterior. La escala se configura por proyecto en
+**Rodaje -> Condiciones de la jornada**, con un preset de **50/100/200/300%** a
+un click y otro para volver a un recargo plano.
+
+> **El default sigue siendo 50% plano.** Los topes cambian de un convenio a
+> otro: poner una escala que no es la de ustedes daria numeros equivocados con
+> total seguridad. Hay que elegirla a mano.
+
+Cada persona muestra el reparto como un recibo:
+`2:00 al 50% + 2:00 al 100% + 1:00 al 200%`. Los proyectos que ya existian se
+migran a un tramo unico con SU recargo, asi que a nadie le cambia un numero.
+
+Tambien esta la **jornada de scouting**, que es mas corta que la de rodaje.
+
+### Estimado vs Actual
+
+Al lado de lo estimado, lo que se lleva gastado de verdad. Los comprobantes ya
+traian `lineaId`, asi que el real se cuelga de la linea exacta: en verde si
+queda dentro, en rojo si se paso. El rubro muestra su propio real, y avisa en
+el tooltip cuanta plata quedo cargada al rubro **sin asignar a ninguna linea**
+—si no, el rubro no cuadraria con la suma de sus lineas y nadie entenderia por
+que—. Los comprobantes rechazados no cuentan.
+
 ### Los dos presupuestos: Real y Produccion
 
 En una productora conviven dos presupuestos del mismo proyecto, y no es un
@@ -664,6 +690,7 @@ node test/run.js test/menu-productoras.js # el menu de productoras sale de la ba
 node test/run.js test/invitar-link.js # invitar por link: mensaje, alta y aceptacion
 node test/run.js test/piezas.js     # spots/episodios: reparto, no duplicar, desglose por pieza
 node test/run.js test/dos-presupuestos.js # Real vs Produccion por rol, y el IVA exento
+node test/run.js test/extras-y-actual.js  # horas extra por tramos y columna Actual
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
