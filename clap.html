@@ -2952,10 +2952,17 @@ function dbVacia(){
     ui:{productoraId:null, proyectoId:null, versionId:null, vista:'interna', tab:'resumen'}};
 }
 
+/* Lo último que se leyó del navegador, tal cual estaba. Si algo falla, esto es
+   lo que permite devolverle a la persona su trabajo en vez de perderlo.     */
+let _crudoGuardado = null;
+let _fallaArranque = null;
+
 function cargar(){
+  let raw = null;
   try{
     const propio = localStorage.getItem(KEY);
-    const raw = propio || localStorage.getItem(KEY_VIEJA);
+    raw = propio || localStorage.getItem(KEY_VIEJA);
+    _crudoGuardado = raw;
     if(raw){
       DB = JSON.parse(raw); migrar();
       /* venía de la clave vieja: reescribir ya en la nueva, así el día que se
@@ -2963,8 +2970,68 @@ function cargar(){
       if(!propio) localStorage.setItem(KEY, JSON.stringify(DB));
       return;
     }
-  }catch(e){ console.warn('DB corrupta, arranco limpio', e); }
+  }catch(e){
+    /* Antes esto arrancaba de cero en silencio: la persona abría la app y se
+       encontraba con la Productora Demo y su trabajo aparentemente borrado.
+       Ahora se guarda lo que había y se avisa, con el respaldo a un click.  */
+    console.error('No pude leer los datos guardados', e);
+    _fallaArranque = {donde:'leer los datos guardados', error:e};
+    DB = dbVacia();
+    if(!raw) sembrar();
+    return;
+  }
   DB = dbVacia(); sembrar(); guardar();
+}
+
+/* ---------- que nunca quede una pantalla en blanco ----------
+   Una app de una sola página que se rompe al arrancar no muestra un error:
+   muestra nada. Y "no se abre" es lo único que puede decir la persona del
+   otro lado, que es exactamente lo que no alcanza para arreglarlo.
+   Esta pantalla dice qué pasó, deja bajar el respaldo ANTES de tocar nada, y
+   recién después ofrece reiniciar.                                          */
+function pantallaDeError(e, donde){
+  const msg = (e && (e.message || e)) || 'error desconocido';
+  const stack = (e && e.stack) ? String(e.stack).split('\n').slice(0,6).join('\n') : '';
+  const hayDatos = !!_crudoGuardado;
+  try{
+    document.getElementById('app').innerHTML = `
+    <div style="max-width:640px;margin:40px auto;padding:0 16px;font:14px/1.6 system-ui,sans-serif;color:#e8e9ec">
+      <div style="font:800 17px/1 system-ui;letter-spacing:.16em;color:#e0a92e;margin-bottom:6px">CLAP</div>
+      <div style="border:1px solid #e05a5a;background:rgba(224,90,90,.08);border-radius:12px;padding:16px">
+        <div style="font-size:17px;font-weight:700;margin-bottom:8px">La app no pudo abrir</div>
+        <div style="color:#9ba1ac;font-size:13px">Se rompió al ${esc(donde||'arrancar')}.
+          ${hayDatos?'<b style="color:#e8e9ec">Tus datos siguen guardados</b> — bajalos antes de tocar nada.':''}</div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          ${hayDatos?`<button onclick="bajarRespaldoCrudo()" style="background:#e0a92e;color:#161005;border:none;border-radius:7px;padding:10px 14px;font-weight:700;cursor:pointer">⬇ Bajar mis datos</button>`:''}
+          <button onclick="location.reload()" style="background:#23262c;color:#e8e9ec;border:1px solid #3a3e46;border-radius:7px;padding:10px 14px;cursor:pointer">Reintentar</button>
+          <button onclick="empezarDeCero()" style="background:#23262c;color:#e05a5a;border:1px solid #3a3e46;border-radius:7px;padding:10px 14px;cursor:pointer">Empezar de cero</button>
+        </div>
+        <details style="margin-top:14px">
+          <summary style="cursor:pointer;color:#9ba1ac;font-size:12px">Detalle técnico (para pasarle a quien lo programó)</summary>
+          <pre style="white-space:pre-wrap;font-size:11px;color:#9ba1ac;margin-top:8px;background:#141519;padding:10px;border-radius:7px;overflow:auto">${esc(msg)}\n\n${esc(stack)}</pre>
+        </details>
+      </div>
+    </div>`;
+  }catch(_){ /* si ni esto se puede, ya no hay nada que hacer */ }
+}
+function bajarRespaldoCrudo(){
+  const datos = _crudoGuardado || (()=>{ try{ return JSON.stringify(DB); }catch(_){ return '{}'; } })();
+  try{
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([datos], {type:'application/json'}));
+    a.download = `clap-respaldo-${hoy()}.json`; a.click();
+    URL.revokeObjectURL(a.href);
+  }catch(e){ alert('No pude bajar el archivo: ' + e.message); }
+}
+function empezarDeCero(){
+  if(!confirm('Esto borra lo guardado en ESTE navegador y arranca limpio.\n\n¿Bajaste el respaldo?')) return;
+  try{ localStorage.removeItem(KEY); localStorage.removeItem(KEY_VIEJA); }catch(_){}
+  location.reload();
+}
+/* Dibuja, y si se rompe muestra el error en vez de desaparecer. */
+function renderSeguro(donde){
+  try{ render(); return true; }
+  catch(e){ console.error(e); pantallaDeError(e, donde); return false; }
 }
 /* v1 → v2: los ids pasan a ser UUID.
    Antes eran `ln_a1b2c3`, que no entran en una clave primaria uuid de
@@ -3065,6 +3132,8 @@ function migrar(){
 }
 let _t;
 function guardar(){
+  /* misma razón que en beforeunload: con el arranque fallado no se escribe */
+  if(_fallaArranque) return;
   clearTimeout(_t);
   _t = setTimeout(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }
     catch(e){ toast('⚠ No se pudo guardar (espacio lleno)'); } }, 120);
@@ -8993,9 +9062,17 @@ function resetDB(){
   DB=dbVacia(); sembrar(); cerrar(); toast('Base reiniciada'); }
 
 /* ===========================  ARRANQUE  =================================== */
-sbCargar();
-cargar();
-render();
+/* Todo el arranque va protegido. Si algo se rompe, la persona ve QUÉ pasó y
+   puede bajarse sus datos, en vez de quedarse mirando una pantalla blanca sin
+   más información que "no se abre". */
+try{ sbCargar(); }catch(e){ console.error('sbCargar', e); }
+try{ cargar(); }
+catch(e){ console.error('cargar', e); _fallaArranque = {donde:'leer los datos guardados', error:e};
+  try{ DB = dbVacia(); sembrar(); }catch(_){} }
+
+if(_fallaArranque){
+  pantallaDeError(_fallaArranque.error, _fallaArranque.donde);
+} else if(renderSeguro('dibujar la pantalla')){
 /* Arranque, en este orden y no en otro:
    1. Si el link trae una invitación, eso es lo primero y lo único: quien
       llega por un link invitado no tiene que ver el alta normal ni la app
@@ -9004,15 +9081,29 @@ render();
       Antes salía una sola vez justo después de entrar: si la cerrabas o
       recargabas no volvía nunca, y quedabas con la cuenta creada y sin
       productora, sin ninguna forma de terminar.                             */
-(async () => {
-  if(await revisarInvitacion()){
-    /* con sesión ya iniciada, se refresca por atrás para saber si ya figuro */
-    if(sbConectado()){ try{ _misFichas = await sbMisFichas(); pantallaInvitacion(); }catch(e){} }
-    return;
-  }
-  revisarAlta();
-})();
+  (async () => {
+    try{
+      if(await revisarInvitacion()){
+        /* con sesión ya iniciada, se refresca por atrás para saber si ya figuro */
+        if(sbConectado()){ try{ _misFichas = await sbMisFichas(); pantallaInvitacion(); }catch(e){} }
+        return;
+      }
+      await revisarAlta();
+    }catch(e){ console.error('arranque', e); }
+  })();
+}
+
+/* Red de seguridad final: cualquier error suelto que hubiera dejado la
+   pantalla congelada o en blanco, se muestra. */
+window.addEventListener('error', ev => {
+  if(document.getElementById('app') && !document.getElementById('app').innerHTML.trim())
+    pantallaDeError(ev.error || ev.message, 'dibujar la pantalla');
+});
 window.addEventListener('beforeunload', ()=>{ clearTimeout(_t);
+  /* Si el arranque falló, DB es una base vacía de emergencia: guardarla
+     pisaría los datos que no se pudieron leer, que son los únicos que la
+     persona tiene. Se sale sin tocar nada. */
+  if(_fallaArranque) return;
   try{ localStorage.setItem(KEY, JSON.stringify(DB)); }catch(e){} });
 </script>
 </body>

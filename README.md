@@ -594,6 +594,28 @@ sincronizar. Con rol Produccion o Equipo el acceso a la productora sale de
 estar anotado en alguno de sus proyectos (`productoras_con_acceso`), asi que
 sincronizar primero baja una lista vacia y el proyecto no aparece.
 
+### Que nunca quede una pantalla en blanco
+
+Una app de una sola pagina que se rompe al arrancar no muestra un error: muestra
+**nada**. Y "no se abre" es lo unico que puede decir la persona del otro lado,
+que es justo lo que no alcanza para arreglarlo.
+
+Ahora todo el arranque va protegido y, si algo falla, se ve una pantalla que
+dice **que** paso, con tres botones: **bajar mis datos**, reintentar y —al
+final— empezar de cero. El detalle tecnico va en un desplegable, para copiarlo.
+
+Tres reglas que la sostienen:
+
+- **Nunca arrancar de cero en silencio.** Antes, si los datos guardados no se
+  podian leer, se sembraba la Productora Demo encima y la persona abria su
+  presupuesto para encontrar que "se borro todo".
+- **Con el arranque fallado no se escribe nada.** Ni `guardar()` ni el guardado
+  de salida: si no, cerrar la pantalla de error pisaba los datos ilegibles con
+  una base vacia y ahi si se perdian de verdad. Esto lo encontro la prueba en el
+  navegador, no la de escritorio.
+- **El respaldo se baja antes de tocar nada**, con lo crudo que habia guardado,
+  aunque no se haya podido parsear.
+
 ### Quien soy yo
 
 Con sesion iniciada, **la identidad no se elige**: la dice el mail con el que
@@ -691,6 +713,7 @@ node test/run.js test/invitar-link.js # invitar por link: mensaje, alta y acepta
 node test/run.js test/piezas.js     # spots/episodios: reparto, no duplicar, desglose por pieza
 node test/run.js test/dos-presupuestos.js # Real vs Produccion por rol, y el IVA exento
 node test/run.js test/extras-y-actual.js  # horas extra por tramos y columna Actual
+node test/run.js test/arranque.js     # que nunca quede en blanco ni se pierdan datos
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)
