@@ -1,0 +1,64 @@
+# Mantiene al día la escala salarial del SICA dentro de CLAP.
+#
+# El navegador no puede leer los PDF de sicacine.org.ar (el sitio no manda
+# cabeceras CORS), así que esto lo hace del lado del servidor: dos veces por
+# semana busca escalas nuevas de publicidad, las baja, las lee con el mismo
+# lector de PDF que usa la app, las valida, corre las pruebas y, si todo da
+# bien, commitea. GitHub Pages publica solo y la escala nueva aparece al
+# recargar la página.
+#
+# Si el SICA cambió la forma de la tabla (otro número de cargos, otro orden,
+# importes que no cuadran), el paso de actualizar FALLA A PROPÓSITO y no se
+# publica nada. GitHub le manda un mail al dueño del repo cuando un workflow
+# programado falla: ese mail es la señal de que hay que revisarlo a mano.
+#
+# También se puede correr a mano: Actions -> Escala SICA -> Run workflow.
+
+name: Escala SICA
+
+on:
+  schedule:
+    - cron: '0 12 * * 1'   # lunes 9:00 (hora argentina)
+    - cron: '0 12 * * 4'   # jueves 9:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: escala-sica
+  cancel-in-progress: false
+
+jobs:
+  actualizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Buscar escalas nuevas en sicacine.org.ar
+        run: node scripts/actualizar-sica.js
+
+      - name: Probar que la app sigue andando con la escala nueva
+        run: |
+          for f in test/sica.js test/sueldos-sica.js test/pruebas.js test/extras-y-actual.js; do
+            echo "::group::$f"
+            node test/run.js "$f"
+            echo "::endgroup::"
+          done
+
+      - name: Publicar si cambió algo
+        run: |
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard test/sica)" ]; then
+            echo "Sin escalas nuevas: no hay nada que publicar."
+            exit 0
+          fi
+          ESCALAS=$(grep -o 'nombre:"[^"]*", vigencia' clap.html | sed 's/nombre:"\([^"]*\)".*/\1/' | paste -sd ',' -)
+          git config user.name "CLAP · escala SICA"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add clap.html test/sica
+          git commit -m "Escala SICA actualizada desde sicacine.org.ar" -m "Escalas cargadas: ${ESCALAS}" -m "Commit automático de .github/workflows/sica.yml."
+          git push
