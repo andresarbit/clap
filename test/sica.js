@@ -65,7 +65,7 @@ DB.ui.tab = 'catalogo';
 const html = tarifarioHTML();
 ok('el tarifario muestra la vigencia', html.includes(SICA.vigencia));
 ok('avisa que es un piso y no la tarifa', /Esto es el piso, no la tarifa/.test(html));
-ok('avisa que vence', html.includes('vencen el ' + SICA.hasta));
+ok('avisa hasta cuándo vale la última escala', html.includes('vale hasta el ' + ESCALAS_SICA[ESCALAS_SICA.length-1].hasta));
 ok('agrupa por departamento', /Fotografía y Cámara/.test(html) && /Eléctrica e Iluminación/.test(html));
 
 const antes = DB.catalogo.personas.length;

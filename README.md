@@ -159,6 +159,55 @@ convenio y el tipo de trabajo.
 > Las horas extra no estan en el presupuesto: son desvio. Este es el modulo que
 > te lo muestra el mismo dia y no un mes despues.
 
+### Sueldos del convenio SICA en el presupuesto
+
+La columna de valor de los trabajadores **se completa sola con el sueldo del
+convenio** y despues se edita como cualquier otra.
+
+- **La escala es la de la fecha del rodaje**, no la de hoy: un presupuesto que se
+  arma en septiembre para filmar en octubre se paga con los sueldos de octubre.
+  La fecha sale de la primera jornada con fecha; sin fechas, se usa hoy.
+- **Segun las horas del proyecto** (Rodaje -> Condiciones de la jornada): 8 h de
+  convenio mas las extras con la escala del proyecto. Con 12 h al 50% da
+  **exactamente, al peso,** la columna "12 h" del PDF del SICA —esta probado en los
+  82 cargos de las dos escalas—, que es la prueba de que la cuenta es la del
+  convenio. Menos de 8 h cobra la jornada entera.
+- Se completa al agregar desde el catalogo de funciones, al escribir la funcion en
+  una linea vacia, al traer una persona sin tarifa y al pasar el desglose. El
+  numero que muestra el selector de funciones es el mismo que se carga.
+- **Lo escrito a mano manda** y el convenio no lo vuelve a tocar. La tarifa de una
+  persona del catalogo tambien manda. Si el valor a mano queda **por debajo del
+  convenio**, la linea lo marca en rojo: es el piso legal.
+- **Cambiar las horas recalcula solo lo que vino del convenio**, y avisa cuantas.
+  Si cambia la fecha del rodaje y cae en otra escala, las lineas quedan marcadas
+  como desactualizadas con un boton para ponerlas al dia.
+- Cada linea dice **que cargo del convenio tomo**, y tocandolo se elige otro o se
+  marca "no lleva convenio" (un fee, un servicio). Hay una tabla explicita de
+  equivalencias porque los nombres no coinciden y hay cargos repetidos ("ASISTENTE"
+  hay tres). **"Asistente" solo no se adivina.** Ojo con Direccion: en el convenio
+  el "ASISTENTE" es el 1° AD y los "AYUDANTES" estan abajo.
+- En dolares, o con unidad distinta de jornada, no se completa.
+- Al cliente no se le muestra nada de esto.
+
+#### Como se mantiene actualizada
+
+El sitio del SICA **no deja que una pagina web lea sus PDF** (no manda cabeceras
+CORS), asi que no se puede hacer desde el navegador. Lo hace **GitHub Actions**
+(`.github/workflows/sica.yml`) lunes y jueves: busca en `sicacine.org.ar` escalas de
+publicidad nuevas —por los links de la home y probando el patron de nombre de los
+proximos meses—, las baja, las lee con el mismo lector de PDF de la app, las
+valida, corre las pruebas y commitea. GitHub Pages publica solo.
+
+**Si el SICA cambia la forma de la tabla** (otro numero de cargos, otro orden,
+importes que no cuadran), el proceso **falla a proposito y no publica nada**: es
+preferible una escala sin actualizar que una con los sueldos corridos una fila.
+GitHub manda un mail al dueño del repo cuando falla; ese es el aviso. Se corre a
+mano desde *Actions -> Escala SICA -> Run workflow*, o local con
+`node scripts/actualizar-sica.js` (`--seco` para mirar sin escribir).
+
+Si la fecha del rodaje cae despues de la ultima escala publicada, el presupuesto
+lo avisa en rojo.
+
 ### Tarifario de convenio (SICA)
 
 En `Catalogo -> Tarifario de convenio` esta embebida la **escala salarial de
@@ -714,6 +763,7 @@ node test/run.js test/piezas.js     # spots/episodios: reparto, no duplicar, des
 node test/run.js test/dos-presupuestos.js # Real vs Produccion por rol, y el IVA exento
 node test/run.js test/extras-y-actual.js  # horas extra por tramos y columna Actual
 node test/run.js test/arranque.js     # que nunca quede en blanco ni se pierdan datos
+node test/run.js test/sueldos-sica.js # sueldos del convenio en el presupuesto
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)

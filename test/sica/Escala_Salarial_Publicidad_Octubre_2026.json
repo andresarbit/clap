@@ -1,0 +1,252 @@
+{
+  "vigencia": "SALARIOS BRUTOS PUBLICIDAD A PARTIR DEL 01/10/2026",
+  "hasta": "VIGENTES HASTA 30/11/2026",
+  "cargos": [
+    {
+      "cargo": "ASISTENTE",
+      "base8": 234692,
+      "extras4": 176019,
+      "total12": 410711
+    },
+    {
+      "cargo": "CONTINUISTA (SCRIPT)",
+      "base8": 195555,
+      "extras4": 146666,
+      "total12": 342221
+    },
+    {
+      "cargo": "1º AYUDANTE",
+      "base8": 136715,
+      "extras4": 102536,
+      "total12": 239251
+    },
+    {
+      "cargo": "2º AYUDANTE",
+      "base8": 91441,
+      "extras4": 68580,
+      "total12": 160021
+    },
+    {
+      "cargo": "JEFE/A",
+      "base8": 234692,
+      "extras4": 176019,
+      "total12": 410711
+    },
+    {
+      "cargo": "ASISTENTE",
+      "base8": 136715,
+      "extras4": 102536,
+      "total12": 239251
+    },
+    {
+      "cargo": "1º AYUDANTE",
+      "base8": 91441,
+      "extras4": 68580,
+      "total12": 160021
+    },
+    {
+      "cargo": "CHAPERON/A",
+      "base8": 90929,
+      "extras4": 68197,
+      "total12": 159126
+    },
+    {
+      "cargo": "JEFE/A",
+      "base8": 176022,
+      "extras4": 132017,
+      "total12": 308039
+    },
+    {
+      "cargo": "ASISTENTE",
+      "base8": 136715,
+      "extras4": 102536,
+      "total12": 239251
+    },
+    {
+      "cargo": "1º AYUDANTE",
+      "base8": 91441,
+      "extras4": 68580,
+      "total12": 160021
+    },
+    {
+      "cargo": "DIRECTOR/A DE FOTOGRAFIA",
+      "base8": 1017038,
+      "extras4": 762778,
+      "total12": 1779816
+    },
+    {
+      "cargo": "CAMAROGRAFO/A",
+      "base8": 414692,
+      "extras4": 311019,
+      "total12": 725711
+    },
+    {
+      "cargo": "ASISTENTE (FOQUISTA)",
+      "base8": 273789,
+      "extras4": 205342,
+      "total12": 479131
+    },
+    {
+      "cargo": "AYUDANTE",
+      "base8": 195555,
+      "extras4": 146667,
+      "total12": 342222
+    },
+    {
+      "cargo": "VIDEO ASISTENTE",
+      "base8": 170345,
+      "extras4": 127759,
+      "total12": 298104
+    },
+    {
+      "cargo": "OPERADOR/A HD",
+      "base8": 352026,
+      "extras4": 264020,
+      "total12": 616046
+    },
+    {
+      "cargo": "AYTE. OPERADOR/A HD",
+      "base8": 195555,
+      "extras4": 146667,
+      "total12": 342222
+    },
+    {
+      "cargo": "GAFFER",
+      "base8": 304232,
+      "extras4": 228174,
+      "total12": 532406
+    },
+    {
+      "cargo": "JEFE/A ELECTRICO/A",
+      "base8": 273789,
+      "extras4": 205342,
+      "total12": 479131
+    },
+    {
+      "cargo": "ELECTRICO/A",
+      "base8": 211143,
+      "extras4": 158357,
+      "total12": 369500
+    },
+    {
+      "cargo": "OP. DE GENERADOR",
+      "base8": 156511,
+      "extras4": 117383,
+      "total12": 273894
+    },
+    {
+      "cargo": "SONIDISTA",
+      "base8": 273789,
+      "extras4": 205342,
+      "total12": 479131
+    },
+    {
+      "cargo": "MICROFONISTA",
+      "base8": 211143,
+      "extras4": 158357,
+      "total12": 369500
+    },
+    {
+      "cargo": "KEY GRIP",
+      "base8": 273789,
+      "extras4": 205342,
+      "total12": 479131
+    },
+    {
+      "cargo": "hd/>\u001cZKͬ\u0004\u0003ͻ\u0003\u0012\u0004ZW/Ed\u001cZKͬ\u0004",
+      "base8": 273789,
+      "extras4": 205342,
+      "total12": 479131
+    },
+    {
+      "cargo": "AYUDANTE",
+      "base8": 211143,
+      "extras4": 158357,
+      "total12": 369500
+    },
+    {
+      "cargo": "MAQUILLADOR/A",
+      "base8": 273789,
+      "extras4": 205342,
+      "total12": 479131
+    },
+    {
+      "cargo": "AYUDANTE",
+      "base8": 156511,
+      "extras4": 117383,
+      "total12": 273894
+    },
+    {
+      "cargo": "ASIST. DE MAQUILLAJE Y PEINADO",
+      "base8": 187731,
+      "extras4": 140798,
+      "total12": 328529
+    },
+    {
+      "cargo": "PEINADOR/A",
+      "base8": 273789,
+      "extras4": 205342,
+      "total12": 479131
+    },
+    {
+      "cargo": "DIRECCION DE ARTE",
+      "base8": 259053,
+      "extras4": 194290,
+      "total12": 453343
+    },
+    {
+      "cargo": "AMBIENTADOR/A / 1er ASIST. DE ARTE",
+      "base8": 177198,
+      "extras4": 132899,
+      "total12": 310097
+    },
+    {
+      "cargo": "ASISTENTE DE ARTE",
+      "base8": 136715,
+      "extras4": 102536,
+      "total12": 239251
+    },
+    {
+      "cargo": "AYUDANTE DE ARTE",
+      "base8": 91441,
+      "extras4": 68580,
+      "total12": 160021
+    },
+    {
+      "cargo": "VESTUARIO",
+      "base8": 220806,
+      "extras4": 165605,
+      "total12": 386411
+    },
+    {
+      "cargo": "ASISTENTE DE VESTUARIO",
+      "base8": 136715,
+      "extras4": 102536,
+      "total12": 239251
+    },
+    {
+      "cargo": "AYUDANTE DE VESTUARIO",
+      "base8": 91441,
+      "extras4": 68580,
+      "total12": 160021
+    },
+    {
+      "cargo": "EDITOR/A",
+      "base8": 234692,
+      "extras4": 176019,
+      "total12": 410711
+    },
+    {
+      "cargo": "ASISTENTE DE EDICION",
+      "base8": 164298,
+      "extras4": 123224,
+      "total12": 287522
+    },
+    {
+      "cargo": "APRENDIZ",
+      "base8": 41014,
+      "extras4": 30760,
+      "total12": 71774
+    }
+  ]
+}

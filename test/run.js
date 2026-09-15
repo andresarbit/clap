@@ -10,6 +10,7 @@ global.window={print(){},addEventListener(){}};
 global.alert=()=>{};global.confirm=()=>true;global.prompt=()=>null;
 global.URL={createObjectURL:()=>'blob:x',revokeObjectURL(){}};
 const fs=require('fs');
-const src=fs.readFileSync('D:/Cuadro/clap.html','utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
+/* relativo al repo, para que corra igual en otra máquina y en GitHub Actions */
+const src=fs.readFileSync(require('path').join(__dirname,'..','clap.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 const tst=fs.readFileSync(process.argv[2],"utf8");
 eval(src+'\n;\n'+tst);
