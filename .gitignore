@@ -7,3 +7,6 @@ test/muestras/vacio.xyz
 
 # Datos de conexion propios: no van al repo publico
 MI-CONEXION.txt
+
+# datos personales del catálogo: nunca al repo público
+privado/

@@ -208,6 +208,73 @@ mano desde *Actions -> Escala SICA -> Run workflow*, o local con
 Si la fecha del rodaje cae despues de la ultima escala publicada, el presupuesto
 lo avisa en rojo.
 
+### Plantillas de presupuesto
+
+Arrancar un presupuesto de cero es copiar el ultimo parecido y borrar. Las
+plantillas son ese "ultimo parecido", armadas con los presupuestos reales de
+la casa: 30 planillas AICP (2010–2016), dos de 2019–2020, los de servicio
+para afuera y los 74 callsheets.
+
+| Plantilla | Jornadas | Lineas | Gente en rodaje | Como |
+|---|---|---|---|---|
+| Publicidad chica | 1 | 41 | 18 | los mas chicos de la carpeta (USD 2–12 mil) |
+| Publicidad mediana | 2 | 84 | 44 | comerciales medianos (USD 20–50 mil) |
+| Publicidad grande | 3 | 107 | 66 | comerciales grandes (USD 65–100 mil) |
+| Publicidad super | 5 | 136 | 79 | las campañas mas grandes (USD 120–220 mil), 3 piezas |
+| Videoclip chico / mediano | 1 / 2 | 24 / 62 | | equipo por fuera (factura) |
+| Contenido / TV | 1 | 39 | | separadores y promos para un canal, 5 piezas |
+| Serie (bloque de episodio) | 5 | 109 | | una serie juvenil y callsheets de ficcion: menos datos |
+| Institucional chico | 1 | 22 | | entrevistas, sonido, graficas |
+
+- Cada escala suma a la anterior; si una funcion se repite, la mas grande la
+  **reemplaza** (el jefe de produccion de la mediana tiene mas dias de prepro,
+  no es otra persona) salvo que diga que se suma (dos electricos mas).
+- Trae la **estructura**: lineas, cantidades, dias de rodaje y de prepro, y la
+  jornada de 12 h de todas las planillas AICP. El equipo se valoriza solo con
+  el convenio SICA de la fecha del rodaje.
+- **No trae precios de proveedores**: los de aquellos presupuestos tienen diez
+  años. Van en cero, con la referencia historica en dolares en la nota de cada
+  linea ("USD 700–2.400 por jornada").
+- El catering va por cabeza: la gente del rodaje mas cuatro de agencia y
+  cliente.
+- Se elige al crear el proyecto, o despues con **+ Lineas de una plantilla**:
+  agrega lo que falta y no toca lo que ya esta. De cine no hay: no habia
+  ningun presupuesto de cine en la carpeta.
+
+### Preproduccion a 8 h
+
+Cada linea del equipo dice su etapa: preproduccion, rodaje o post. Fuera del
+rodaje la jornada del convenio es de 8 h aunque el rodaje sea de 12 (es la
+columna "Jornadas de 8hs" de las planillas de la casa). Cambiar las horas de la
+jornada recalcula el rodaje y deja la prepro como esta.
+
+### Cargas sociales
+
+El sueldo del convenio es **bruto**. Encima la productora paga las cargas, que
+en las planillas figuran como "Union Fees (SICA)" o "Cargas Soc.": 51% en
+2014–15, 72% en 2019, 42% en 2020. Sin ellas el equipo sale entre un 40 y un
+70% mas barato de lo que cuesta.
+
+- Dos porcentajes por version: **cargas SICA** sobre los sueldos de convenio y
+  **cargas del elenco (AAA)** sobre los cachets.
+- Van **solo sobre quien cobra por convenio**. Cada linea dice su contratacion
+  (Convenio SICA / Elenco AAA / Factura) y la detecta sola: el que factura
+  (comprobante A, B o C, o el equipo "por fuera" de un videoclip) no lleva
+  cargas. Se cambia a mano en el chip de la linea.
+- Entran al costo directo y llevan fee, como el sueldo. Al cliente le aparecen
+  como un renglon propio del resumen, igual que en las planillas AICP.
+- Si hay sueldos de convenio y las cargas estan en 0, la barra del convenio lo
+  avisa en rojo con un campo para cargarlas. Un proyecto nuevo arranca con las
+  del ultimo presupuesto de la casa que las tenga.
+
+### Condiciones para el cliente
+
+Al pie del presupuesto: **Incluye, No incluye, Forma de pago y Validez**. Salen
+en la vista del cliente y en el PDF; lo vacio no se imprime. "Completar con las
+tipicas" llena lo que falte con los textos de la casa (el "Incluye / No
+incluye" de uno de 2019, la validez atada al tipo de cambio de los presupuestos
+para afuera, el pago en cuotas) usando los derechos y el TC del proyecto.
+
 ### Tarifario de convenio (SICA)
 
 En `Catalogo -> Tarifario de convenio` esta embebida la **escala salarial de
@@ -303,8 +370,20 @@ Disponible = presupuestado - comprometido - real
 ### Armar el catalogo desde callsheets viejos
 
 Boton **⬇ Importar de callsheets**: se sueltan los archivos y de cada uno se
-sacan nombre, funcion, telefono y mail. Acepta PDF, Word, RTF y txt, varios a
-la vez.
+sacan nombre, funcion, telefono y mail. Acepta **Excel (.xlsx)**, PDF, Word,
+RTF y txt, varios a la vez, y tambien un **catalogo ya preparado (.json)**.
+
+- **Excel**: la mayoria de los callsheets son planillas con dos tablas lado a
+  lado (el equipo a la izquierda, proveedores o agencia a la derecha). Cada
+  fila se corta donde hay columnas vacias, asi el telefono del remisero no se
+  le pega al electrico, y como cada dato esta en su celda no se adivina donde
+  termina el cargo y empieza el nombre. El `.xls` viejo (binario) no se lee:
+  la app pide guardarlo como `.xlsx`.
+- **Catalogo preparado**: `{clap:'catalogo', personas:[{nombre, funcion, rubro,
+  tipo, tel, email, dni, cuit, notas}]}`. Es lo que sale de revisar muchos
+  callsheets de una vez (ver abajo). Entra tal cual, sin volver a juntar por
+  telefono, y cada ficha trae sus **notas**: con quien trabajo y en que año.
+- Lo importado **sube al catalogo compartido** apenas se agrega.
 
 - **Unifica**: la misma persona aparece en todos los callsheets del rodaje. Se
   junta por mail, telefono o nombre, completando los campos que falten entre
@@ -319,6 +398,27 @@ la vez.
   piso del SICA.
 
 > Dos callsheets de 24 lineas cada uno dan 24 contactos unicos, no 48.
+
+#### El catalogo de la casa (74 callsheets, 2008–2026)
+
+Se revisaron uno por uno los callsheets de la carpeta de la casa. De
+2.647 apariciones salieron **1.047 personas y 516 proveedores** sin repetir,
+con la funcion pasada al nombre de CLAP ("DOP", "Focus Puller", "Asist.
+Vestuario" -> Director de Fotografia, Foquista, Asistente de Vestuario) y una
+nota con los proyectos y el año. Si el ultimo dato es anterior a 2016 la nota
+lo dice: el telefono puede haber cambiado.
+
+- Cada mail, telefono y nombre se verifico contra el texto del callsheet: nada
+  inventado.
+- No se transcribieron CBU ni datos bancarios, aunque algunos los traian.
+- El callsheet de "Day 48" (2009, PDF a dos columnas) quedo afuera: al
+  leerlo los telefonos podian quedar cruzados entre personas.
+- El archivo tiene datos personales y **no va al repo**: vive en `privado/`
+  (esta en `.gitignore`) y se carga desde la app con Importar.
+
+Las notas se comparten entre todos cuando la base tiene la columna: correr una
+vez `backend/catalogo-notas.sql`. Sin eso la app anda igual y las notas quedan
+en cada navegador.
 
 ### Tags: que cosas hay en el proyecto
 
@@ -764,6 +864,7 @@ node test/run.js test/dos-presupuestos.js # Real vs Produccion por rol, y el IVA
 node test/run.js test/extras-y-actual.js  # horas extra por tramos y columna Actual
 node test/run.js test/arranque.js     # que nunca quede en blanco ni se pierdan datos
 node test/run.js test/sueldos-sica.js # sueldos del convenio en el presupuesto
+node test/run.js test/plantillas-cargas.js # plantillas, cargas sociales, prepro 8 h, condiciones, catalogo Excel
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 
 python test/generar-muestras.py    # regenera test/muestras/ (PDF, DOCX, RTF, FDX)

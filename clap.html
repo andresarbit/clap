@@ -396,6 +396,28 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .chip.sica-ref{background:rgba(155,161,172,.12);color:var(--tx3);border:none;cursor:pointer}
 .chip.sica-no{background:transparent;color:var(--tx3);border:1px dashed var(--line2);cursor:pointer}
 .chip.sica-ed{background:rgba(155,161,172,.12);color:var(--tx2);border:none;cursor:pointer}
+/* etapa y contratación */
+.lnota{font-size:10.5px;color:var(--tx3);line-height:1.35;padding:0 2px}
+.chip.et-prepro{background:rgba(91,155,213,.16);color:#8dc0ea}
+.chip.et-rodaje{background:rgba(155,161,172,.10);color:var(--tx3)}
+.chip.et-post{background:rgba(143,122,212,.16);color:#b39ce4}
+.chip.ct-sica{background:rgba(63,178,127,.14);color:#6fd0a3}
+.chip.ct-aaa{background:rgba(224,122,168,.16);color:#eea0c4}
+.chip.ct-factura{background:rgba(155,161,172,.10);color:var(--tx3)}
+/* condiciones al pie del presupuesto */
+.condgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.condgrid textarea{min-height:92px;font-size:12.5px;line-height:1.5}
+.condtxt{white-space:pre-wrap;font-size:12.5px;line-height:1.6;color:var(--tx2)}
+.condtxt b{color:var(--tx)}
+/* plantillas */
+.plgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:9px}
+.plcard{text-align:left;padding:11px 12px;border:1px solid var(--line2);border-radius:9px;
+  background:var(--bg2);color:var(--tx);cursor:pointer;display:flex;flex-direction:column;gap:4px}
+.plcard:hover{border-color:var(--ac)}
+.plcard.on{border-color:var(--ac);box-shadow:inset 0 0 0 1px var(--ac);background:rgba(224,169,46,.07)}
+.plcard b{font-size:13px}
+.plcard span{font-size:11.5px;color:var(--tx3);line-height:1.45}
+.plcard i{font-style:normal;font-size:10.5px;color:var(--ac2);font-family:var(--mono)}
 .sicabar{border-color:rgba(224,169,46,.35)}
 .sica-aviso{padding:9px 13px;border-top:1px solid var(--line);font-size:12px;line-height:1.55;color:var(--tx2)}
 .sica-aviso.mal{background:rgba(224,90,90,.08);color:#ef8b8b}
@@ -857,6 +879,29 @@ const COMUNES = ['Combustible del área','Movilidad y estacionamiento','Fletes y
 ['02','03','04','05','06','07','08','10','13','14'].forEach(r=>{
   COMUNES.forEach(c=>{ if(!FUNCIONES[r].includes(c)) FUNCIONES[r].push(c); });
 });
+
+/* Lo que apareció en los presupuestos y callsheets reales de la casa
+   (2008–2026) y no estaba en la lista. Sale de ahí, no de un manual: el
+   estudio se cobra por día de armado, de pre-light, de rodaje y de desarme;
+   los menores traen chaperona y permiso; los camiones cobran horas extra. */
+const FUNCIONES_EXTRA = {
+  '01':['Shootingboard','Presentación y tratamiento','Casting de voces','Prueba de vestuario'],
+  '03':['Line Producer','Productor Financiero','Aprendiz','Asistente de Locaciones'],
+  '06':['Efectos especiales (lluvia, humo, nieve)','Vehículos de escena','Home economist'],
+  '09':['Chaperona','Permiso de menores (escribanía)','Representante (comisión)',
+        'Coreógrafo','Bailarín / bailarina'],
+  '10':['Estudio — días de armado','Estudio — pre-light','Estudio — días de rodaje',
+        'Estudio — desarme','Estudio — horas extra','Consumo eléctrico de estudio',
+        'Motorhome / camarín','Despeje y cierre de calle'],
+  '11':['Steadicam con operador','Technocrane / grúa telescópica','Camera car',
+        'Cámara de alta velocidad','Computadora DIT','Consumo de lámparas'],
+  '12':['Kilometraje de camiones','Horas extra de camiones'],
+  '13':['Mesa de agencia y cliente'],
+  '14':['Backstage / making of','Edición de making of','Imagen de archivo',
+        'Gráficas y placas','Banda musical producida'],
+};
+Object.entries(FUNCIONES_EXTRA).forEach(([r,xs]) => xs.forEach(x => {
+  if(!FUNCIONES[r].includes(x)) FUNCIONES[r].push(x); }));
 SUBRUBROS = Object.entries(FUNCIONES).flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
 
 /* Unidades de contratación */
@@ -1161,6 +1206,13 @@ function valorJornadaSICA(cargo, cfg){
   return Math.round(cargo.j8 + costoHEDe(H - 8, vh, esc50));
 }
 
+const ETAPAS = [
+  {k:'prepro', l:'Preproducción'},
+  {k:'rodaje', l:'Rodaje'},
+  {k:'post',   l:'Post / cierre'},
+];
+const esJornada8 = l => !!l && (l.etapa === 'prepro' || l.etapa === 'post');
+
 /* Qué pasa con una línea respecto del convenio. Devuelve null si no tiene. */
 function estadoSICA(l, py){
   if(!l) return null;
@@ -1170,10 +1222,12 @@ function estadoSICA(l, py){
   const cargo = cargoSICA(l.concepto, E, l.sicaRef || null);
   if(!cargo) return null;
   const cfg = py && py.configRodaje;
-  const valor = valorJornadaSICA(cargo, cfg);
+  /* fuera del rodaje la jornada es de 8 h: preproducción, cierre, post */
+  const de8 = esJornada8(l);
+  const valor = de8 ? cargo.j8 : valorJornadaSICA(cargo, cfg);
   const actual = n(l.valorUnit);
   const esSica = l.valorOrigen === 'sica';
-  return {cargo, escala:E, valor, horas:horasJornadaDe(cfg),
+  return {cargo, escala:E, valor, horas: de8 ? 8 : horasJornadaDe(cfg),
     esSica,
     desactualizado: esSica && Math.round(actual) !== valor,
     debajo: !esSica && actual > 0 && actual < valor,
@@ -1261,7 +1315,14 @@ function nuevaLinea(o={}){
     valorOrigen:o.valorOrigen||null,
     /* cargo del convenio elegido a mano: {d,c}, 'ninguno', o null = detectar */
     sicaRef:o.sicaRef||null,
-    sica:o.sica||null};
+    sica:o.sica||null,
+    /* 'prepro' | 'rodaje' | 'post' · null = rodaje. La preproducción se paga
+       por jornada de 8 h aunque el rodaje sea de 12: así estaba en todos los
+       presupuestos de la casa (columna "Jornadas de 8hs"). */
+    etapa:o.etapa||null,
+    /* 'sica' | 'aaa' | 'factura' · null = lo decide contratoDe(). Define si
+       la línea lleva cargas sociales encima. */
+    contrato:o.contrato||null};
 }
 /* ===================  LOS DOS PRESUPUESTOS  ===============================
    En una productora conviven dos presupuestos del mismo proyecto, y no es un
@@ -1295,12 +1356,22 @@ function veVersion(v, u = getUsuario()){
 const versionesQueVeo = (py, u = getUsuario()) =>
   (py?.versiones||[]).filter(v => veVersion(v, u));
 
+/* Condiciones comerciales: lo que va al pie de todo presupuesto que sale de
+   la casa. Salen de los presupuestos reales —uno de 2019 traía "Incluye / No
+   incluye", los de servicio para afuera la validez y el tipo de cambio, un
+   institucional la forma de pago en tres cuotas—. Vacío no se imprime. */
+function nuevasCondiciones(o={}){
+  return {incluye:o.incluye||'', noIncluye:o.noIncluye||'',
+    validez:o.validez||'', pago:o.pago||''};
+}
 function nuevaVersion(o={}){
   return {id:uid('v'), nombre:o.nombre||'v1', fecha:o.fecha||hoy(), estado:o.estado||'borrador',
     nivel:o.nivel||'produccion',
     monedaBase:o.monedaBase||'ARS', tc:o.tc??1000, tcFecha:o.tcFecha||hoy(), tcNombre:o.tcNombre||'MEP',
-    capas:o.capas||{fee:15, contingencia:5, iibb:0, iva:21},
+    capas:o.capas||{fee:15, contingencia:5, iibb:0, iva:21, cargas:0, cargasElenco:0},
     notas:o.notas||'',
+    /* lo que va escrito al pie del presupuesto que se le manda al cliente */
+    condiciones:o.condiciones||nuevasCondiciones(),
     rubros:o.rubros|| RUBROS_BASE.map(r=>({id:uid('rb'),...r, lineas:[], abierto:false}))};
 }
 /* ===========================  TIPOS Y PIEZAS  =============================
@@ -1400,10 +1471,379 @@ function nuevaPersona(o={}){
     funcion:o.funcion||'', rubro:o.rubro||'03',
     tarifaRef:o.tarifaRef??0, moneda:o.moneda||'ARS', unidad:o.unidad||'jornada',
     tel:o.tel||'', email:o.email||'', banco:o.banco||'', alias:o.alias||'', cbu:o.cbu||'',
-    tipo:o.tipo||'persona'}; /* persona | proveedor | equipo */
+    tipo:o.tipo||'persona', /* persona | proveedor | equipo */
+    /* con quién trabajó y cuándo: "Proyecto A (2026) · Proyecto B (2021)". Sirve para
+       elegir, y para saber qué tan viejo es el teléfono. */
+    notas:o.notas||''};
 }
 
 function hoy(){const d=new Date();return d.toISOString().slice(0,10)}
+
+/* ========================  PLANTILLAS  ===================================
+   Arrancar un presupuesto desde cero es copiar el último parecido y borrar.
+   Estas plantillas son ese "último parecido", armadas con los presupuestos
+   reales de la casa (30 AICP de 2010–2016, dos de 2019–2020 y los de
+   servicio para afuera) y con los 74 callsheets: qué líneas aparecen
+   siempre, cuánta gente por escala, cuántos días de preproducción.
+
+   Qué trae y qué no:
+   - Trae la ESTRUCTURA: las líneas, las cantidades, los días de rodaje y de
+     preproducción. El equipo técnico se valoriza solo con el convenio SICA
+     vigente para la fecha del rodaje.
+   - NO trae precios de proveedores: los de aquellos presupuestos son de hace
+     diez años. Van como referencia en la nota de cada línea (en dólares de
+     entonces, que es lo único comparable) y el valor queda en cero para que
+     nadie mande un número viejo sin darse cuenta.
+
+   Días: un número, o 'J' = las jornadas de rodaje del proyecto.
+   pre: N = además, N jornadas de preproducción (a 8 h, como en la columna
+   "Jornadas de 8hs" de las planillas).                                     */
+const PL_REF = {
+  camara:   'Ref. 2010–16: USD 700–2.400 por jornada (mediana 1.400)',
+  luces:    'Ref. 2010–16: USD 700–4.500 por jornada (mediana 2.200)',
+  grip:     'Ref. 2010–16: USD 340–730 por jornada',
+  gen:      'Ref. 2010–16: USD 320–560 por jornada',
+  catering: 'Ref. 2010–16: USD 20–30 por persona y por día (mediana 25)',
+  camion:   'Ref. 2010–16: USD 260–360 por día',
+  camionp:  'Ref. 2010–16: USD 200–430 por día',
+  combi:    'Ref. 2010–16: USD 220–430 por día',
+  segur:    'Ref. 2010–16: USD 70–150 por persona y por día',
+  loc:      'Ref. 2010–16: USD 1.700–6.700 el total (mediana 4.500)',
+  util:     'Ref. 2010–16: USD 1.900–8.300 el total',
+  vest:     'Ref. 2010–16: USD 600–2.800 el total',
+  post:     'Ref. 2010–16: edición + color + online, USD 2.400–12.000 (mediana 4.900)',
+  caja:     'Ref. 2010–16: USD 560–1.200',
+  permiso:  'Ref. 2010–16: USD 180–1.600',
+  casting:  'Ref. 2010–16: USD 670–1.150',
+  grip0:    'El convenio de publicidad no tiene cargo de grip: en las planillas de la casa se pagaba como ayudante',
+};
+/* una línea de plantilla */
+/* mas:true = SE SUMA a la misma función de la escala anterior (dos
+   eléctricos más); sin eso, la escala más grande la REEMPLAZA (el jefe de
+   producción de la mediana tiene más días de prepro, no es otra persona). */
+const plL = (r, c, o={}) => ({r, c, q:o.q ?? 1, d:o.d ?? 'J', u:o.u || 'jornada',
+  pre:o.pre || 0, nota:o.nota || '', ct:o.ct || null, mas:!!o.mas});
+const plG = (r, c, o={}) => plL(r, c, {...o, u:'global', d:1});
+
+/* Bloques por escala. Cada escala suma a la anterior: lo que tiene la chica
+   lo tiene la mediana, y así. */
+const PL_PUB = {
+  chica: () => [
+    plG('01','Scouting / búsqueda de locaciones'), plG('01','Casting', {nota:PL_REF.casting}),
+    plG('02','Director', {ct:'factura', nota:'Honorarios del director: van aparte del convenio'}),
+    plL('02','Ayudante de Dirección (1° AD)', {pre:1}),
+    plL('03','Jefe de Producción', {pre:2}), plL('03','Asistente de Producción', {pre:1}),
+    plL('03','Aprendiz'), plG('03','Caja chica de producción', {nota:PL_REF.caja}),
+    plL('04','Director de Fotografía'), plL('04','Foquista (1° AC)'),
+    plL('05','Gaffer'), plL('05','Eléctrico'),
+    plL('06','Director de Arte', {pre:2}), plL('06','Utilero'),
+    plG('06','Alquiler de utilería', {nota:PL_REF.util}), plG('06','Compras de arte'),
+    plL('07','Vestuarista', {pre:1}), plL('07','Maquillador/a'),
+    plG('07','Alquiler de vestuario', {nota:PL_REF.vest}),
+    plL('09','Actor / Actriz Principal'), plG('09','Buyout / Cesión de derechos'),
+    plL('10','Fee de locación', {nota:PL_REF.loc}), plG('10','Permiso municipal de filmación', {nota:PL_REF.permiso}),
+    plL('11','Paquete cámara + ópticas', {nota:PL_REF.camara}), plL('11','Paquete de luces', {nota:PL_REF.luces}),
+    plG('11','Expendables (gelatinas, cintas, pilas)'),
+    plL('12','Auto de producción'), plG('12','Combustible'), plG('12','Peajes'),
+    plL('13','Desayuno', {u:'persona', q:'CAB', nota:PL_REF.catering}),
+    plL('13','Almuerzo', {u:'persona', q:'CAB', nota:PL_REF.catering}),
+    plL('14','Montajista', {d:3, nota:PL_REF.post}), plG('14','Colorista'), plG('14','Mezcla y masterización de audio'),
+    plG('15','Seguro de Accidentes Personales'), plG('15','Responsabilidad Civil'),
+  ],
+  mediana: () => [
+    plG('01','Pre Production Meeting (PPM)'), plG('01','Shootingboard'),
+    plL('02','Ayudante de Dirección (1° AD)', {pre:3}), plL('02','2° Ayudante de Dirección'),
+    plL('02','Script / Continuista'),
+    plL('03','Jefe de Producción', {pre:5}), plL('03','Asistente de Producción', {pre:3}),
+    plL('03','2° Asistente de Producción'), plL('03','Location Manager', {pre:3}), plL('03','Aprendiz', {q:2}),
+    plL('04','Director de Fotografía', {pre:1}), plL('04','2° Asistente de Cámara'),
+    plL('04','DIT'), plL('04','Video Assist'),
+    plL('05','Jefe eléctrico'), plL('05','Eléctrico', {q:2}), plL('05','Generadorista'),
+    plL('05','Key Grip'), plL('05','Grip', {nota:PL_REF.grip0}),
+    plL('06','Director de Arte', {pre:5}), plL('06','Ambientador / 1° Asistente de Arte', {pre:2}),
+    plL('06','Asistente de Arte', {pre:3}), plL('06','Ayudante de Arte'), plG('06','Alquiler de muebles'),
+    plL('07','Vestuarista', {pre:3}), plL('07','Asistente de Vestuario', {pre:2}),
+    plL('07','Peinador/a'), plG('07','Compra de vestuario'), plG('07','Insumos de maquillaje'),
+    plL('09','Actor / Actriz Secundario', {q:2}), plL('09','Extra', {q:6}),
+    plG('09','Fee de agencia de casting'),
+    plL('10','Seguridad de locación', {q:2, nota:PL_REF.segur}), plG('10','Limpieza'),
+    plL('11','Paquete de grip', {nota:PL_REF.grip}), plL('11','Grupo electrógeno', {nota:PL_REF.gen}),
+    plL('11','Handies / walkies'),
+    plL('11','Camión de luces', {nota:PL_REF.camion}), plL('12','Camión de producción', {nota:PL_REF.camionp}),
+    plL('12','Combi de pasajeros', {nota:PL_REF.combi}),
+    plL('13','Merienda / snacks', {u:'persona', q:'CAB'}), plG('13','Agua y bebidas'),
+    plG('14','Diseño sonoro'), plG('14','Licencia de música'), plG('14','Locución'),
+    plG('15','Todo Riesgo Equipos'),
+  ],
+  grande: () => [
+    plL('03','Productor', {pre:5, ct:'factura'}), plL('03','Coordinador de Producción', {pre:3}),
+    plL('03','Asistente de Locaciones', {pre:2}),
+    plL('04','Fotógrafo de fija'),
+    plL('05','Eléctrico', {q:2, mas:true}), plL('05','Grip', {mas:true, nota:PL_REF.grip0}), plL('05','Best Boy eléctrico'),
+    plL('07','Asistente de Maquillaje y Peinado'),
+    plL('08','Sonidista Directo'), plL('08','Microfonista'),
+    plL('09','Figuración especial', {q:2}), plL('09','Extra', {q:9, mas:true}),
+    plL('10','Motorhome / camarín'), plL('10','Baños químicos'),
+    plL('11','Dolly y rieles'), plL('11','Monitores'),
+    plL('11','Camión de grip', {nota:PL_REF.camion}), plL('12','Minibús'),
+    plL('13','Mesa de agencia y cliente'),
+    plG('14','VFX / composición'), plG('14','Motion graphics'), plG('14','Música original'),
+    plG('14','Backstage / making of'),
+  ],
+  super: () => [
+    plL('02','Director de segunda unidad', {ct:'factura'}), plL('02','3° Ayudante de Dirección'),
+    plL('04','Operador de Steadicam'), plL('04','Segunda unidad de cámara'), plG('04','Piloto de Drone'),
+    plL('05','Rigger'), plL('05','Operador de grúa'),
+    plL('06','Escenógrafo', {pre:8, ct:'factura'}), plL('06','Constructor', {d:5}), plL('06','Carpintero', {q:2, d:5}),
+    plL('06','Pintor', {d:3}), plG('06','Construcción de set'), plG('06','Efectos especiales (lluvia, humo, nieve)'),
+    plG('06','Vehículos de escena'),
+    plL('09','Doble de riesgo'), plL('09','Coordinador de riesgo'),
+    plL('10','Estudio — días de armado', {d:2}), plL('10','Estudio — pre-light', {d:1}),
+    plL('10','Estudio — días de rodaje', {d:2}), plL('10','Estudio — desarme', {d:1}),
+    plG('10','Consumo eléctrico de estudio'),
+    plL('11','Technocrane / grúa telescópica'), plL('11','Camera car', {d:1}),
+    plG('12','Pasajes aéreos'), plL('12','Hotel', {u:'persona', q:6}), plL('12','Viáticos / per diem', {u:'persona', q:6}),
+    plL('16','Enfermero / paramédico'), plG('16','Servicio de emergencias'),
+  ],
+};
+const ESCALAS_PL = ['chica','mediana','grande','super'];
+const lineasPub = esc => ESCALAS_PL.slice(0, ESCALAS_PL.indexOf(esc)+1).flatMap(k => PL_PUB[k]());
+
+const PLANTILLAS = [
+  {k:'pub-chica', tipo:'publicidad', escala:'Chica', jornadas:1, horas:12,
+    t:'Publicidad · chica', d:'Una jornada, equipo mínimo, digital o redes. Como los de USD 2–12 mil de la carpeta.',
+    lineas: () => lineasPub('chica')},
+  {k:'pub-mediana', tipo:'publicidad', escala:'Mediana', jornadas:2, horas:12,
+    t:'Publicidad · mediana', d:'Dos jornadas, equipo completo, sin sonido directo (MOS) como la mayoría de los comerciales de la casa. Como los comerciales medianos de la carpeta (USD 20–50 mil).',
+    lineas: () => lineasPub('mediana')},
+  {k:'pub-grande', tipo:'publicidad', escala:'Grande', jornadas:3, horas:12,
+    t:'Publicidad · grande', d:'Tres jornadas, sonido directo, cuatro eléctricos, motorhome. Como los comerciales grandes de la carpeta (USD 65–100 mil).',
+    lineas: () => lineasPub('grande')},
+  {k:'pub-super', tipo:'publicidad', escala:'Súper', jornadas:5, horas:12, piezas:3,
+    t:'Publicidad · súper producción', d:'Cinco jornadas, varias piezas, estudio con construcción, grúa y segunda unidad. Como las campañas más grandes de la carpeta (USD 120–220 mil).',
+    lineas: () => lineasPub('super')},
+
+  {k:'clip-chico', tipo:'videoclip', escala:'Chico', jornadas:1, horas:12, contrato:'factura',
+    t:'Videoclip · chico', d:'Una jornada y todo el equipo por fuera (factura), como el videoclip más chico de la carpeta.',
+    lineas: () => [
+      plG('02','Director', {ct:'factura'}),
+      plL('03','Jefe de Producción', {pre:2}), plL('03','Asistente de Producción'),
+      plL('04','Director de Fotografía'), plL('04','Foquista (1° AC)'),
+      plL('05','Gaffer'), plL('05','Eléctrico'),
+      plL('06','Director de Arte', {pre:2}), plL('06','Utilero'), plG('06','Compras de arte'),
+      plL('07','Vestuarista'), plL('07','Maquillador/a'),
+      plG('08','Playback'), plL('09','Bailarín / bailarina', {q:4}),
+      plG('10','Fee de locación', {nota:PL_REF.loc}),
+      plL('11','Paquete cámara + ópticas', {nota:PL_REF.camara}), plL('11','Paquete de luces', {nota:PL_REF.luces}),
+      plL('12','Auto de producción'), plG('12','Combustible'),
+      plL('13','Almuerzo', {u:'persona', q:'CAB', nota:PL_REF.catering}),
+      plL('14','Montajista', {d:3}), plG('14','Colorista'),
+    ]},
+  {k:'clip-mediano', tipo:'videoclip', escala:'Mediano', jornadas:2, horas:12, contrato:'factura',
+    t:'Videoclip · mediano', d:'Dos jornadas, equipo por fuera, efectos y dolly, como el videoclip grande de la carpeta (USD 48 mil).',
+    lineas: () => [
+      plG('01','Scouting / búsqueda de locaciones'), plG('01','Casting', {nota:PL_REF.casting}), plG('01','Shootingboard'),
+      plG('02','Director', {ct:'factura'}), plL('02','Ayudante de Dirección (1° AD)', {pre:6}), plL('02','2° Ayudante de Dirección'),
+      plL('03','Line Producer', {pre:6}), plL('03','Jefe de Producción', {pre:6}), plL('03','Asistente de Producción', {pre:4}),
+      plL('03','Location Manager', {pre:5}), plL('03','Aprendiz', {q:2}), plG('03','Caja chica de producción', {nota:PL_REF.caja}),
+      plL('04','Director de Fotografía'), plL('04','DIT'), plL('04','Foquista (1° AC)'),
+      plL('05','Gaffer'), plL('05','Eléctrico', {q:2}), plL('05','Generadorista'), plL('05','Key Grip'), plL('05','Grip'),
+      plL('06','Director de Arte', {pre:6}), plL('06','Asistente de Arte', {pre:2}), plL('06','Utilero'),
+      plL('06','Ayudante de Arte'), plG('06','Alquiler de utilería', {nota:PL_REF.util}), plG('06','Compras de arte'),
+      plG('06','Construcción de set'), plG('06','Efectos especiales (lluvia, humo, nieve)'),
+      plL('07','Vestuarista'), plL('07','Asistente de Vestuario'), plL('07','Maquillador/a'), plL('07','Peinador/a'),
+      plG('08','Playback'), plL('09','Actor / Actriz Principal', {q:2}), plG('09','Coreógrafo'),
+      plL('10','Fee de locación', {q:2, d:1, nota:PL_REF.loc}), plG('10','Permiso municipal de filmación'),
+      plL('10','Seguridad de locación', {q:2, nota:PL_REF.segur}),
+      plL('11','Paquete cámara + ópticas', {nota:PL_REF.camara}), plL('11','Paquete de luces', {nota:PL_REF.luces}),
+      plL('11','Paquete de grip'), plL('11','Grupo electrógeno'), plL('11','Dolly y rieles'), plL('11','Monitores'),
+      plL('11','Camión de luces'), plL('12','Camión de producción'), plL('12','Combi de pasajeros'),
+      plG('12','Combustible'), plG('12','Peajes'),
+      plL('13','Almuerzo', {u:'persona', q:'CAB', nota:PL_REF.catering}), plL('13','Desayuno', {u:'persona', q:'CAB'}),
+      plL('14','Montajista', {d:5}), plG('14','Colorista'),
+      plG('15','Seguro de Accidentes Personales'), plG('15','Responsabilidad Civil'),
+    ]},
+
+  {k:'cont-tv', tipo:'contenido', escala:'Mediana', jornadas:1, horas:12, piezas:5,
+    t:'Contenido / TV · separadores y promos', d:'Una jornada en estudio para varias piezas cortas (5 separadores), como los formatos para un canal de la carpeta.',
+    lineas: () => [
+      plG('01','Scouting / búsqueda de locaciones'), plG('01','Presentación y tratamiento'),
+      plG('02','Director', {ct:'factura'}), plL('02','Ayudante de Dirección (1° AD)', {pre:3}),
+      plL('03','Jefe de Producción', {pre:4}), plL('03','Asistente de Producción', {pre:3}), plL('03','Aprendiz'),
+      plG('03','Caja chica de producción'),
+      plL('04','Director de Fotografía'), plL('04','Foquista (1° AC)'), plL('04','DIT'),
+      plL('05','Gaffer'), plL('05','Eléctrico', {q:2}), plL('05','Key Grip'),
+      plL('06','Director de Arte', {pre:4}), plL('06','Asistente de Arte', {pre:2}), plL('06','Utilero'),
+      plG('06','Alquiler de utilería', {nota:PL_REF.util}),
+      plL('07','Vestuarista', {pre:2}), plL('07','Maquillador/a'), plG('07','Alquiler de vestuario'),
+      plL('09','Actor / Actriz Principal', {q:2}),
+      plL('10','Estudio — días de armado', {d:1}), plL('10','Estudio — días de rodaje'),
+      plL('11','Paquete cámara + ópticas', {nota:PL_REF.camara}), plL('11','Paquete de luces', {nota:PL_REF.luces}),
+      plL('11','Camión de luces'), plL('12','Camión de producción'),
+      plL('13','Almuerzo', {u:'persona', q:'CAB', nota:PL_REF.catering}),
+      plL('14','Montajista', {d:4, nota:PL_REF.post}), plG('14','Gráficas y placas'), plG('14','Locución'),
+      plG('15','Seguro de Accidentes Personales'),
+    ]},
+
+  {k:'serie-bloque', tipo:'serie', escala:'Por episodio', jornadas:5, horas:12, piezas:1,
+    t:'Serie · bloque de un episodio', d:'Cinco jornadas con sonido directo, script y elenco con menores. Armada con una serie juvenil y los callsheets de ficción: hay menos datos, revisala.',
+    lineas: () => [
+      ...lineasPub('grande').filter(x => !['09'].includes(x.r)),
+      plL('09','Actor / Actriz Principal', {q:3}), plL('09','Actor / Actriz Secundario', {q:4}),
+      plL('09','Bolo', {q:3}), plL('09','Extra', {q:10}),
+      plL('09','Chaperona'), plG('09','Permiso de menores (escribanía)'), plL('09','Tutor de menores'),
+      plG('09','Coach de elenco'),
+    ]},
+
+  {k:'inst-chico', tipo:'institucional', escala:'Chico', jornadas:1, horas:10,
+    t:'Institucional · chico', d:'Una jornada con entrevistas: sonido directo, maquillaje, gráficas y locución, como los institucionales de la carpeta.',
+    lineas: () => [
+      plG('02','Director', {ct:'factura'}),
+      plL('03','Jefe de Producción', {pre:2}), plL('03','Asistente de Producción'),
+      plL('04','Director de Fotografía'), plL('04','Foquista (1° AC)'),
+      plL('05','Gaffer'), plL('05','Eléctrico'),
+      plL('07','Maquillador/a'),
+      plL('08','Sonidista Directo'), plL('08','Microfonista'),
+      plL('11','Paquete cámara + ópticas', {nota:PL_REF.camara}), plL('11','Paquete de luces', {nota:PL_REF.luces}),
+      plL('12','Auto de producción'), plG('12','Combustible'),
+      plL('13','Almuerzo', {u:'persona', q:'CAB', nota:PL_REF.catering}),
+      plL('14','Montajista', {d:4}), plG('14','Colorista'), plG('14','Gráficas y placas'),
+      plG('14','Motion graphics'), plG('14','Locución'),
+      plG('15','Seguro de Accidentes Personales'),
+    ]},
+];
+const PLANTILLA = k => PLANTILLAS.find(p => p.k === k) || null;
+const plantillasDe = tipo => PLANTILLAS.filter(p => p.tipo === tipo);
+
+/* ---------- plantillas en pantalla ---------- */
+function tarjetasPlantilla(tipo, elegida){
+  const del = plantillasDe(tipo);
+  const otras = PLANTILLAS.filter(p => p.tipo !== tipo);
+  const card = p => {
+    const r = resolverPlantilla(p, p.jornadas);
+    return `<button type="button" class="plcard${elegida===p.k?' on':''}" data-pl="${p.k}" onclick="marcarPlantilla('${p.k}')">
+      <b>${esc(p.t)}</b><span>${esc(p.d)}</span>
+      <i>${r.lineas.length} líneas · ${r.cabezas} personas en rodaje · ${p.jornadas} jornada${p.jornadas==1?'':'s'}${p.piezas>1?` · ${p.piezas} piezas`:''}</i></button>`;
+  };
+  return `<div class="plgrid">
+      <button type="button" class="plcard${!elegida?' on':''}" data-pl="" onclick="marcarPlantilla('')">
+        <b>Presupuesto vacío</b><span>Se carga línea por línea.</span></button>
+      ${del.map(card).join('')}
+    </div>
+    ${!del.length ? `<div class="muted" style="font-size:11.5px;margin-top:6px">Para ${esc(TIPO(tipo).l.toLowerCase())} todavía no hay plantilla: en la carpeta de presupuestos no había ninguno de ese tipo. Podés arrancar con una de otro tipo.</div>` : ''}
+    ${otras.length ? `<details style="margin-top:8px"${del.length?'':' open'}><summary class="muted" style="font-size:11.5px;cursor:pointer">Ver las de otros tipos</summary>
+      <div class="plgrid" style="margin-top:8px">${otras.map(card).join('')}</div></details>` : ''}`;
+}
+function marcarPlantilla(k){
+  const h = document.querySelector('.mod [name=plantilla]'); if(h) h.value = k;
+  document.querySelectorAll('.mod .plcard').forEach(b => b.classList.toggle('on', b.dataset.pl === k));
+  const pl = PLANTILLA(k), j = document.querySelector('.mod [name=jornadas]');
+  if(pl && j && (!n(j.value) || n(j.value) === 1)) j.value = pl.jornadas;
+}
+function cambiaTipoNuevo(tipo){
+  const c = document.getElementById('plelegir'); if(!c) return;
+  const h = document.querySelector('.mod [name=plantilla]'); if(h) h.value = '';
+  c.innerHTML = tarjetasPlantilla(tipo, '');
+}
+/* versión vacía: lo primero que se ve es de dónde arrancar */
+function tarjetaVacia(py){
+  const del = plantillasDe(py.tipo);
+  return `<div class="card noprint"><h3>Este presupuesto está vacío</h3><div class="pad">
+    <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
+      Arrancá desde una plantilla armada con los presupuestos reales de la casa: trae las líneas, la cantidad
+      de gente y los días de preproducción de cada escala, con los sueldos del convenio ya cargados.
+      Los precios de proveedores van en cero con una referencia en la nota.</div>
+    <button class="btn pri" onclick="elegirPlantilla()">Elegir plantilla${del.length?` de ${esc(TIPO(py.tipo).l.toLowerCase())}`:''}</button>
+  </div></div>`;
+}
+function elegirPlantilla(){
+  const py = getPy(); if(!py) return;
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:760px">
+    <h3>Líneas desde una plantilla</h3><div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
+        Se agregan las líneas que el presupuesto todavía no tiene; las que ya están no se tocan.</div>
+      <input type="hidden" name="plantilla" value="">
+      <div class="grid2" style="margin-bottom:10px">
+        ${campo('Jornadas de rodaje','jornadas',n(py.jornadas)||1,'number','step="1" min="1"')}</div>
+      ${tarjetasPlantilla(py.tipo, '')}
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="confirmarPlantilla()">Agregar las líneas</button></div>
+  </div></div>`);
+}
+function confirmarPlantilla(){
+  const d = datos(); const py = getPy(), v = getV();
+  if(!d.plantilla){ toast('Elegí una plantilla'); return; }
+  const res = aplicarPlantilla(py, v, d.plantilla, {jornadas: n(d.jornadas) || null});
+  cerrar();
+  toast(res.agregadas ? `${res.agregadas} líneas agregadas · revisá cantidades y cargá los precios de proveedores`
+    : 'Ya estaban todas las líneas de esa plantilla');
+  R();
+}
+
+/* Las líneas de una plantilla, ya resueltas para un proyecto: la misma
+   función repetida en dos escalas (el Eléctrico de la mediana y los dos más
+   de la grande) se suma en una sola línea, y la preproducción va aparte. */
+function resolverPlantilla(pl, jornadas){
+  const J = Math.max(1, n(jornadas) || pl.jornadas || 1);
+  const porClave = new Map();
+  const add = (x, etapa, dias) => {
+    const clave = [x.r, x.c, etapa, x.u].join('|');
+    const ya = porClave.get(clave);
+    if(ya){
+      if(x.mas){ if(x.q !== 'CAB') ya.q = n(ya.q) + n(x.q); }
+      else { ya.q = x.q; ya.d = dias; if(x.ct) ya.ct = x.ct; }
+      if(x.nota) ya.nota = x.nota;
+      return;
+    }
+    porClave.set(clave, {r:x.r, c:x.c, q:x.q, d:dias, u:x.u, etapa, nota:x.nota, ct:x.ct || pl.contrato || null});
+  };
+  pl.lineas().forEach(x => {
+    add(x, x.u === 'global' ? null : 'rodaje', x.u === 'global' ? 1 : (x.d === 'J' ? J : n(x.d)));
+    if(x.pre) add({...x, q: x.q === 'CAB' ? 1 : x.q, nota:''}, 'prepro', x.pre);
+  });
+  const ls = [...porClave.values()];
+  /* catering: una porción por cabeza del rodaje, más agencia y cliente */
+  const come = l => l.q !== 'CAB' && ((l.etapa === 'rodaje' && (RUBROS_CREW.includes(l.r) || l.r === '09'))
+    || (l.u === 'global' && l.r === '02'));          /* el director también come */
+  const cabezas = ls.filter(come).reduce((s,l) => s + n(l.q), 0) + 4;
+  ls.forEach(l => { if(l.q === 'CAB') l.q = cabezas; });
+  return {lineas: ls, cabezas, jornadas: J};
+}
+
+/* Carga la plantilla en una versión. Las líneas que ya existen no se tocan:
+   se agrega lo que falta. Devuelve cuántas se agregaron. */
+function aplicarPlantilla(py, v, k, {jornadas} = {}){
+  const pl = PLANTILLA(k); if(!pl || !v) return {agregadas:0};
+  const J = jornadas || n(py.jornadas) || pl.jornadas;
+  /* en un presupuesto vacío la plantilla pone también la jornada: 12 h,
+     como en todas las planillas AICP de la casa ("Hours: 12 · O.T. hrs: 4").
+     Si ya había líneas, eso ya lo decidió alguien y no se toca. */
+  const vacia = v.rubros.every(r => !r.lineas.length);
+  if(vacia){
+    py.jornadas = J;
+    py.configRodaje ||= nuevaConfigRodaje();
+    if(pl.horas) py.configRodaje.horasJornada = pl.horas;
+  }
+  const {lineas, cabezas} = resolverPlantilla(pl, J);
+  let agregadas = 0;
+  lineas.forEach(x => {
+    const rb = v.rubros.find(r => r.codigo === x.r); if(!rb) return;
+    const etapa = x.etapa === 'rodaje' ? null : x.etapa;
+    if(rb.lineas.some(l => norm(l.concepto) === norm(x.c) && (l.etapa||null) === etapa)) return;
+    const l = nuevaLinea({concepto:x.c, cantidad:x.q, dias:x.d, unidad:x.u,
+      etapa, contrato:x.ct, notas:x.nota, area:areaDeRubro(x.r) || ''});
+    autocompletarSICA(l, py);
+    rb.lineas.push(l); rb.abierto = true; agregadas++;
+  });
+  py.plantilla = k;
+  /* las piezas que trae (5 separadores, 3 spots) si el proyecto no tiene */
+  if(pl.piezas && !(py.piezas||[]).length && TIPO(py.tipo).varias){
+    py.piezas = [];
+    for(let i = 1; i <= pl.piezas; i++){ const p = nuevaPieza({numero:i}); p.peso = 1; py.piezas.push(p); }
+  }
+  return {agregadas, cabezas};
+}
 
 /* ======================  DESGLOSE DE GUION  ==============================
    Departamentos con el código de color clásico del desglose (Movie Magic).
@@ -2121,6 +2561,85 @@ async function docxATexto(bytes){
     .replace(/<[^>]+>/g,'')));
 }
 
+/* Nombres de todas las entradas del ZIP (para encontrar las hojas del .xlsx). */
+function zipNombres(bytes){
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let eocd = -1;
+  for(let i=bytes.length-22; i>=Math.max(0,bytes.length-66000); i--)
+    if(dv.getUint32(i,true)===0x06054b50){ eocd=i; break; }
+  if(eocd<0) return [];
+  const total = dv.getUint16(eocd+10,true), out = [];
+  let p = dv.getUint32(eocd+16,true);
+  for(let i=0;i<total;i++){
+    if(dv.getUint32(p,true)!==0x02014b50) break;
+    const nLen = dv.getUint16(p+28,true), eLen = dv.getUint16(p+30,true), cLen = dv.getUint16(p+32,true);
+    out.push(latin1(bytes.subarray(p+46, p+46+nLen)));
+    p += 46+nLen+eLen+cLen;
+  }
+  return out;
+}
+
+/* .xlsx — casi todos los callsheets son planillas. Es un ZIP con XML: los
+   textos viven en sharedStrings y cada hoja trae sus celdas por referencia.
+   Una fila de callsheet suele tener DOS tablas lado a lado (el equipo a la
+   izquierda, proveedores o agencia a la derecha), así que cada fila se corta
+   en bloques donde hay columnas vacías, para no pegarle el teléfono del
+   remisero al eléctrico. Un bloque que es sólo el dato de contacto se vuelve
+   a juntar con el anterior (nombre | vacío | teléfono sigue siendo uno).   */
+const colNum = ref => { let n = 0; for(const ch of ref.replace(/\d+/g,'')) n = n*26 + ch.charCodeAt(0) - 64; return n; };
+async function xlsxATexto(bytes){
+  const nombres = zipNombres(bytes);
+  if(!nombres.some(x => x.startsWith('xl/')))
+    throw new Error('No parece una planilla .xlsx.');
+  const texto = xml => desentidad(xml.replace(/<rPh\b[\s\S]*?<\/rPh>/g,'')
+    .replace(/<[^>]+>/g,''));
+  let comp = [];
+  if(nombres.includes('xl/sharedStrings.xml')){
+    const ss = utf8(await zipEntrada(bytes, 'xl/sharedStrings.xml'));
+    comp = [...ss.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(m => texto(m[1]).trim());
+  }
+  const hojas = nombres.filter(x => /^xl\/worksheets\/sheet\d+\.xml$/.test(x))
+    .sort((a,b) => +a.match(/(\d+)\.xml/)[1] - +b.match(/(\d+)\.xml/)[1]);
+  const out = [];
+  const esContacto = t => RE_MAIL.test(t) || RE_TEL.test(t);
+  const soloContacto = t => esContacto(t) && !t.replace(RE_MAIL,'').replace(RE_TEL,'').replace(/[^a-záéíóúñ]/gi,'').length;
+  for(const h of hojas){
+    const xml = utf8(await zipEntrada(bytes, h));
+    for(const fila of xml.matchAll(/<row\b[^>]*>([\s\S]*?)<\/row>/g)){
+      const celdas = [];
+      for(const c of fila[1].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+        const at = c[1], cuerpo = c[2] || '';
+        const ref = (at.match(/\br="([A-Z]+)\d+"/)||[])[1]; if(!ref) continue;
+        const t = (at.match(/\bt="(\w+)"/)||[])[1];
+        const v = (cuerpo.match(/<v>([\s\S]*?)<\/v>/)||[])[1];
+        let val = '';
+        if(t === 's') val = comp[+v] || '';
+        else if(t === 'inlineStr') val = texto((cuerpo.match(/<is>([\s\S]*?)<\/is>/)||[])[1] || '').trim();
+        else if(v !== undefined) val = desentidad(v);
+        val = String(val).replace(/\s+/g,' ').trim();
+        if(val) celdas.push({col: colNum(ref), val});
+      }
+      if(!celdas.length) continue;
+      /* bloques contiguos */
+      const bloques = [];
+      celdas.forEach(c => {
+        const b = bloques[bloques.length-1];
+        if(b && c.col - b.hasta <= 1){ b.vals.push(c.val); b.hasta = c.col; }
+        else bloques.push({vals:[c.val], hasta:c.col});
+      });
+      const lineas = [];
+      bloques.forEach(b => {
+        const t = b.vals.join(' | ');
+        if(lineas.length && soloContacto(t)) lineas[lineas.length-1] += ' | ' + t;
+        else lineas.push(t);
+      });
+      out.push(...lineas);
+    }
+    out.push('');
+  }
+  return limpiar(out.join('\n'));
+}
+
 /* .fdx — Final Draft. Es XML con el tipo de cada párrafo, así que reconstruyo
    el formato de guion exacto: es el import de mejor calidad.                 */
 function fdxATexto(txt){
@@ -2256,6 +2775,12 @@ async function archivoATexto(file){
   const bytes = new Uint8Array(await file.arrayBuffer());
   if(ext==='.pdf')  return await pdfATexto(bytes);
   if(ext==='.docx') return await docxATexto(bytes);
+  if(ext==='.xlsx' || ext==='.xlsm') return await xlsxATexto(bytes);
+  if(ext==='.xls'){
+    /* el .xls viejo es binario (BIFF): a veces es un .xlsx renombrado */
+    if(bytes[0]===0x50&&bytes[1]===0x4b) return await xlsxATexto(bytes);
+    throw new Error('Es un Excel viejo (.xls). Abrilo y guardalo como .xlsx —o en Google Drive: Archivo → Descargar → .xlsx— y soltalo de nuevo.');
+  }
   if(ext==='.doc'){
     /* algunos .doc en realidad son .docx o .rtf renombrados */
     if(bytes[0]===0x50&&bytes[1]===0x4b) return await docxATexto(bytes);
@@ -2286,6 +2811,9 @@ const FUNCIONES_PLANAS = (() => {
   /* primero las del catálogo: están escritas como se leen ("Director de
      Fotografía"), no en la forma de convenio ("DIRECTOR/A DE FOTOGRAFIA") */
   Object.values(FUNCIONES).forEach(a=>a.forEach(sumar));
+  /* y cómo se escriben en los callsheets: "Asistente de Dirección",
+     "Continuista", "Op. HD", que son la misma función con otro nombre */
+  ALIAS_SICA.forEach(a=>sumar(a[0]));
   SICA.cargos.forEach(c=>sumar(c.c));
   return xs.sort((a,b)=>b.length-a.length);
 })();
@@ -2351,12 +2879,42 @@ function limpiarNombre(txt){
 
 /* Saca los contactos de un texto de callsheet. Devuelve candidatos con de qué
    línea salió cada uno, para poder revisarlos.                               */
+/* Una fila de planilla viene con sus celdas separadas por " | ": ahí no hay
+   que adivinar dónde termina el cargo y empieza el nombre, cada cosa está
+   en su celda. Si ninguna celda es una función, es un proveedor y la
+   primera celda dice de qué ("Transportes | Fletes Sur | 11…"). */
+function contactoDeCeldas(linea, origen, i){
+  const cel = linea.split(' | ').map(x=>x.trim()).filter(Boolean);
+  const mail = cel.map(c=>(c.match(RE_MAIL)||[])[0]).find(Boolean) || '';
+  const tel = cel.filter(c=>!RE_MAIL.test(c)).map(c=>(c.match(RE_TEL)||[])[0]).find(Boolean) || '';
+  if(!mail && !tel) return null;
+  let funcion = '';
+  const resto = [];
+  cel.forEach(c=>{
+    if(RE_MAIL.test(c) || (tel && c.includes(tel))) return;
+    if(/^\d{1,2}[:.]\d{2}$/.test(c)) return;              /* citación */
+    const f = !funcion && detectarFuncion(c);
+    if(f && limpiarNombre(quitarFuncion(c, f)).length <= 2) funcion = f;
+    else resto.push(c);
+  });
+  let nombre = limpiarNombre(resto.join(' '));
+  const tipo = funcion ? 'persona' : 'proveedor';
+  if(!funcion && resto.length >= 2){ funcion = resto[0]; nombre = limpiarNombre(resto.slice(1).join(' ')); }
+  if(!nombre && !funcion) return null;
+  const rubro = tipo === 'persona'
+    ? ((SUBRUBROS.find(x=>normCargo(x.s)===normCargo(funcion))||{}).r || (sicaDe(funcion,'')||{}).r || '')
+    : '';
+  return {nombre, funcion, tipo, tel: tel.trim(), email: mail.toLowerCase(), rubro,
+    origen, linea: i+1, crudo: linea.slice(0,110)};
+}
+
 function extraerContactos(texto, origen){
   const lineas = String(texto||'').replace(/\r\n?/g,'\n').split('\n');
   const out = [];
   lineas.forEach((cruda, i)=>{
     const linea = cruda.trim();
     if(linea.length<6 || linea.length>220) return;
+    if(linea.includes(' | ')){ const c = contactoDeCeldas(linea, origen, i); if(c) out.push(c); return; }
     const mail = (linea.match(RE_MAIL)||[])[0] || '';
     let resto = mail ? linea.replace(mail,' ') : linea;
     const tel = (resto.match(RE_TEL)||[])[0] || '';
@@ -3026,11 +3584,25 @@ const CAT_CAMPOS = [['tipo','tipo'],['nombre','nombre'],['funcion','funcion'],['
   ['email','email'],['banco','banco'],['alias','alias']];
 
 const catDesdeServidor = f => { const p = {id:f.id};
-  CAT_CAMPOS.forEach(([s,l]) => p[l] = f[s]); p.tarifaRef = n(p.tarifaRef); return p; };
+  CAT_CAMPOS.forEach(([s,l]) => p[l] = f[s]); p.tarifaRef = n(p.tarifaRef);
+  if(f.notas !== undefined) p.notas = f.notas;
+  return p; };
 const catHaciaServidor = (p, orgId) => { const f = {id:p.id, org_id:orgId};
   CAT_CAMPOS.forEach(([s,l]) => f[s] = p[l] === '' ? null : p[l]);
   f.nombre = p.nombre || 'Sin nombre';        /* la tabla lo exige */
-  f.tarifa_ref = n(p.tarifaRef); return f; };
+  f.tarifa_ref = n(p.tarifaRef);
+  if(_catNotas) f.notas = p.notas || null;
+  return f; };
+/* La columna `notas` llegó después (backend/catalogo-notas.sql). Hasta que
+   alguien corra ese SQL la tabla no la tiene, y mandarla haría fallar TODA
+   la subida: se pregunta una vez y, si no está, las notas quedan acá. */
+let _catNotas;   /* no va en SB: SB se guarda, y esto se pregunta de nuevo en cada sesión */
+async function sbCatalogoTieneNotas(){
+  if(_catNotas !== undefined) return _catNotas;
+  try{ await sbFetch('/rest/v1/catalogo_persona?select=notas&limit=1'); _catNotas = true; }
+  catch(e){ _catNotas = false; }
+  return _catNotas;
+}
 
 /* Mi organización. Sin esto no puedo escribir en el catálogo, porque la
    política `catalogo_mio` filtra por org_id. */
@@ -3054,6 +3626,7 @@ async function sbBajarCatalogo(){
    este lado y del otro, nunca hay dos. */
 async function sbSubirPersona(p){
   const org = await sbMiOrg(); if(!org) throw new Error('Todavía no sé de qué organización sos.');
+  await sbCatalogoTieneNotas();
   if(!esUuid(p.id)) p.id = uid('pe');
   const r = await sbFetch('/rest/v1/catalogo_persona', {method:'POST',
     headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
@@ -3081,6 +3654,7 @@ function fusionarCatalogo(filas){
     l.id = p.id;                              /* el id del servidor manda */
     /* no pisar con vacío lo que acá ya está cargado */
     CAT_CAMPOS.forEach(([,k]) => { if(p[k] !== null && p[k] !== undefined && p[k] !== '') l[k] = p[k]; });
+    if(p.notas) l.notas = p.notas;
     tocados++;
   });
   if(nuevos || tocados) guardar();
@@ -3411,7 +3985,11 @@ function migrar(){
   (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(py=>{
     /* las versiones de antes no tenían nivel: son las de producción, que es
        lo que se venía usando. Nadie pierde acceso a lo que ya tenía. */
-    (py.versiones||[]).forEach(v=>{ v.nivel ||= 'produccion'; });
+    (py.versiones||[]).forEach(v=>{ v.nivel ||= 'produccion';
+      /* cargas sociales y condiciones llegaron después: en 0 y vacías, el
+         presupuesto viejo da exactamente lo mismo que antes */
+      v.capas ||= {}; v.capas.cargas ??= 0; v.capas.cargasElenco ??= 0;
+      v.condiciones ||= nuevasCondiciones(); });
     /* la escala de horas extra por tramos: los proyectos viejos tenían un
        recargo único, se convierte en una escala de un solo tramo para no
        cambiarle el número a nadie de un día para el otro */
@@ -3565,6 +4143,32 @@ function totalLinea(l, v){
 }
 function totalRubro(r, v){ return r.lineas.reduce((s,l)=>s+totalLinea(l,v), 0); }
 
+/* ======================  CARGAS SOCIALES  ================================
+   El sueldo del convenio es BRUTO: encima la productora paga las cargas
+   (jubilación, obra social, ART, aporte sindical). En los presupuestos de la
+   casa figuran como "Union Fees (SICA)" o "Cargas Soc.": 51% en 2014–15, 72%
+   en 2019, 42% en 2020. Sin ellas el equipo técnico sale entre un 40 y un 70%
+   más barato de lo que cuesta. Con el elenco pasa lo mismo con la AAA.
+   Van SÓLO sobre quien cobra por convenio. El que factura —lo que en las
+   planillas figura "por fuera"— no lleva cargas, y eso se marca por línea:
+     l.contrato = 'sica' | 'aaa' | 'factura' | null (null = lo decide esto)  */
+const RE_ELENCO_AAA = /\b(actor|actriz|bolo|extra|figuraci|modelo|voz|doble|locutor|locutora|protag|co-?protag|secundari|bailar[ií]n|bailarina|personaje)/i;
+function contratoDe(l, r){
+  if(l.contrato) return l.contrato;
+  if((l.moneda || 'ARS') !== 'ARS') return 'factura';
+  if(r && r.codigo === '09' && RE_ELENCO_AAA.test(l.concepto || '')) return 'aaa';
+  if(l.sicaRef === 'ninguno') return 'factura';
+  if(l.unidad && l.unidad !== 'jornada') return 'factura';
+  /* el que factura no está en relación de dependencia */
+  if(l.comprobante === 'facA' || l.comprobante === 'facBC') return 'factura';
+  return cargoSICA(l.concepto, SICA, l.sicaRef || null) ? 'sica' : 'factura';
+}
+const CONTRATOS = [
+  {k:'sica',    l:'Convenio SICA', d:'En relación de dependencia: lleva cargas sociales'},
+  {k:'aaa',     l:'Elenco AAA',    d:'Actor/actriz por la AAA: lleva las cargas del elenco'},
+  {k:'factura', l:'Factura',       d:'Monotributo o empresa, "por fuera": sin cargas'},
+];
+
 /* Motor: subtotal → fee → contingencia → IIBB → IVA → total.
    El fee sólo se aplica sobre los rubros marcados aplicaFee (el elenco y los
    seguros normalmente se pasan a costo, sin fee).                            */
@@ -3573,14 +4177,35 @@ function totalRubro(r, v){ return r.lineas.reduce((s,l)=>s+totalLinea(l,v), 0); 
    cada línea entra UNA vez, sea compartida o propia de un spot.             */
 function calcular(v, filtro){
   let subtotal=0, baseFee=0;
+  /* bases de las cargas: lo que cobra gente por convenio (SICA) y el elenco
+     por la AAA. Se separa lo que va en rubros con fee, porque las cargas
+     siguen al sueldo: si el sueldo lleva fee, sus cargas también. */
+  let baseSica=0, baseSicaFee=0, baseAAA=0, baseAAAFee=0;
   const pasa = l => !filtro || filtro(l);
   const porRubro = v.rubros.map(r=>{
     const ls = r.lineas.filter(pasa);
-    const t = ls.reduce((s,l)=>s+totalLinea(l,v), 0);
+    let t = 0;
+    ls.forEach(l => {
+      const x = totalLinea(l,v); t += x;
+      const k = contratoDe(l, r);
+      if(k === 'sica'){ baseSica += x; if(r.aplicaFee) baseSicaFee += x; }
+      else if(k === 'aaa'){ baseAAA += x; if(r.aplicaFee) baseAAAFee += x; }
+    });
     subtotal += t; if(r.aplicaFee) baseFee += t;
     return {id:r.id, codigo:r.codigo, nombre:r.nombre, total:t, lineas:ls.length};
   });
   const c = v.capas;
+  const subtotalLineas = subtotal;
+  const cargas       = baseSica * n(c.cargas)/100;
+  const cargasElenco = baseAAA  * n(c.cargasElenco)/100;
+  subtotal += cargas + cargasElenco;
+  baseFee  += (baseSicaFee * n(c.cargas) + baseAAAFee * n(c.cargasElenco))/100;
+  /* En el resumen por rubro (el del cliente) las cargas van como un renglón
+     propio, igual que el "Union Fees" de las planillas AICP. */
+  if(cargas) porRubro.push({id:'cargas-sica', codigo:'CS', nombre:'Cargas sociales del equipo (SICA)',
+    total:cargas, lineas:0, sintetico:true});
+  if(cargasElenco) porRubro.push({id:'cargas-aaa', codigo:'CA', nombre:'Cargas del elenco (AAA)',
+    total:cargasElenco, lineas:0, sintetico:true});
   const fee          = baseFee  * n(c.fee)/100;
   const contingencia = subtotal * n(c.contingencia)/100;
   const netoPrevio   = subtotal + fee + contingencia;
@@ -3596,8 +4221,8 @@ function calcular(v, filtro){
   const baseIva      = Math.max(0, neto - exento);
   const iva          = baseIva * n(c.iva)/100;
   const total        = neto + iva;
-  return {porRubro, subtotal, baseFee, fee, contingencia, iibb, neto,
-    exento, baseIva, iva, total};
+  return {porRubro, subtotal, subtotalLineas, baseSica, baseAAA, cargas, cargasElenco,
+    baseFee, fee, contingencia, iibb, neto, exento, baseIva, iva, total};
 }
 
 /* ---------- lo que cuesta cada pieza ----------
@@ -3848,14 +4473,17 @@ function vistaPresupuesto(pr,py,v){
   const R = calcular(v, filtro);
   return `
   ${cabeceraProyecto(pr,py,v,cli)}
+  ${!cli && v.rubros.every(r => !r.lineas.length) ? tarjetaVacia(py) : ''}
   ${solapasPiezas(py, v, sel, cli)}
   ${cli ? '' : barraSICA(py, v)}
   ${sel && !cli ? avisoPieza(py, v, sel) : ''}
   ${cli ? tablaCliente(v,R) : (()=>{ const RL = realPorLinea(py,v);
       return v.rubros.map(r=>rubroHTML(r,v,filtro,sel,RL)).join(''); })()}
-  ${cli?'':`<div class="pad noprint" style="padding:0 0 10px">
-      <button class="btn" onclick="addRubro()">+ Agregar rubro</button></div>`}
+  ${cli?'':`<div class="pad noprint" style="padding:0 0 10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="addRubro()">+ Agregar rubro</button>
+      <button class="btn" onclick="elegirPlantilla()" title="Suma las líneas de una plantilla que todavía no estén">+ Líneas de una plantilla</button></div>`}
   ${panelTotales(v,R,sel?nombrePieza(py,sel):'')}
+  ${sel ? '' : panelCondiciones(py, v, cli)}
   ${!cli && !sel && piezas.length ? panelPorPieza(py,v) : ''}
   ${cli?'':panelColchon(py,v)}
   ${cli?'':panelExposicion(v)}`;
@@ -4089,6 +4717,30 @@ function chipSICA(l, r, py){
       title="${esc(cargo)} · escala ${esc(st.escala.nombre)}">convenio ${fmt(st.valor)}</button>`;
 }
 
+/* Etapa (preproducción / rodaje / post) y forma de contratación, en la
+   misma fila de chips. Sólo aparecen donde importan: gente del equipo, el
+   elenco, o una línea que ya las tiene puestas. */
+function chipsContrato(l, r, py){
+  const E = `'${r.id}','${l.id}'`;
+  const esGente = RUBROS_CREW.includes(r.codigo) || r.codigo === '09';
+  const k = contratoDe(l, r);
+  const verEtapa = l.etapa || RUBROS_CREW.includes(r.codigo);
+  const verContrato = l.contrato || esGente || k !== 'factura';
+  let h = '';
+  if(verEtapa) h += `<select class="chipsel chip et-${l.etapa||'rodaje'}"
+      title="Etapa. En preproducción y post la jornada del convenio es de 8 h."
+      onchange="upLinea(${E},'etapa',this.value)">
+      ${ETAPAS.map(e=>`<option value="${e.k==='rodaje'?'':e.k}" ${(l.etapa||'rodaje')===e.k?'selected':''}>${e.l}</option>`).join('')}
+    </select>`;
+  if(verContrato) h += `<select class="chipsel chip ct-${k}"
+      title="${esc((CONTRATOS.find(c=>c.k===k)||{}).d||'')}${l.contrato?'':' · detectado solo'}"
+      onchange="upLinea(${E},'contrato',this.value)">
+      <option value="" ${!l.contrato?'selected':''}>${esc((CONTRATOS.find(c=>c.k===k)||{}).l||'')} · auto</option>
+      ${CONTRATOS.map(c=>`<option value="${c.k}" ${l.contrato===c.k?'selected':''}>${esc(c.l)}</option>`).join('')}
+    </select>`;
+  return h;
+}
+
 function lineaHTML(l,r,v,py,RL){
   const cir = CIRCUITOS.find(c=>c.v===(l.circuito||'')) || CIRCUITOS[7];
   const doc = COMPROBANTES.find(c=>c.v===(l.comprobante||'')) || COMPROBANTES[5];
@@ -4098,6 +4750,7 @@ function lineaHTML(l,r,v,py,RL){
     <div style="display:flex;flex-direction:column;gap:3px">
       <input type="text" value="${esc(l.concepto)}" placeholder="Concepto"
         onchange="upLinea(${E},'concepto',this.value)">
+      ${l.notas ? `<div class="lnota" title="Nota de la línea">${esc(l.notas)}</div>` : ''}
       <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
         <select class="chipsel chip c-${cir.k}" onchange="upLinea(${E},'circuito',this.value)">
           ${CIRCUITOS.map(c=>`<option value="${c.v}" ${c.v===(l.circuito||'')?'selected':''}>${c.l}</option>`).join('')}
@@ -4118,6 +4771,7 @@ function lineaHTML(l,r,v,py,RL){
           ${AREAS.map(a=>`<option value="${a.k}" ${a.k===(l.area||'')?'selected':''}>${esc(a.l)}</option>`).join('')}
         </select>
         ${chipSICA(l, r, py)}
+        ${chipsContrato(l, r, py)}
       </div>
     </div>
     <div class="mlbl" data-l="Unidad"><select onchange="upLinea(${E},'unidad',this.value)">
@@ -4185,11 +4839,21 @@ function clientePorPieza(py, v){
 function panelTotales(v,R,piezaNom){
   const otra = v.monedaBase==='ARS'?'USD':'ARS';
   const cap = (k,label,monto,extra='') => `<div class="tot">
-    <span>${label} ${DB.ui.vista==='interna'?`<input type="number" step="any" value="${v.capas[k]}"
+    <span>${label} ${DB.ui.vista==='interna'?`<input type="number" step="any" value="${n(v.capas[k])}"
       style="width:56px;display:inline-block;padding:2px 5px;font-size:11.5px;text-align:right;font-family:var(--mono)"
-      onchange="upCapa('${k}',this.value)"> %`:`<span class="muted">${v.capas[k]}%</span>`} ${extra}</span>
+      onchange="upCapa('${k}',this.value)"> %`:`<span class="muted">${n(v.capas[k])}%</span>`} ${extra}</span>
     <b>${fmt(monto, v.monedaBase)}</b></div>`;
+  const interna = DB.ui.vista === 'interna';
+  /* las cargas se muestran si hay sobre qué aplicarlas; al cliente, sólo si suman */
+  const verCargas = interna ? (R.baseSica > 0 || n(v.capas.cargas) > 0) : R.cargas > 0;
+  const verElenco = interna ? (R.baseAAA > 0 || n(v.capas.cargasElenco) > 0) : R.cargasElenco > 0;
+  const sobre = (base, que) => `<span class="muted" style="font-size:10.5px">s/ ${fmt(base,v.monedaBase)} ${que}</span>`;
   return `<div class="card"><h3>Totales${piezaNom?` — ${esc(piezaNom)} <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">(propio + compartido)</span>`:''}</h3><div class="pad">
+    ${verCargas || verElenco ? `<div class="tot sub"><span>Líneas del presupuesto</span><b>${fmt(R.subtotalLineas,v.monedaBase)}</b></div>` : ''}
+    ${verCargas ? cap('cargas','Cargas sociales SICA', R.cargas, sobre(R.baseSica, 'de sueldos de convenio')
+      + (interna && R.baseSica > 0 && !n(v.capas.cargas)
+        ? ` <span class="chip sica-bajo" title="El sueldo del convenio es bruto: sin las cargas el equipo sale más barato de lo que cuesta">sin cargar</span>` : '')) : ''}
+    ${verElenco ? cap('cargasElenco','Cargas del elenco (AAA)', R.cargasElenco, sobre(R.baseAAA, 'de cachets')) : ''}
     <div class="tot sub"><span>Subtotal costo directo</span><b>${fmt(R.subtotal,v.monedaBase)}</b></div>
     ${cap('fee','Fee de producción', R.fee, `<span class="muted" style="font-size:10.5px">s/ ${fmt(R.baseFee,v.monedaBase)}</span>`)}
     ${cap('contingencia','Contingencia', R.contingencia)}
@@ -4203,6 +4867,61 @@ function panelTotales(v,R,piezaNom){
       <span class="muted">Equivalente en ${otra} · TC ${esc(v.tcNombre)} ${fmtC(v.tc)}</span>
       <b class="muted">${fmt(conv(R.total,v.monedaBase,otra,n(v.tc)), otra)}</b></div>
   </div></div>`;
+}
+
+/* ---------- condiciones comerciales ----------
+   Lo que va al pie del presupuesto del cliente. Los textos típicos salen de
+   los presupuestos reales de la casa: el "Incluye / No incluye" de uno de
+   2019, la validez atada al tipo de cambio de los de servicio para afuera
+   (2010–11) y la forma de pago en cuotas de un institucional. */
+const COND_CAMPOS = [
+  {k:'incluye',   l:'Incluye'},
+  {k:'noIncluye', l:'No incluye'},
+  {k:'pago',      l:'Forma de pago'},
+  {k:'validez',   l:'Validez'},
+];
+function condicionesTipicas(py, v){
+  const der = [py.territorio||'Argentina', py.plazo||'12 meses', py.medios||'todos los medios'].join(' · ');
+  const f = (v.tcFecha||hoy()).split('-').reverse().join('/');
+  return {
+    incluye: `Derechos del elenco: ${der}.
+Postproducción: edición offline, corrección de color y online.`,
+    noIncluye: `Derechos para otros medios, territorios o plazos.
+Realización de banda musical ni derechos SADAIC.
+Making of.
+Producto: a cargo del cliente.`,
+    pago: `50% contra la aprobación del presupuesto y antes de empezar la preproducción.
+50% a 30 días del último día de rodaje.`,
+    validez: `10 días. Cotizado con dólar ${v.tcNombre||''} a ${fmtC(v.tc)} del ${f}: si al aprobarse la cotización es otra, el presupuesto se reajusta.`,
+  };
+}
+function panelCondiciones(py, v, cli){
+  const c = v.condiciones || {};
+  if(cli){
+    const llenas = COND_CAMPOS.filter(x => String(c[x.k]||'').trim());
+    if(!llenas.length) return '';
+    return `<div class="card"><h3>Condiciones</h3><div class="pad condgrid">
+      ${llenas.map(x=>`<div><div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:4px">${esc(x.l)}</div>
+        <div class="condtxt">${esc(c[x.k])}</div></div>`).join('')}
+    </div></div>`;
+  }
+  return `<div class="card noprint"><h3>Condiciones para el cliente<span class="spacer"></span>
+      <button class="btn sm" onclick="completarCondiciones()" title="Completa lo vacío con los textos típicos de la casa">Completar con las típicas</button></h3>
+    <div class="pad"><div class="condgrid">
+      ${COND_CAMPOS.map(x=>`<label class="f"><span>${esc(x.l)}</span>
+        <textarea rows="4" onchange="upCondicion('${x.k}',this.value)" placeholder="—">${esc(c[x.k]||'')}</textarea></label>`).join('')}
+    </div>
+    <div class="muted" style="font-size:11.5px;margin-top:8px">Van al pie del presupuesto del cliente y del PDF. Lo que quede vacío no se imprime.</div>
+  </div></div>`;
+}
+function upCondicion(k, val){ const v = getV(); v.condiciones ||= nuevasCondiciones(); v.condiciones[k] = val; R(); }
+function completarCondiciones(){
+  const v = getV(), py = getPy(); if(!v) return;
+  v.condiciones ||= nuevasCondiciones();
+  const t = condicionesTipicas(py, v); let k = 0;
+  COND_CAMPOS.forEach(x => { if(!String(v.condiciones[x.k]||'').trim()){ v.condiciones[x.k] = t[x.k]; k++; } });
+  toast(k ? `${k} condicion${k==1?'':'es'} completada${k==1?'':'s'} — revisalas antes de mandar` : 'Ya estaban todas escritas');
+  R();
 }
 
 function panelExposicion(v){
@@ -4401,13 +5120,16 @@ function catalogoGenteHTML(){
   let ps = DB.catalogo.personas;
 
   if(F.q){ const q = norm(F.q);
-    ps = ps.filter(p=>[p.nombre,p.funcion,p.email,p.tel,p.cuit,p.dni]
+    ps = ps.filter(p=>[p.nombre,p.funcion,p.email,p.tel,p.cuit,p.dni,p.notas]
       .some(x=>norm(x||'').includes(q))); }
   if(F.rubro) ps = ps.filter(p=>p.rubro===F.rubro);
   if(F.tipo)  ps = ps.filter(p=>(p.tipo||'persona')===F.tipo);
 
   const conDisp = ps.map(p=>({p, disp: disponibilidad(p.id, F.desde, F.hasta)}));
-  const lista = F.soloLibres ? conDisp.filter(x=>x.disp.estado==='libre') : conDisp;
+  const todos = F.soloLibres ? conDisp.filter(x=>x.disp.estado==='libre') : conDisp;
+  /* con mil fichas la tabla entera se vuelve lenta: de a 150 */
+  const lim = DB.ui.catLim || 150;
+  const lista = todos.slice(0, lim);
 
   const total = DB.catalogo.personas.length;
   const cuentaRubro = {}; DB.catalogo.personas.forEach(p=>cuentaRubro[p.rubro]=(cuentaRubro[p.rubro]||0)+1);
@@ -4436,7 +5158,7 @@ function catalogoGenteHTML(){
       </select>
       ${(F.q||F.rubro||F.tipo||F.desde||F.soloLibres)?'<button class="btn sm" onclick="limpiarFCat()">Limpiar</button>':''}
       <div style="flex:1"></div>
-      <span class="muted" style="font-size:11.5px;align-self:center">${lista.length} de ${total}</span>
+      <span class="muted" style="font-size:11.5px;align-self:center">${todos.length} de ${total}</span>
     </div>
 
     <div class="pad filtros" style="border-bottom:1px solid var(--line);background:var(--bg)">
@@ -4457,7 +5179,7 @@ function catalogoGenteHTML(){
         <td><b>${esc(p.nombre)||'<span class="muted">sin nombre</span>'}</b>
           ${(p.tipo||'persona')!=='persona'?`<span class="chip c-otr">${esc(p.tipo)}</span>`:''}
           <span class="muted" style="display:block;font-size:10.5px">${esc(p.condicion||'')}</span></td>
-        <td>${esc(p.funcion)}</td>
+        <td>${esc(p.funcion)}${p.notas?`<span class="muted" style="display:block;font-size:10.5px;line-height:1.35;max-width:320px">${esc(p.notas.length>140?p.notas.slice(0,140)+'…':p.notas)}</span>`:''}</td>
         <td><span class="rcode">${esc(p.rubro)}</span></td>
         <td class="muted" style="font-size:11px">${esc(p.tel||'')}${p.tel&&p.email?'<br>':''}${esc(p.email||'')}
           ${!p.tel&&!p.email?'<span style="color:var(--warn)">sin datos</span>':''}</td>
@@ -4467,7 +5189,9 @@ function catalogoGenteHTML(){
         <td style="text-align:right;white-space:nowrap">
           <button class="btn sm" onclick="editPersona('${p.id}')">Editar</button>
           <button class="btn sm dgr" onclick="delPersona('${p.id}')">×</button></td>
-      </tr>`).join('')}</tbody></table></div>`
+      </tr>`).join('')}</tbody></table></div>
+      ${todos.length > lista.length ? `<div class="pad" style="text-align:center">
+        <button class="btn" onclick="DB.ui.catLim=${lim+150};R()">Ver ${Math.min(150, todos.length-lista.length)} más (quedan ${todos.length-lista.length})</button></div>` : ''}`
       : total ? '<div class="empty">Nada coincide con la búsqueda.</div>'
       : `<div class="empty">Catálogo vacío.<br>
          <span style="font-size:12px">Cargá gente a mano, o soltá callsheets viejos y la sacamos de ahí.</span><br><br>
@@ -6473,6 +7197,14 @@ function upLinea(rid,lid,campo,val){
     l.valorOrigen = n(val) > 0 ? 'manual' : null;
     if(!(n(val) > 0)){ delete l.sica; autocompletarSICA(l, getPy()); }
   }
+  /* pasar una línea de rodaje a preproducción cambia la jornada (8 h): si el
+     valor vino del convenio, se recalcula; si alguien lo escribió, no */
+  if(campo === 'etapa'){
+    l.etapa = val || null;
+    if(l.valorOrigen === 'sica') autocompletarSICA(l, getPy(), true);
+    else autocompletarSICA(l, getPy());
+  }
+  if(campo === 'contrato') l.contrato = val || null;
   /* escribir o cambiar la función completa el sueldo, si la línea está vacía */
   if(campo === 'concepto' || campo === 'unidad' || campo === 'moneda'){
     if(l.valorOrigen === 'sica' && campo === 'concepto' && !l.sicaRef){
@@ -6569,6 +7301,16 @@ function barraSICA(py, v){
         Se está usando ${esc(E.nombre)}, que venció el ${esc(E.hasta)}: los sueldos pueden estar
         por debajo del convenio vigente. En cuanto el SICA publique la nueva, se actualiza sola.</div>`
     : E.futura ? `<div class="sica-aviso">La fecha del rodaje es anterior a la primera escala cargada.</div>` : '';
+  /* el sueldo del convenio es bruto: sin cargas, el equipo sale barato */
+  const Rc = calcular(v);
+  const avisoCargas = Rc.baseSica > 0 && !n(v.capas.cargas)
+    ? `<div class="sica-aviso mal" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <span style="flex:1;min-width:220px"><b>Faltan las cargas sociales.</b> Los sueldos del convenio
+        (${fmt(Rc.baseSica, v.monedaBase)}) son brutos: encima van las cargas. En los presupuestos de la
+        casa fueron 51% (2014–15), 72% (2019) y 42% (2020).</span>
+        <label style="display:flex;gap:5px;align-items:center;font-size:12px;color:var(--tx)">Cargas
+          <input type="number" step="any" min="0" placeholder="%" style="width:64px;padding:4px 6px;text-align:right;font-family:var(--mono)"
+            onchange="upCapa('cargas',this.value)"> %</label></div>` : '';
   return `<div class="card noprint sicabar"><div class="pad" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:10px 13px">
     <div style="flex:1;min-width:210px">
       <div style="font-size:12.5px"><b>Convenio SICA · ${esc(E.nombre)}</b>
@@ -6582,7 +7324,7 @@ function barraSICA(py, v){
     ${R2.vacias?`<button class="btn sm pri" onclick="completarSICA()">Cargar ${R2.vacias} sueldo${R2.vacias==1?'':'s'} del convenio</button>`:''}
     ${R2.desactualizadas?`<button class="btn sm" onclick="actualizarTodoSICA()">↻ Actualizar ${R2.desactualizadas}</button>`:''}
     <button class="btn sm" onclick="setTab('catalogo');setSubCat('sica')">Ver escala</button>
-  </div>${aviso}</div>`;
+  </div>${aviso}${avisoCargas}</div>`;
 }
 function upRubro(id, campo, val){
   const r = getV().rubros.find(x=>x.id===id); if(!r) return;
@@ -6755,8 +7497,8 @@ function cerrar(){ modal = null; render(); }
 function campo(l,name,val,tipo='text',extra=''){
   return `<label class="f"><span>${l}</span>
     <input type="${tipo}" name="${name}" value="${esc(val??'')}" ${extra}></label>`; }
-function sel(l,name,val,ops){
-  return `<label class="f"><span>${l}</span><select name="${name}">
+function sel(l,name,val,ops,extra=''){
+  return `<label class="f"><span>${l}</span><select name="${name}" ${extra}>
     ${ops.map(o=>{const v=o.v??o,t=o.l??o;return `<option value="${esc(v)}" ${String(v)===String(val)?'selected':''}>${esc(t)}</option>`}).join('')}
   </select></label>`; }
 function datos(){ const o={}; document.querySelectorAll('.mod [name]').forEach(e=>o[e.name]=e.value); return o; }
@@ -6805,12 +7547,16 @@ function editProyecto(id){
     <h3>${id?'Editar':'Nuevo'} proyecto — ${esc(pr.nombre)}</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre del proyecto','nombre',p.nombre)}
-        ${sel('Tipo','tipo',p.tipo,TIPOS_PROYECTO.map(t=>({v:t.k,l:t.l})))}
+        ${sel('Tipo','tipo',p.tipo,TIPOS_PROYECTO.map(t=>({v:t.k,l:t.l})), id ? '' : 'onchange="cambiaTipoNuevo(this.value)"')}
         ${campo('Cliente','cliente',p.cliente)}
         ${campo('Agencia','agencia',p.agencia)}
         ${campo('Producto','producto',p.producto)}
         ${campo('Jornadas de rodaje','jornadas',p.jornadas,'number','step="1" min="0"')}
       </div>
+      ${id ? '' : `<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
+        Arrancar el presupuesto con</div>
+        <input type="hidden" name="plantilla" value="">
+        <div id="plelegir">${tarjetasPlantilla(p.tipo, '')}</div>`}
       <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
         Derechos de imagen / buyout</div>
       <div class="grid2">
@@ -6821,15 +7567,30 @@ function editProyecto(id){
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
       <button class="btn pri" onclick="saveProyecto('${id||''}')">Guardar</button></div>
   </div></div>`); }
+/* Las cargas sociales no cambian de un proyecto a otro de la misma casa: el
+   proyecto nuevo arranca con las del último presupuesto que las tenga. */
+function ultimasCargas(pr){
+  const vs = (pr?.proyectos||[]).flatMap(py => py.versiones||[])
+    .filter(v => n(v.capas?.cargas) > 0 || n(v.capas?.cargasElenco) > 0)
+    .sort((a,b) => String(b.fecha||'').localeCompare(String(a.fecha||'')));
+  const v = vs[0];
+  return {cargas: v ? n(v.capas.cargas) : 0, cargasElenco: v ? n(v.capas.cargasElenco) : 0};
+}
 function saveProyecto(id){
   const d = datos(); const pr = getPr();
   let p = id ? pr.proyectos.find(x=>x.id===id) : nuevoProyecto();
   Object.assign(p,{nombre:d.nombre||'Sin nombre', tipo:d.tipo, cliente:d.cliente, agencia:d.agencia,
     producto:d.producto, jornadas:n(d.jornadas), medios:d.medios, territorio:d.territorio, plazo:d.plazo});
   if(!id){
+    const ult = ultimasCargas(pr);
+    const plk = d.plantilla;
     p.versiones[0].capas = {fee:pr.feeDefault, contingencia:pr.contingenciaDefault,
-      iibb:pr.iibbDefault, iva:pr.ivaDefault};
+      iibb:pr.iibbDefault, iva:pr.ivaDefault, cargas:ult.cargas, cargasElenco:ult.cargasElenco};
     pr.proyectos.push(p); DB.ui.proyectoId=p.id; DB.ui.versionId=p.versiones[0].id; DB.ui.tab='presu';
+    if(plk){
+      const res = aplicarPlantilla(p, p.versiones[0], plk, {jornadas: n(d.jornadas) || null});
+      toast(`${res.agregadas} líneas desde la plantilla · los sueldos del convenio ya están; el resto va en cero con la referencia en la nota`);
+    }
   }
   cerrar();
   /* El proyecto sube apenas se guarda: si vive sólo en este navegador, invitar
@@ -6926,7 +7687,9 @@ function editPersona(id){
       <div class="grid2">
         ${campo('Teléfono','tel',p.tel)}${campo('Email','email',p.email)}
         ${campo('Banco','banco',p.banco)}${campo('Alias / CBU','alias',p.alias)}
-      </div></div>
+      </div>
+      <label class="f" style="margin-top:12px"><span>Notas — con quién trabajó, cuándo, cómo le fue</span>
+        <textarea name="notas" rows="3">${esc(p.notas||'')}</textarea></label></div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
       <button class="btn pri" onclick="savePersona('${id||''}')">Guardar</button></div>
   </div></div>`); }
@@ -7908,6 +8671,7 @@ function delComprobante(id){
 
 /* ---------- catálogo: filtros e importación desde callsheets ---------- */
 function setFCat(campo, val){
+  DB.ui.catLim = 150;
   DB.ui.fCat = {...(DB.ui.fCat||{q:'',rubro:'',tipo:'',desde:'',hasta:'',soloLibres:false}), [campo]:val}; R();
 }
 function limpiarFCat(){ DB.ui.fCat = {q:'',rubro:'',tipo:'',desde:'',hasta:'',soloLibres:false}; R(); }
@@ -7929,9 +8693,9 @@ function menuCallsheets(){
         ondrop="soltarCallsheets(event)"
         onclick="document.getElementById('csfiles').click()">
         <b>Soltá los archivos acá</b>
-        <span>o tocá para elegirlos · PDF, Word, RTF, txt · se pueden varios a la vez</span>
+        <span>o tocá para elegirlos · Excel (.xlsx), PDF, Word, RTF, txt · se pueden varios a la vez</span>
       </div>
-      <input type="file" id="csfiles" multiple accept=".pdf,.docx,.doc,.rtf,.txt,.fdx"
+      <input type="file" id="csfiles" multiple accept=".xlsx,.xls,.pdf,.docx,.doc,.rtf,.txt,.fdx,.json"
         style="display:none" onchange="soltarCallsheets(this)">
       <div id="csresultado" style="margin-top:14px"></div>
     </div>
@@ -7951,17 +8715,27 @@ async function soltarCallsheets(ev){
   if(!files.length) return;
   const cont = document.getElementById('csresultado');
   const leidos = [], fallados = [];
-  let crudos = [];
+  let crudos = [], preparados = [];
   for(const f of files){
     if(cont) cont.innerHTML = `<div class="muted" style="font-size:12px">Leyendo ${esc(f.name)}…</div>`;
     try{
+      /* un catálogo ya armado (el que sale de revisar callsheets de a
+         muchos): viene limpio, con función, rubro y notas, y no se adivina */
+      if(/\.json$/i.test(f.name)){
+        const cs = catalogoPreparado(JSON.parse(await f.text()), f.name);
+        preparados = preparados.concat(cs.map(c => ({...c, veces:1})));
+        leidos.push({nombre:f.name, cant:cs.length});
+        continue;
+      }
       const txt = await archivoATexto(f);
       const cs = extraerContactos(txt, f.name);
       crudos = crudos.concat(cs);
       leidos.push({nombre:f.name, cant:cs.length});
     }catch(e){ fallados.push({nombre:f.name, error:e.message}); }
   }
-  _candidatos = unificarContactos(crudos).map((c,i)=>({...c, i, ya:yaEnCatalogo(c)}));
+  /* lo preparado ya viene sin repetidos: juntarlo de nuevo por teléfono
+     pegaría a un proveedor con la persona que figura como su contacto */
+  _candidatos = [...preparados, ...unificarContactos(crudos)].map((c,i)=>({...c, i, ya:yaEnCatalogo(c)}));
   pintarCandidatos(leidos, fallados);
 }
 
@@ -8008,6 +8782,20 @@ function pintarCandidatos(leidos, fallados){
     : '<div class="empty">No encontré líneas con teléfono o mail en esos archivos.</div>'}`;
 }
 
+/* Formato: {clap:'catalogo', personas:[{nombre, funcion, rubro, tipo, tel,
+   email, dni, cuit, notas}]}. Cualquier otra cosa es un error claro. */
+function catalogoPreparado(d, origen){
+  if(!d || d.clap !== 'catalogo' || !Array.isArray(d.personas))
+    throw new Error('Ese .json no es un catálogo de CLAP.');
+  return d.personas.filter(x => x && (x.nombre || x.email || x.tel)).map(x => ({
+    nombre: String(x.nombre||'').trim(), funcion: String(x.funcion||'').trim(),
+    tipo: ['persona','proveedor','equipo'].includes(x.tipo) ? x.tipo : 'persona',
+    rubro: RUBRO(x.rubro).codigo ? x.rubro : '',
+    tel: String(x.tel||'').trim(), email: String(x.email||'').trim().toLowerCase(),
+    dni: String(x.dni||'').trim(), cuit: String(x.cuit||'').trim(),
+    notas: String(x.notas||'').trim(), origen, crudo: String(x.notas||'').slice(0,110)}));
+}
+
 function tildarCandidatos(val){
   document.querySelectorAll('.mod input[data-c]').forEach(c=>c.checked = val);
 }
@@ -8015,14 +8803,24 @@ function importarCandidatos(){
   const marcados = [...document.querySelectorAll('.mod input[data-c]')]
     .filter(c=>c.checked).map(c=>_candidatos[+c.dataset.c]);
   if(!marcados.length){ toast('No hay nada tildado'); return; }
-  marcados.forEach(c=>{
-    DB.catalogo.personas.push(nuevaPersona({
+  const nuevas = marcados.map(c=>{
+    const pe = nuevaPersona({
       nombre:c.nombre || c.funcion || 'Sin nombre', funcion:c.funcion,
       tipo:c.tipo || 'persona', rubro:c.rubro || '03', tel:c.tel, email:c.email,
-      tarifaRef: c.funcion ? ((sicaDe(c.funcion, c.rubro)||{}).j12 || 0) : 0}));
+      dni:c.dni||'', cuit:c.cuit||'', notas:c.notas||'',
+      tarifaRef: c.funcion && (c.tipo||'persona') === 'persona' ? ((sicaDe(c.funcion, c.rubro)||{}).j12 || 0) : 0});
+    DB.catalogo.personas.push(pe);
+    return pe;
   });
   cerrar();
   toast(`${marcados.length} contacto(s) agregado(s) al catálogo`);
+  /* el catálogo es del equipo: sube ya, de a uno, sin trabar la pantalla */
+  if(sbConectado()) (async () => {
+    let ok = 0, mal = 0;
+    for(const pe of nuevas){ try{ await sbSubirPersona(pe); ok++; }catch(e){ mal++; } }
+    toast(mal ? `Subí ${ok} al catálogo compartido; ${mal} no se pudieron subir (quedan acá)`
+              : `${ok} ficha${ok==1?'':'s'} subida${ok==1?'':'s'} al catálogo compartido`);
+  })();
   DB.ui.tab = 'catalogo'; DB.ui.subCat = 'gente'; R();
 }
 
@@ -8226,7 +9024,10 @@ function saveCfgRodaje(){
   if(horasJornadaDe(c) !== horasAntes || JSON.stringify(escalaDe(c)) !== escalaAntes){
     const py = getPy(); let k = 0;
     (py.versiones||[]).forEach(v => v.rubros.forEach(rb => rb.lineas.forEach(l => {
-      if(l.valorOrigen === 'sica' && autocompletarSICA(l, py, true)) k++; })));
+      if(l.valorOrigen !== 'sica') return;
+      /* las de preproducción siguen en 8 h: no cambian y no se cuentan */
+      const antes = n(l.valorUnit);
+      if(autocompletarSICA(l, py, true) && n(l.valorUnit) !== antes) k++; })));
     if(k) toast(`${k} sueldo${k==1?'':'s'} del convenio recalculado${k==1?'':'s'} para jornada de ${horasJornadaDe(c)} h`);
   }
   R();
@@ -9548,6 +10349,11 @@ function expCSV(){
     (CIRCUITOS.find(c=>c.v===l.circuito)||{}).l||'',
     (COMPROBANTES.find(c=>c.v===l.comprobante)||{}).l||''].map(q).join(','))));
   const R2=calcular(v);
+  if(R2.cargas || R2.cargasElenco){
+    L.push('', [q('Líneas'),'','','','','','','',Math.round(R2.subtotalLineas)].join(','));
+    if(R2.cargas) L.push([q(`Cargas sociales SICA ${n(v.capas.cargas)}% s/ ${Math.round(R2.baseSica)}`),'','','','','','','',Math.round(R2.cargas)].join(','));
+    if(R2.cargasElenco) L.push([q(`Cargas del elenco AAA ${n(v.capas.cargasElenco)}% s/ ${Math.round(R2.baseAAA)}`),'','','','','','','',Math.round(R2.cargasElenco)].join(','));
+  }
   L.push('', [q('Subtotal'),'','','','','','','',Math.round(R2.subtotal)].join(','));
   L.push([q(`Fee ${v.capas.fee}%`),'','','','','','','',Math.round(R2.fee)].join(','));
   L.push([q(`Contingencia ${v.capas.contingencia}%`),'','','','','','','',Math.round(R2.contingencia)].join(','));
