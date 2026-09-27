@@ -3467,8 +3467,11 @@ async function sbRenovar(){
 }
 /* Renueva sola si el token está por vencer. Se llama antes de cada operación. */
 async function sbSesionViva(){
-  if(!SB.access) return false;
-  if(Date.now() < SB.expira) return true;
+  /* Sin access pero con refresh: la última renovación falló (la base estaba
+     pausada, no había señal). El refresh sigue sirviendo: se reintenta en vez
+     de dar la sesión por perdida y obligar a escribir la contraseña. */
+  if(!SB.access && !SB.refresh) return false;
+  if(SB.access && Date.now() < SB.expira) return true;
   try{ await sbRenovar(); return true; }
   catch(e){ SB.access = null; SB.user = null; sbGuardar(); return false; }
 }
@@ -3618,8 +3621,17 @@ async function sbMiOrg(){
 
 async function sbBajarCatalogo(){
   if(!await sbSesionViva()) return [];
-  /* RLS ya lo recorta a mi organización: no hace falta filtrar acá. */
-  return await sbFetch('/rest/v1/catalogo_persona?select=*&order=nombre') || [];
+  /* RLS ya lo recorta a mi organización: no hace falta filtrar acá.
+     La base devuelve como mucho 1.000 filas por pedido: con el catálogo de la
+     casa (más de 1.500) se cortaba sin avisar. Se pide de a 1.000 hasta que
+     venga una página incompleta. */
+  const todas = [], PAG = 1000;
+  for(let off = 0; off < 100000; off += PAG){
+    const r = await sbFetch(`/rest/v1/catalogo_persona?select=*&order=nombre,id&limit=${PAG}&offset=${off}`) || [];
+    todas.push(...r);
+    if(r.length < PAG) break;
+  }
+  return todas;
 }
 
 /* Upsert: si la fila ya está, la pisa; si no, la crea. Con el mismo id de
@@ -10398,6 +10410,10 @@ if(_fallaArranque){
       productora, sin ninguna forma de terminar.                             */
   (async () => {
     try{
+      /* sesión que se cayó (base pausada, sin señal) pero se puede renovar */
+      if(sbConfigurado() && !SB.access && SB.refresh){
+        if(await sbSesionViva()) renderSeguro('dibujar la pantalla');
+      }
       if(await revisarInvitacion()){
         /* con sesión ya iniciada, se refresca por atrás para saber si ya figuro */
         if(sbConectado()){ try{ _misFichas = await sbMisFichas(); pantallaInvitacion(); }catch(e){} }
