@@ -743,6 +743,27 @@ sincronizar. Con rol Produccion o Equipo el acceso a la productora sale de
 estar anotado en alguno de sus proyectos (`productoras_con_acceso`), asi que
 sincronizar primero baja una lista vacia y el proyecto no aparece.
 
+### Me olvide la contraseña
+
+En la ventana de entrar (la nube ☁) esta **Me olvide la contraseña**: con el
+mail escrito, Supabase manda un link. El link vuelve a CLAP con la conexion
+adentro (sirve aunque se abra en otro aparato) y pide la contraseña nueva; al
+guardarla ya se esta adentro. Si el link vencio (dura una hora y se usa una
+vez) lo dice y ofrece pedir otro. Estando adentro esta **Cambiar mi
+contraseña**. El link de confirmacion del alta tambien deja adentro directo.
+
+Para que el link vuelva a CLAP, una vez en Supabase: **Authentication → URL
+Configuration**, Site URL `https://andresarbit.github.io/clap/clap.html` y en
+Redirect URLs `https://andresarbit.github.io/clap/**`.
+
+El mail gratis de Supabase manda pocos mails por hora y solo a las cuentas
+del equipo del proyecto en Supabase. Para que le llegue a cualquiera hay que
+invitarlo al equipo (Organization → Team) o configurar un SMTP propio
+(Authentication → Emails → SMTP Settings).
+
+Si la sesion se cayo porque la base estuvo pausada, se renueva sola al abrir:
+no hace falta volver a escribir la contraseña.
+
 ### Que nunca quede una pantalla en blanco
 
 Una app de una sola pagina que se rompe al arrancar no muestra un error: muestra
@@ -864,6 +885,7 @@ node test/run.js test/dos-presupuestos.js # Real vs Produccion por rol, y el IVA
 node test/run.js test/extras-y-actual.js  # horas extra por tramos y columna Actual
 node test/run.js test/arranque.js     # que nunca quede en blanco ni se pierdan datos
 node test/run.js test/sueldos-sica.js # sueldos del convenio en el presupuesto
+node test/run.js test/recuperar-clave.js # me olvide la contraseña, cambiarla, sesion que se recupera
 node test/run.js test/plantillas-cargas.js # plantillas, cargas sociales, prepro 8 h, condiciones, catalogo Excel
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta
 

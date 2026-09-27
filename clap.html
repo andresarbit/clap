@@ -3437,6 +3437,10 @@ function sbMensaje(status, msg){
   if(status===404) return 'No encontré eso en el servidor. ¿Corriste el esquema SQL?';
   if(status===403) return 'El servidor no te deja hacer eso (revisá las políticas de acceso).';
   if(/relation .* does not exist/i.test(m)) return 'Falta una tabla: todavía no corriste backend/esquema.sql.';
+  if(status===429 || /security purposes|rate limit|too many/i.test(m))
+    return 'Ya se pidió hace un momento. Esperá un minuto y probá de nuevo.';
+  if(/different from the old/i.test(m)) return 'Tiene que ser distinta de la contraseña anterior.';
+  if(/email not confirmed/i.test(m)) return 'Todavía no confirmaste el mail: buscá el mail de Supabase y tocá el link.';
   return m || ('Error ' + status);
 }
 
@@ -9324,6 +9328,8 @@ function menuNube(){
         ${campo('Mail','sbmail','','email')}
         ${campo('Contraseña','sbpass','','password','placeholder="mínimo 6 caracteres"')}
       </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px">
+        <button class="btn sm" onclick="olvideClave()" title="Te llega un mail con un link para poner una nueva">Me olvidé la contraseña</button></div>
       <div class="muted" style="font-size:11.5px;margin-top:8px">
         Si es la primera vez, tocá <b>Crear cuenta</b>. Según cómo tengas configurado el
         proyecto, Supabase puede pedirte confirmar el mail antes de dejarte entrar.</div>` : ''}
@@ -9342,6 +9348,7 @@ function menuNube(){
                <button class="btn pri" onclick="menuEquipoAccesos()">Quién entra</button>
                <button class="btn" onclick="sincronizarTodoAhora()">⟳ Sincronizar todo</button>
                <button class="btn" onclick="sbCorrerDiagnostico()">Revisar estado</button>
+               <button class="btn" onclick="pedirClaveNueva(false)">Cambiar mi contraseña</button>
                <button class="btn" onclick="sbCerrarSesion()">Cerrar sesión</button>` : ''}
     </div>
   </div></div>`);
@@ -9807,6 +9814,116 @@ async function sbAccion(cual){
     if(cont) cont.innerHTML = `<div class="avisomodo turno-mal"><b>No pude entrar.</b> ${esc(e.message)}</div>`;
   }
 }
+/* ---------- me olvidé la contraseña ----------
+   Se pide con el mail. Supabase manda un link; el link vuelve a CLAP con la
+   sesión en el # de la dirección (type=recovery), y ahí se pide la contraseña
+   nueva. Nadie tiene que tocar la base ni pedirle nada a un administrador.
+   El link lleva la conexión (?sb=…&k=…): abierto en un aparato donde nunca
+   se usó CLAP, igual sabe a qué base volver.                               */
+async function sbPedirRecuperacion(email){
+  const vuelta = encodeURIComponent(sbLinkConfigurado() || (location.origin + location.pathname));
+  await sbFetch(`/auth/v1/recover?redirect_to=${vuelta}`, {method:'POST', sinToken:true,
+    body: JSON.stringify({email: String(email||'').trim()})});
+}
+async function olvideClave(){
+  const d = datos(); const mail = String(d.sbmail||'').trim();
+  const cont = document.getElementById('sbdiag');
+  const decir = h => { if(cont) cont.innerHTML = h; else toast(h.replace(/<[^>]+>/g,'')); };
+  if(!RE_MAIL.test(mail)){
+    decir(`<div class="avisomodo turno-mal"><b>Escribí tu mail arriba</b> y tocá de nuevo "Me olvidé la contraseña".</div>`);
+    const i = document.querySelector('.mod [name=sbmail]'); if(i && i.focus) i.focus();
+    return;
+  }
+  decir('<div class="muted" style="font-size:12px">Mandando el mail…</div>');
+  try{
+    await sbPedirRecuperacion(mail);
+    decir(`<div class="sicabox"><b>Te mandamos un mail a ${esc(mail)}.</b>
+      Abrilo y tocá el link: vuelve a CLAP y te pide la contraseña nueva. Conviene abrirlo
+      en este mismo aparato. Si en unos minutos no llegó, mirá en spam.</div>`);
+  }catch(e){
+    decir(`<div class="avisomodo turno-mal"><b>No pude mandar el mail.</b> ${esc(e.message)}</div>`);
+  }
+}
+
+/* La vuelta del link del mail: #access_token=…&refresh_token=…&type=…  o
+   #error=…&error_code=otp_expired si venció. Se lee UNA vez y se borra de la
+   barra, para que no quede la sesión a la vista ni se reprocese al recargar. */
+function leerVueltaDeMail(){
+  if(typeof location === 'undefined') return null;
+  const h = String(location.hash||'').replace(/^#/, '');
+  if(!/(^|&)(access_token|error_code|error)=/.test(h)) return null;
+  const q = new URLSearchParams(h);
+  try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
+  if(q.get('error') || q.get('error_code'))
+    return {error: q.get('error_code') || q.get('error'), desc: q.get('error_description') || ''};
+  if(!q.get('access_token')) return null;
+  return {access: q.get('access_token'), refresh: q.get('refresh_token'),
+    expiresIn: +q.get('expires_in') || 3600, tipo: q.get('type') || ''};
+}
+/* Devuelve true si se hizo cargo de la pantalla (y el arranque no sigue). */
+async function atenderVueltaDeMail(){
+  const v = leerVueltaDeMail(); if(!v) return false;
+  if(v.error){
+    abrir(`<div class="ov"><div class="mod" style="max-width:460px"><h3>Ese link ya no sirve</h3>
+      <div class="mbody"><div class="muted" style="font-size:12.5px;line-height:1.6">
+        El link del mail dura una hora y se usa una sola vez: este venció o ya se usó.
+        Pedí otro desde la nube (☁) → <b>Me olvidé la contraseña</b>.</div></div>
+      <div class="mfoot"><div style="flex:1"></div>
+        <button class="btn pri" onclick="cerrar();menuNube()">Pedir otro</button></div></div></div>`);
+    return true;
+  }
+  if(!sbConfigurado()){
+    abrir(`<div class="ov"><div class="mod" style="max-width:460px"><h3>Falta la conexión</h3>
+      <div class="mbody"><div class="muted" style="font-size:12.5px;line-height:1.6">
+        Este aparato no sabe a qué base conectarse. Abrí primero el link del equipo y
+        después pedí de nuevo el mail para recuperar la contraseña.</div></div>
+      <div class="mfoot"><div style="flex:1"></div><button class="btn" onclick="cerrar()">Cerrar</button></div></div></div>`);
+    return true;
+  }
+  SB.access = v.access; SB.refresh = v.refresh;
+  SB.expira = Date.now() + v.expiresIn * 1000 - 60000;
+  try{ const u = await sbFetch('/auth/v1/user'); if(u && u.id) SB.user = {id: u.id, email: u.email}; }catch(e){}
+  sbGuardar();
+  if(v.tipo === 'recovery'){ pedirClaveNueva(true); return true; }
+  /* el link de confirmación del alta: ya está adentro */
+  toast('Mail confirmado · entraste como ' + ((SB.user||{}).email || ''));
+  renderSeguro('dibujar la pantalla');
+  return false;
+}
+
+/* Contraseña nueva: al volver del mail, o cuando alguien quiere cambiarla. */
+function pedirClaveNueva(desdeMail){
+  abrir(`<div class="ov"${desdeMail ? '' : ` onclick="if(event.target===this)cerrar()"`}><div class="mod" style="max-width:460px">
+    <h3>${desdeMail ? 'Poné tu contraseña nueva' : 'Cambiar mi contraseña'}</h3>
+    <div class="mbody">
+      <div class="muted" style="font-size:12.5px;margin-bottom:10px">${esc((SB.user||{}).email || '')}</div>
+      <div class="grid2">
+        ${campo('Contraseña nueva','clave1','','password','placeholder="mínimo 6 caracteres" autocomplete="new-password"')}
+        ${campo('Repetila','clave2','','password','autocomplete="new-password"')}
+      </div>
+      <div id="clavediag" style="margin-top:10px"></div>
+    </div>
+    <div class="mfoot">${desdeMail ? '' : '<button class="btn" onclick="cerrar()">Cancelar</button>'}
+      <div style="flex:1"></div>
+      <button class="btn pri" onclick="guardarClaveNueva(${desdeMail ? 'true' : 'false'})">Guardar contraseña</button></div>
+  </div></div>`);
+}
+async function guardarClaveNueva(desdeMail){
+  const d = datos(); const c = document.getElementById('clavediag');
+  const mal = t => { if(c) c.innerHTML = `<div class="avisomodo turno-mal">${t}</div>`; };
+  if(String(d.clave1||'').length < 6) return mal('Tiene que tener <b>al menos 6 caracteres</b>.');
+  if(d.clave1 !== d.clave2) return mal('Las dos <b>no coinciden</b>: escribila igual en los dos campos.');
+  if(c) c.innerHTML = '<div class="muted" style="font-size:12px">Guardando…</div>';
+  try{
+    await sbSesionViva();
+    await sbFetch('/auth/v1/user', {method:'PUT', body: JSON.stringify({password: d.clave1})});
+  }catch(e){ return mal(`<b>No se guardó.</b> ${esc(e.message)}`); }
+  cerrar();
+  toast('Contraseña guardada' + (desdeMail ? ' · ya estás adentro' : ''));
+  renderSeguro('dibujar la pantalla');
+  if(desdeMail) setTimeout(()=>{ try{ revisarAlta(); }catch(e){} }, 120);
+}
+
 function copiarLinkEquipo(){
   const l = sbLinkConfigurado();
   if(!l){ toast('Primero configurá la conexión'); return; }
@@ -10410,6 +10527,8 @@ if(_fallaArranque){
       productora, sin ninguna forma de terminar.                             */
   (async () => {
     try{
+      /* volviendo del link de un mail (recuperar contraseña, confirmar alta) */
+      if(await atenderVueltaDeMail()) return;
       /* sesión que se cayó (base pausada, sin señal) pero se puede renovar */
       if(sbConfigurado() && !SB.access && SB.refresh){
         if(await sbSesionViva()) renderSeguro('dibujar la pantalla');
