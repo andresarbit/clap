@@ -347,6 +347,35 @@ carga el departamento -> revisa produccion -> aprueba el ejecutivo -> paga admin
 > los definitivos: cuando haya backend se reemplaza el selector por un login y no
 > cambia nada mas.
 
+### Alta y liquidacion
+
+Solapa **Alta y liquidacion**, las dos puntas del equipo de un proyecto (la ven
+Produccion, el Productor Ejecutivo y Administracion). La gente sale de las
+lineas del presupuesto (equipo tecnico y elenco): una persona con linea de
+prepro y de rodaje es una sola; alquileres y compras quedan afuera.
+
+- **Alta del equipo** — por persona, que le falta para el seguro (nombre, DNI,
+  CUIL, fecha de nacimiento) y para el pago (alias o CBU). Boton **WhatsApp**
+  con el mensaje escrito, que trae lo que ya tenemos para que conteste OK o
+  lo corrija, y **Pedir datos por WhatsApp** para todos a los que les falta
+  algo. Los puestos sin nadie se **asignan** con el buscador del catalogo; los
+  que tienen nombre pero no ficha, **crear ficha**. **Planilla para el
+  seguro** baja nombre, DNI, CUIL, nacimiento, funcion y fechas del rodaje.
+  Hoy el WhatsApp se abre desde el telefono de quien toca el boton, uno por
+  uno; cuando la productora conecte un numero propio (WhatsApp Business) se
+  cambia `CANAL_WHATSAPP` y el mismo boton los manda todos.
+- **Liquidacion** — por persona: lo de sus lineas del presupuesto, las **horas
+  extra** de los partes del dia, un **ajuste** (adelanto en negativo, jornada de
+  mas en positivo, con motivo) y el **total**. Dice como se paga: recibo de
+  sueldo si va por convenio, recibo AAA, factura A o C segun la condicion.
+  Produccion revisa, el ejecutivo aprueba y administracion marca pagado, con
+  cada paso firmado; si cambia el monto despues de revisado, vuelve a
+  borrador. **Para administracion** baja nombre, CUIL, DNI, alias, CBU, banco,
+  como se paga, montos y estado, para cargar las transferencias.
+
+El CBU se comparte entre todos cuando la base tiene la columna: correr una vez
+`backend/catalogo-cbu.sql`.
+
 ### El modulo de plata
 
 Cinco sub-vistas en **Gastos**:
@@ -913,6 +942,7 @@ node test/run.js test/extras-y-actual.js  # horas extra por tramos y columna Act
 node test/run.js test/arranque.js     # que nunca quede en blanco ni se pierdan datos
 node test/run.js test/sueldos-sica.js # sueldos del convenio en el presupuesto
 node test/run.js test/cambiar-plantilla.js # cambiar de plantilla sin perder lo cargado
+node test/run.js test/alta-liquidacion.js # alta del equipo por WhatsApp y liquidacion
 node test/run.js test/buscar-catalogo.js # buscador de + Persona / proveedor en el presupuesto
 node test/run.js test/recuperar-clave.js # me olvide la contraseña, cambiarla, sesion que se recupera
 node test/run.js test/plantillas-cargas.js # plantillas, cargas sociales, prepro 8 h, condiciones, catalogo Excel

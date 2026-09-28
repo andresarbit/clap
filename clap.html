@@ -3716,21 +3716,29 @@ const CAT_CAMPOS = [['tipo','tipo'],['nombre','nombre'],['funcion','funcion'],['
 const catDesdeServidor = f => { const p = {id:f.id};
   CAT_CAMPOS.forEach(([s,l]) => p[l] = f[s]); p.tarifaRef = n(p.tarifaRef);
   if(f.notas !== undefined) p.notas = f.notas;
+  if(f.cbu !== undefined) p.cbu = f.cbu;
   return p; };
 const catHaciaServidor = (p, orgId) => { const f = {id:p.id, org_id:orgId};
   CAT_CAMPOS.forEach(([s,l]) => f[s] = p[l] === '' ? null : p[l]);
   f.nombre = p.nombre || 'Sin nombre';        /* la tabla lo exige */
   f.tarifa_ref = n(p.tarifaRef);
   if(_catNotas) f.notas = p.notas || null;
+  if(_catCbu) f.cbu = p.cbu || null;
   return f; };
 /* La columna `notas` llegó después (backend/catalogo-notas.sql). Hasta que
    alguien corra ese SQL la tabla no la tiene, y mandarla haría fallar TODA
    la subida: se pregunta una vez y, si no está, las notas quedan acá. */
 let _catNotas;   /* no va en SB: SB se guarda, y esto se pregunta de nuevo en cada sesión */
+let _catCbu;     /* igual que notas: backend/catalogo-cbu.sql */
 async function sbCatalogoTieneNotas(){
-  if(_catNotas !== undefined) return _catNotas;
-  try{ await sbFetch('/rest/v1/catalogo_persona?select=notas&limit=1'); _catNotas = true; }
-  catch(e){ _catNotas = false; }
+  if(_catNotas === undefined){
+    try{ await sbFetch('/rest/v1/catalogo_persona?select=notas&limit=1'); _catNotas = true; }
+    catch(e){ _catNotas = false; }
+  }
+  if(_catCbu === undefined){
+    try{ await sbFetch('/rest/v1/catalogo_persona?select=cbu&limit=1'); _catCbu = true; }
+    catch(e){ _catCbu = false; }
+  }
   return _catNotas;
 }
 
@@ -3794,6 +3802,7 @@ function fusionarCatalogo(filas){
     /* no pisar con vacío lo que acá ya está cargado */
     CAT_CAMPOS.forEach(([,k]) => { if(p[k] !== null && p[k] !== undefined && p[k] !== '') l[k] = p[k]; });
     if(p.notas) l.notas = p.notas;
+    if(p.cbu) l.cbu = p.cbu;
     tocados++;
   });
   if(nuevos || tocados) guardar();
@@ -4540,7 +4549,7 @@ function chipIdentidad(pr){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['resumen','Resumen'],['guia','Instructivo'],['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
+  const TABS=[['resumen','Resumen'],['guia','Instructivo'],['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['personal','Alta y liquidación'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -4598,6 +4607,7 @@ function cuerpo(pr,py,v){
   if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,v);
   if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,v);
   if(DB.ui.tab==='gastos')    return vistaGastos(pr,py,v);
+  if(DB.ui.tab==='personal')  return vistaPersonal(pr,py,v);
   if(DB.ui.tab==='resumen')   return vistaResumen(pr,py,v);
   return vistaPresupuesto(pr,py,v);
 }
@@ -6089,6 +6099,359 @@ function vistaGuia(){
 }
 
 /* ---------- vista gastos ---------- */
+/* ========================  ALTA Y LIQUIDACIÓN  ===========================
+   Las dos puntas del equipo de un proyecto, en una misma solapa porque son
+   la misma gente:
+
+     ALTA         antes del rodaje. Que cada uno tenga lo que pide el seguro
+                  (nombre, DNI, CUIL, fecha de nacimiento) y a dónde pagarle
+                  (alias o CBU). A quien le falta algo se le pide por WhatsApp
+                  con un mensaje que ya trae lo que tenemos, para que conteste
+                  "OK" o lo corrija.
+     LIQUIDACIÓN  al terminar. Por persona: lo del presupuesto, las horas
+                  extra de los partes, un ajuste (adelanto, jornada de más) y
+                  el total. Producción revisa, el ejecutivo aprueba y
+                  administración paga, con el mismo circuito que las facturas.
+                  Administración se la baja con alias/CBU y CUIT para cargar
+                  las transferencias en el banco.
+
+   La gente sale de las líneas del presupuesto (equipo técnico y elenco). Una
+   persona con dos líneas —la de preproducción y la de rodaje— es UNA persona
+   en la liquidación. Lo que no es una persona (alquileres, compras, nafta)
+   queda afuera.                                                             */
+
+/* Cómo se mandan los pedidos por WhatsApp. Hoy: se abre el WhatsApp de quien
+   toca el botón con el mensaje escrito, uno por uno (wa.me). Cuando la
+   productora conecte un número propio (WhatsApp Business), se cambia el modo
+   acá y el mismo botón los manda todos juntos: los mensajes y la lista ya
+   están armados para eso.                                                   */
+const CANAL_WHATSAPP = {modo: 'manual', numero: null};
+
+const NO_ES_PERSONA = /alquiler|compra|combustible|movilidad|flete|vi[aá]tico|insumo|expendable|equipo de|construcci|devoluc|plantas|gr[aá]fica|lavander|arreglos|caja chica|buyout|cesi[oó]n|derechos|cargas|fee de|renovaci|playback|material|consumo|cami[oó]n|paquete|kit|efectos|veh[ií]culo/i;
+
+function genteDelProyecto(py, v){
+  const man = (py.contactos && py.contactos.porLinea) || {};
+  const porClave = new Map();
+  (v?.rubros || []).filter(rb => RUBROS_CREW.includes(rb.codigo) || rb.codigo === '09').forEach(rb => rb.lineas.forEach(l => {
+    const concepto = String(l.concepto || '').trim();
+    if(!concepto) return;
+    const pe = l.refId ? DB.catalogo.personas.find(x => x.id === l.refId) : null;
+    if(pe && (pe.tipo || 'persona') !== 'persona') return;
+    if(!pe && NO_ES_PERSONA.test(concepto)) return;
+    const m = man['l:' + l.id] || {};
+    const nombre = (pe && pe.nombre) || m.nombre || '';
+    const clave = pe ? 'p:' + pe.id : (nombre ? 'n:' + norm(nombre) : 'f:' + rb.codigo + ':' + norm(concepto));
+    let g = porClave.get(clave);
+    if(!g){
+      g = {clave, persona: pe, nombre, tel: (pe && pe.tel) || m.tel || '', email: (pe && pe.email) || m.email || '',
+        funciones: [], lineas: []};
+      porClave.set(clave, g);
+    }
+    if(!g.funciones.includes(concepto)) g.funciones.push(concepto);
+    g.lineas.push({rb, l});
+  }));
+  return [...porClave.values()].sort((a, b) =>
+    String(a.lineas[0].rb.codigo).localeCompare(String(b.lineas[0].rb.codigo)) || String(a.nombre).localeCompare(String(b.nombre)));
+}
+
+/* Qué le falta a cada uno. Sin ficha del catálogo no hay dónde guardar nada. */
+function faltaDe(g){
+  const p = g.persona;
+  if(!p && !String(g.nombre || '').trim()) return {sinAsignar: true, sinFicha: true, seguro: [], pago: []};
+  if(!p) return {sinFicha: true, seguro: ['ficha'], pago: ['ficha']};
+  const seguro = [], pago = [];
+  if(!String(p.nombre || '').trim()) seguro.push('nombre');
+  if(!String(p.dni || '').trim()) seguro.push('DNI');
+  if(!String(p.cuit || '').trim()) seguro.push('CUIL');
+  if(!String(p.fechaNac || '').trim()) seguro.push('nacimiento');
+  if(!String(p.alias || '').trim() && !String(p.cbu || '').trim()) pago.push('alias o CBU');
+  return {sinFicha: false, seguro, pago};
+}
+
+function textoPedidoDatos(pr, py, g){
+  const p = g.persona || {};
+  const fn = p.fechaNac ? p.fechaNac.split('-').reverse().join('/') : '';
+  const nom = String(g.nombre || '').split(' ')[0];
+  return [
+    `Hola${nom ? ' ' + nom : ''}! Te escribimos de ${pr.nombre} por ${py.nombre} (${g.funciones.join(' / ')}).`,
+    `Para darte de alta en el seguro y para la liquidación, ¿nos confirmás estos datos? Si falta alguno, completalo:`,
+    ``,
+    `• Nombre y apellido: ${g.nombre || '—'}`,
+    `• DNI: ${p.dni || '—'}`,
+    `• CUIL / CUIT: ${p.cuit || '—'}`,
+    `• Fecha de nacimiento: ${fn || '—'}`,
+    `• Alias o CBU para el pago: ${p.alias || p.cbu || '—'}`,
+    `• Banco: ${p.banco || '—'}`,
+    ``,
+    `Si está todo bien, respondé OK. ¡Gracias!`,
+  ].join('\n');
+}
+
+/* estado del alta y de la liquidación, por proyecto */
+function altaDe(py){ py.alta ||= {}; return py.alta; }
+function liqDe(py){ py.liquidacion ||= {}; return py.liquidacion; }
+
+/* ---------- liquidación ---------- */
+const LIQ_ESTADOS = [
+  {k:'borrador', l:'Borrador'},
+  {k:'revisado', l:'Revisado'},
+  {k:'aprobado', l:'Aprobado'},
+  {k:'pagado',   l:'Pagado'},
+];
+/* qué paso sigue y quién lo da: igual que las facturas */
+const LIQ_SIGUE = {borrador:{a:'revisado', puede:'revisar', l:'Revisar ✓'},
+                   revisado:{a:'aprobado', puede:'aprobar', l:'Aprobar ✓'},
+                   aprobado:{a:'pagado',   puede:'pagar',   l:'Marcar pagado ✓'}};
+const puedeLiq = que => { const u = getUsuario(); return !u || ROL(u.rol).puede.includes(que); };
+
+function comprobanteLiq(g){
+  const tipos = new Set(g.lineas.map(({rb, l}) => contratoDe(l, rb)));
+  if(tipos.has('sica')) return 'Recibo de sueldo (SICA)';
+  if(tipos.has('aaa')) return 'Recibo AAA';
+  const c = g.persona && g.persona.condicion;
+  if(c === 'Responsable Inscripto' || c === 'Sociedad') return 'Factura A';
+  if(c === 'Monotributista') return 'Factura C';
+  return 'Factura';
+}
+
+function liquidarPersona(py, v, g){
+  const cfg = py.configRodaje || nuevaConfigRodaje();
+  let base = 0, he = 0, jornadas = 0, heHoras = 0;
+  g.lineas.forEach(({l}) => {
+    base += totalLinea(l, v);
+    if(l.unidad === 'jornada') jornadas += n(l.cantidad) * n(l.dias);
+    if(l.etapa) return;                      /* las extras son del rodaje */
+    (py.desglose?.jornadas || []).forEach(jj => {
+      const h = horasDe('l:' + l.id, jj, cfg, n(l.valorUnit), l.moneda);
+      if(h.sinDatos) return;
+      heHoras += h.extra / 60;
+      he += conv(h.costoHE, l.moneda || 'ARS', v.monedaBase, n(v.tc));
+    });
+  });
+  const L = liqDe(py)[g.clave] || {};
+  const ajuste = n(L.ajuste);
+  return {base, he, heHoras, ajuste, notaAjuste: L.notaAjuste || '', jornadas,
+    total: base + he + ajuste, estado: L.estado || 'borrador', historial: L.historial || [],
+    comprobante: comprobanteLiq(g)};
+}
+
+function vistaPersonal(pr, py, v){
+  const u = getUsuario();
+  if(u && !['admin','ejecutivo','produccion'].includes(u.rol))
+    return `<div class="card"><div class="empty">El alta y la liquidación las ven Producción, el Productor Ejecutivo y Administración.</div></div>`;
+  if(!v) return `<div class="card"><div class="empty">Este proyecto no tiene un presupuesto a tu alcance.</div></div>`;
+  const sub = DB.ui.subPersonal || 'alta';
+  const tabs = `<div class="seg noprint" style="margin-bottom:12px">
+    ${[['alta','Alta del equipo'],['liquidacion','Liquidación']].map(([k,l]) =>
+      `<button class="${sub===k?'on':''}" onclick="DB.ui.subPersonal='${k}';R()">${l}</button>`).join('')}</div>`;
+  const G = genteDelProyecto(py, v);
+  if(!G.length) return tabs + `<div class="card"><div class="empty">Todavía no hay equipo en el presupuesto.<br>
+    <span class="muted" style="font-size:12px">Cargá las líneas del equipo técnico y el elenco, y traé a cada uno del catálogo.</span></div></div>`;
+  return tabs + (sub === 'liquidacion' ? liquidacionHTML(pr, py, v, G) : altaHTML(pr, py, v, G));
+}
+
+function altaHTML(pr, py, v, G){
+  const A = altaDe(py);
+  const faltan = G.filter(g => { const f = faltaDe(g); return !f.sinAsignar && (f.sinFicha || f.seguro.length || f.pago.length); });
+  const sinAsignar = G.filter(g => faltaDe(g).sinAsignar).length;
+  const chip = (lista, ok, que) => lista.length
+    ? `<span class="chip sica-bajo" title="Falta: ${esc(lista.join(', '))}">${que}: falta ${esc(lista.join(', '))}</span>`
+    : `<span class="chip d-si">${ok}</span>`;
+  return `<div class="card"><h3>Alta del equipo · ${esc(py.nombre)}
+      <span class="spacer"></span>
+      <button class="btn sm" onclick="bajarAltaSeguro()" title="Planilla con los datos que pide la aseguradora">⬇ Planilla para el seguro</button>
+      <button class="btn sm pri" onclick="pedirDatosTodos()" ${faltan.length ? '' : 'disabled'}>Pedir datos por WhatsApp (${faltan.length})</button></h3>
+    <div class="pad muted" style="font-size:12px;line-height:1.55;border-bottom:1px solid var(--line)">
+      ${G.length} puesto${G.length == 1 ? '' : 's'} de equipo y elenco en el presupuesto (versión ${esc(v.nombre)}).
+      ${faltan.length ? `<b style="color:var(--tx)">${faltan.length}</b> tienen algo pendiente para el seguro o el pago.` : '<b style="color:var(--ok)">Los asignados están completos.</b>'}
+      ${sinAsignar ? `<b style="color:var(--tx)">${sinAsignar}</b> puesto${sinAsignar == 1 ? '' : 's'} todavía sin nadie.` : ''}
+      El mensaje trae lo que ya tenemos de cada uno: contestan OK o lo corrigen, y se carga en su ficha.
+    </div>
+    <div class="scrollx"><table class="tbl">
+      <thead><tr><th>Persona</th><th>Función</th><th>Seguro</th><th>Pago</th><th></th></tr></thead>
+      <tbody>${G.map(g => {
+        const f = faltaDe(g), a = A[g.clave] || {};
+        const wa = telWhatsapp(g.tel);
+        return `<tr>
+          <td>${g.nombre ? `<b>${esc(g.nombre)}</b>
+            <span class="muted" style="display:block;font-size:11px">${esc(g.tel || 'sin teléfono')}</span>`
+            : '<span class="muted">— nadie todavía —</span>'}</td>
+          <td style="font-size:12px">${esc(g.funciones.join(' / '))}</td>
+          <td>${f.sinAsignar ? '<span class="chip c-otr">sin asignar</span>' : f.sinFicha ? '<span class="chip sica-bajo">sin ficha</span>' : chip(f.seguro, 'completo', 'seguro')}</td>
+          <td>${f.sinFicha ? '' : chip(f.pago, 'alias/CBU ✓', 'pago')}</td>
+          <td style="text-align:right;white-space:nowrap">
+            ${a.pedidoEl ? `<span class="muted" style="font-size:10.5px;margin-right:6px">pedido ${esc(a.pedidoEl.split('-').reverse().join('/'))}</span>` : ''}
+            ${f.sinAsignar
+              ? `<button class="btn sm pri" onclick="asignarPuesto('${g.clave}')">Asignar</button>`
+              : f.sinFicha
+              ? `<button class="btn sm" onclick="crearFichaDe('${g.clave}')">Crear ficha</button>`
+              : `<button class="btn sm" onclick="editPersona('${g.persona.id}')">Ficha</button>`}
+            ${wa ? `<a class="btn sm wa" target="_blank" rel="noopener" onclick="marcarPedido('${g.clave}')"
+                href="https://wa.me/${wa}?text=${encodeURIComponent(textoPedidoDatos(pr, py, g))}">WhatsApp</a>` : ''}
+          </td></tr>`;
+      }).join('')}</tbody></table></div>
+  </div>`;
+}
+
+/* Un puesto sin nadie: se elige del catálogo con el mismo buscador del
+   presupuesto, y la persona queda en todas las líneas de ese puesto. */
+function asignarPuesto(clave){
+  const g = genteDelProyecto(getPy(), getV()).find(x => x.clave === clave); if(!g) return;
+  pickPersona(g.lineas[0].rb.id);
+  _pp.asignar = clave;
+  const h = document.querySelector('.ppmod h3'); if(h) h.textContent = 'Asignar · ' + g.funciones.join(' / ');
+}
+function marcarPedido(clave){ const A = altaDe(getPy()); A[clave] = {...(A[clave] || {}), pedidoEl: hoy()}; guardar(); setTimeout(R, 50); }
+
+/* Los que no tienen ficha: se crea con lo que haya (nombre, teléfono) y se
+   enlazan sus líneas, así lo que conteste queda guardado en el catálogo. */
+function crearFichaDe(clave){
+  const py = getPy(), v = getV();
+  const g = genteDelProyecto(py, v).find(x => x.clave === clave); if(!g) return;
+  const rb0 = g.lineas[0].rb;
+  const p = nuevaPersona({nombre: g.nombre || g.funciones[0], funcion: g.funciones[0], rubro: rb0.codigo,
+    tel: g.tel, email: g.email});
+  DB.catalogo.personas.push(p);
+  g.lineas.forEach(({l}) => { l.refId = p.id; l.refTipo = 'persona'; });
+  if(sbConectado()) sbSubirPersona(p).catch(e => toast('Guardada acá, pero no pude subirla: ' + e.message));
+  editPersona(p.id);
+}
+
+/* Todos juntos. Con el canal manual se abre una lista con un botón de
+   WhatsApp por persona (el navegador no deja abrir veinte pestañas de una)
+   y la opción de copiar todos los mensajes. */
+function pedirDatosTodos(){
+  const pr = getPr(), py = getPy(), v = getV();
+  const G = genteDelProyecto(py, v).filter(g => { const f = faltaDe(g); return !f.sinAsignar && (f.sinFicha || f.seguro.length || f.pago.length); });
+  window._pedidos = G.map(g => ({clave: g.clave, nombre: g.nombre, wa: telWhatsapp(g.tel), texto: textoPedidoDatos(pr, py, g)}));
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+    <h3>Pedir datos por WhatsApp</h3>
+    <div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
+        ${CANAL_WHATSAPP.modo === 'manual'
+          ? `Tocá <b>WhatsApp</b> en cada uno: se abre tu WhatsApp con el mensaje escrito y lo mandás vos.
+             Cuando la productora conecte su número de WhatsApp, este mismo botón los va a mandar todos juntos.`
+          : `Se mandan desde el número de la productora.`}</div>
+      ${window._pedidos.map((x, i) => `<div style="display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line)">
+        <span style="flex:1"><b>${esc(x.nombre || 'sin nombre')}</b></span>
+        ${x.wa ? `<a class="btn sm wa" target="_blank" rel="noopener" onclick="marcarPedido('${x.clave}');this.textContent='✓ abierto'"
+          href="https://wa.me/${x.wa}?text=${encodeURIComponent(x.texto)}">WhatsApp</a>`
+          : '<span class="muted" style="font-size:11px">sin teléfono</span>'}
+        <button class="btn sm" onclick="alPortapapeles(window._pedidos[${i}].texto,'Mensaje copiado')">Copiar</button></div>`).join('')}
+    </div>
+    <div class="mfoot"><button class="btn" onclick="alPortapapeles(window._pedidos.map(x=>'— '+(x.nombre||'')+'\\n'+x.texto).join('\\n\\n'),'Copiados todos los mensajes')">Copiar todos</button>
+      <div style="flex:1"></div><button class="btn pri" onclick="cerrar()">Listo</button></div>
+  </div></div>`);
+}
+
+function bajarAltaSeguro(){
+  const py = getPy(), v = getV();
+  const G = genteDelProyecto(py, v);
+  const fechas = (py.desglose?.jornadas || []).map(j => j.fecha).filter(Boolean).sort();
+  const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+  const f = s => s ? s.split('-').reverse().join('/') : '';
+  const L = [['Nombre y apellido','DNI','CUIL/CUIT','Fecha de nacimiento','Función','Desde','Hasta','Teléfono'].map(q).join(',')];
+  G.forEach(g => { const p = g.persona || {};
+    L.push([g.nombre, p.dni, p.cuit, f(p.fechaNac), g.funciones.join(' / '), f(fechas[0]), f(fechas[fechas.length - 1]), g.tel].map(q).join(',')); });
+  bajar(`${py.nombre}-alta-seguro.csv`, '﻿' + L.join('\n'), 'text/csv;charset=utf-8');
+  toast('Planilla del seguro descargada');
+}
+
+function liquidacionHTML(pr, py, v, G){
+  const filas = G.map(g => ({g, L: liquidarPersona(py, v, g)}));
+  const tot = filas.reduce((s, x) => s + x.L.total, 0);
+  const pagado = filas.filter(x => x.L.estado === 'pagado').reduce((s, x) => s + x.L.total, 0);
+  const sinCuenta = filas.filter(x => x.g.nombre && (!x.g.persona || (!x.g.persona.alias && !x.g.persona.cbu))).length;
+  const mb = v.monedaBase;
+  return `<div class="card"><h3>Liquidación · ${esc(py.nombre)}
+      <span class="spacer"></span>
+      <button class="btn sm" onclick="bajarLiquidacion()">⬇ Para administración</button>
+      ${puedeLiq('revisar') ? `<button class="btn sm" onclick="avanzarLiqTodos('borrador')">Revisar todas</button>` : ''}
+      ${puedeLiq('aprobar') ? `<button class="btn sm pri" onclick="avanzarLiqTodos('revisado')">Aprobar las revisadas</button>` : ''}</h3>
+    <div class="pad" style="display:flex;gap:22px;flex-wrap:wrap;border-bottom:1px solid var(--line)">
+      <div><div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em">A liquidar</div><b style="font:700 20px var(--mono)">${fmt(tot, mb)}</b></div>
+      <div><div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em">Pagado</div><b style="font:700 20px var(--mono);color:var(--ok)">${fmt(pagado, mb)}</b></div>
+      <div><div class="muted" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em">Falta pagar</div><b style="font:700 20px var(--mono)">${fmt(tot - pagado, mb)}</b></div>
+      ${sinCuenta ? `<div style="align-self:center"><span class="chip sica-bajo">${sinCuenta} sin alias ni CBU</span>
+        <button class="btn sm" onclick="DB.ui.subPersonal='alta';R()">Pedírselos</button></div>` : ''}
+    </div>
+    <div class="scrollx"><table class="tbl">
+      <thead><tr><th>Persona</th><th style="text-align:right">Presupuesto</th><th style="text-align:right">Horas extra</th>
+        <th style="text-align:right;width:120px">Ajuste</th><th style="text-align:right">Total</th><th>Cómo se paga</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${filas.map(({g, L}) => {
+        const sig = LIQ_SIGUE[L.estado];
+        const p = g.persona || {};
+        return `<tr>
+          <td>${g.nombre ? `<b>${esc(g.nombre)}</b>` : '<span class="muted">— nadie todavía —</span>'}
+            <span class="muted" style="display:block;font-size:11px">${esc(g.funciones.join(' / '))}${L.jornadas ? ` · ${L.jornadas} jornada${L.jornadas == 1 ? '' : 's'}` : ''}</span></td>
+          <td class="num" style="text-align:right">${fmt(L.base, mb)}</td>
+          <td class="num" style="text-align:right">${L.he ? `${fmt(L.he, mb)}<span class="muted" style="display:block;font-size:10px">${fmtC(Math.round(L.heHoras * 10) / 10)} h</span>` : '<span class="muted">—</span>'}</td>
+          <td style="text-align:right">${L.estado === 'pagado' ? fmt(L.ajuste, mb)
+            : `<input type="number" step="any" value="${L.ajuste || ''}" placeholder="0" title="Adelantos en negativo; una jornada de más, en positivo"
+                style="width:110px;text-align:right;font-family:var(--mono)" onchange="upLiq('${g.clave}','ajuste',this.value)">
+               <input type="text" value="${esc(L.notaAjuste)}" placeholder="motivo" style="width:110px;margin-top:3px;font-size:11px"
+                onchange="upLiq('${g.clave}','notaAjuste',this.value)">`}</td>
+          <td class="num" style="text-align:right;font-weight:700">${fmt(L.total, mb)}</td>
+          <td style="font-size:11.5px">${esc(L.comprobante)}
+            <span class="muted" style="display:block">${esc(p.alias || p.cbu || 'sin alias ni CBU')}</span></td>
+          <td><span class="chip ${L.estado === 'pagado' ? 'd-si' : L.estado === 'borrador' ? 'c-otr' : 'd-par'}">${esc((LIQ_ESTADOS.find(e => e.k === L.estado) || {}).l)}</span></td>
+          <td style="text-align:right;white-space:nowrap">${sig && puedeLiq(sig.puede)
+            ? `<button class="btn sm ${sig.a === 'pagado' ? 'pri' : ''}" onclick="avanzarLiq('${g.clave}')">${sig.l}</button>` : ''}</td>
+        </tr>`;
+      }).join('')}</tbody></table></div>
+    <div class="pad muted" style="font-size:11.5px;line-height:1.6">
+      <b>Presupuesto</b> es lo de sus líneas en la versión ${esc(v.nombre)} (preproducción y rodaje juntos).
+      <b>Horas extra</b> salen de los partes del día (Rodaje → Parte del día).
+      El <b>ajuste</b> es para lo que no está en ningún lado: un adelanto (en negativo) o una jornada de más.
+      Producción revisa, el Productor Ejecutivo aprueba y Administración marca pagado: cada paso queda firmado.
+    </div></div>`;
+}
+
+function upLiq(clave, campo, val){
+  const L = liqDe(getPy()); L[clave] ||= {estado: 'borrador'};
+  L[clave][campo] = campo === 'ajuste' ? n(val) : val;
+  /* si cambia la plata después de revisada, vuelve a revisarse */
+  if(campo === 'ajuste' && L[clave].estado !== 'borrador' && L[clave].estado !== 'pagado'){
+    L[clave].historial = [...(L[clave].historial || []), {de: L[clave].estado, a: 'borrador', quien: (getUsuario() || {}).nombre || '', cuando: new Date().toISOString(), por: 'cambió el ajuste'}];
+    L[clave].estado = 'borrador';
+    toast('Cambió el monto: vuelve a borrador para revisarse');
+  }
+  R();
+}
+function avanzarLiq(clave, silencioso){
+  const L = liqDe(getPy()); L[clave] ||= {estado: 'borrador'};
+  const sig = LIQ_SIGUE[L[clave].estado || 'borrador']; if(!sig || !puedeLiq(sig.puede)) return false;
+  L[clave].historial = [...(L[clave].historial || []), {de: L[clave].estado || 'borrador', a: sig.a,
+    quien: (getUsuario() || {}).nombre || '', cuando: new Date().toISOString()}];
+  L[clave].estado = sig.a;
+  if(sig.a === 'pagado') L[clave].pagadoEl = hoy();
+  if(!silencioso) R();
+  return true;
+}
+function avanzarLiqTodos(desde){
+  const py = getPy(), v = getV(); let k = 0;
+  genteDelProyecto(py, v).forEach(g => {
+    const est = (liqDe(py)[g.clave] || {}).estado || 'borrador';
+    if(est === desde && avanzarLiq(g.clave, true)) k++;
+  });
+  toast(k ? `${k} liquidacion${k == 1 ? '' : 'es'} ${desde === 'borrador' ? 'revisada' : 'aprobada'}${k == 1 ? '' : 's'}` : 'No había ninguna en ese paso');
+  R();
+}
+function bajarLiquidacion(){
+  const py = getPy(), v = getV();
+  const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+  const L = [['Nombre','CUIL/CUIT','DNI','Alias','CBU','Banco','Función','Cómo se paga',
+    'Presupuesto','Horas extra','Ajuste','Motivo del ajuste','Total ' + v.monedaBase,'Estado','Pagado el'].map(q).join(',')];
+  genteDelProyecto(py, v).forEach(g => {
+    const R2 = liquidarPersona(py, v, g), p = g.persona || {}, x = liqDe(py)[g.clave] || {};
+    L.push([g.nombre, p.cuit, p.dni, p.alias, p.cbu, p.banco, g.funciones.join(' / '), R2.comprobante,
+      Math.round(R2.base), Math.round(R2.he), Math.round(R2.ajuste), R2.notaAjuste, Math.round(R2.total),
+      (LIQ_ESTADOS.find(e => e.k === R2.estado) || {}).l, x.pagadoEl || ''].map(q).join(','));
+  });
+  bajar(`${py.nombre}-liquidacion.csv`, '﻿' + L.join('\n'), 'text/csv;charset=utf-8');
+  toast('Liquidación descargada');
+}
+
 function vistaGastos(pr,py,v){
   const u = getUsuario();
   if(!u) return `<div class="card"><div class="empty">
@@ -7842,7 +8205,8 @@ function editPersona(id){
       <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Contacto y pago</div>
       <div class="grid2">
         ${campo('Teléfono','tel',p.tel)}${campo('Email','email',p.email)}
-        ${campo('Banco','banco',p.banco)}${campo('Alias / CBU','alias',p.alias)}
+        ${campo('Banco','banco',p.banco)}${campo('Alias','alias',p.alias)}
+        ${campo('CBU / CVU','cbu',p.cbu||'','text','inputmode="numeric" placeholder="22 números"')}
       </div>
       <label class="f" style="margin-top:12px"><span>Notas — con quién trabajó, cuándo, cómo le fue</span>
         <textarea name="notas" rows="3">${esc(p.notas||'')}</textarea></label></div>
@@ -8004,6 +8368,13 @@ function ppFiltro(k, v){ if(!_pp) return; _pp[k] = v; ppPintar(); }
 /* agregar no cierra la ventana: casi siempre se traen varios seguidos */
 function ppAgregar(pid){
   if(!_pp) return;
+  if(_pp.asignar){
+    const g = genteDelProyecto(getPy(), getV()).find(x => x.clave === _pp.asignar);
+    if(g) g.lineas.forEach(({l}) => { l.refId = pid; l.refTipo = 'persona'; });
+    const pe = DB.catalogo.personas.find(x => x.id === pid);
+    _pp = null; cerrar(); toast('Asignado: ' + ((pe && pe.nombre) || '')); R();
+    return;
+  }
   addPersona(_pp.rid, pid);
   _pp.agregados.add(pid);
   ppPintar();
