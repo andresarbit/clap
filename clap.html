@@ -1731,7 +1731,7 @@ const PLANTILLA = k => PLANTILLAS.find(p => p.k === k) || null;
 const plantillasDe = tipo => PLANTILLAS.filter(p => p.tipo === tipo);
 
 /* ---------- plantillas en pantalla ---------- */
-function tarjetasPlantilla(tipo, elegida){
+function tarjetasPlantilla(tipo, elegida, editando){
   const del = plantillasDe(tipo);
   const otras = PLANTILLAS.filter(p => p.tipo !== tipo);
   const card = p => {
@@ -1742,7 +1742,7 @@ function tarjetasPlantilla(tipo, elegida){
   };
   return `<div class="plgrid">
       <button type="button" class="plcard${!elegida?' on':''}" data-pl="" onclick="marcarPlantilla('')">
-        <b>Presupuesto vacío</b><span>Se carga línea por línea.</span></button>
+        <b>${editando ? 'Sin plantilla' : 'Presupuesto vacío'}</b><span>${editando ? 'Saca lo de la plantilla que nadie tocó; lo cargado se queda.' : 'Se carga línea por línea.'}</span></button>
       ${del.map(card).join('')}
     </div>
     ${!del.length ? `<div class="muted" style="font-size:11.5px;margin-top:6px">Para ${esc(TIPO(tipo).l.toLowerCase())} todavía no hay plantilla: en la carpeta de presupuestos no había ninguno de ese tipo. Podés arrancar con una de otro tipo.</div>` : ''}
@@ -1752,13 +1752,19 @@ function tarjetasPlantilla(tipo, elegida){
 function marcarPlantilla(k){
   const h = document.querySelector('.mod [name=plantilla]'); if(h) h.value = k;
   document.querySelectorAll('.mod .plcard').forEach(b => b.classList.toggle('on', b.dataset.pl === k));
+  const editando = !!document.querySelector('.mod [name=plpy]');
   const pl = PLANTILLA(k), j = document.querySelector('.mod [name=jornadas]');
-  if(pl && j && (!n(j.value) || n(j.value) === 1)) j.value = pl.jornadas;
+  if(!editando && pl && j && (!n(j.value) || n(j.value) === 1)) j.value = pl.jornadas;
+  if(editando) previewPlantilla();
 }
 function cambiaTipoNuevo(tipo){
   const c = document.getElementById('plelegir'); if(!c) return;
-  const h = document.querySelector('.mod [name=plantilla]'); if(h) h.value = '';
-  c.innerHTML = tarjetasPlantilla(tipo, '');
+  const h = document.querySelector('.mod [name=plantilla]');
+  const editando = !!document.querySelector('.mod [name=plpy]');
+  /* al editar se mantiene la elegida; en uno nuevo se vuelve a vacío */
+  if(h && !editando) h.value = '';
+  c.innerHTML = tarjetasPlantilla(tipo, h ? h.value : '', editando);
+  if(editando) previewPlantilla();
 }
 /* versión vacía: lo primero que se ve es de dónde arrancar */
 function tarjetaVacia(py){
@@ -1795,6 +1801,107 @@ function confirmarPlantilla(){
     : 'Ya estaban todas las líneas de esa plantilla');
   R();
 }
+
+/* ---------- cambiar de plantilla sin rehacer el proyecto ----------
+   Alguien arrancó con "Publicidad · mediana" y se da cuenta de que es una
+   grande, o que era un videoclip. Cambiar de plantilla NO borra el
+   presupuesto y lo arma de nuevo: pasa de una estructura a la otra.
+     - lo que está en las dos plantillas SE QUEDA, con todo lo que tenga
+       (el valor escrito, la persona del catálogo, la pieza). Si nadie le
+       cambió la cantidad ni los días, toma los de la plantilla nueva.
+     - lo que traía la vieja y la nueva no tiene se saca SÓLO si está como la
+       dejó la plantilla. Si alguien le puso un valor, una persona o le
+       cambió algo, se queda y se avisa: no se pierde trabajo.
+     - lo que agregó alguien a mano, fuera de la plantilla, no se toca.
+     - lo que la nueva tiene y el presupuesto no, se agrega.               */
+const clavePl = (r, c, etapa) => [r, norm(c), etapa || ''].join('|');
+function lineasDePlantilla(k, J){
+  const pl = PLANTILLA(k); const m = new Map();
+  if(pl) resolverPlantilla(pl, J).lineas.forEach(x =>
+    m.set(clavePl(x.r, x.c, x.etapa === 'rodaje' ? null : x.etapa), x));
+  return m;
+}
+/* ¿Está tal cual la dejó la plantilla? */
+function lineaIntacta(l, orig){
+  if(!orig) return false;
+  if(l.refId || l.piezaId) return false;
+  if(n(l.cantidad) !== n(orig.q) || n(l.dias) !== n(orig.d)) return false;
+  if(l.valorOrigen === 'manual' || l.valorOrigen === 'catalogo') return false;
+  if(l.valorOrigen !== 'sica' && n(l.valorUnit) > 0) return false;
+  if(l.circuito || l.comprobante || l.contrato !== (orig.ct || null)) return false;
+  if((l.notas || '') !== (orig.nota || '')) return false;
+  return true;
+}
+/* Qué pasaría, sin tocar nada. kNueva = '' es "sin plantilla". */
+function planCambioPlantilla(py, v, kNueva, J){
+  const jor = Math.max(1, n(J) || n(py.jornadas) || 1);
+  const viejas = lineasDePlantilla(py.plantilla, jor);
+  const nuevas = lineasDePlantilla(kNueva, jor);
+  const r = {quitar: [], quedanConDatos: [], mantener: [], ajustar: [], agregar: []};
+  const presentes = new Set();
+  v.rubros.forEach(rb => rb.lineas.forEach(l => {
+    const k = clavePl(rb.codigo, l.concepto, l.etapa || null);
+    presentes.add(k);
+    const orig = l.dePlantilla || viejas.get(k);
+    if(!orig) return;                                   /* agregada a mano: no se toca */
+    const nueva = nuevas.get(k);
+    if(nueva){
+      r.mantener.push({rb, l, orig, nueva});
+      if(lineaIntacta(l, orig) && (n(nueva.q) !== n(l.cantidad) || n(nueva.d) !== n(l.dias)))
+        r.ajustar.push({rb, l, q: nueva.q, d: nueva.d, x: nueva});
+    } else if(lineaIntacta(l, orig)) r.quitar.push({rb, l});
+    else r.quedanConDatos.push({rb, l});
+  }));
+  nuevas.forEach((x, k) => { if(!presentes.has(k)) r.agregar.push(x); });
+  return r;
+}
+function cambiarPlantilla(py, v, kNueva, {jornadas} = {}){
+  const plan = planCambioPlantilla(py, v, kNueva, jornadas);
+  const fuera = new Set(plan.quitar.map(x => x.l.id));
+  v.rubros.forEach(rb => { rb.lineas = rb.lineas.filter(l => !fuera.has(l.id)); });
+  plan.ajustar.forEach(({l, q, d, x}) => {
+    l.cantidad = q; l.dias = d;
+    l.dePlantilla = {k: kNueva, q, d, nota: x.nota || '', ct: x.ct || null};
+  });
+  /* las que se quedan pasan a ser de la plantilla nueva */
+  const nuevas = lineasDePlantilla(kNueva, jornadas || py.jornadas);
+  plan.mantener.forEach(({rb, l, orig, nueva}) => {
+    /* la forma de contratación que no tocó nadie sigue a la plantilla: del
+       convenio en publicidad, por fuera en un videoclip */
+    if((l.contrato || null) === (orig.ct || null)) l.contrato = nueva.ct || null;
+    const x = nuevas.get(clavePl(rb.codigo, l.concepto, l.etapa || null));
+    if(x && !plan.ajustar.some(a => a.l === l))
+      l.dePlantilla = {k: kNueva, q: n(l.cantidad), d: n(l.dias), nota: l.notas || '', ct: l.contrato || null};
+  });
+  let agregadas = 0;
+  if(kNueva) agregadas = aplicarPlantilla(py, v, kNueva, {jornadas}).agregadas;
+  else py.plantilla = null;
+  return {agregadas, quitadas: plan.quitar.length, mantenidas: plan.mantener.length,
+    ajustadas: plan.ajustar.length, conDatos: plan.quedanConDatos.length};
+}
+function textoPlanPlantilla(py, v, kNueva, J){
+  if((kNueva || '') === (py.plantilla || '')) return '';
+  const p = planCambioPlantilla(py, v, kNueva, J);
+  const nom = PLANTILLA(kNueva) ? PLANTILLA(kNueva).t : 'sin plantilla';
+  return `<div class="sicabox" style="margin-top:10px"><b>Al guardar pasa a ${esc(nom)}</b>
+    <span style="display:block;margin-top:4px;line-height:1.55">
+    Se quedan <b>${p.mantener.length}</b> líneas que están en las dos, con lo que ya tengan cargado${p.ajustar.length ? ` (${p.ajustar.length} toman la cantidad o los días de la nueva)` : ''}.
+    Se agregan <b>${p.agregar.length}</b>.
+    Se sacan <b>${p.quitar.length}</b> que traía la anterior y nadie tocó.
+    ${p.quedanConDatos.length ? `<br><b>${p.quedanConDatos.length}</b> de la anterior no están en la nueva pero tienen datos tuyos: se quedan.` : ''}
+    Lo que agregaste a mano no se toca. Se cambia en la versión ${esc(v.nombre)}.</span></div>`;
+}
+function previewPlantilla(){
+  const h = document.querySelector('.mod [name=plantilla]'), c = document.getElementById('plprev');
+  const id = (document.querySelector('.mod [name=plpy]') || {}).value;
+  if(!h || !c || !id) return;
+  const py = (getPr()?.proyectos || []).find(x => x.id === id); if(!py) return;
+  const v = versionDePlantilla(py);
+  const j = document.querySelector('.mod [name=jornadas]');
+  c.innerHTML = v ? textoPlanPlantilla(py, v, h.value, j ? n(j.value) : null) : '';
+}
+/* la versión que se está mirando si es este proyecto; si no, la primera que veo */
+const versionDePlantilla = py => (getPy() && getPy().id === py.id) ? getV() : versionesQueVeo(py)[0];
 
 /* Las líneas de una plantilla, ya resueltas para un proyecto: la misma
    función repetida en dos escalas (el Eléctrico de la mediana y los dos más
@@ -1849,6 +1956,7 @@ function aplicarPlantilla(py, v, k, {jornadas} = {}){
     const l = nuevaLinea({concepto:x.c, cantidad:x.q, dias:x.d, unidad:x.u,
       etapa, contrato:x.ct, notas:x.nota, area:areaDeRubro(x.r) || ''});
     autocompletarSICA(l, py);
+    l.dePlantilla = {k, q: x.q, d: x.d, nota: x.nota || '', ct: x.ct || null};
     rb.lineas.push(l); rb.abierto = true; agregadas++;
   });
   py.plantilla = k;
@@ -7578,13 +7686,21 @@ function editProyecto(id){
     <h3>${id?'Editar':'Nuevo'} proyecto — ${esc(pr.nombre)}</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre del proyecto','nombre',p.nombre)}
-        ${sel('Tipo','tipo',p.tipo,TIPOS_PROYECTO.map(t=>({v:t.k,l:t.l})), id ? '' : 'onchange="cambiaTipoNuevo(this.value)"')}
+        ${sel('Tipo','tipo',p.tipo,TIPOS_PROYECTO.map(t=>({v:t.k,l:t.l})), 'onchange="cambiaTipoNuevo(this.value)"')}
         ${campo('Cliente','cliente',p.cliente)}
         ${campo('Agencia','agencia',p.agencia)}
         ${campo('Producto','producto',p.producto)}
-        ${campo('Jornadas de rodaje','jornadas',p.jornadas,'number','step="1" min="0"')}
+        ${campo('Jornadas de rodaje','jornadas',p.jornadas,'number','step="1" min="0"' + (id ? ' oninput="previewPlantilla()"' : ''))}
       </div>
-      ${id ? '' : `<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
+      ${id ? `<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
+        Plantilla del presupuesto</div>
+        <div class="muted" style="font-size:12px;margin-bottom:8px">Hoy: <b>${esc(PLANTILLA(p.plantilla) ? PLANTILLA(p.plantilla).t : 'sin plantilla')}</b>.
+          Si elegís otra, lo que está en las dos queda cargado con sus datos.</div>
+        <input type="hidden" name="plantilla" value="${esc(p.plantilla || '')}">
+        <input type="hidden" name="plpy" value="${esc(p.id)}">
+        <div id="plelegir">${tarjetasPlantilla(p.tipo, p.plantilla || '', true)}</div>
+        <div id="plprev"></div>`
+      : `<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
         Arrancar el presupuesto con</div>
         <input type="hidden" name="plantilla" value="">
         <div id="plelegir">${tarjetasPlantilla(p.tipo, '')}</div>`}
@@ -7610,8 +7726,17 @@ function ultimasCargas(pr){
 function saveProyecto(id){
   const d = datos(); const pr = getPr();
   let p = id ? pr.proyectos.find(x=>x.id===id) : nuevoProyecto();
+  const cambiaPlantilla = id && d.plantilla !== undefined && (d.plantilla || '') !== (p.plantilla || '');
   Object.assign(p,{nombre:d.nombre||'Sin nombre', tipo:d.tipo, cliente:d.cliente, agencia:d.agencia,
     producto:d.producto, jornadas:n(d.jornadas), medios:d.medios, territorio:d.territorio, plazo:d.plazo});
+  if(cambiaPlantilla){
+    const v = versionDePlantilla(p);
+    if(v){
+      const r = cambiarPlantilla(p, v, d.plantilla, {jornadas: n(d.jornadas) || null});
+      toast(`Plantilla cambiada · ${r.mantenidas} líneas se quedaron, ${r.agregadas} nuevas, ${r.quitadas} sacadas`
+        + (r.conDatos ? ` · ${r.conDatos} con datos tuyos se quedaron igual` : ''));
+    }
+  }
   if(!id){
     const ult = ultimasCargas(pr);
     const plk = d.plantilla;

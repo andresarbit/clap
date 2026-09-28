@@ -241,6 +241,25 @@ para afuera y los 74 callsheets.
   agrega lo que falta y no toca lo que ya esta. De cine no hay: no habia
   ningun presupuesto de cine en la carpeta.
 
+#### Cambiar de plantilla sin rehacer el proyecto
+
+En **Proyecto** (el boton de la cabecera) esta **Plantilla del presupuesto**:
+se ve cual tiene y se puede elegir otra, del tipo del proyecto o de otro.
+Antes de guardar dice que va a pasar. Al guardar:
+
+- Lo que esta en las dos plantillas **se queda con todo lo cargado** (valor
+  escrito, persona del catalogo, pieza). Si nadie le cambio cantidad ni dias,
+  toma los de la nueva (de mediana a grande, los electricos pasan de 2 a 4).
+- Lo que traia la vieja y la nueva no tiene se saca **solo si esta como lo
+  dejo la plantilla**. Si alguien le puso un valor o una persona, se queda.
+- Lo agregado a mano, fuera de la plantilla, no se toca.
+- Lo que la nueva tiene y falta, se agrega. La contratacion que nadie toco
+  sigue a la plantilla (de un comercial a un videoclip, el equipo pasa a ir
+  por fuera).
+- "Sin plantilla" saca lo de la plantilla que nadie toco.
+
+Se aplica a la version que se esta mirando.
+
 ### Preproduccion a 8 h
 
 Cada linea del equipo dice su etapa: preproduccion, rodaje o post. Fuera del
@@ -893,6 +912,7 @@ node test/run.js test/dos-presupuestos.js # Real vs Produccion por rol, y el IVA
 node test/run.js test/extras-y-actual.js  # horas extra por tramos y columna Actual
 node test/run.js test/arranque.js     # que nunca quede en blanco ni se pierdan datos
 node test/run.js test/sueldos-sica.js # sueldos del convenio en el presupuesto
+node test/run.js test/cambiar-plantilla.js # cambiar de plantilla sin perder lo cargado
 node test/run.js test/buscar-catalogo.js # buscador de + Persona / proveedor en el presupuesto
 node test/run.js test/recuperar-clave.js # me olvide la contraseña, cambiarla, sesion que se recupera
 node test/run.js test/plantillas-cargas.js # plantillas, cargas sociales, prepro 8 h, condiciones, catalogo Excel
