@@ -367,6 +367,14 @@ Disponible = presupuestado - comprometido - real
   productoras**: el mismo gaffer puede estar tomado por otra que tambien
   administras. Hay un "mostrar solo los libres" para armar equipo rapido.
 
+### Traer del catalogo al presupuesto
+
+**+ Persona / proveedor** en cada rubro abre un buscador: se escribe el nombre,
+la funcion o un proyecto de la nota, y se filtra por **Profesionales /
+Proveedores** y por rubro (arranca en el rubro donde se esta cargando). Se
+ven los 60 que mejor coinciden, primero los que empiezan con lo escrito. Se
+pueden traer varios seguidos: la ventana queda abierta y marca los agregados.
+
 ### Armar el catalogo desde callsheets viejos
 
 Boton **⬇ Importar de callsheets**: se sueltan los archivos y de cada uno se
@@ -885,6 +893,7 @@ node test/run.js test/dos-presupuestos.js # Real vs Produccion por rol, y el IVA
 node test/run.js test/extras-y-actual.js  # horas extra por tramos y columna Actual
 node test/run.js test/arranque.js     # que nunca quede en blanco ni se pierdan datos
 node test/run.js test/sueldos-sica.js # sueldos del convenio en el presupuesto
+node test/run.js test/buscar-catalogo.js # buscador de + Persona / proveedor en el presupuesto
 node test/run.js test/recuperar-clave.js # me olvide la contraseña, cambiarla, sesion que se recupera
 node test/run.js test/plantillas-cargas.js # plantillas, cargas sociales, prepro 8 h, condiciones, catalogo Excel
 node test/run.js test/flujo.js     # UNA PRODUCCION ENTERA, de punta a punta

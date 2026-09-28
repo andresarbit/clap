@@ -45,7 +45,7 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .wrap{padding:14px;max-width:1500px;margin:0 auto}
 
 /* ---------- controls ---------- */
-select,input[type=text],input[type=number],input[type=date],textarea{
+select,input[type=text],input[type=search],input[type=email],input[type=password],input[type=number],input[type=date],textarea{
   background:var(--bg3);border:1px solid var(--line);border-radius:6px;padding:6px 8px;
   color:var(--tx);outline:none;min-width:0;width:100%}
 select:focus,input:focus,textarea:focus{border-color:var(--ac);background:var(--bg4)}
@@ -398,6 +398,21 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .chip.sica-ed{background:rgba(155,161,172,.12);color:var(--tx2);border:none;cursor:pointer}
 /* etapa y contratación */
 .lnota{font-size:10.5px;color:var(--tx3);line-height:1.35;padding:0 2px}
+/* buscador del catálogo en el presupuesto */
+.ppbusca{padding:10px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.ppbusca input[type=search]{width:100%;font-size:14px;padding:9px 11px}
+.ppfiltros{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ppfiltros select{width:auto;flex:1;min-width:170px;font-size:12.5px}
+.ppmod .mbody{min-height:260px;max-height:58vh}
+.ppfila{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;padding:8px 9px;border-radius:6px;color:var(--tx)}
+.ppfila:hover,.ppfila:focus-visible{background:var(--bg3)}
+.ppfila.ya{background:rgba(63,178,127,.08)}
+.ppnom{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ppnom b{font-size:13px}
+.ppfun{font-size:11.5px;color:var(--tx2)}
+.ppnota{font-size:10.5px;color:var(--tx3);line-height:1.35}
+.pptar{font:600 12px var(--mono);color:var(--ac);white-space:nowrap;padding-top:2px}
+.ppfila.ya .pptar{color:var(--ok)}
 .chip.et-prepro{background:rgba(91,155,213,.16);color:#8dc0ea}
 .chip.et-rodaje{background:rgba(155,161,172,.10);color:var(--tx3)}
 .chip.et-post{background:rgba(143,122,212,.16);color:#b39ce4}
@@ -7767,22 +7782,107 @@ function addFuncion(rid, concepto){
   guardar(); toast('Agregado: '+concepto);
   const m = document.querySelector('.mod'); if(m) m.scrollTop = 0; }
 
-/* Elegir del catálogo de personas — trae tarifa, moneda y unidad */
+/* Elegir del catálogo de personas — trae tarifa, moneda y unidad.
+   Con 1.500 fichas la lista de corrido era un scroll eterno: ahora es una
+   búsqueda. Se escribe el nombre (o la función, o el proyecto de la nota), y
+   se filtra por profesionales / proveedores y por rubro. Arranca mostrando
+   el rubro donde se está cargando, que es lo que casi siempre se busca.
+   La lista se redibuja sola al escribir, sin rearmar la ventana, para no
+   perder el cursor del buscador.                                            */
+let _pp = null;
+const PP_MAX = 60;
 function pickPersona(rid){
   const r = getV().rubros.find(x=>x.id===rid);
-  const ps = DB.catalogo.personas;
-  const mios = ps.filter(p=>p.rubro===r.codigo), otros = ps.filter(p=>p.rubro!==r.codigo);
-  const fila = p => `<button class="btn" style="width:100%;text-align:left;margin-bottom:4px;border-color:transparent;display:flex;gap:8px"
-      onclick="addPersona('${rid}','${p.id}')">
-      <span style="flex:1">${esc(p.nombre)} <span class="muted">· ${esc(p.funcion)}</span></span>
-      <span style="font-family:var(--mono);color:var(--ac)">${fmt(p.tarifaRef,p.moneda)}</span></button>`;
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
-    <h3>Traer del catálogo → ${esc(r.nombre)}</h3><div class="mbody" style="padding:8px">
-      ${mios.map(fila).join('')}
-      ${otros.length?`<div class="muted" style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;padding:10px 8px 5px;font-weight:700">Otros rubros</div>${otros.map(fila).join('')}`:''}
-      ${!ps.length?'<div class="empty">Catálogo vacío. Cargá gente desde la solapa Catálogo.</div>':''}
-    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div>
-  </div></div>`); }
+  const ps = DB.catalogo.personas || [];
+  const hayDelRubro = ps.some(p => p.rubro === r.codigo);
+  _pp = {rid, q:'', tipo:'', rubro: hayDelRubro ? r.codigo : '', agregados: new Set()};
+  const cuenta = {}; ps.forEach(p => cuenta[p.rubro] = (cuenta[p.rubro]||0) + 1);
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod ppmod" style="max-width:620px">
+    <h3>Traer del catálogo → ${esc(r.nombre)}</h3>
+    <div class="ppbusca">
+      <input type="search" id="ppq" placeholder="Buscar por nombre, función o proyecto…" autocomplete="off"
+        oninput="ppFiltro('q', this.value)">
+      <div class="ppfiltros">
+        <div class="seg" role="group" aria-label="Tipo">
+          ${[['','Todos'],['persona','Profesionales'],['proveedor','Proveedores']].map(([k,l]) =>
+            `<button type="button" data-tipo="${k}" class="${k===''?'on':''}" onclick="ppFiltro('tipo','${k}')">${l}</button>`).join('')}
+        </div>
+        <select id="pprubro" onchange="ppFiltro('rubro', this.value)" aria-label="Rubro">
+          <option value="">Todos los rubros (${ps.length})</option>
+          ${RUBROS_BASE.filter(x => cuenta[x.codigo]).map(x =>
+            `<option value="${x.codigo}" ${_pp.rubro===x.codigo?'selected':''}>${esc(x.codigo+' · '+x.nombre)} (${cuenta[x.codigo]})</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="mbody" style="padding:6px 8px" id="pplista">${ppListaHTML()}</div>
+    <div class="mfoot"><span class="muted" id="ppcuenta" style="font-size:11.5px"></span>
+      <div style="flex:1"></div><button class="btn" onclick="cerrar()">Listo</button></div>
+  </div></div>`);
+  ppPintar();
+  setTimeout(() => { const i = document.getElementById('ppq'); if(i && i.focus) i.focus(); }, 30);
+}
+/* lo que coincide, lo mejor primero: el nombre que empieza con lo escrito,
+   después el que lo contiene, después la función, después la nota */
+function ppResultados(){
+  const {q, tipo, rubro} = _pp;
+  const qs = norm(q).split(/\s+/).filter(Boolean);
+  const out = [];
+  for(const p of (DB.catalogo.personas || [])){
+    if(tipo && (p.tipo || 'persona') !== tipo) continue;
+    if(rubro && p.rubro !== rubro) continue;
+    let puntos = 0;
+    if(qs.length){
+      const nom = norm(p.nombre), fun = norm(p.funcion), nota = norm(p.notas), resto = norm([p.email, p.tel].join(' '));
+      let todas = true;
+      for(const w of qs){
+        if(nom.startsWith(w)) puntos += 5;
+        else if(nom.includes(' ' + w)) puntos += 4;
+        else if(nom.includes(w)) puntos += 3;
+        else if(fun.includes(w)) puntos += 2;
+        else if(nota.includes(w) || resto.includes(w)) puntos += 1;
+        else { todas = false; break; }
+      }
+      if(!todas) continue;
+    }
+    out.push({p, puntos});
+  }
+  return out.sort((a,b) => (b.puntos - a.puntos) || String(a.p.nombre).localeCompare(String(b.p.nombre)));
+}
+function ppListaHTML(){
+  if(!_pp) return '';
+  const ps = DB.catalogo.personas || [];
+  if(!ps.length) return '<div class="empty">Catálogo vacío. Cargá gente desde la solapa Catálogo.</div>';
+  const res = ppResultados();
+  if(!res.length) return `<div class="empty">Nada coincide${_pp.q ? ` con "${esc(_pp.q)}"` : ''}${_pp.rubro ? ' en este rubro' : ''}.
+    ${_pp.rubro ? `<br><button class="btn sm" style="margin-top:8px" onclick="ppFiltro('rubro','')">Buscar en todos los rubros</button>` : ''}</div>`;
+  return res.slice(0, PP_MAX).map(({p}) => {
+    const ya = _pp.agregados.has(p.id);
+    const nota = String(p.notas || '').replace(/^Callsheets:\s*/, '');
+    return `<button type="button" class="ppfila${ya ? ' ya' : ''}" onclick="ppAgregar('${p.id}')">
+      <span class="ppnom"><b>${esc(p.nombre) || '<span class="muted">sin nombre</span>'}</b>
+        ${(p.tipo||'persona') !== 'persona' ? '<span class="chip c-otr">proveedor</span>' : ''}
+        <span class="ppfun">${esc(p.funcion || '')} <span class="rcode">${esc(p.rubro || '')}</span></span>
+        ${nota ? `<span class="ppnota">${esc(nota.length > 90 ? nota.slice(0, 90) + '…' : nota)}</span>` : ''}</span>
+      <span class="pptar">${ya ? '✓ agregado' : (n(p.tarifaRef) > 0 ? fmt(p.tarifaRef, p.moneda) : '<span class="muted">sin tarifa</span>')}</span>
+    </button>`;
+  }).join('');
+}
+function ppPintar(){
+  const l = document.getElementById('pplista'); if(l) l.innerHTML = ppListaHTML();
+  const c = document.getElementById('ppcuenta');
+  if(c && _pp){ const t = ppResultados().length;
+    c.textContent = t > PP_MAX ? `${t} coinciden · se ven los primeros ${PP_MAX}, afiná la búsqueda` : `${t} ${t === 1 ? 'coincide' : 'coinciden'}`; }
+  document.querySelectorAll('.ppmod [data-tipo]').forEach(b => b.classList.toggle('on', b.dataset.tipo === (_pp && _pp.tipo)));
+  const s = document.getElementById('pprubro'); if(s && _pp && s.value !== _pp.rubro) s.value = _pp.rubro;
+}
+function ppFiltro(k, v){ if(!_pp) return; _pp[k] = v; ppPintar(); }
+/* agregar no cierra la ventana: casi siempre se traen varios seguidos */
+function ppAgregar(pid){
+  if(!_pp) return;
+  addPersona(_pp.rid, pid);
+  _pp.agregados.add(pid);
+  ppPintar();
+}
 function addPersona(rid, pid){
   const p = DB.catalogo.personas.find(x=>x.id===pid);
   const l = nuevaLinea({
