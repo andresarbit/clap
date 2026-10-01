@@ -529,6 +529,34 @@ la jerga del set (ceferino, araña, palio, globo chino, huevera, Kino 4x4,
 de sumar se muestra lo entendido para corregir; lo que no se reconoce queda
 para elegirlo a mano.
 
+### Pedir a varios rentals
+
+Los rentals no tienen la web ni las listas al día: se les manda el pedido y
+contestan sobre el mismo texto, "OK" o "NO disponible" al lado de cada cosa,
+a veces con precio. Y casi nunca alcanza uno solo. En la solapa, **Pedir a
+rentals**:
+
+1. Se tildan los rentals del catálogo a los que se les pide.
+2. **Mandar mail**: uno por rental, armado y con los renglones numerados.
+   Sale del mail de quien está usando CLAP (Gmail en la web o el programa de
+   mail de la compu): lo revisa y lo manda él, y las respuestas le llegan a
+   él. El mail del rental se corrige ahí mismo y queda en el catálogo.
+3. **Pegar respuesta**: el mail que contestaron, tal cual (con lo citado), o
+   el Word o PDF que mandaron. CLAP marca OK / NO / parcial por renglón y el
+   precio, y muestra lo que entendió para corregirlo. Entiende "3 NO",
+   "SkyPanel ok $65.000", "tenemos 1", la respuesta abajo de cada renglón
+   citado con ">", "va todo salvo las asteras" y el pedido devuelto con
+   "NO DISPONIBLE" escrito al lado. Lo dudoso queda "sin respuesta", no se
+   adivina.
+4. **Quién pone qué**: CLAP propone el reparto con *menos rentals* (menos
+   retiros) o *más barato*, marca lo que nadie tiene y arma el **mail de
+   confirmación** de cada rental con sólo lo suyo.
+5. Cada precio que llega queda guardado por rental y con fecha
+   (`DB.historialLuces`): la lista al día la va teniendo la productora.
+
+Todo esto funciona sin IA y sin costo. Prueba: `test/rentales.js`, con
+respuestas escritas como contestan de verdad.
+
 ### El modulo de plata
 
 Cinco sub-vistas en **Gastos**:
@@ -1117,6 +1145,7 @@ node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
 node test/run.js test/plan-rodaje.js # plan de rodaje: sol, cascada, avisos, storyboard, guion tecnico, arrastre, cine
 node test/run.js test/pedido-luces.js # pedido de luces: equipos, jornadas, potencia, totales, rental
 node test/run.js test/pedido-luces-importar.js # interpretar el pedido del gaffer (texto, Excel, Word)
+node test/run.js test/rentales.js  # mail por rental, leer respuestas OK/NO, reparto y precios guardados
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
 node test/run.js test/contactos.js # lista de contactos y su circuito con catalogo y callsheet

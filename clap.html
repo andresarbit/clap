@@ -982,6 +982,21 @@ tr.csdep td{background:#f3f3f1;color:#171717}
 .lz-tot .lz-gran b{color:#171717}
 .lz-rental{background:#fff}
 .lz-rental a{color:#1f5fa8}
+.lz-tot .lz-num{width:70px;display:inline-block;margin:0 4px}
+.lz-pedira{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.lz-pedira .chipb{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;font-size:12.5px;cursor:pointer;background:#fff}
+.lz-mailcon{font-size:12px;margin:4px 0 8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lz-mailcon select{width:auto;font-size:12px;padding:3px 6px}
+.lz-rentab input[type=email]{min-width:190px;font-size:12.5px}
+.lz-rentab .btn,.lz-porrental .btn{text-decoration:none;display:inline-block}
+.lz-reptab td.num{font-weight:600;white-space:nowrap}
+.lz-reptab td.lz-asig{background:#e7f3ea;box-shadow:inset 0 0 0 2px #1f6b3e;border-radius:6px}
+.lz-cp{display:block;font-size:10.5px;font-weight:500;color:var(--tx2)}
+.lz-reptab tr.lz-falta td{background:#fbeceb}
+.lz-porrental{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.lz-pr{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;min-width:180px}
+.lz-pr span{font-size:12px;color:var(--tx2)}
+.lz-pr.lz-falta{border-color:#b3261e;background:#fbeceb}
 
 /* la puerta: sin sesión, sólo esto */
 .puerta{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;
@@ -10619,6 +10634,7 @@ function vistaLuces(pr, py, v){
         y ajustalo, o sumá equipo por equipo.</span><br><br>
         ${Object.entries(KITS_LUCES).map(([k, x]) => `<button class="btn" onclick="lzKit('${k}')">${esc(x.l.split(' (')[0])}</button>`).join(' ')}
         <button class="btn pri" onclick="lzAgregar()">+ Equipo</button></div></div>`}
+    ${lzRentalesHTML(pr, py)}
     ${P.items.length ? `<div class="csblock"><h4>Potencia</h4><div class="scrollx"><table class="tbl cst">
       <thead><tr><th>Jornada</th><th class="num">Carga total</th><th class="num">Monofásico 220 V</th><th class="num">Trifásico 380 V (por fase)</th>
         <th class="num">Generador sugerido</th><th class="num">Pedido</th></tr></thead>
@@ -11217,6 +11233,431 @@ function lzCopiar(){
   else { prompt('Copiá el pedido:', txt); ok(); }
 }
 
+
+/* ======================  PEDIR A VARIOS RENTALS  =========================
+   Como se trabaja de verdad (lo contó un jefe de producción): los rentals no
+   tienen la web ni las listas al día; se les manda el pedido y contestan
+   sobre el mismo texto, "OK" o "NO disponible" al lado de cada cosa, a veces
+   con precio. Y casi nunca alcanza uno solo: uno no tiene los accesorios de
+   los LED nuevos, otro tiene pocas Asteras, otro no tiene generador
+   portátil. Así que:
+     1. se tildan los rentals a los que se les pide,
+     2. un mail por rental, armado, que sale del mail de quien está usando
+        CLAP (lo revisa y lo manda él; las respuestas le llegan a él),
+     3. la respuesta se pega o se suelta y CLAP marca OK / NO / parcial por
+        renglón, con el precio si vino,
+     4. CLAP propone quién pone qué (menos rentals o más barato) y avisa lo
+        que nadie tiene,
+     5. cada precio que llega queda guardado con la fecha: con el tiempo, la
+        lista de precios al día la tiene la productora, no el rental.
+   Los renglones del mail van numerados para que puedan contestar "3 NO".   */
+
+const ESTADOS_COTIZ = [
+  {k:'ok',      l:'OK',          c:'var(--ok)'},
+  {k:'parcial', l:'Parcial',     c:'var(--warn)'},
+  {k:'no',      l:'No tiene',    c:'var(--bad)'},
+  {k:'?',       l:'Sin respuesta', c:'var(--tx3)'},
+];
+const ESTADO_COTIZ = k => ESTADOS_COTIZ.find(x => x.k === k) || ESTADOS_COTIZ[3];
+
+function cotizDe(P){ P.cotiz ||= {}; P.pedirA ||= []; return P.cotiz; }
+const rentalesCatalogo = () => (DB.catalogo.personas || [])
+  .filter(p => p.tipo === 'proveedor' && p.rubro === '11')
+  .sort((a,b) => String(a.nombre).localeCompare(String(b.nombre)));
+const rentalPorId = id => (DB.catalogo.personas || []).find(p => p.id === id) || null;
+
+/* El orden del mail: por categoría y dentro de cada una como está en el
+   pedido. Es el mismo orden en que se lee la respuesta. */
+function itemsParaMail(py){
+  const P = pedidoDe(py);
+  return CATEGORIAS_LUZ.flatMap(c => P.items.filter(it => it.c === c.k && n(it.cant) > 0))
+    .concat(P.items.filter(it => !CATEGORIAS_LUZ.some(c => c.k === it.c) && n(it.cant) > 0));
+}
+function lineaMail(py, it, i, cant){
+  const d = py.desglose || nuevoDesglose(), js = jornadasDeLuces(py), jj = jornadasDeItem(py, it);
+  const fecha = num => { const j = d.jornadas.find(x => x.numero === num); return j && j.fecha ? fechaCorta(j.fecha) : 'J' + num; };
+  return `${i}. ${cant ?? n(it.cant)} × ${it.nombre}${it.u !== 'unidad' && jj.length !== js.length ? ` (sólo ${jj.map(fecha).join(', ')})` : ''}${it.notas ? ' — ' + it.notas : ''}`;
+}
+/* modo 'cotizar': todo el pedido. modo 'confirmar': sólo lo que va con ese rental. */
+function mailRental(pr, py, rentalId, modo = 'cotizar'){
+  const P = pedidoDe(py), d = py.desglose || nuevoDesglose(), js = jornadasDeLuces(py);
+  const fecha = num => { const j = d.jornadas.find(x => x.numero === num); return j && j.fecha ? fechaCorta(j.fecha) : 'J' + num; };
+  const r = rentalPorId(rentalId), C = cotizDe(P)[rentalId] || {};
+  const lista = modo === 'confirmar' ? itemsParaMail(py).filter(it => it.rentalId === rentalId) : itemsParaMail(py);
+  const numeros = {};
+  const yo = (typeof getUsuario === 'function' && getUsuario()) || null;
+  const firma = P.armadoPor || (yo && yo.nombre) || '';
+  const L = [`Hola${r && r.contacto ? ' ' + r.contacto : ''}! ¿Cómo va?`,
+    modo === 'confirmar'
+      ? `Te confirmo el pedido de luces para ${py.nombre} (${pr.nombre}).`
+      : `Te paso el pedido de luces para ${py.nombre} (${pr.nombre}).`,
+    `Jornadas: ${js.map(fecha).join(', ')}`, ''];
+  lista.forEach((it, i) => {
+    numeros[i + 1] = it.id;
+    const cot = C.items && C.items[it.id];
+    const cant = modo === 'confirmar' && cot && cot.estado === 'parcial' && n(cot.cant) ? n(cot.cant) : null;
+    L.push(lineaMail(py, it, i + 1, cant) + (modo === 'confirmar' && cot && n(cot.precio) ? ` — $ ${n(cot.precio).toLocaleString('es-AR')}` : ''));
+  });
+  L.push('');
+  if(P.notas) L.push(P.notas, '');
+  L.push(modo === 'confirmar'
+    ? '¿Me confirmás que está todo reservado? Gracias!'
+    : '¿Me confirmás disponibilidad y precio por jornada? Podés contestar al lado de cada número: OK, NO o cuántos tenés, y el precio. Gracias!');
+  if(firma) L.push(firma);
+  const asunto = `${modo === 'confirmar' ? 'Confirmación' : 'Pedido'} de luces · ${py.nombre} · ${js.map(fecha).join(', ')}`;
+  return {para: r && r.email || '', asunto, cuerpo: L.join('\n'), numeros};
+}
+/* Dónde se abre: Gmail en la web (lo que usa casi todo el mundo) o el
+   programa de mail de la compu. Se recuerda en este navegador. */
+const mailCon = () => (DB.ui && DB.ui.mailCon) || 'gmail';
+function linkMail(m){
+  const e = encodeURIComponent;
+  return mailCon() === 'gmail'
+    ? `https://mail.google.com/mail/?view=cm&fs=1&to=${e(m.para)}&su=${e(m.asunto)}&body=${e(m.cuerpo)}`
+    : `mailto:${m.para}?subject=${e(m.asunto)}&body=${e(m.cuerpo)}`;
+}
+
+/* ---------- leer la respuesta ----------
+   Contestan como pueden: "1 OK / 2 NO / 3 tenemos 1", "SkyPanel ok $45.000",
+   "todo ok salvo las asteras", el mail original citado con ">" y la
+   respuesta abajo de cada renglón, o el Word del pedido con "NO DISPONIBLE"
+   escrito al lado. Se lee renglón por renglón; un renglón que nombra un
+   equipo (por número o por nombre) queda "abierto" y lo que se escribe
+   abajo le corresponde. Lo dudoso queda "sin respuesta": se elige a mano. */
+const RE_NO = /(^|[^a-z])(no( hay| tenemos| tengo| disponible| disp\.?| contamos)?|sin stock|sin disponibilidad|agotad[oa]s?|ocupad[oa]s?|alquilad[oa]s?|reservad[oa]s?|imposible|negativo|n\/d)([^a-z]|$)|[✗❌✘]/;
+const RE_OK = /(^|[^a-z])(ok|okey|oka|okk|si|disponibles?|disp|hay|tenemos|tengo|confirmad[oa]s?|dale|perfecto|listo|reservamos)([^a-z]|$)|[✓✔✅👍]/;
+/* "va todo", "todo bien", "tenemos todo" */
+const RE_TODO_OK = /\b(va|van|tenemos|hay|esta|estan) todo\b|\btodo (ok|bien|disponible|confirmado|va|perfecto|joya)\b|\bel resto (ok|bien|si|va|disponible)\b/;
+function precioDeTexto(t){
+  const s = String(t || '').toLowerCase();
+  /* con $ adelante vale todo ("$45k"); sin $, un número de 4 cifras o más que
+     no sea un consumo o un tamaño ("1200 W", "18K", "66 kVA") */
+  let m = s.match(/\$\s*([\d.,]+)\s*(k|mil)?/)
+    || s.match(/(?:^|[^\w.,])([\d.,]{4,})(?!\s*(?:w|kw|kva|k|mm|v|vatios|watts|lm)\b)\s*(mil)?(?=\s*(?:\+ ?iva|x ?d[ií]a|por d[ií]a|por jornada|c\/u|cada uno|pesos|ars|\.?$|\s|$))/)
+    || s.match(/(?:^|[^\w])(\d{2,3})\s*(mil)\b/);
+  if(!m) return 0;
+  let v = numeroDeCelda(m[1]);
+  if(v == null) return 0;
+  if(m[2]) v *= 1000;
+  return v >= 500 ? v : 0;
+}
+function estadoDeTexto(t, pedido){
+  const s = normPedido(String(t || ''));
+  if(!s.trim()) return null;
+  const no = RE_NO.test(s), ok = RE_OK.test(s);
+  const mCant = s.match(/(?:solo|tenemos|tengo|hay|disponibles?|quedan?)\s*(\d{1,3})\b/) || s.match(/\b(\d{1,3})\s*de\s*(\d{1,3})\b/);
+  const cant = mCant ? +mCant[1] : null;
+  const precio = precioDeTexto(t);
+  if(cant != null && pedido && cant < pedido) return {estado: cant ? 'parcial' : 'no', cant, precio};
+  if(no && !(ok && cant)) return {estado:'no', cant:null, precio:0};
+  if(ok || precio) return {estado:'ok', cant: cant != null ? cant : null, precio};
+  return null;
+}
+function leerRespuestaRental(texto, items, numeros){
+  /* items: los del pedido; numeros: {n: itemId} del mail que se mandó */
+  const res = {}, porId = Object.fromEntries(items.map(it => [it.id, it]));
+  const numDe = Object.fromEntries(Object.entries(numeros || {}).map(([k, v]) => [v, +k]));
+  const nombreDe = it => normPedido(it.nombre);
+  const original = items.map(it => ({it, linea: normPedido(`${numDe[it.id] ? numDe[it.id] + '. ' : ''}${n(it.cant)} x ${it.nombre}`)}))
+    .sort((a, b) => nombreDe(b.it).length - nombreDe(a.it).length);   /* "fresnel 2k" no se come a "fresnel 2k open face" */
+  /* "las asteras" -> Astera Titan: alguna palabra larga del pedazo está en el nombre */
+  const menciona = (p, it) => { const nom = nombreDe(it);
+    return nom.includes(p) || p.includes(nom) || (equipoDeTexto(p) && equipoDeTexto(p).k === it.k)
+      || p.split(/[^a-z0-9]+/).some(w => w.length >= 5 && nom.includes(w.replace(/(es|s)$/, ''))); };
+  let total = 0, actual = null, global = null;
+  const salvo = [];
+  const lineas = String(texto || '').replace(/\r\n?/g, '\n').split('\n');
+  const marcar = (it, est, nota) => {
+    if(!it || !est) return;
+    res[it.id] = {estado: est.estado, cant: est.cant, precio: est.precio || (res[it.id] && res[it.id].precio) || 0,
+      nota: [res[it.id] && res[it.id].nota, nota].filter(Boolean).join(' · ').slice(0, 200)};
+  };
+  for(const crudo of lineas){
+    const sinCita = crudo.replace(/^\s*(>\s*)+/, '');
+    const citada = sinCita !== crudo;
+    let t = normPedido(sinCita).trim();
+    if(!t || /podes contestar al lado|me confirmas disponibilidad|te paso el pedido|^jornadas:|escribio:|wrote:|^(de|from|enviado|sent|para|to|asunto|subject):/.test(t)) continue;
+    if(/^total\b/.test(t)){ const p = precioDeTexto(sinCita); if(p) total = p; continue; }
+    /* ¿a qué renglón se refiere? por número, por el renglón original o por el equipo */
+    let it = null, resto = t;
+    /* "3 NO" o "3. ok" es el renglón 3; "3 x Kino" es una cantidad */
+    const mNum = t.match(/^(\d{1,3})\s*[.)\-:–]\s*/) || t.match(/^#?(\d{1,3})\s+(?!x\s)(?=[a-z✓✔✗❌✅])/);
+    if(mNum && numeros && numeros[mNum[1]]){ it = porId[numeros[mNum[1]]]; resto = t.slice(mNum[0].length); }
+    /* si el renglón nombra otro equipo que el de ese número, manda el nombre */
+    const porNombre = original.find(x => t.includes(nombreDe(x.it)));
+    if(it && porNombre && porNombre.it !== it && !t.includes(nombreDe(it))){ it = null; resto = t; }
+    if(it){ const o = nombreDe(it); const k = resto.indexOf(o); if(k >= 0) resto = resto.slice(k + o.length);
+      else { const m2 = resto.match(/^\d{1,3}\s*x\s*/); if(m2) resto = resto.slice(m2[0].length); const k2 = resto.indexOf(o); if(k2 >= 0) resto = resto.slice(k2 + o.length); } }
+    if(!it){
+      const o = original.find(x => t.startsWith(x.linea) || t.includes(nombreDe(x.it)));
+      if(o){ it = o.it; const k = t.indexOf(nombreDe(o.it)); resto = t.slice(k + nombreDe(o.it).length); }
+    }
+    if(!it){
+      const e = equipoDeTexto(t);
+      if(e){ const cands = items.filter(x => x.k === e.k); if(cands.length === 1){ it = cands[0];
+        resto = t.replace(/^\d{1,3}\s*x?\s*/, ''); } }
+    }
+    /* sacar lo que es el pedido original ("(sólo jue 3/10)", "— con chimera") */
+    resto = resto.replace(/\(solo [^)]*\)/g, ' ').replace(/^\s*[—–-]\s*/, ' ').trim();
+    if(it){
+      actual = it;
+      const est = estadoDeTexto(resto, n(it.cant));
+      if(est) marcar(it, est, citada ? '' : resto);
+      continue;
+    }
+    /* renglón sin equipo: global ("todo ok salvo…") o la respuesta al de arriba */
+    if(/\b(todo|todos|el resto|lo demas|todo el pedido)\b/.test(t)){
+      const antes = t.split(/\b(salvo|excepto|menos|pero)\b/)[0];
+      const est = RE_TODO_OK.test(antes) ? {estado:'ok', cant:null, precio:0} : estadoDeTexto(antes, null);
+      if(est) global = est;
+      const m = t.match(/\b(?:salvo|excepto|menos|pero no|pero)\b(.*)$/);
+      if(m) m[1].split(/,|\by\b|\be\b/).forEach(pedazo => {
+        const p = pedazo.trim(); if(p.length < 3) return;
+        const o = items.filter(x => menciona(p, x));
+        o.forEach(x => salvo.push({it:x, est: estadoDeTexto(p, n(x.cant)) || {estado:'no', cant:null, precio:0}}));
+      });
+      continue;
+    }
+    if(actual && !citada){ const est = estadoDeTexto(t, n(actual.cant)); if(est) marcar(actual, est, sinCita.trim()); }
+  }
+  salvo.forEach(x => { if(!res[x.it.id]) marcar(x.it, x.est, 'salvo'); });
+  if(global) items.forEach(it => { if(!res[it.id]) marcar(it, {...global, precio:0}, 'todo ' + ESTADO_COTIZ(global.estado).l); });
+  items.forEach(it => { if(!res[it.id]) res[it.id] = {estado:'?', cant:null, precio:0, nota:''}; });
+  return {items: res, total};
+}
+
+/* ---------- el reparto ----------
+   'menos': el que tiene más cosas se lleva todo lo que tiene; con lo que
+   queda, el siguiente; y así. Menos retiros y devoluciones.
+   'barato': cada renglón al rental que lo tiene más barato (sin precio, al
+   que más cosas tiene). Lo que nadie tiene queda sin asignar: falta. */
+function puedeDar(c, it){
+  return c && (c.estado === 'ok' || (c.estado === 'parcial' && n(c.cant) >= n(it.cant)));
+}
+function proponerReparto(py, modo = 'menos'){
+  const P = pedidoDe(py), C = cotizDe(P);
+  const rs = Object.keys(C).filter(id => C[id].respondio);
+  const items = itemsParaMail(py);
+  const tiene = (rid, it) => puedeDar(C[rid].items && C[rid].items[it.id], it);
+  const precio = (rid, it) => n(((C[rid].items || {})[it.id] || {}).precio);
+  const asign = {};
+  if(modo === 'barato'){
+    const cuantas = rid => items.filter(it => tiene(rid, it)).length;
+    items.forEach(it => {
+      const c = rs.filter(rid => tiene(rid, it));
+      if(!c.length) return;
+      c.sort((a, b) => ((precio(a, it) || Infinity) - (precio(b, it) || Infinity)) || (cuantas(b) - cuantas(a)));
+      asign[it.id] = c[0];
+    });
+  } else {
+    let faltan = items.filter(it => rs.some(rid => tiene(rid, it)));
+    while(faltan.length){
+      const mejor = rs.map(rid => ({rid, k: faltan.filter(it => tiene(rid, it)),
+          costo: faltan.filter(it => tiene(rid, it)).reduce((s, it) => s + precio(rid, it), 0)}))
+        .sort((a, b) => (b.k.length - a.k.length) || (a.costo - b.costo))[0];
+      if(!mejor || !mejor.k.length) break;
+      mejor.k.forEach(it => asign[it.id] = mejor.rid);
+      faltan = faltan.filter(it => !asign[it.id]);
+    }
+  }
+  items.forEach(it => {
+    it.rentalId = asign[it.id] || null;
+    const p = it.rentalId ? precio(it.rentalId, it) : 0;
+    if(p) it.precio = p;
+  });
+  return {asignados: Object.keys(asign).length, faltan: items.filter(it => !asign[it.id]), rentals: [...new Set(Object.values(asign))]};
+}
+function repartoPorRental(py){
+  const P = pedidoDe(py), out = {};
+  itemsParaMail(py).forEach(it => { const k = it.rentalId || ''; (out[k] ||= {items:[], total:0}).items.push(it);
+    out[k].total += costoItemLuz(py, it); });
+  return out;
+}
+
+/* ---------- acciones ---------- */
+function lzPedirA(id, si){
+  const P = pedidoDe(getPy()); cotizDe(P);
+  P.pedirA = si ? [...new Set([...P.pedirA, id])] : P.pedirA.filter(x => x !== id);
+  R();
+}
+function lzMailCon(v){ DB.ui.mailCon = v; R(); }
+function lzMailRental(id){
+  const P = pedidoDe(getPy()), C = cotizDe(P);
+  const m = mailRental(getPr(), getPy(), id, 'cotizar');
+  C[id] = {...(C[id] || {}), enviado: hoy(), numeros: m.numeros};
+  if(P.estado === 'borrador') P.estado = 'enviado';
+  setTimeout(R, 60);
+}
+function lzConfirmarRental(id){
+  const P = pedidoDe(getPy()), C = cotizDe(P);
+  C[id] = {...(C[id] || {}), confirmado: hoy()};
+  const asignados = P.items.filter(it => it.rentalId);
+  if(asignados.length && Object.keys(C).filter(k => P.items.some(it => it.rentalId === k)).every(k => C[k].confirmado)) P.estado = 'confirmado';
+  setTimeout(R, 60);
+}
+function lzMailDe(id, valor){
+  const p = rentalPorId(id); if(!p) return;
+  p.email = String(valor || '').trim();
+  if(typeof sbConectado === 'function' && sbConectado()) sbSubirPersona(p).catch(e => toast('No se pudo guardar en el catálogo compartido: ' + e.message));
+  R();
+}
+function lzCopiarMail(id, modo){
+  const m = mailRental(getPr(), getPy(), id, modo || 'cotizar');
+  const txt = `Para: ${m.para}\nAsunto: ${m.asunto}\n\n${m.cuerpo}`;
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast('Mail copiado'), () => prompt('Copiá el mail:', txt));
+  else prompt('Copiá el mail:', txt);
+  if((modo || 'cotizar') === 'cotizar') lzMailRental(id);
+}
+
+/* la respuesta: pegarla o soltar el archivo */
+let _lzResp = null;
+function lzRespuesta(id){
+  const r = rentalPorId(id);
+  _lzResp = {id};
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:600px">
+    <h3>Respuesta de ${esc(r ? r.nombre : 'el rental')}</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:8px">Pegá el mail que contestaron, tal cual (con lo citado y todo),
+        o soltá el Word o PDF que mandaron. CLAP marca qué tienen, qué no y el precio, y te lo muestra para revisar.</div>
+      <textarea name="respuesta" rows="12" aria-label="La respuesta del rental" placeholder="1. OK $45.000&#10;2. NO&#10;3. tenemos 1&#10;…o: Todo OK salvo las asteras"></textarea>
+      <div id="lzrdrop" class="dropz" style="margin-top:10px" ondragover="event.preventDefault();this.classList.add('sobre')"
+        ondragleave="this.classList.remove('sobre')" ondrop="lzRespuestaArchivo(event)" onclick="document.getElementById('lzrfile').click()">
+        <b>O soltá acá el archivo de la respuesta</b><span>Word, PDF o texto</span></div>
+      <input type="file" id="lzrfile" accept=".docx,.doc,.rtf,.pdf,.txt,.eml,.xlsx,.csv" style="display:none" onchange="lzRespuestaArchivo(this)">
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
+      ${iaActiva() ? `<button class="btn" onclick="lzRespuestaIA()" title="La lee la IA: entiende respuestas desordenadas">Leer con IA</button>` : ''}
+      <button class="btn pri" onclick="lzRespuestaLeer()">Leer respuesta</button></div></div></div>`);
+}
+async function lzRespuestaArchivo(ev){
+  const files = ev.dataTransfer ? [...ev.dataTransfer.files] : [...(ev.files || [])];
+  if(ev.preventDefault) ev.preventDefault();
+  if(!files.length) return;
+  let txt = '';
+  try{
+    const f = files[0];
+    if(/\.(xlsx|xlsm)$/i.test(f.name)){ const hs = await xlsxHojas(new Uint8Array(await f.arrayBuffer())); txt = hs.flatMap(h => h.filas.map(r => (r || []).filter(Boolean).join(' '))).join('\n'); }
+    else if(/\.(eml|txt|csv)$/i.test(f.name)) txt = await f.text();
+    else txt = await archivoATexto(f);
+  }catch(e){ toast('No pude leer el archivo: ' + e.message); return; }
+  lzRespuestaMostrar(txt);
+}
+function lzRespuestaLeer(){ lzRespuestaMostrar(datos().respuesta || ''); }
+function lzRespuestaMostrar(txt, deIA){
+  const py = getPy(), P = pedidoDe(py), C = cotizDe(P), id = _lzResp && _lzResp.id;
+  if(!id) return;
+  if(!String(txt).trim() && !deIA){ toast('Pegá la respuesta o soltá el archivo'); return; }
+  const items = itemsParaMail(py);
+  const numeros = (C[id] && C[id].numeros) || Object.fromEntries(items.map((it, i) => [i + 1, it.id]));
+  const L = deIA || leerRespuestaRental(txt, items, numeros);
+  _lzResp = {id, items: L.items, total: L.total, texto: txt};
+  const leidos = items.filter(it => L.items[it.id].estado !== '?').length;
+  const r = rentalPorId(id);
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:820px">
+    <h3>Lo que contestó ${esc(r ? r.nombre : 'el rental')}</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">Entendí ${leidos} de ${items.length} renglones${items.length - leidos ? ` — <b style="color:var(--warn)">${items.length - leidos} sin respuesta clara</b>, elegilos a mano` : ''}.
+        Los precios son por jornada (los consumibles, por unidad).${L.total ? ` Total que pusieron: <b>${fmt(L.total, P.moneda)}</b>.` : ''}</div>
+      <div class="scrollx"><table class="tbl cst">
+        <thead><tr><th style="width:28px">N°</th><th>Pedido</th><th style="width:120px">Tienen</th><th style="width:70px">Cuántos</th><th style="width:110px">Precio</th><th>Lo que escribieron</th></tr></thead>
+        <tbody>${items.map((it, i) => { const c = L.items[it.id];
+          return `<tr><td class="muted">${i + 1}</td><td><b>${n(it.cant)} × ${esc(it.nombre)}</b></td>
+          <td><select onchange="_lzResp.items['${it.id}'].estado=this.value" style="color:${ESTADO_COTIZ(c.estado).c}">
+            ${ESTADOS_COTIZ.map(e => `<option value="${e.k}" ${e.k === c.estado ? 'selected' : ''}>${e.l}</option>`).join('')}</select></td>
+          <td><input type="number" min="0" step="1" class="lz-num" value="${c.cant ?? ''}" placeholder="${n(it.cant)}" onchange="_lzResp.items['${it.id}'].cant=this.value===''?null:n(this.value)"></td>
+          <td><input type="number" min="0" step="any" class="lz-precio" value="${n(c.precio) || ''}" placeholder="—" onchange="_lzResp.items['${it.id}'].precio=n(this.value)"></td>
+          <td class="muted" style="font-size:11.5px">${esc(c.nota || '')}</td></tr>`; }).join('')}</tbody></table></div>
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
+      <button class="btn pri" onclick="lzRespuestaGuardar()">Guardar respuesta</button></div></div></div>`);
+}
+function lzRespuestaGuardar(){
+  const py = getPy(), pr = getPr(), P = pedidoDe(py), C = cotizDe(P), x = _lzResp;
+  if(!x || !x.items) return;
+  const r = rentalPorId(x.id);
+  C[x.id] = {...(C[x.id] || {}), respondio: hoy(), items: x.items, total: x.total || 0};
+  /* los precios que llegaron quedan guardados, con fecha, para la próxima */
+  DB.tarifaLuces ||= {}; DB.historialLuces ||= [];
+  itemsParaMail(py).forEach(it => { const c = x.items[it.id]; if(!c || !n(c.precio)) return;
+    if(it.k) (DB.tarifaLuces[x.id] ||= {})[it.k] = n(c.precio);
+    DB.historialLuces.push({rentalId: x.id, rental: r ? r.nombre : '', k: it.k || null, equipo: it.nombre,
+      precio: n(c.precio), moneda: P.moneda, fecha: hoy(), proyecto: py.nombre, productora: pr.nombre}); });
+  if(DB.historialLuces.length > 3000) DB.historialLuces = DB.historialLuces.slice(-3000);
+  if(P.estado === 'borrador' || P.estado === 'enviado') P.estado = 'cotizado';
+  _lzResp = null; cerrar();
+  const ok = Object.values(x.items).filter(c => c.estado === 'ok').length;
+  toast(`${r ? r.nombre : 'Rental'}: ${ok} renglón${ok == 1 ? '' : 'es'} OK`); R();
+}
+function lzReparto(modo){
+  const py = getPy(), x = proponerReparto(py, modo);
+  toast(`${x.asignados} renglón${x.asignados == 1 ? '' : 'es'} con ${x.rentals.length} rental${x.rentals.length == 1 ? '' : 's'}${x.faltan.length ? ` · ${x.faltan.length} sin conseguir` : ''}`);
+  R();
+}
+function lzAsignar(itemId, rid){
+  const py = getPy(), P = pedidoDe(py), it = P.items.find(x => x.id === itemId); if(!it) return;
+  it.rentalId = rid || null;
+  const c = rid && cotizDe(P)[rid] && (cotizDe(P)[rid].items || {})[itemId];
+  if(c && n(c.precio)) it.precio = n(c.precio);
+  R();
+}
+
+/* ---------- el bloque en la solapa ---------- */
+function lzRentalesHTML(pr, py){
+  const P = pedidoDe(py), C = cotizDe(P), cat = rentalesCatalogo();
+  if(!P.items.length) return '';
+  const sel = P.pedirA.map(rentalPorId).filter(Boolean);
+  const fc = f => f ? fechaCorta(f) : '';
+  const conResp = sel.filter(r => C[r.id] && C[r.id].respondio);
+  const items = itemsParaMail(py);
+  const rep = repartoPorRental(py);
+  const fmtM = x => fmt(x, P.moneda);
+  return `<div class="csblock noprint"><h4>Pedir a rentals</h4><div class="pad">
+    <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">Tildá a quiénes les pedís. A cada uno le sale un mail con el pedido numerado,
+      desde tu mail: lo revisás y lo mandás vos. Cuando contestan, pegás la respuesta y CLAP marca qué tienen.</div>
+    ${cat.length ? `<div class="lz-pedira">${cat.map(r => `<label class="chipb ${P.pedirA.includes(r.id) ? 'on' : ''}">
+        <input type="checkbox" style="width:auto" ${P.pedirA.includes(r.id) ? 'checked' : ''} onchange="lzPedirA('${r.id}', this.checked)"> ${esc(r.nombre)}</label>`).join('')}</div>`
+      : `<div class="muted" style="font-size:12px">Todavía no hay rentals en el catálogo: sumalos desde la lista de abajo.</div>`}
+    ${sel.length ? `<div class="lz-mailcon muted">Los mails se abren en
+        <select onchange="lzMailCon(this.value)" aria-label="Dónde se abre el mail"><option value="gmail" ${mailCon() === 'gmail' ? 'selected' : ''}>Gmail</option>
+        <option value="mailto" ${mailCon() === 'mailto' ? 'selected' : ''}>mi programa de mail (Outlook, Mail…)</option></select></div>
+      <div class="scrollx"><table class="tbl cst lz-rentab"><thead><tr><th>Rental</th><th>Mail</th><th>Estado</th><th></th></tr></thead><tbody>
+      ${sel.map(r => { const c = C[r.id] || {}; const m = mailRental(pr, py, r.id);
+        const okN = c.items ? Object.values(c.items).filter(x => x.estado === 'ok').length : 0;
+        const estado = c.confirmado ? `<span style="color:var(--ok)">Confirmado ${fc(c.confirmado)}</span>`
+          : c.respondio ? `Respondió ${fc(c.respondio)} · <b>${okN}</b> de ${items.length} OK`
+          : c.enviado ? `Enviado ${fc(c.enviado)} · esperando` : '<span class="muted">Sin enviar</span>';
+        return `<tr><td><b>${esc(r.nombre)}</b>${r.tel ? `<span class="muted" style="display:block;font-size:11px">${esc(r.tel)}</span>` : ''}</td>
+          <td><input type="email" value="${esc(r.email || '')}" placeholder="mail de pedidos" onchange="lzMailDe('${r.id}', this.value)" aria-label="Mail de ${esc(r.nombre)}"></td>
+          <td style="font-size:12px">${estado}</td>
+          <td class="lz-acc" style="white-space:nowrap">
+            ${r.email ? `<a class="btn sm pri" href="${esc(linkMail(m))}" target="_blank" rel="noopener" onclick="lzMailRental('${r.id}')">${c.enviado ? 'Volver a mandar' : 'Mandar mail'}</a>`
+              : `<span class="muted" style="font-size:11px">Falta el mail</span>`}
+            <button class="btn sm" onclick="lzCopiarMail('${r.id}')" title="Copiar el mail para mandarlo por otro lado">Copiar</button>
+            <button class="btn sm" onclick="lzRespuesta('${r.id}')">${c.respondio ? 'Cambiar respuesta' : 'Pegar respuesta'}</button></td></tr>`; }).join('')}
+      </tbody></table></div>` : ''}
+    ${conResp.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:14px 0 8px">
+        <b style="font-size:13px">Quién pone qué</b><span style="flex:1"></span>
+        <button class="btn sm" onclick="lzReparto('menos')" title="El que tiene más cosas se lleva todo lo que tiene: menos retiros">Proponer: menos rentals</button>
+        <button class="btn sm" onclick="lzReparto('barato')" title="Cada cosa al que la tiene más barata">Proponer: más barato</button></div>
+      <div class="scrollx"><table class="tbl cst lz-reptab"><thead><tr><th>N°</th><th>Equipo</th>
+        ${conResp.map(r => `<th class="num">${esc(r.nombre)}</th>`).join('')}<th>Va con</th></tr></thead><tbody>
+        ${items.map((it, i) => { const nadie = !conResp.some(r => puedeDar((C[r.id].items || {})[it.id], it));
+          const enParte = nadie && conResp.some(r => ((C[r.id].items || {})[it.id] || {}).estado === 'parcial');
+          return `<tr class="${nadie ? 'lz-falta' : ''}"><td class="muted">${i + 1}</td><td>${n(it.cant)} × ${esc(it.nombre)}${nadie ? ` <b style="color:var(--bad);font-size:11px">· ${enParte ? 'nadie lo tiene completo' : 'nadie lo tiene'}</b>` : ''}</td>
+          ${conResp.map(r => { const c = (C[r.id].items || {})[it.id] || {estado:'?'};
+            const txt = c.estado === 'ok' ? '✓' : c.estado === 'no' ? '✗' : c.estado === 'parcial' ? `${n(c.cant)} de ${n(it.cant)}` : '?';
+            return `<td class="num ${it.rentalId === r.id ? 'lz-asig' : ''}" style="color:${ESTADO_COTIZ(c.estado).c}">${txt}${n(c.precio) ? `<span class="lz-cp">${fmtM(n(c.precio))}</span>` : ''}</td>`; }).join('')}
+          <td><select onchange="lzAsignar('${it.id}', this.value)" aria-label="Rental para ${esc(it.nombre)}"><option value="">—</option>
+            ${conResp.map(r => `<option value="${r.id}" ${it.rentalId === r.id ? 'selected' : ''}>${esc(r.nombre)}</option>`).join('')}</select></td></tr>`; }).join('')}
+      </tbody></table></div>
+      ${Object.keys(rep).filter(k => k).length ? `<div class="lz-porrental">${Object.entries(rep).filter(([k]) => k).map(([rid, x]) => { const r = rentalPorId(rid), c = C[rid] || {};
+          const m = mailRental(pr, py, rid, 'confirmar');
+          return `<div class="lz-pr"><b>${esc(r ? r.nombre : '?')}</b><span>${x.items.length} renglón${x.items.length == 1 ? '' : 'es'}${x.total ? ' · ' + fmtM(x.total) : ''}</span>
+            ${r && r.email ? `<a class="btn sm ${c.confirmado ? '' : 'pri'}" href="${esc(linkMail(m))}" target="_blank" rel="noopener" onclick="lzConfirmarRental('${rid}')">${c.confirmado ? 'Confirmado ' + fc(c.confirmado) : 'Confirmar por mail'}</a>` : ''}</div>`; }).join('')}
+        ${rep[''] ? `<div class="lz-pr lz-falta"><b>Sin conseguir</b><span>${rep[''].items.map(it => esc(it.nombre)).join(', ')}</span></div>` : ''}</div>` : ''}` : ''}
+  </div></div>`;
+}
+
+/* La IA es opcional: si en la base no está prendida (no hay clave cargada),
+   todo lo de arriba funciona igual, sin ella. */
+let _ia = null;
+const iaActiva = () => !!(_ia && _ia.activa);
 
 /* ---------- importar un presupuesto en Excel ----------
    Los presupuestos que circulan son planillas AICP o parecidas, cada una a su
