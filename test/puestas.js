@@ -50,7 +50,7 @@ ok('por personaje (de la descripción, sin tocar el elenco)', g('personaje').som
 DB.ui.tab = 'plan'; DB.ui.jornada = null; py.desglose = nuevoDesglose(); render();
 ok('el banco ofrece agrupar y proponer puestas', /Agrupar por/.test(app.innerHTML) && /plProponerPuestas\(null\)/.test(app.innerHTML));
 plAgrupar('fondo');
-ok('agrupado, con un título por grupo', /pl-grupo">Casa - Cocina/.test(app.innerHTML) && /pl-grupo">Calle - Vereda/.test(app.innerHTML));
+ok('agrupado, con un título por grupo', /class="pl-grupo">[^]*?Casa - Cocina<\/label>/.test(app.innerHTML) && /class="pl-grupo">[^]*?Calle - Vereda<\/label>/.test(app.innerHTML));
 ok('sin IA prendida, no aparece el botón de IA', !/plLeerCuadrosIA/.test(app.innerHTML));
 
 console.log('\n--- 4. LA PLANTA ---');

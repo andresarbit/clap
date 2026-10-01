@@ -546,6 +546,11 @@ junto, porque cada cambio es mover luces y grip.
   se arma el día y sale impresa con el plan.
 - Cada plano tiene **Tiro** en la ficha (de frente, contraplano, lateral,
   subjetiva, cenital).
+- **Seleccionar varios**: casilla en cada cuadro del banco y en cada renglón
+  de la jornada; Shift marca un rango y el título de cada grupo marca el grupo
+  entero. Con lo marcado: mover a una jornada o al banco, ponerles puesta o
+  borrar de una vez. Arrastrar uno de los marcados mueve el bloque entero, en
+  el mismo orden. Prueba: `test/seleccion.js`.
 
 Sin IA se lee el texto de cada cuadro. Con la IA prendida aparece **Leer los
 cuadros con IA**: mira la imagen y completa lo vacío (fondo, tiro,
@@ -1183,6 +1188,7 @@ node test/run.js test/pedido-luces.js # pedido de luces: equipos, jornadas, pote
 node test/run.js test/pedido-luces-importar.js # interpretar el pedido del gaffer (texto, Excel, Word)
 node test/run.js test/rentales.js  # mail por rental, leer respuestas OK/NO, reparto y precios guardados
 node test/run.js test/puestas.js   # storyboard por puesta/tiro/personaje/fondo, planta, IA simulada
+node test/run.js test/seleccion.js # marcar varios: mover el bloque, ponerles puesta, borrar
 node test/run.js test/funcion-ia.js # la funcion del servidor: sesion, productora, sin clave, tope
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO

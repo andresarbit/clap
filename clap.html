@@ -793,6 +793,20 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
   border-bottom:1px dashed var(--line2)}
 .pl-marca.sol{color:#e6c84a}.pl-marca.dorada{color:#f0a64a}.pl-marca.azul{color:#8fa8ff}
 .pl-bancoc h3{margin-bottom:10px}
+.pl-carta{position:relative}
+.pl-carta .pl-selcb{position:absolute;top:6px;left:6px;width:18px;height:18px;z-index:2;cursor:pointer;accent-color:#171717;margin:0}
+.pl-carta.sel{outline:2px solid #171717;outline-offset:-1px}
+.pl-consel{display:flex;gap:8px;align-items:flex-start}
+.pl-conimg .pl-selcb,.pl-consel .pl-selcb{flex:none;width:17px;height:17px;margin:2px 0 0;cursor:pointer;accent-color:#171717}
+.pl-fila.sel{background:#f0f0ee}
+.pl-grupo label{display:inline-flex;gap:7px;align-items:center;cursor:pointer}
+.pl-grupo input{width:16px;height:16px;accent-color:#171717;margin:0}
+.pl-selbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:150;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  background:#fff;border:1px solid #171717;border-radius:14px;padding:10px 14px;box-shadow:0 12px 40px rgba(0,0,0,.18);max-width:calc(100vw - 32px)}
+.pl-selbar select{width:auto;font-size:12.5px;padding:4px 26px 4px 8px}
+.pl-seltip{font-size:11px;flex-basis:100%}
+.pl-selesp{height:120px}
+.pl-ghostn{position:absolute;top:-10px;right:-10px;background:#171717;color:#fff;font-size:11px;font-weight:600;border-radius:999px;padding:3px 8px}
 .pl-agrupar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:12.5px}
 .pl-agrupar label{display:flex;gap:6px;align-items:center}
 .pl-agrupar select{width:auto;min-width:190px;font-size:12.5px;padding:4px 28px 4px 8px}
@@ -9205,6 +9219,7 @@ function plDiaHTML(pr, py, v){
         ${PLAN_EVENTOS.map(e => `<option value="${e.k}">${esc(e.l)}</option>`).join('')}</select>
       <button class="btn sm" onclick="plStoryboard()" title="Imágenes, un PDF, o el guion técnico en Excel: cada cuadro o renglón es un plano">Cargar storyboard o guion técnico</button>
       <button class="btn sm" onclick="plShotList()" title="Pegá la lista de planos del director, uno por renglón">Pegar lista de planos</button>
+      <button class="btn sm" onclick="plSelTodo(${num})" title="Marca todo el día para moverlo o borrarlo de una vez">Seleccionar todo</button>
       <button class="btn sm" onclick="plProponerPuestas(${num})" title="Lee cada plano y le propone una puesta: mismo fondo y mismo tiro (de frente, contraplano, cenital) van juntos. No pisa lo que ya cargaste">Proponer puestas</button>
       <button class="btn sm" onclick="plAcomodar()" title="Junta los planos del mismo set y puesta, de lo abierto a lo cerrado, y deja para el final los de hora dorada y noche">Acomodar por puesta</button>
       <div style="flex:1"></div>
@@ -9285,8 +9300,8 @@ function plFilaHTML(py, f, mal){
     const ev = PLAN_EVENTO(it.clase);
     return `<div class="pl-fila pl-ev ${it.clase} ${mal ? 'mal' : ''}" ${drag}>
       <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
-      <div class="pl-main"><div class="pl-tit">${esc(it.desc || ev.l)}${it.desc && it.desc !== ev.l ? `<span class="muted"> · ${esc(ev.l)}</span>` : ''}</div>
-        <div class="pl-meta">${it.fijo ? `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>` : ''}${f.tarde > TOLERANCIA_FIJO ? `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>` : ''}${it.notas ? `<span>${esc(it.notas)}</span>` : ''}</div></div>
+      <div class="pl-main pl-consel">${plSelCasilla(id, it.desc || ev.l)}<div><div class="pl-tit">${esc(it.desc || ev.l)}${it.desc && it.desc !== ev.l ? `<span class="muted"> · ${esc(ev.l)}</span>` : ''}</div>
+        <div class="pl-meta">${it.fijo ? `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>` : ''}${f.tarde > TOLERANCIA_FIJO ? `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>` : ''}${it.notas ? `<span>${esc(it.notas)}</span>` : ''}</div></div></div>
       ${dur}<span></span>${acciones}</div>`;
   }
   const estado = `<select class="pl-est ${it.estado}" onchange="plEstado('${id}', this.value)">
@@ -9297,12 +9312,12 @@ function plFilaHTML(py, f, mal){
     const tira = (e.intExt === 'INT' ? 'int' : 'ext') + (noche ? 'n' : 'd');
     return `<div class="pl-fila pl-esc tira-${tira} ${it.estado} ${mal ? 'mal' : ''}" ${drag}>
       <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
-      <div class="pl-main"><div class="pl-tit"><b class="pl-num">Esc ${esc(e.numero || '')}</b>
+      <div class="pl-main pl-consel">${plSelCasilla(id, 'la escena ' + (e.numero || ''))}<div><div class="pl-tit"><b class="pl-num">Esc ${esc(e.numero || '')}</b>
         <span class="eie ${e.intExt==='INT'?'int':'ext'}">${esc(e.intExt || '')}</span> ${esc(e.locacion || '')}
         <span class="emom ${/NOCHE|NIGHT|MADRUGADA/.test(e.momento||'')?'noche':''}">${esc(e.momento || '')}</span></div>
         <div class="pl-meta"><span>${octavosATexto(n(e.octavos))} pg</span>
           ${(e.personajes || []).length ? `<span>${esc(e.personajes.join(', '))}</span>` : ''}
-          ${it.notas ? `<span>${esc(it.notas)}</span>` : ''}</div></div>
+          ${it.notas ? `<span>${esc(it.notas)}</span>` : ''}</div></div></div>
       ${dur}${estado}${acciones}</div>`;
   }
   const meta = [it.set && `<span class="pl-tag">${esc(it.set)}</span>`,
@@ -9316,9 +9331,9 @@ function plFilaHTML(py, f, mal){
     it.tomaBuena && `<span>Toma buena: ${esc(it.tomaBuena)}</span>`,
     it.fijo && `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>`, f.tarde > TOLERANCIA_FIJO && `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>`,
     it.prioridad === 'seguridad' && `<span class="pl-tag seg" title="Es lo primero que se corta si el día se atrasa">de seguridad</span>`].filter(Boolean).join('');
-  return `<div class="pl-fila pl-plano ${it.estado} ${mal ? 'mal' : ''}" ${drag}>
+  return `<div class="pl-fila pl-plano ${it.estado} ${mal ? 'mal' : ''} ${_plSel.has(id) ? 'sel' : ''}" ${drag}>
     <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
-    <div class="pl-main pl-conimg">
+    <div class="pl-main pl-conimg">${plSelCasilla(id, 'el plano ' + (it.numero || ''))}
       ${it.img ? `<img class="pl-img" src="${it.img}" alt="" onclick="plVerImagen('${id}')">` : `<span class="pl-img vacia">${esc(it.numero || '—')}</span>`}
       <div><div class="pl-tit"><b class="pl-num">${esc(it.numero || '—')}</b> ${esc(it.desc || '')}</div>
         <div class="pl-meta">${meta}${it.notas ? `<span class="muted">${esc(it.notas)}</span>` : ''}</div></div></div>
@@ -9358,9 +9373,13 @@ function plBancoHTML(py){
     ${banco.length > 1 ? `<div class="pl-agrupar"><label class="muted">Agrupar por
         <select onchange="plAgrupar(this.value)">${CRITERIOS_AGRUPAR.map(c => `<option value="${c.k}" ${(DB.ui.plAgrupar || '') === c.k ? 'selected' : ''}>${esc(c.l)}</option>`).join('')}</select></label>
       <button class="btn sm" onclick="plProponerPuestas(null)" title="Lee cada plano y le propone una puesta: mismo fondo y mismo tiro van juntos. No pisa lo que ya cargaste">Proponer puestas</button>
+      <button class="btn sm" onclick="plSelTodo(null)">Seleccionar todo</button>
       ${iaActiva() ? `<button class="btn sm" onclick="plLeerCuadrosIA()" title="La IA mira cada cuadro: fondo, tiro, personajes, tamaño, interior o exterior">Leer los cuadros con IA</button>` : ''}</div>` : ''}
-    ${banco.length ? `${gruposDePlanos(banco, DB.ui.plAgrupar || '').map(g => `${g.titulo ? `<h5 class="pl-grupo">${esc(g.titulo)} <span class="muted">${g.planos.length}</span></h5>` : ''}
-      <div class="pl-grilla">${g.planos.map(it => `<div class="pl-carta" data-pl="${it.id}">
+    ${banco.length ? `${gruposDePlanos(banco, DB.ui.plAgrupar || '').map(g => `${g.titulo ? `<h5 class="pl-grupo"><label><input type="checkbox" class="noprint"
+        ${g.planos.every(x => _plSel.has(x.id)) ? 'checked' : ''} onchange="plSelGrupo(${esc(JSON.stringify(g.planos.map(x => x.id)))}, this.checked)"
+        aria-label="Seleccionar todo ${esc(g.titulo)}"> ${esc(g.titulo)}</label> <span class="muted">${g.planos.length}</span></h5>` : ''}
+      <div class="pl-grilla">${g.planos.map(it => `<div class="pl-carta ${_plSel.has(it.id) ? 'sel' : ''}" data-pl="${it.id}">
+        ${plSelCasilla(it.id, 'el plano ' + (it.numero || ''))}
         ${it.img ? `<img src="${it.img}" alt="" onclick="plVerImagen('${it.id}')">` : `<div class="pl-cimg">${esc(it.numero || '—')}</div>`}
         <div class="pl-ctx"><b>${esc(it.numero || '—')}</b> ${esc(it.desc || '')}</div>
         <div class="pl-cacc">
@@ -9373,7 +9392,8 @@ function plBancoHTML(py){
         ${d.jornadas.map(j => `<button class="btn sm" onclick="plTodoA(${j.numero})">Todo el banco → J${j.numero}</button>`).join('')}</div>`
     : `<div class="muted" style="font-size:12px;line-height:1.6">Acá quedan los planos que todavía no tienen jornada.
        Cargá el storyboard (imágenes o PDF) o pegá la lista de planos y después repartilos.</div>`}
-  </div>`;
+  </div>
+  ${plSelBarraHTML(py)}`;
 }
 
 /* ---------- todas las jornadas ---------- */
@@ -10295,10 +10315,11 @@ function plInstalarArrastre(){
 function plDragInicio(ev){
   if(ev.button != null && ev.button !== 0) return;
   const el = ev.target.closest && ev.target.closest('[data-pl]');
-  if(!el) return;
+  if(!el || ev.target.closest('.pl-selcb')) return;
   const asa = ev.target.closest('.pl-asa, .pl-h');
   if(!asa && (ev.pointerType === 'touch' || ev.target.closest('input,select,button,textarea,a,label'))) return;
-  _plDrag = {id: el.dataset.pl, el, x0: ev.clientX, y0: ev.clientY, activo: false};
+  const grupo = _plSel.has(el.dataset.pl) && _plSel.size > 1 ? plSeleccion().map(x => x.id) : null;
+  _plDrag = {id: el.dataset.pl, el, x0: ev.clientX, y0: ev.clientY, activo: false, grupo};
   document.addEventListener('pointermove', plDragMover, {passive: false});
   document.addEventListener('pointerup', plDragFin);
   document.addEventListener('pointercancel', plDragCancelar);
@@ -10317,10 +10338,12 @@ function plDragMover(ev){
     D.ghost = D.el.cloneNode(true);
     D.ghost.classList.add('pl-ghost');
     D.ghost.style.width = r.width + 'px';
+    if(D.grupo) D.ghost.insertAdjacentHTML('beforeend', `<span class="pl-ghostn">${D.grupo.length} juntos</span>`);
     document.body.appendChild(D.ghost);
     D.marca = document.createElement('div'); D.marca.className = 'pl-marcador'; D.marca.innerHTML = '<span></span>';
     document.body.appendChild(D.marca);
     D.el.classList.add('pl-arrastrando');
+    if(D.grupo) document.querySelectorAll('[data-pl]').forEach(x => { if(D.grupo.includes(x.dataset.pl)) x.classList.add('pl-arrastrando'); });
     document.body.classList.add('pl-moviendo');
   }
   ev.preventDefault();
@@ -10345,7 +10368,7 @@ function plDragMover(ev){
   const lr = lista.getBoundingClientRect();
   if(ev.clientX < lr.left - 40 || ev.clientX > lr.right + 40 || ev.clientY < lr.top - 30 || ev.clientY > lr.bottom + 30){
     D.marca.style.display = 'none'; return; }
-  const filas = [...lista.querySelectorAll('[data-pl]')].filter(x => x !== D.el);
+  const filas = [...lista.querySelectorAll('[data-pl]')].filter(x => x !== D.el && !(D.grupo && D.grupo.includes(x.dataset.pl)));
   let antes = null, y = null;
   for(const f of filas){ const r = f.getBoundingClientRect();
     if(ev.clientY < r.top + r.height / 2){ antes = f; y = r.top; break; } }
@@ -10384,9 +10407,10 @@ function plDragFin(){
   if(!D || !D.activo) return;
   _plSinClick = true; setTimeout(() => { _plSinClick = false; }, 50);
   D.ghost && D.ghost.remove(); D.marca && D.marca.remove();
-  D.el.classList.remove('pl-arrastrando'); document.body.classList.remove('pl-moviendo');
+  document.querySelectorAll('.pl-arrastrando').forEach(x => x.classList.remove('pl-arrastrando')); document.body.classList.remove('pl-moviendo');
   document.querySelectorAll('.pl-chip.drop,#pl-banco.drop').forEach(x => x.classList.remove('drop'));
   if(!D.destino) return;
+  if(D.grupo){ plMoverVarios(D.grupo, D.destino.num || null, D.destino.antesDe); RP(); return; }
   plMoverA(D.id, D.destino.num || null, D.destino.antesDe);
 }
 /* Lo que hace soltar: pasar a otra jornada (o al banco) o cambiar de lugar
@@ -10407,6 +10431,115 @@ function plMoverA(id, num, antesDe){
     toast(`${etiquetaItem(py, it).replace(/^El |^La /, '')} ahora a las ${it.fijo}`);
   }
   RP();
+}
+
+/* ---------- seleccionar varios ----------
+   Con un storyboard de 40 cuadros, mover o borrar de a uno es eterno. Cada
+   cuadro (en el banco) y cada renglón (en la jornada) tiene su casilla; con
+   Shift se marca un rango, y el título de cada grupo marca el grupo entero
+   (una puesta, un fondo). Lo marcado se mueve, se le pone puesta o se borra
+   de una vez, y arrastrar uno de los marcados arrastra el bloque entero, en
+   el mismo orden. La selección no se guarda: es de este momento.          */
+let _plSel = new Set(), _plSelUlt = null;
+const plSeleccion = () => { const py = getPy(); if(!py) return [];
+  const p = planDe(py);
+  return p.items.filter(x => _plSel.has(x.id)).sort((a, b) => (a.jornada ?? -1) - (b.jornada ?? -1) || a.orden - b.orden); };
+function plSelCasilla(id, titulo){
+  return `<input type="checkbox" class="pl-selcb noprint" data-id="${id}" ${_plSel.has(id) ? 'checked' : ''}
+    onclick="plSelClick(event,'${id}')" aria-label="Seleccionar ${esc(titulo || 'este plano')}">`;
+}
+function plSelClick(ev, id){
+  if(ev && ev.stopPropagation) ev.stopPropagation();
+  const marcar = !_plSel.has(id);
+  if(ev && ev.shiftKey && _plSelUlt && typeof document !== 'undefined' && document.querySelectorAll){
+    const orden = [...document.querySelectorAll('.pl-selcb')].map(x => x.dataset.id);
+    const a = orden.indexOf(_plSelUlt), b = orden.indexOf(id);
+    if(a >= 0 && b >= 0){ orden.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(x => _plSel.add(x)); _plSelUlt = id; R(); return; }
+  }
+  if(marcar) _plSel.add(id); else _plSel.delete(id);
+  _plSelUlt = id; R();
+}
+function plSelGrupo(ids, si){ ids.forEach(id => si ? _plSel.add(id) : _plSel.delete(id)); R(); }
+function plSelTodo(num){
+  const p = planDe(getPy());
+  p.items.filter(x => (x.jornada ?? null) === (num ?? null) && (num != null || x.tipo === 'plano')).forEach(x => _plSel.add(x.id));
+  R();
+}
+function plSelNada(){ _plSel.clear(); _plSelUlt = null; R(); }
+
+/* mover un bloque: a otra jornada (al final, o antes de un renglón) o al banco */
+function plMoverVarios(ids, num, antesDe){
+  const py = getPy(), p = planDe(py);
+  const its = ids.map(plItem).filter(Boolean).filter(it => !(num == null && it.tipo === 'evento'));
+  if(!its.length){ toast('Los eventos no van al banco'); return 0; }
+  const antes = new Set(its.map(it => it.jornada).filter(x => x != null));
+  let escenas = false;
+  if(num == null || antesDe === undefined){
+    its.forEach(it => { if(it.tipo === 'escena') escenas = true; moverItem(py, it, num); });
+  } else {
+    const otros = p.items.filter(x => x.jornada === num && !its.includes(x));
+    const ref = antesDe ? otros.find(x => x.id === antesDe) : null;
+    const base = ref ? ref.orden - 0.5 : Math.max(0, ...otros.map(x => x.orden)) + 1;
+    its.forEach((it, i) => {
+      if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); if(e) e.jornada = num; escenas = true; }
+      it.jornada = num; it.orden = base + i * 0.001;
+    });
+    if(escenas) sincronizarJornadas(getD());
+    reordenar(py, num);
+  }
+  antes.forEach(j => { if(j !== num) reordenar(py, j); });
+  const quedan = its.length;
+  its.forEach(it => _plSel.delete(it.id));
+  toast(`${quedan} ${quedan == 1 ? 'pasado' : 'pasados'} ${num == null ? 'al banco' : 'a la jornada ' + num}`);
+  return quedan;
+}
+function plSelMover(val){
+  if(!val) return;
+  const ids = plSeleccion().map(x => x.id);
+  if(!ids.length) return;
+  plMoverVarios(ids, val === 'banco' ? null : parseInt(val, 10));
+  RP();
+}
+function plSelPuesta(){
+  const planos = plSeleccion().filter(x => x.tipo === 'plano');
+  if(!planos.length){ toast('No hay planos marcados'); return; }
+  const v = prompt(`Puesta para los ${planos.length} plano${planos.length == 1 ? '' : 's'} (A, B, C…):`, planos[0].emplazamiento || '');
+  if(v == null) return;
+  planos.forEach(it => it.emplazamiento = String(v).trim().toUpperCase().slice(0, 4));
+  toast(`Puesta ${String(v).trim().toUpperCase() || '(vacía)'} para ${planos.length} plano${planos.length == 1 ? '' : 's'}`); RP();
+}
+function plSelBorrar(){
+  const py = getPy(), p = planDe(py), sel = plSeleccion();
+  if(!sel.length) return;
+  const escenas = sel.filter(x => x.tipo === 'escena'), resto = sel.filter(x => x.tipo !== 'escena');
+  const txt = [resto.length && `se borran ${resto.length} renglón${resto.length == 1 ? '' : 'es'}`,
+    escenas.length && `${escenas.length} escena${escenas.length == 1 ? '' : 's'} vuelve${escenas.length == 1 ? '' : 'n'} a quedar sin jornada`].filter(Boolean).join(' y ');
+  if(!confirm(`¿Seguro? ${txt.charAt(0).toUpperCase() + txt.slice(1)}.`)) return;
+  escenas.forEach(it => moverItem(py, it, null));
+  const fuera = new Set(resto);
+  const dias = new Set(resto.map(x => x.jornada).filter(x => x != null));
+  p.items = p.items.filter(x => !fuera.has(x));
+  dias.forEach(j => reordenar(py, j));
+  _plSel.clear(); _plSelUlt = null;
+  toast(txt.charAt(0).toUpperCase() + txt.slice(1)); RP();
+}
+function plSelBarraHTML(py){
+  const sel = plSeleccion();
+  /* lo que ya no existe (se borró por otro lado) sale de la selección */
+  _plSel = new Set(sel.map(x => x.id));
+  if(!sel.length) return '';
+  const d = getD(), planos = sel.filter(x => x.tipo === 'plano').length;
+  /* el espacio de abajo es para que la barra no tape los últimos cuadros */
+  return `<div class="pl-selesp noprint" aria-hidden="true"></div><div class="pl-selbar noprint" role="region" aria-label="Seleccionados">
+    <b>${sel.length} seleccionado${sel.length == 1 ? '' : 's'}</b>
+    <select onchange="plSelMover(this.value)" aria-label="Mover lo seleccionado"><option value="">Mover a…</option>
+      ${d.jornadas.map(j => `<option value="${j.numero}">Jornada ${j.numero}${j.fecha ? ' · ' + esc(fechaCorta(j.fecha)) : ''}</option>`).join('')}
+      <option value="banco">Banco</option></select>
+    ${planos ? `<button class="btn sm" onclick="plSelPuesta()">Ponerles puesta</button>` : ''}
+    <button class="btn sm dgr" onclick="plSelBorrar()">Borrar</button>
+    <button class="btn sm" onclick="plSelNada()">Quitar selección</button>
+    <span class="muted pl-seltip">Arrastrá uno de los marcados y se mueve todo el bloque · Shift marca un rango</span>
+  </div>`;
 }
 
 /* ---------- lista de planos pegada ---------- */
