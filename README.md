@@ -391,12 +391,23 @@ recalcula el dia entero.
   jornadas* (el auto-agrupar de siempre), y la escena movida en el plan se mueve
   tambien en el desglose. Una escena tildada en el parte es una escena filmada
   en el plan, y al reves.
-- **Storyboard y lista de planos.** *Cargar storyboard* toma imagenes o un PDF;
-  el PDF se corta en cuadros segun la grilla (1, 2, 4, 6, 9 o 12 por pagina) y
-  los cuadros vacios se saltean. *Pegar lista de planos* entiende un renglon
+- **Storyboard, guion tecnico y lista de planos.** *Cargar storyboard o guion
+  tecnico* toma imagenes, un PDF, o la planilla del guion tecnico (.xlsx o
+  .csv). El PDF se corta en cuadros segun la grilla (1, 2, 4, 6, 9 o 12 por
+  pagina) y los cuadros vacios se saltean. De la planilla se busca la fila de
+  encabezados y se reconoce cada columna por su nombre (Plano/N°/Toma,
+  Descripcion/Video/Accion, Tamaño/Encuadre, Movimiento, Lente, Locacion,
+  INT/EXT, Dia/Noche, Elenco, Audio, Duracion…); las imagenes pegadas en cada
+  fila quedan como cuadro de ese plano. El audio y la duracion en pantalla van
+  a notas (no son tiempo de rodaje). Tambien se puede pegar un pedazo de
+  planilla copiado de Excel. *Pegar lista de planos* entiende un renglon
   por plano ("3A PP Ana sonrie, steadicam, 50mm, hora dorada"). Lo cargado va a
-  una jornada o al **banco** (planos sin jornada) para repartir despues,
-  arrastrando o con →.
+  una jornada o al **banco** (planos sin jornada) para repartir despues.
+- **Arrastrar renglones.** Cada renglon (plano, escena, almuerzo, break…) se
+  agarra y se lleva arriba o abajo; mientras se mueve, una linea marca donde cae
+  y a que hora empezaria. Se suelta sobre la ficha de otra jornada o sobre el
+  banco para pasarlo. Si tenia hora fija (el almuerzo), la hora fija pasa a ser
+  la nueva. En el celular se agarra de la hora. Escape cancela.
 - **Duraciones.** El plano, por como se mueve la camara (fijo 15 min, dolly 25,
   grua 35, camera car 45…); la escena, por paginas (jornada util / paginas por
   jornada). Se suma solo un **cambio de emplazamiento** cuando la camara cambia
@@ -431,6 +442,32 @@ recalcula el dia entero.
 El plan vive con el resto del desglose en el navegador (como las escenas): no
 se comparte por la base todavia. Los cuadros del storyboard se guardan chicos
 (320 px) para no llenar el navegador.
+
+### Pedido de luces
+
+Solapa **Pedido de luces**, la arma el gaffer o el segundo del director de
+fotografia. Catalogo de mas de 90 equipos con la nomenclatura del medio y su
+consumo (HMI, LED, tungsteno, fluorescentes, practicos, grip, dolly y rieles,
+electrico, consumibles, transporte y servicios), buscador, y tres **pedidos
+base** (chico, mediano, grande) para no arrancar de cero.
+
+- Cada renglon tiene cantidad, **jornadas** (un 18K solo la jornada de
+  noche), consumo y precio por jornada; los consumibles se cobran por unidad.
+- **Potencia** por jornada: carga total, amperes a 220 V y por fase a 380 V, y
+  el **generador sugerido** (factor de potencia 0,8 y 25% de margen); avisa si
+  el generador pedido no alcanza.
+- **Totales**: subtotal, descuento del rental, IVA, total, y contra lo
+  presupuestado en el rubro 11 (paquete de luces, grip, grupo electrogeno,
+  camion). *Pasar al presupuesto* reparte el pedido en esas lineas.
+- **Rental**: se elige de los proveedores del rubro 11 del catalogo; los
+  precios que se cargan quedan recordados por rental para el proximo pedido.
+  Abajo se ofrecen los rentals de luces y grip encontrados en sus sitios
+  publicos que todavia no estan en el catalogo.
+- *Mandar al rental* arma el texto por categoria (con las fechas y lo que va
+  solo algunos dias) para WhatsApp o mail; *Bajar planilla* da el .csv.
+
+Los precios no vienen cargados: los rentals argentinos no publican listas de
+luces. Se cargan con la cotizacion.
 
 ### El modulo de plata
 
@@ -976,7 +1013,8 @@ node test/run.js test/parser.js     # parser de guion contra test/guion-ejemplo.
 node test/run.js test/desglose.js   # desglose, jornadas y puente al presupuesto
 node test/run.js test/importar.js  # PDF, DOCX, RTF, FDX y .doc contra test/muestras/
 node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
-node test/run.js test/plan-rodaje.js # plan de rodaje: sol, cascada, avisos, storyboard, cine
+node test/run.js test/plan-rodaje.js # plan de rodaje: sol, cascada, avisos, storyboard, guion tecnico, arrastre, cine
+node test/run.js test/pedido-luces.js # pedido de luces: equipos, jornadas, potencia, totales, rental
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
 node test/run.js test/contactos.js # lista de contactos y su circuito con catalogo y callsheet

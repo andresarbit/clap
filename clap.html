@@ -709,7 +709,19 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
 .pl-fila.cayo .pl-tit{color:var(--bad)}
 .pl-fila.tira-intd{border-left-color:#d9d9d9}.pl-fila.tira-extd{border-left-color:#e6c84a}
 .pl-fila.tira-intn{border-left-color:#4f7fd6}.pl-fila.tira-extn{border-left-color:#3fa66b}
-.pl-asa{cursor:grab;color:var(--tx3);font-size:11px;letter-spacing:-2px;user-select:none}
+.pl-asa{cursor:grab;color:var(--tx3);font-size:11px;letter-spacing:-2px;user-select:none;touch-action:none;padding:8px 0}
+.pl-fila[data-pl],.pl-carta[data-pl]{cursor:grab}
+.pl-fila .pl-h{touch-action:none}
+.pl-fila input,.pl-fila select,.pl-fila button{cursor:auto}
+.pl-ghost{position:fixed;z-index:300;pointer-events:none;opacity:.88;margin:0;background:var(--bg3);border:1px solid var(--ac);
+  border-radius:8px;box-shadow:0 14px 34px rgba(0,0,0,.55)}
+.pl-carta.pl-ghost{width:150px!important}
+.pl-arrastrando{opacity:.3}
+.pl-marcador{position:fixed;z-index:301;height:3px;margin-top:-1px;background:var(--ac);border-radius:2px;pointer-events:none}
+.pl-marcador span{position:absolute;right:8px;top:-10px;background:var(--ac);color:#111;font:700 11px var(--mono);padding:2px 7px;border-radius:4px}
+.pl-marcador span:empty{display:none}
+body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
+#pl-banco.drop{border-color:var(--info)}
 .pl-h{display:flex;flex-direction:column;font-family:var(--mono);line-height:1.15}
 .pl-h b{font-size:14px;color:var(--tx)}
 .pl-h span{font-size:10.5px;color:var(--tx3)}
@@ -750,6 +762,28 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
 .pl-cacc{display:flex;gap:4px;padding:6px 8px 8px}
 .pl-cacc select{flex:1;padding:3px 4px;font-size:11px}
 .pl-dood td.pl-t{color:var(--ac);font-weight:700}
+/* ---------- pedido de luces ---------- */
+.lz-cab{border-bottom:1px solid var(--line)}
+.lz-tab input{border:1px solid var(--line);background:var(--bg3);border-radius:5px}
+.lz-tab td{vertical-align:middle}
+.lz-acc{white-space:nowrap;text-align:right}
+@media (max-width:760px){ .lz-tab th:nth-child(4),.lz-tab td:nth-child(4){display:none} .lz-precio{width:84px} .lz-tab td:first-child{min-width:110px} }
+.lz-num{width:58px;padding:4px 6px;text-align:right;font-family:var(--mono)}
+.lz-precio{width:104px;padding:4px 6px;text-align:right;font-family:var(--mono)}
+.lz-js{display:flex;flex-wrap:wrap;gap:3px}
+.lz-j{padding:2px 7px;border:1px solid var(--line2);border-radius:4px;font:600 10.5px var(--mono);color:var(--tx3)}
+.lz-j.on{border-color:var(--ac);color:var(--ac);background:rgba(224,169,46,.1)}
+.lz-tot{display:flex;flex-direction:column;gap:6px;max-width:520px;margin-left:auto}
+.lz-tot>div{display:flex;justify-content:space-between;gap:12px;align-items:center;font-size:13px}
+.lz-tot>div b{font-family:var(--mono)}
+.lz-tot .lz-gran{border-top:1px solid var(--line2);padding-top:6px;font-size:15px}
+.lz-tot .lz-gran b{color:var(--ac)}
+.lz-rentals{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}
+.lz-rental{display:flex;flex-direction:column;gap:3px;padding:10px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg2);font-size:12px}
+.lz-rental b{font-size:13px}
+.lz-rental a{color:var(--info);font-size:11.5px;overflow-wrap:anywhere}
+.lz-rental .btn{align-self:flex-start;margin-top:4px}
+@media print{ .lz-j:not(.on){display:none} .lz-j{border:none;color:#000;padding:0 2px} .lz-num,.lz-precio{border:none;background:transparent;color:#000} }
 .pl-mini{width:64px;height:36px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-right:7px;border:1px solid var(--line)}
 .pl-dood td.pl-e{color:var(--warn)}
 @media (max-width:760px){
@@ -4670,7 +4704,7 @@ function chipIdentidad(pr){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['resumen','Resumen'],['guia','Instructivo'],['presu','Presupuesto'],['desglose','Desglose'],['plan','Plan de rodaje'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['personal','Alta y liquidación'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
+  const TABS=[['resumen','Resumen'],['guia','Instructivo'],['presu','Presupuesto'],['desglose','Desglose'],['plan','Plan de rodaje'],['luces','Pedido de luces'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['personal','Alta y liquidación'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -4726,6 +4760,7 @@ function cuerpo(pr,py,v){
   }
   if(DB.ui.tab==='desglose')  return vistaDesglose(py);
   if(DB.ui.tab==='plan')      return vistaPlan(pr,py,v);
+  if(DB.ui.tab==='luces')     return vistaLuces(pr,py,v);
   if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,v);
   if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,v);
   if(DB.ui.tab==='gastos')    return vistaGastos(pr,py,v);
@@ -8364,6 +8399,7 @@ function diasDelElenco(py){
 function vistaPlan(pr, py, v){
   const d = getD(), p = sincronizarPlan(py);
   asegurarEventosBase(py);
+  plInstalarArrastre();
   const S = [['dia','Día por día'],['jornadas','Todas las jornadas']];
   if(d.escenas.length || p.items.some(x => x.tipo === 'plano' && x.elenco)) S.push(['elenco','Elenco por jornada']);
   const sub = S.some(s => s[0] === DB.ui.subPlan) ? DB.ui.subPlan : 'dia';
@@ -8425,8 +8461,7 @@ function plChipsJornadas(py, num){
       const D = calcularDia(py, j.numero);
       const mal = D.avisos.some(a => a.nivel === 'mal');
       return `<button class="pl-chip ${j.numero===num?'on':''}" onclick="selJornada(${j.numero})"
-        ondragover="event.preventDefault();this.classList.add('drop')" ondragleave="this.classList.remove('drop')"
-        ondrop="plSoltarEn(event, ${j.numero})" title="Soltá un plano acá para pasarlo a esta jornada">
+        data-pl-j="${j.numero}" title="Soltá un plano acá para pasarlo a esta jornada">
         <b>J${j.numero}</b>
         <span>${j.fecha ? esc(fechaCorta(j.fecha)) : 'sin fecha'}</span>
         <span>${D.items} ${planPorEscenas(py) ? 'esc' : 'pl'} · ${D.items ? 'wrap ' + aHora(D.fin) : '—'}</span>
@@ -8434,8 +8469,7 @@ function plChipsJornadas(py, num){
       </button>`; }).join('')}
     <button class="pl-chip pl-mas" onclick="plJornadaNueva()">+ Jornada</button>
     <button class="pl-chip pl-banco ${banco?'':'vacio'}" onclick="document.getElementById('pl-banco')?.scrollIntoView({behavior:'smooth'})"
-      ondragover="event.preventDefault();this.classList.add('drop')" ondragleave="this.classList.remove('drop')"
-      ondrop="plSoltarEn(event, 0)" title="Los planos sin jornada">
+      data-pl-j="0" title="Los planos sin jornada">
       <b>Banco</b><span>${banco} plano${banco==1?'':'s'} sin jornada</span></button>
   </div>`;
 }
@@ -8514,7 +8548,7 @@ function plDiaHTML(pr, py, v){
       <select class="pl-evsel" onchange="if(this.value){plNuevoEvento(this.value);this.value=''}">
         <option value="">+ Evento…</option>
         ${PLAN_EVENTOS.map(e => `<option value="${e.k}">${esc(e.l)}</option>`).join('')}</select>
-      <button class="btn sm" onclick="plStoryboard()" title="Imágenes o un PDF: cada cuadro es un plano">Cargar storyboard</button>
+      <button class="btn sm" onclick="plStoryboard()" title="Imágenes, un PDF, o el guion técnico en Excel: cada cuadro o renglón es un plano">Cargar storyboard o guion técnico</button>
       <button class="btn sm" onclick="plShotList()" title="Pegá la lista de planos del director, uno por renglón">Pegar lista de planos</button>
       <button class="btn sm" onclick="plAcomodar()" title="Junta los planos del mismo set y emplazamiento, de lo abierto a lo cerrado, y deja para el final los de hora dorada y noche">Acomodar por emplazamiento</button>
       <div style="flex:1"></div>
@@ -8525,7 +8559,7 @@ function plDiaHTML(pr, py, v){
       <button class="chipb ${!filtro?'on':''}" onclick="DB.ui.plPieza=null;R()">Todo</button>
       ${piezas.map(x => `<button class="chipb ${filtro===x.id?'on':''}" onclick="DB.ui.plPieza='${x.id}';R()">${esc(nombrePieza(py, x.id))}</button>`).join('')}</div>` : ''}
 
-    <div class="pl-lista" ondragover="event.preventDefault()" ondrop="plSoltarAlFinal(event, ${num})">
+    <div class="pl-lista" data-pl-lista="${num}">
       ${filasHTML.join('') || `<div class="empty">Esta jornada está vacía. Sumá planos, eventos o arrastralos desde el banco.</div>`}
     </div>
     ${plElencoDiaHTML(py, num, D)}
@@ -8587,14 +8621,13 @@ function plFilaHTML(py, f, mal){
   const dur = `<label class="pl-dur" title="Minutos. Vacío = el cálculo automático">
       <input type="number" min="1" step="5" value="${n(it.duracion) > 0 ? n(it.duracion) : ''}" placeholder="${f.dur}"
         onchange="plDur('${id}', this.value)"><span>min</span></label>`;
-  const drag = `draggable="true" ondragstart="plArrastrar(event,'${id}')" ondragover="event.preventDefault();this.classList.add('drop')"
-      ondragleave="this.classList.remove('drop')" ondrop="plSoltarSobre(event,'${id}')"`;
+  const drag = `data-pl="${id}"`;
   const hora = `<div class="pl-h"><b>${aHora(f.inicio)}</b><span>${aHora(f.fin)}</span></div>`;
 
   if(it.tipo === 'evento'){
     const ev = PLAN_EVENTO(it.clase);
     return `<div class="pl-fila pl-ev ${it.clase} ${mal ? 'mal' : ''}" ${drag}>
-      <span class="pl-asa noprint">⋮⋮</span>${hora}
+      <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
       <div class="pl-main"><div class="pl-tit">${esc(it.desc || ev.l)}${it.desc && it.desc !== ev.l ? `<span class="muted"> · ${esc(ev.l)}</span>` : ''}</div>
         <div class="pl-meta">${it.fijo ? `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>` : ''}${f.tarde > TOLERANCIA_FIJO ? `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>` : ''}${it.notas ? `<span>${esc(it.notas)}</span>` : ''}</div></div>
       ${dur}<span></span>${acciones}</div>`;
@@ -8606,7 +8639,7 @@ function plFilaHTML(py, f, mal){
     const noche = /NOCHE|NIGHT|MADRUGADA/.test(e.momento || '');
     const tira = (e.intExt === 'INT' ? 'int' : 'ext') + (noche ? 'n' : 'd');
     return `<div class="pl-fila pl-esc tira-${tira} ${it.estado} ${mal ? 'mal' : ''}" ${drag}>
-      <span class="pl-asa noprint">⋮⋮</span>${hora}
+      <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
       <div class="pl-main"><div class="pl-tit"><b class="pl-num">Esc ${esc(e.numero || '')}</b>
         <span class="eie ${e.intExt==='INT'?'int':'ext'}">${esc(e.intExt || '')}</span> ${esc(e.locacion || '')}
         <span class="emom ${/NOCHE|NIGHT|MADRUGADA/.test(e.momento||'')?'noche':''}">${esc(e.momento || '')}</span></div>
@@ -8626,7 +8659,7 @@ function plFilaHTML(py, f, mal){
     it.fijo && `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>`, f.tarde > TOLERANCIA_FIJO && `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>`,
     it.prioridad === 'seguridad' && `<span class="pl-tag seg" title="Es lo primero que se corta si el día se atrasa">de seguridad</span>`].filter(Boolean).join('');
   return `<div class="pl-fila pl-plano ${it.estado} ${mal ? 'mal' : ''}" ${drag}>
-    <span class="pl-asa noprint">⋮⋮</span>${hora}
+    <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
     <div class="pl-main pl-conimg">
       ${it.img ? `<img class="pl-img" src="${it.img}" alt="" onclick="plVerImagen('${id}')">` : `<span class="pl-img vacia">${esc(it.numero || '—')}</span>`}
       <div><div class="pl-tit"><b class="pl-num">${esc(it.numero || '—')}</b> ${esc(it.desc || '')}</div>
@@ -8657,14 +8690,14 @@ function plBancoHTML(py){
   const p = planDe(py);
   const banco = p.items.filter(x => x.jornada == null && x.tipo === 'plano').sort((a,b) => a.orden - b.orden);
   const d = getD();
-  return `<div class="card pl-bancoc noprint" id="pl-banco" ondragover="event.preventDefault()" ondrop="plSoltarEn(event, 0)">
+  return `<div class="card pl-bancoc noprint" id="pl-banco" data-pl-j="0">
     <h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Banco de planos
       <span class="muted" style="font-size:12px;font-weight:500">${banco.length ? `${banco.length} sin jornada · arrastralos a una jornada o usá →` : 'vacío'}</span>
       <span style="flex:1"></span>
-      <button class="btn sm" onclick="plStoryboard(true)">Cargar storyboard</button>
+      <button class="btn sm" onclick="plStoryboard(true)">Cargar storyboard o guion técnico</button>
       <button class="btn sm" onclick="plShotList(true)">Pegar lista de planos</button>
       <button class="btn sm" onclick="plEditar(null,'plano',true)">+ Plano</button></h3>
-    ${banco.length ? `<div class="pl-grilla">${banco.map(it => `<div class="pl-carta" draggable="true" ondragstart="plArrastrar(event,'${it.id}')">
+    ${banco.length ? `<div class="pl-grilla">${banco.map(it => `<div class="pl-carta" data-pl="${it.id}">
         ${it.img ? `<img src="${it.img}" alt="" onclick="plVerImagen('${it.id}')">` : `<div class="pl-cimg">${esc(it.numero || '—')}</div>`}
         <div class="pl-ctx"><b>${esc(it.numero || '—')}</b> ${esc(it.desc || '')}</div>
         <div class="pl-cacc">
@@ -8899,10 +8932,6 @@ function plSoltarEn(ev, num){
   if(!num && it.tipo === 'evento') return;
   moverItem(py, it, num || null); toast(num ? `Pasado a la jornada ${num}` : 'Al banco'); RP();
 }
-function plSoltarAlFinal(ev, num){
-  if(ev.defaultPrevented && ev.cancelBubble) return;
-  plSoltarEn(ev, num);
-}
 
 /* ---------- editar un plano o un evento ---------- */
 function plEditar(id, tipo, alBanco){
@@ -9033,10 +9062,11 @@ function plAjustesOk(){
 function plStoryboard(alBanco){
   const py = getPy(), d = getD(), piezas = piezasDe(py);
   abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
-    <h3>Cargar storyboard</h3><div class="mbody">
-      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">Cada cuadro se vuelve un plano, numerado en orden.
-        Después se completa el set, el emplazamiento y la luz, y se acomoda.</div>
-      <label class="f"><span>Imágenes (JPG, PNG) o un PDF</span><input type="file" id="pl-sb" accept="image/*,.pdf,application/pdf" multiple></label>
+    <h3>Cargar storyboard o guion técnico</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">De un storyboard (imágenes o PDF) cada cuadro se vuelve un plano,
+        numerado en orden. De un guion técnico en Excel (.xlsx) o .csv, cada renglón es un plano: se reconocen las columnas
+        (plano, descripción, tamaño, movimiento, lente, locación, INT/EXT, día/noche, elenco, audio…) y las imágenes pegadas en cada fila.</div>
+      <label class="f"><span>Imágenes, PDF, Excel o CSV</span><input type="file" id="pl-sb" accept="image/*,.pdf,application/pdf,.xlsx,.csv,.tsv,.txt" multiple></label>
       <div class="grid2">
         ${sel('Cuadros por página (PDF)','grilla','1x1',[['1x1','1 (la página entera)'],['1x2','2 (uno arriba del otro)'],['2x1','2 (uno al lado del otro)'],
           ['2x2','4 (2 × 2)'],['3x2','6 (3 × 2)'],['2x3','6 (2 × 3)'],['3x3','9 (3 × 3)'],['4x3','12 (4 × 3)']].map(([v,l]) => ({v, l})))}
@@ -9098,7 +9128,7 @@ async function plStoryboardOk(){
   const py = getPy(), o = datos();
   const inp = document.getElementById('pl-sb'), estado = document.getElementById('pl-sb-estado');
   const files = inp && inp.files ? [...inp.files] : [];
-  if(!files.length){ toast('Elegí las imágenes o el PDF'); return; }
+  if(!files.length){ toast('Elegí las imágenes, el PDF o la planilla'); return; }
   const avance = t => { if(estado) estado.textContent = t; };
   const [cols, filas] = String(o.grilla || '1x1').split('x').map(Number);
   const piezaId = o.piezaId || null, num = o.destino === '' || o.destino == null ? null : parseInt(o.destino, 10);
@@ -9108,6 +9138,26 @@ async function plStoryboardOk(){
     const orden = files.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
     for(const f of orden){
       if(/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) cuadros.push(...await cuadrosDePdf(f, cols || 1, filas || 1, avance));
+      else if(/\.xlsx$/i.test(f.name)){
+        avance(`Leyendo ${f.name}…`);
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        const ps = await planosDeXlsx(bytes);
+        if(!ps.length) throw new Error(`En ${f.name} no encontré las columnas de un guion técnico (Plano, Descripción, Tamaño…).`);
+        for(const x of ps){
+          let img = '';
+          if(x.archivoImg){ try{
+            const b = await zipEntrada(bytes, x.archivoImg);
+            const tipo = /\.png$/i.test(x.archivoImg) ? 'image/png' : /\.gif$/i.test(x.archivoImg) ? 'image/gif' : 'image/jpeg';
+            img = (await achicarImagen(new Blob([b], {type: tipo}), 320, 0.6)).dataUrl;
+          }catch(e){ /* un EMF o algo que el navegador no abre: el plano queda sin cuadro */ } }
+          cuadros.push({img, datos: x});
+        }
+      }
+      else if(/\.(csv|tsv|txt)$/i.test(f.name)){
+        const txt = await f.text();
+        const G = leerGuionTecnico(filasDeTexto(txt));
+        (G ? G.planos : leerShotList(txt)).forEach(x => cuadros.push({img:'', datos:x}));
+      }
       else { avance(`Achicando ${f.name}…`); cuadros.push({img:(await achicarImagen(f, 320, 0.6)).dataUrl, nombre:f.name}); }
     }
   }catch(e){ avance(''); toast(e.message || 'No pude leer el archivo'); return; }
@@ -9115,10 +9165,321 @@ async function plStoryboardOk(){
   if(!cuadros.length){ toast('No encontré cuadros en lo que subiste'); return; }
   let k = sigNumeroPlano(py, piezaId);
   const p = planDe(py);
-  cuadros.forEach(c => { const it = nuevoItemPlan({tipo:'plano', numero:String(k++), img:c.img, piezaId}); p.items.push(it); meterEnJornada(py, it, num); });
+  cuadros.forEach(c => {
+    const {fila, archivoImg, ...x} = c.datos || {};
+    const it = nuevoItemPlan({...x, tipo:'plano', numero: x.numero || String(k), img:c.img, piezaId});
+    const nn = parseInt(it.numero, 10); k = isFinite(nn) ? Math.max(k, nn + 1) : k + 1;
+    p.items.push(it); meterEnJornada(py, it, num); });
   cerrar();
   const esp = espacioUsado();
   toast(`${cuadros.length} plano${cuadros.length == 1 ? '' : 's'} cargado${cuadros.length == 1 ? '' : 's'}${esp.pct > 80 ? ' · ⚠ el navegador está casi lleno' : ''}`);
+  RP();
+}
+
+
+/* ---------- guion técnico en planilla ----------
+   El guion técnico llega en Excel: una fila por plano, con columnas que cada
+   director nombra a su manera (Plano, N°, Toma; Descripción, Video, Acción;
+   Tamaño, Encuadre…) y muchas veces con el cuadro del storyboard pegado como
+   imagen en la fila. Se busca la fila de encabezados, se reconoce cada
+   columna por su nombre y cada imagen va al plano de su fila.               */
+async function xlsxHojas(bytes){
+  const nombres = zipNombres(bytes);
+  if(!nombres.some(x => x.startsWith('xl/'))) throw new Error('No parece una planilla .xlsx.');
+  const texto = xml => desentidad(xml.replace(/<rPh\b[\s\S]*?<\/rPh>/g,'').replace(/<[^>]+>/g,''));
+  let comp = [];
+  if(nombres.includes('xl/sharedStrings.xml')){
+    const ss = utf8(await zipEntrada(bytes, 'xl/sharedStrings.xml'));
+    comp = [...ss.matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>/g)].map(m => texto(m[1]).trim());
+  }
+  /* "../media/image1.png" desde xl/drawings, o "/xl/media/image1.png" */
+  const resolver = (base, t) => {
+    if(t.startsWith('/')) return t.slice(1);
+    const p = base.split('/'); p.pop();
+    t.split('/').forEach(x => { if(x === '..') p.pop(); else if(x && x !== '.') p.push(x); });
+    return p.join('/');
+  };
+  const rels = async ruta => {
+    const dir = ruta.split('/'); const arch = dir.pop();
+    const r = dir.join('/') + '/_rels/' + arch + '.rels';
+    if(!nombres.includes(r)) return [];
+    const xml = utf8(await zipEntrada(bytes, r));
+    return [...xml.matchAll(/<Relationship\b([^>]*)\/?>/g)].map(m => ({
+      id:(m[1].match(/\bId="([^"]+)"/)||[])[1], tipo:(m[1].match(/\bType="([^"]+)"/)||[])[1] || '',
+      dest: resolver(ruta, (m[1].match(/\bTarget="([^"]+)"/)||[])[1] || '')}));
+  };
+  const hojas = nombres.filter(x => /^xl\/worksheets\/sheet\d+\.xml$/.test(x))
+    .sort((a,b) => +a.match(/(\d+)\.xml/)[1] - +b.match(/(\d+)\.xml/)[1]);
+  const out = [];
+  for(const h of hojas){
+    const xml = utf8(await zipEntrada(bytes, h));
+    const filas = [];
+    for(const fila of xml.matchAll(/<row\b([^>]*)>([\s\S]*?)<\/row>/g)){
+      const r = +((fila[1].match(/\br="(\d+)"/)||[])[1] || filas.length + 1);
+      const celdas = [];
+      for(const c of fila[2].matchAll(/<c\b([^>]*?)(?:\/>|>([\s\S]*?)<\/c>)/g)){
+        const at = c[1], cuerpo = c[2] || '';
+        const ref = (at.match(/\br="([A-Z]+)\d+"/)||[])[1]; if(!ref) continue;
+        const t = (at.match(/\bt="(\w+)"/)||[])[1];
+        const v = (cuerpo.match(/<v>([\s\S]*?)<\/v>/)||[])[1];
+        let val = '';
+        if(t === 's') val = comp[+v] || '';
+        else if(t === 'inlineStr') val = texto((cuerpo.match(/<is>([\s\S]*?)<\/is>/)||[])[1] || '');
+        else if(v !== undefined) val = desentidad(v);
+        celdas[colNum(ref) - 1] = String(val).replace(/\s+/g,' ').trim();
+      }
+      filas[r - 1] = celdas;
+    }
+    for(let i = 0; i < filas.length; i++) filas[i] ||= [];
+    /* las imágenes de la hoja y la fila donde están ancladas */
+    const imagenes = [];
+    for(const d of (await rels(h)).filter(x => /\/drawing$/.test(x.tipo))){
+      if(!nombres.includes(d.dest)) continue;
+      const dxml = utf8(await zipEntrada(bytes, d.dest));
+      const media = await rels(d.dest);
+      dxml.split(/<(?:\w+:)?(?:one|two)CellAnchor\b/).slice(1).forEach(a => {
+        const fila = (a.match(/<(?:\w+:)?from>[\s\S]*?<(?:\w+:)?row>(\d+)</)||[])[1];
+        const col = (a.match(/<(?:\w+:)?from>[\s\S]*?<(?:\w+:)?col>(\d+)</)||[])[1];
+        const emb = (a.match(/r:embed="([^"]+)"/)||[])[1];
+        const m = media.find(x => x.id === emb);
+        if(fila != null && m) imagenes.push({fila:+fila, col:+col, archivo:m.dest});
+      });
+    }
+    out.push({hoja:h, filas, imagenes});
+  }
+  return out;
+}
+async function bytesDeEntrada(bytes, nombre){ return zipEntrada(bytes, nombre); }
+
+/* CSV o texto separado por tabulaciones (lo que queda al copiar de Excel). */
+function filasDeTexto(txt){
+  const lineas = String(txt||'').replace(/\r\n?/g,'\n').split('\n');
+  const sep = lineas.some(l => l.includes('\t')) ? '\t' : (lineas.filter(l => l.includes(';')).length > lineas.filter(l => l.includes(',')).length ? ';' : ',');
+  return lineas.map(l => {
+    if(sep === '\t') return l.split('\t').map(x => x.trim());
+    const out = []; let cur = '', q = false;
+    for(let i = 0; i < l.length; i++){
+      const ch = l[i];
+      if(q){ if(ch === '"' && l[i+1] === '"'){ cur += '"'; i++; } else if(ch === '"') q = false; else cur += ch; }
+      else if(ch === '"') q = true; else if(ch === sep){ out.push(cur.trim()); cur = ''; } else cur += ch;
+    }
+    out.push(cur.trim()); return out;
+  });
+}
+
+/* Cómo se llaman las columnas de un guion técnico. El orden importa: la
+   primera que matchea se queda con la columna. */
+const COLUMNAS_GT = [
+  ['frame',      /^(frame|cuadro|story ?board|boceto|dibujo|referencia|ref)$/],
+  ['escena',     /^(esc|esc\.|escena|sc|scene|secuencia|sec)\b/],
+  ['emplazamiento', /(emplaz|set ?up|posicion de camara)/],
+  ['tiempo',     /(tiempo de (rodaje|filmacion)|min(utos)? de rodaje|estimado)/],
+  ['plano',      /^plano$/],
+  ['numero',     /^(n|n°|nº|no|nro|num|numero|#|toma|shot|plano n.*|n.* de plano|pl\.?|id)$/],
+  ['tamano',     /(tamano|encuadre|tipo de plano|valor de plano)/],
+  ['movimiento', /(movim|^mov\b|camara|soporte)/],
+  ['lente',      /(lente|optica|focal|^mm$)/],
+  ['intExt',     /^(int|ext|int\s*\/\s*ext|i\s*\/\s*e)$/],
+  ['luz',        /(dia\s*\/\s*noche|^d\s*\/\s*n$|momento|^luz$|^hora$)/],
+  ['set',        /(^set$|locacion|decorado|escenario|lugar|ubicacion)/],
+  ['elenco',     /(elenco|personaje|actor|actriz|talento|cast)/],
+  ['audio',      /(audio|sonido|^texto|dialogo|locucion|voz|^vo$|v\.o\.)/],
+  ['desc',       /(descrip|accion|que se ve|imagen|video|visual|contenido|detalle|plano descripcion)/],
+  ['duracion',   /(duracion|^dur\.?$|segundos|^seg|^tiempo$)/],
+  ['notas',      /(nota|observ|coment|arte|vestuario|utileria|efecto|vfx|requerim)/],
+];
+function leerGuionTecnico(filas){
+  const N = s => norm(s).replace(/[:.]+$/,'').trim();
+  /* la fila de encabezados: la que más nombres de columna reconoce */
+  let mejor = {i:-1, mapa:null, puntos:0};
+  for(let i = 0; i < Math.min(filas.length, 25); i++){
+    const fila = filas[i] || [], mapa = {}; let puntos = 0;
+    fila.forEach((c, k) => { if(!c) return; const t = N(c);
+      if(t.length > 40) return;
+      const col = COLUMNAS_GT.find(([kk, re]) => !(kk in mapa) && re.test(t));
+      if(col){ mapa[col[0]] = k; puntos++; } });
+    if(puntos > mejor.puntos) mejor = {i, mapa, puntos};
+  }
+  if(mejor.puntos < 2) return null;
+  const M = mejor.mapa, out = [];
+  const val = (fila, k) => k in M ? String(fila[M[k]] ?? '').trim() : '';
+  /* "Plano" a secas puede ser el número o el tamaño: si hay otra columna
+     de tamaño es el número; si no, se mira qué tiene */
+  if('plano' in M){
+    const vals = filas.slice(mejor.i + 1).map(f => String((f||[])[M.plano] || '')).filter(Boolean);
+    const numericos = vals.filter(v => /^\d{1,3}[a-z]?$/i.test(v)).length;
+    if(!('numero' in M) && ('tamano' in M || (vals.length && numericos > vals.length / 2))) M.numero = M.plano;
+    else if(!('tamano' in M)) M.tamano = M.plano;
+    delete M.plano;
+  }
+  for(let i = mejor.i + 1; i < filas.length; i++){
+    const f = filas[i] || [];
+    const desc = val(f, 'desc'), numero = val(f, 'numero');
+    if(!desc && !numero && !val(f, 'tamano')) continue;
+    if(/^(total|totales|duracion total)$/i.test(norm(desc || numero))) continue;
+    const base = leerShotList((numero ? numero + ' ' : '') + [val(f,'tamano'), desc, val(f,'movimiento'), val(f,'lente')].filter(Boolean).join(', '))[0] || {};
+    const tam = val(f, 'tamano'), mov = val(f, 'movimiento');
+    const tamano = (ABREV_TAMANO.find(([re]) => re.test(tam)) || [])[1] || (TAMANOS.includes(tam) ? tam : base.tamano || '');
+    const movimiento = (ABREV_MOV.find(([re]) => re.test(mov)) || [])[1] || base.movimiento || '';
+    const ie = val(f, 'intExt'), luzTxt = norm(val(f, 'luz'));
+    const notas = [val(f,'audio') && 'Audio: ' + val(f,'audio'), val(f,'duracion') && 'En pantalla: ' + val(f,'duracion'),
+      val(f,'escena') && 'Esc ' + val(f,'escena'), val(f,'notas')].filter(Boolean).join(' · ');
+    out.push({fila:i, numero: numero.replace(/\.0$/,''), desc: desc || base.desc || '', tamano, movimiento,
+      lente: val(f,'lente') ? (/mm/i.test(val(f,'lente')) ? val(f,'lente') : val(f,'lente') + 'mm') : (base.lente || ''),
+      set: val(f, 'set'), emplazamiento: val(f, 'emplazamiento'),
+      intExt: /ext/i.test(ie) ? 'EXT' : /int/i.test(ie) ? 'INT' : (base.intExt || ''),
+      luz: /noche|night/.test(luzTxt) ? 'noche' : /dorad|atardec|amanec|ocaso|golden/.test(luzTxt) ? 'dorada' : /azul|blue/.test(luzTxt) ? 'azul'
+        : /dia|day/.test(luzTxt) ? 'dia' : (base.luz || ''),
+      elenco: val(f, 'elenco'), duracion: n(val(f, 'tiempo')) > 0 ? n(val(f, 'tiempo')) : null, notas});
+  }
+  return {planos: out, filaEncabezado: mejor.i, columnas: Object.keys(M)};
+}
+/* Una planilla entera: la hoja que tenga guion técnico, con sus imágenes
+   asignadas a cada plano (la de su fila, o la más cercana para arriba). */
+async function planosDeXlsx(bytes){
+  const hojas = await xlsxHojas(bytes);
+  const res = [];
+  for(const h of hojas){
+    const G = leerGuionTecnico(h.filas);
+    if(!G || !G.planos.length) continue;
+    const filasPlano = G.planos.map(p => p.fila);
+    for(const im of h.imagenes){
+      if(im.fila <= G.filaEncabezado) continue;
+      let k = -1;
+      filasPlano.forEach((fp, idx) => { if(fp <= im.fila) k = idx; });
+      if(k >= 0 && !G.planos[k].archivoImg) G.planos[k].archivoImg = im.archivo;
+    }
+    res.push(...G.planos);
+  }
+  return res;
+}
+
+/* ---------- arrastrar renglones con el mouse o el dedo ----------
+   Se agarra un renglón (en la compu, de cualquier parte que no sea un campo;
+   en el celular, de la hora o de la manija) y se lo lleva arriba o abajo:
+   mientras se mueve, una línea marca dónde cae y a qué hora empezaría. Se
+   puede soltar sobre la ficha de otra jornada o sobre el banco. Si lo que se
+   mueve tenía hora fija (el almuerzo), la hora fija pasa a ser la nueva.   */
+let _plDrag = null, _plSinClick = false;
+function plInstalarArrastre(){
+  if(typeof document === 'undefined' || typeof document.addEventListener !== 'function' || plInstalarArrastre.hecho) return;
+  plInstalarArrastre.hecho = true;
+  document.addEventListener('pointerdown', plDragInicio);
+  document.addEventListener('click', ev => { if(_plSinClick){ ev.stopPropagation(); ev.preventDefault(); _plSinClick = false; } }, true);
+}
+function plDragInicio(ev){
+  if(ev.button != null && ev.button !== 0) return;
+  const el = ev.target.closest && ev.target.closest('[data-pl]');
+  if(!el) return;
+  const asa = ev.target.closest('.pl-asa, .pl-h');
+  if(!asa && (ev.pointerType === 'touch' || ev.target.closest('input,select,button,textarea,a,label'))) return;
+  _plDrag = {id: el.dataset.pl, el, x0: ev.clientX, y0: ev.clientY, activo: false};
+  document.addEventListener('pointermove', plDragMover, {passive: false});
+  document.addEventListener('pointerup', plDragFin);
+  document.addEventListener('pointercancel', plDragCancelar);
+  document.addEventListener('keydown', plDragEsc);
+}
+/* Escape o un gesto cancelado por el sistema: vuelve todo como estaba. */
+function plDragEsc(ev){ if(ev.key === 'Escape') plDragCancelar(); }
+function plDragCancelar(){ if(_plDrag) _plDrag.destino = null; plDragFin(); }
+function plDragMover(ev){
+  const D = _plDrag; if(!D) return;
+  if(!D.activo){
+    if(Math.hypot(ev.clientX - D.x0, ev.clientY - D.y0) < 6) return;
+    D.activo = true;
+    const r = D.el.getBoundingClientRect();
+    D.dx = ev.clientX - r.left; D.dy = ev.clientY - r.top;
+    D.ghost = D.el.cloneNode(true);
+    D.ghost.classList.add('pl-ghost');
+    D.ghost.style.width = r.width + 'px';
+    document.body.appendChild(D.ghost);
+    D.marca = document.createElement('div'); D.marca.className = 'pl-marcador'; D.marca.innerHTML = '<span></span>';
+    document.body.appendChild(D.marca);
+    D.el.classList.add('pl-arrastrando');
+    document.body.classList.add('pl-moviendo');
+  }
+  ev.preventDefault();
+  D.ghost.style.left = (ev.clientX - D.dx) + 'px';
+  D.ghost.style.top = (ev.clientY - D.dy) + 'px';
+  /* auto-scroll cerca de los bordes */
+  const main = document.querySelector('main');
+  if(main){ const mr = main.getBoundingClientRect();
+    if(ev.clientY < mr.top + 50) main.scrollTop -= 14; else if(ev.clientY > mr.bottom - 50) main.scrollTop += 14; }
+  document.querySelectorAll('.pl-chip.drop,#pl-banco.drop').forEach(x => x.classList.remove('drop'));
+  D.destino = null;
+  const bajo = document.elementFromPoint(ev.clientX, ev.clientY);
+  const zona = bajo && bajo.closest('[data-pl-j]');
+  if(zona){
+    zona.classList.add('drop'); D.marca.style.display = 'none';
+    D.destino = {num: +zona.dataset.plJ};
+    return;
+  }
+  const lista = document.querySelector('.pl-lista[data-pl-lista]');
+  if(!lista){ D.marca.style.display = 'none'; return; }
+  const lr = lista.getBoundingClientRect();
+  if(ev.clientX < lr.left - 40 || ev.clientX > lr.right + 40 || ev.clientY < lr.top - 30 || ev.clientY > lr.bottom + 30){
+    D.marca.style.display = 'none'; return; }
+  const filas = [...lista.querySelectorAll('[data-pl]')].filter(x => x !== D.el);
+  let antes = null, y = null;
+  for(const f of filas){ const r = f.getBoundingClientRect();
+    if(ev.clientY < r.top + r.height / 2){ antes = f; y = r.top; break; } }
+  if(!antes && filas.length) y = filas[filas.length-1].getBoundingClientRect().bottom;
+  if(y == null) y = lr.top;
+  const num = +lista.dataset.plLista;
+  D.destino = {num, antesDe: antes ? antes.dataset.pl : null};
+  D.marca.style.display = 'block';
+  D.marca.style.left = lr.left + 'px'; D.marca.style.width = lr.width + 'px'; D.marca.style.top = (y - 1) + 'px';
+  const clave = num + '|' + D.destino.antesDe;
+  if(clave !== D.claveHora){
+    D.claveHora = clave;
+    const h = plHoraSiSeMueve(getPy(), D.id, num, D.destino.antesDe);
+    D.marca.firstChild.textContent = h != null ? 'empieza ' + aHora(h) : '';
+  }
+}
+/* A qué hora empezaría el ítem si se lo pone ahí (sin su hora fija). */
+function plHoraSiSeMueve(py, id, num, antesDe){
+  const it = plItem(id); if(!it) return null;
+  const guardado = {jornada: it.jornada, orden: it.orden, fijo: it.fijo};
+  const otros = planDe(py).items.filter(x => x.jornada === num && x !== it);
+  const ref = antesDe ? otros.find(x => x.id === antesDe) : null;
+  it.jornada = num; it.fijo = '';
+  it.orden = ref ? ref.orden - 0.5 : Math.max(0, ...otros.map(x => x.orden)) + 1;
+  let h = null;
+  try{ const f = calcularDia(py, num).filas.find(r => r.it === it); h = f ? f.inicio : null; }
+  finally{ Object.assign(it, guardado); }
+  return h;
+}
+function plDragFin(){
+  const D = _plDrag; _plDrag = null;
+  document.removeEventListener('pointermove', plDragMover);
+  document.removeEventListener('pointerup', plDragFin);
+  document.removeEventListener('pointercancel', plDragCancelar);
+  document.removeEventListener('keydown', plDragEsc);
+  if(!D || !D.activo) return;
+  _plSinClick = true; setTimeout(() => { _plSinClick = false; }, 50);
+  D.ghost && D.ghost.remove(); D.marca && D.marca.remove();
+  D.el.classList.remove('pl-arrastrando'); document.body.classList.remove('pl-moviendo');
+  document.querySelectorAll('.pl-chip.drop,#pl-banco.drop').forEach(x => x.classList.remove('drop'));
+  if(!D.destino) return;
+  plMoverA(D.id, D.destino.num || null, D.destino.antesDe);
+}
+/* Lo que hace soltar: pasar a otra jornada (o al banco) o cambiar de lugar
+   dentro del día. Separado del arrastre para poder probarlo. */
+function plMoverA(id, num, antesDe){
+  const py = getPy(), it = plItem(id); if(!it) return;
+  if(num == null && it.tipo === 'evento') return;
+  if(antesDe === undefined){ moverItem(py, it, num); toast(num == null ? 'Al banco' : `Pasado a la jornada ${num}`); RP(); return; }
+  const natural = aMin(it.fijo) != null ? plHoraSiSeMueve(py, id, num, antesDe) : null;
+  if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); if(e && e.jornada !== num){ e.jornada = num; sincronizarJornadas(getD()); } }
+  const otros = planDe(py).items.filter(x => x.jornada === num && x !== it);
+  const ref = antesDe ? otros.find(x => x.id === antesDe) : null;
+  it.jornada = num;
+  it.orden = ref ? ref.orden - 0.5 : Math.max(0, ...otros.map(x => x.orden)) + 1;
+  reordenar(py, num);
+  if(natural != null){
+    it.fijo = aHora(Math.round(natural / 5) * 5);
+    toast(`${etiquetaItem(py, it).replace(/^El |^La /, '')} ahora a las ${it.fijo}`);
+  }
   RP();
 }
 
@@ -9128,7 +9489,8 @@ function plShotList(alBanco){
   abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:600px">
     <h3>Pegar la lista de planos</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:8px">Un plano por renglón, como la manda el director.
-        Se reconoce el número, el tamaño (PG, PM, PP, PD…), el movimiento (travelling, steadicam, dron…), INT/EXT, la lente y la luz (hora dorada, noche).</div>
+        Se reconoce el número, el tamaño (PG, PM, PP, PD…), el movimiento (travelling, steadicam, dron…), INT/EXT, la lente y la luz (hora dorada, noche).
+        También se puede pegar un pedazo de planilla copiado de Excel, con su fila de encabezados.</div>
       <textarea name="texto" rows="10" placeholder="1 PG EXT casa, dron, hora dorada&#10;2 PM Ana entra a la cocina, steadicam&#10;3 PD mano abre la heladera, 100mm&#10;3A PP Ana sonríe"></textarea>
       <div class="grid2">
         ${sel('Van a','destino',alBanco || DB.ui.jornada == null ? '' : String(DB.ui.jornada),[{v:'', l:'Banco (sin jornada)'}, ...d.jornadas.map(j => ({v:String(j.numero), l:'Jornada ' + j.numero}))])}
@@ -9140,15 +9502,511 @@ function plShotList(alBanco){
 }
 function plShotListOk(){
   const py = getPy(), o = datos();
-  const lista = leerShotList(o.texto);
+  /* copiado de una planilla (con encabezados): se lee como guion técnico */
+  const G = /\t/.test(o.texto || '') ? leerGuionTecnico(filasDeTexto(o.texto)) : null;
+  const lista = G && G.planos.length ? G.planos.map(({fila, ...x}) => ({...x, set: x.set || ''})) : leerShotList(o.texto);
   if(!lista.length){ toast('No hay renglones para cargar'); return; }
   const piezaId = o.piezaId || null, num = !o.destino ? null : parseInt(o.destino, 10);
   let k = sigNumeroPlano(py, piezaId);
   const p = planDe(py);
-  lista.forEach(x => { const it = nuevoItemPlan({...x, tipo:'plano', numero: x.numero || String(k), piezaId, set:(o.set || '').trim()});
+  lista.forEach(x => { const it = nuevoItemPlan({...x, tipo:'plano', numero: x.numero || String(k), piezaId, set:x.set || (o.set || '').trim()});
     const nn = parseInt(it.numero, 10); if(isFinite(nn)) k = Math.max(k, nn + 1); else k++;
     p.items.push(it); meterEnJornada(py, it, num); });
   cerrar(); toast(`${lista.length} plano${lista.length == 1 ? '' : 's'} cargado${lista.length == 1 ? '' : 's'}`); RP();
+}
+
+/* ==========================  PEDIDO DE LUCES  =============================
+   Lo arma el gaffer o el segundo del director de fotografía con el DF: qué
+   unidades, cuántas y para qué jornadas, más el grip, lo eléctrico y los
+   consumibles. Va al rental y vuelve con precio; de acá sale cuánta potencia
+   hace falta (y qué generador pedir) y cuánto cuesta contra lo presupuestado.
+
+   El catálogo de equipos es fijo, con la nomenclatura del medio y la potencia
+   de cada unidad. Los precios NO vienen puestos: no hay listas públicas de
+   los rentals argentinos para luces. Se cargan con la cotización del rental
+   y quedan recordados por rental para el próximo pedido.                  */
+
+const CATEGORIAS_LUZ = [
+  {k:'hmi',   l:'HMI'},
+  {k:'led',   l:'LED'},
+  {k:'tung',  l:'Tungsteno'},
+  {k:'fluo',  l:'Fluorescente'},
+  {k:'prac',  l:'Prácticos'},
+  {k:'pies',  l:'Grip · pies y agarres'},
+  {k:'ctrl',  l:'Grip · banderas, marcos y telas'},
+  {k:'mov',   l:'Grip · dolly y rieles'},
+  {k:'elec',  l:'Eléctrico'},
+  {k:'cons',  l:'Consumibles'},
+  {k:'serv',  l:'Transporte y servicios'},
+];
+const CAT_LUZ = k => CATEGORIAS_LUZ.find(c => c.k === k) || {k, l:k};
+/* w: consumo de la unidad en watts (0 si no consume). u: 'unidad' = se compra,
+   no se alquila por jornada. kva: potencia que entrega un generador. */
+const EQUIPOS_LUZ = [
+  ['hmi','HMI 18K Fresnel',18000],['hmi','HMI 12K Fresnel',12000],['hmi','Arrimax 18/12',18000],
+  ['hmi','HMI 6K Fresnel',6000],['hmi','HMI 4K Fresnel',4000],['hmi','HMI 4K Par',4000],
+  ['hmi','HMI 2.5K Fresnel',2500],['hmi','HMI 2.5K Par',2500],['hmi','HMI 1.2K Par',1500],['hmi','HMI 575 Par',700],
+  ['hmi','Arri M90',9000],['hmi','Arri M40',4000],['hmi','Arri M18',2000],
+  ['hmi','Joker 1600',1600],['hmi','Joker 800',800],['hmi','Joker 400',400],
+  ['led','Arri SkyPanel S360-C',1500],['led','Arri SkyPanel S120-C',400],['led','Arri SkyPanel S60-C',450],['led','Arri SkyPanel S30-C',220],
+  ['led','Aputure LS 1200d Pro',1440],['led','Aputure LS 600d Pro',720],['led','Aputure LS 600c Pro',720],['led','Aputure LS 300d II',350],
+  ['led','Aputure Nova P300c',360],['led','Creamsource Vortex24',1950],['led','Creamsource Vortex8',650],
+  ['led','Astera Titan Tube',72],['led','Astera Helios Tube',36],['led','LiteMat Plus 4',200],['led','LiteMat Plus 2',100],
+  ['led','Panel LED 1x1 bicolor',100],
+  ['tung','Fresnel 20K',20000],['tung','Fresnel 10K',10000],['tung','Fresnel 5K',5000],['tung','Fresnel 2K',2000],
+  ['tung','Fresnel 1K',1000],['tung','Fresnel 650',650],['tung','Fresnel 300',300],
+  ['tung','Blonde 2K (abierta)',2000],['tung','Redhead 800',800],['tung','Maxi Brute 9 lámparas',5850],['tung','Mini Brute 6 lámparas',3900],
+  ['tung','Par 64',1000],['tung','Space light 6K',6000],['tung','Kit Dedolight (3 unidades)',450],
+  ['fluo','Kino Flo 4 tubos 4\'',312],['fluo','Kino Flo 4 tubos 2\'',160],['fluo','Kino Flo 2 tubos 4\'',160],
+  ['prac','Chinese lantern 60 cm',500],['prac','Chinese lantern 90 cm',1000],['prac','Lámparas prácticas dimerizables',60],
+  ['pies','C-stand con brazo',0],['pies','Trípode combo',0],['pies','Trípode baby',0],['pies','High roller',0],
+  ['pies','Super clamp / mafer',0],['pies','Magic arm',0],['pies','Saco de arena',0],['pies','Juego de apple box',0],
+  ['ctrl','Bandera 18x24',0],['ctrl','Bandera 24x36',0],['ctrl','Floppy 4x4',0],['ctrl','Cutter 10x42',0],['ctrl','Difusor 4x4',0],
+  ['ctrl','Marco 6x6 con telas',0],['ctrl','Marco 8x8 con telas',0],['ctrl','Marco 12x12 con telas',0],['ctrl','Marco 20x20 con telas',0],
+  ['ctrl','Butterfly 12x12 armado',0],['ctrl','Tela ultrabounce',0],['ctrl','Tela grid cloth',0],['ctrl','Tela negra (duvetyne)',0],
+  ['ctrl','Tela silk / difusora',0],['ctrl','Rebotador de telgopor',0],['ctrl','Espejo',0],['ctrl','Chimera / softbox',0],['ctrl','Grilla (egg crate)',0],
+  ['mov','Dolly con rieles',0],['mov','Rieles rectos (tramo)',0],['mov','Rieles curvos (tramo)',0],['mov','Slider',0],['mov','Pluma / jib',0],
+  ['elec','Generador 20 kVA',0,{kva:20}],['elec','Generador 45 kVA',0,{kva:45}],['elec','Generador 60 kVA',0,{kva:60}],
+  ['elec','Generador 100 kVA',0,{kva:100}],['elec','Generador 150 kVA',0,{kva:150}],['elec','Generador 200 kVA',0,{kva:200}],
+  ['elec','Distribuidor trifásico',0],['elec','Cable de fuerza (tramo)',0],['elec','Prolongaciones y zapatillas (juego)',0],
+  ['elec','Dimmer 2K',0],['elec','Dimmer 5K',0],['elec','Consola DMX y cableado',0],['elec','Transmisor inalámbrico DMX (CRMX)',0],
+  ['cons','Gelatina CTO (pliego)',0,{u:'unidad'}],['cons','Gelatina CTB (pliego)',0,{u:'unidad'}],['cons','Gelatina ND (pliego)',0,{u:'unidad'}],
+  ['cons','Difusión 216 / 250 (pliego)',0,{u:'unidad'}],['cons','Cinefoil (rollo)',0,{u:'unidad'}],['cons','Cinta gaffer (rollo)',0,{u:'unidad'}],
+  ['cons','Pinzas de madera (bolsa)',0,{u:'unidad'}],
+  ['serv','Camión de luces con chofer',0],['serv','Camión de grip con chofer',0],['serv','Técnico / eléctrico del rental',0],
+  ['serv','Carga y descarga',0],['serv','Seguro del equipo',0],
+].map(([c, nombre, w, x]) => ({k: norm(nombre).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''), c, nombre, w, u:(x && x.u) || 'jornada', kva:(x && x.kva) || 0}));
+const EQUIPO_LUZ = k => EQUIPOS_LUZ.find(e => e.k === k) || null;
+
+/* Rentals de luces y grip encontrados en sus sitios públicos. Son una ayuda
+   para elegir; el contacto de cada uno se guarda en el catálogo. */
+const RENTALS_LUCES = [
+  {nombre:'Cámaras y Luces', web:'camarasyluces.com', zona:'CABA (Morlote 856)', rubros:'cámara, luces, grip, generadores, camiones, estudios'},
+  {nombre:'Alfavision', web:'alfavisionsrl.wixsite.com/sitioweb', zona:'Munro, Vicente López', rubros:'cámara, luces, grip, generadores, grúas'},
+  {nombre:'Camauer', web:'camauer.vercel.app', zona:'Parque Chas, CABA', rubros:'cámara, ópticas, luces, grip, energía'},
+  {nombre:'Estudio Alasur', web:'estudioalasur.com.ar', zona:'Buenos Aires', rubros:'cámara, luces, grip, generadores'},
+  {nombre:'RawCine', web:'rawcine.com.ar', zona:'Buenos Aires', rubros:'cámara, lentes, iluminación'},
+  {nombre:'Seguí Rodando', web:'seguirodando.com', zona:'CABA', rubros:'cámara, iluminación, sonido, grip'},
+  {nombre:'Rowing Rental', web:'rowingrental.com', zona:'Buenos Aires', rubros:'luces LED y HMI'},
+  {nombre:'Audium', web:'audium.com.ar', zona:'Saavedra, CABA', rubros:'iluminación, sonido'},
+  {nombre:'Tutuca Rental', web:'tutucarental.com', zona:'Buenos Aires', rubros:'cámara, luces, sonido'},
+  {nombre:'Algo Así Rental', web:'algoasirental.com', zona:'Buenos Aires', rubros:'cámara, lentes, luces, sonido'},
+];
+
+/* Pedidos base para no arrancar de cero: se suman y después se ajustan. */
+const KITS_LUCES = {
+  chico: {l:'Chico (spot chico, contenido, estudio)', items:[
+    ['Arri SkyPanel S60-C',2],['Aputure LS 600d Pro',2],['Aputure LS 300d II',1],['Astera Titan Tube',4],['Joker 800',1],
+    ['Kino Flo 4 tubos 4\'',2],['C-stand con brazo',10],['Trípode combo',4],['Bandera 18x24',4],['Bandera 24x36',4],
+    ['Floppy 4x4',2],['Marco 8x8 con telas',1],['Saco de arena',12],['Juego de apple box',1],
+    ['Prolongaciones y zapatillas (juego)',1],['Gelatina CTO (pliego)',2],['Gelatina CTB (pliego)',2],['Cinta gaffer (rollo)',2]]},
+  mediano: {l:'Mediano (publicidad estándar, serie)', items:[
+    ['HMI 4K Par',1],['Arri M18',2],['Arri SkyPanel S360-C',1],['Arri SkyPanel S60-C',4],['Aputure LS 1200d Pro',2],
+    ['Astera Titan Tube',8],['Kino Flo 4 tubos 4\'',2],['Fresnel 2K',2],['Fresnel 1K',2],['Kit Dedolight (3 unidades)',1],
+    ['C-stand con brazo',20],['Trípode combo',6],['High roller',2],['Bandera 18x24',6],['Bandera 24x36',6],['Floppy 4x4',4],
+    ['Marco 12x12 con telas',2],['Butterfly 12x12 armado',1],['Dolly con rieles',1],['Rieles rectos (tramo)',6],
+    ['Saco de arena',24],['Juego de apple box',2],['Generador 60 kVA',1],['Distribuidor trifásico',1],['Cable de fuerza (tramo)',6],
+    ['Dimmer 2K',2],['Camión de luces con chofer',1],['Gelatina CTO (pliego)',4],['Gelatina CTB (pliego)',4],
+    ['Difusión 216 / 250 (pliego)',4],['Cinta gaffer (rollo)',4]]},
+  grande: {l:'Grande (exteriores, noche, gran escala)', items:[
+    ['HMI 18K Fresnel',2],['HMI 12K Fresnel',1],['Arri M90',2],['Arri M40',2],['Arri SkyPanel S360-C',2],['Arri SkyPanel S60-C',8],
+    ['Creamsource Vortex24',2],['Astera Titan Tube',16],['Maxi Brute 9 lámparas',2],['Fresnel 5K',2],['Fresnel 2K',4],
+    ['C-stand con brazo',30],['Trípode combo',10],['High roller',6],['Bandera 24x36',10],['Floppy 4x4',6],
+    ['Marco 12x12 con telas',3],['Marco 20x20 con telas',1],['Butterfly 12x12 armado',2],['Dolly con rieles',1],['Rieles rectos (tramo)',10],
+    ['Saco de arena',40],['Juego de apple box',3],['Generador 150 kVA',1],['Distribuidor trifásico',2],['Cable de fuerza (tramo)',12],
+    ['Consola DMX y cableado',1],['Transmisor inalámbrico DMX (CRMX)',1],['Camión de luces con chofer',1],['Camión de grip con chofer',1],
+    ['Técnico / eléctrico del rental',1],['Gelatina CTO (pliego)',8],['Gelatina CTB (pliego)',8],['Difusión 216 / 250 (pliego)',8],['Cinta gaffer (rollo)',6]]},
+};
+
+function nuevoPedidoLuces(o={}){
+  return {rentalId:o.rentalId || null, rental:o.rental || '', armadoPor:o.armadoPor || '', estado:o.estado || 'borrador',
+    moneda:o.moneda || 'ARS', descuento:o.descuento ?? 0, iva:o.iva ?? true, notas:o.notas || '', items:o.items || []};
+}
+function nuevoItemLuz(o={}){
+  const e = o.k ? EQUIPO_LUZ(o.k) : null;
+  return {id:uid('lz'), k:o.k || null, nombre:o.nombre || (e ? e.nombre : ''), c:o.c || (e ? e.c : 'led'),
+    cant:o.cant ?? 1, w:o.w ?? (e ? e.w : 0), u:o.u || (e ? e.u : 'jornada'),
+    jornadas:o.jornadas ?? null,   /* null = todas */
+    precio:o.precio ?? 0, notas:o.notas || ''};
+}
+function pedidoDe(py){
+  py.pedidoLuces ||= nuevoPedidoLuces();
+  py.pedidoLuces.items ||= [];
+  return py.pedidoLuces;
+}
+/* Las jornadas del proyecto (las del plan / desglose). Sin jornadas cargadas
+   se cuenta una, para que el pedido igual dé un número. */
+function jornadasDeLuces(py){
+  const js = ((py.desglose && py.desglose.jornadas) || []).map(j => j.numero).sort((a,b) => a-b);
+  return js.length ? js : [1];
+}
+const jornadasDeItem = (py, it) => {
+  const todas = jornadasDeLuces(py);
+  return it.jornadas == null ? todas : it.jornadas.filter(x => todas.includes(x));
+};
+/* Lo que cuesta cada renglón: por jornada, o por unidad si es consumible. */
+function costoItemLuz(py, it){
+  if(it.u === 'unidad') return n(it.cant) * n(it.precio);
+  return n(it.cant) * n(it.precio) * jornadasDeItem(py, it).length;
+}
+/* Generador sugerido: la carga con factor de potencia 0,8 y un 25% de
+   margen, redondeada al tamaño de generador que se alquila. */
+const KVA_GENERADORES = [20, 45, 60, 100, 150, 200, 300, 500];
+function generadorPara(watts){
+  if(!watts) return 0;
+  const kva = watts / 0.8 / 1000 * 1.25;
+  return KVA_GENERADORES.find(x => x >= kva) || Math.ceil(kva / 50) * 50;
+}
+function calcularPedido(py){
+  const P = pedidoDe(py), js = jornadasDeLuces(py);
+  const porJornada = js.map(num => {
+    const w = P.items.filter(it => it.u !== 'unidad' && jornadasDeItem(py, it).includes(num)).reduce((s, it) => s + n(it.cant) * n(it.w), 0);
+    const kvaPedido = P.items.filter(it => jornadasDeItem(py, it).includes(num)).reduce((s, it) => {
+      const e = it.k ? EQUIPO_LUZ(it.k) : null; return s + (e && e.kva ? e.kva * n(it.cant) : 0); }, 0);
+    return {num, w, amp220: w / 220, ampFase: w / (380 * Math.sqrt(3) * 0.9), kva: generadorPara(w), kvaPedido};
+  });
+  const subtotal = P.items.reduce((s, it) => s + costoItemLuz(py, it), 0);
+  const descuento = subtotal * Math.min(100, Math.max(0, n(P.descuento))) / 100;
+  const neto = subtotal - descuento;
+  const iva = P.iva ? neto * 0.21 : 0;
+  const sinPrecio = P.items.filter(it => !n(it.precio)).length;
+  /* lo que dice el presupuesto para lo mismo */
+  const v = getV && getV();
+  const conceptos = ['Paquete de luces','Paquete de grip','Grupo electrógeno','Camión de luces','Camión de grip','Dolly y rieles'];
+  const presu = v ? v.rubros.filter(r => r.codigo === '11').flatMap(r => r.lineas)
+    .filter(l => conceptos.some(c => norm(l.concepto).startsWith(norm(c))))
+    .reduce((s, l) => s + conv(totalLinea(l, v), v.monedaBase, P.moneda, n(v.tc)), 0) : 0;
+  return {porJornada, wMax: Math.max(0, ...porJornada.map(x => x.w)), subtotal, descuento, neto, iva, total: neto + iva, sinPrecio, presu};
+}
+
+/* ---------- la solapa ---------- */
+function vistaLuces(pr, py, v){
+  const P = pedidoDe(py), C = calcularPedido(py), js = jornadasDeLuces(py);
+  const d = py.desglose || nuevoDesglose();
+  const rentalesCat = (DB.catalogo.personas || []).filter(p => p.tipo === 'proveedor' && p.rubro === '11')
+    .sort((a,b) => String(a.nombre).localeCompare(String(b.nombre)));
+  const rental = P.rentalId ? rentalesCat.find(p => p.id === P.rentalId) : null;
+  const porCat = {};
+  P.items.forEach(it => (porCat[it.c] ||= []).push(it));
+  const fmtM = x => fmt(x, P.moneda);
+  const fechaJ = num => { const j = d.jornadas.find(x => x.numero === num); return j && j.fecha ? fechaCorta(j.fecha) : ''; };
+  const fila = it => {
+    const jsIt = jornadasDeItem(py, it);
+    return `<tr>
+      <td><b>${esc(it.nombre)}</b>${it.notas ? `<span class="muted" style="display:block;font-size:10.5px">${esc(it.notas)}</span>` : ''}</td>
+      <td><input type="number" min="0" step="1" value="${n(it.cant)}" class="lz-num" onchange="lzUp('${it.id}','cant',this.value)"></td>
+      <td class="noprint-no">${it.u === 'unidad' ? '<span class="muted" style="font-size:11px">se compra</span>'
+        : `<div class="lz-js">${js.map(num => `<button class="lz-j ${jsIt.includes(num) ? 'on' : ''}" onclick="lzJornada('${it.id}',${num})"
+            title="${esc(fechaJ(num) || 'Jornada ' + num)}">J${num}</button>`).join('')}</div>`}</td>
+      <td class="num muted">${it.w ? (n(it.w) * n(it.cant) >= 1000 ? (n(it.w) * n(it.cant) / 1000).toFixed(1).replace('.0','') + ' kW' : n(it.w) * n(it.cant) + ' W') : '—'}</td>
+      <td><input type="number" min="0" step="any" value="${n(it.precio) || ''}" placeholder="—" class="lz-precio"
+        onchange="lzUp('${it.id}','precio',this.value)" title="Precio por ${it.u === 'unidad' ? 'unidad' : 'jornada'}"></td>
+      <td class="num">${n(it.precio) ? fmtM(costoItemLuz(py, it)) : '<span class="muted">—</span>'}</td>
+      <td class="noprint lz-acc"><button class="btn sm" onclick="lzEditar('${it.id}')" title="Editar">✎</button>
+        <button class="btn sm dgr" onclick="lzBorrar('${it.id}')" title="Quitar">×</button></td></tr>`;
+  };
+  const hayPresu = C.presu > 0;
+  return `<div class="cs lz">
+    <div class="cshead">
+      <div><div class="csttl">Pedido de luces</div>
+        <div class="cssub">${esc(py.nombre)} · ${esc(pr.nombre)} · ${js.length} jornada${js.length == 1 ? '' : 's'}${js.map(fechaJ).filter(Boolean).length ? ' (' + js.map(fechaJ).filter(Boolean).join(', ') + ')' : ''}</div></div>
+      <div style="text-align:right"><div class="csj">${C.total ? fmtM(C.total) : '—'}<span> total</span></div>
+        <div class="cssub">${P.items.length} renglón${P.items.length == 1 ? '' : 'es'}${C.sinPrecio ? ` · <b style="color:var(--warn)">${C.sinPrecio} sin precio</b>` : ''}</div></div>
+    </div>
+    <div class="pad grid2 lz-cab">
+      <label class="f"><span>Rental</span><select onchange="lzRental(this.value)">
+        <option value="">— elegir —</option>
+        ${rentalesCat.map(p => `<option value="${p.id}" ${p.id === P.rentalId ? 'selected' : ''}>${esc(p.nombre)}${p.funcion ? ' · ' + esc(p.funcion) : ''}</option>`).join('')}
+        <option value="+">+ Otro rental (sumarlo al catálogo)…</option></select></label>
+      <label class="f"><span>Armado por</span><input type="text" value="${esc(P.armadoPor)}" placeholder="Gaffer / 2° de foto"
+        onchange="lzCampo('armadoPor', this.value)"></label>
+      <label class="f"><span>Estado</span><select onchange="lzCampo('estado', this.value)">
+        ${[['borrador','Borrador'],['enviado','Enviado al rental'],['cotizado','Cotizado'],['confirmado','Confirmado']].map(([k,l]) =>
+          `<option value="${k}" ${P.estado === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="f"><span>Moneda</span><select onchange="lzCampo('moneda', this.value)">
+        ${['ARS','USD'].map(m => `<option ${P.moneda === m ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
+    </div>
+    ${rental ? `<div class="pad muted" style="font-size:12px;padding-top:0">${esc(rental.nombre)}${rental.tel ? ' · ' + esc(rental.tel) : ''}${rental.email ? ' · ' + esc(rental.email) : ''}${rental.notas ? ' · ' + esc(rental.notas) : ''}</div>` : ''}
+    <div class="pl-barra noprint">
+      <button class="btn sm pri" onclick="lzAgregar()">+ Equipo</button>
+      <select class="pl-evsel" onchange="if(this.value){lzKit(this.value);this.value=''}">
+        <option value="">Sumar un pedido base…</option>
+        ${Object.entries(KITS_LUCES).map(([k, x]) => `<option value="${k}">${esc(x.l)}</option>`).join('')}</select>
+      ${P.items.length ? `<button class="btn sm" onclick="lzEnviar()" title="El pedido en texto, para mandar por WhatsApp o mail">Mandar al rental</button>
+      <button class="btn sm" onclick="lzAlPresupuesto()" title="Pasa el total a las líneas de luces, grip, generador y camión del rubro 11">Pasar al presupuesto</button>
+      <button class="btn sm" onclick="lzCSV()">Bajar planilla</button>` : ''}
+      <div style="flex:1"></div>
+      ${P.items.length ? `<button class="btn sm dgr" onclick="lzVaciar()">Vaciar</button>` : ''}
+    </div>
+    ${P.items.length ? CATEGORIAS_LUZ.filter(c => porCat[c.k]).map(c => `<div class="csblock"><h4>${esc(c.l)}</h4>
+      <div class="scrollx"><table class="tbl cst lz-tab">
+        <thead><tr><th>Equipo</th><th style="width:62px">Cant.</th><th style="width:30%">Jornadas</th><th style="width:70px" class="num">Consumo</th>
+          <th style="width:110px">$ por jornada</th><th style="width:110px" class="num">Subtotal</th><th class="noprint" style="width:84px"></th></tr></thead>
+        <tbody>${porCat[c.k].map(fila).join('')}</tbody></table></div></div>`).join('')
+    : `<div class="pad"><div class="empty">Todavía no hay nada pedido.<br><span style="font-size:12px">Empezá por un pedido base (chico, mediano, grande)
+        y ajustalo, o sumá equipo por equipo.</span><br><br>
+        ${Object.entries(KITS_LUCES).map(([k, x]) => `<button class="btn" onclick="lzKit('${k}')">${esc(x.l.split(' (')[0])}</button>`).join(' ')}
+        <button class="btn pri" onclick="lzAgregar()">+ Equipo</button></div></div>`}
+    ${P.items.length ? `<div class="csblock"><h4>Potencia</h4><div class="scrollx"><table class="tbl cst">
+      <thead><tr><th>Jornada</th><th class="num">Carga total</th><th class="num">Monofásico 220 V</th><th class="num">Trifásico 380 V (por fase)</th>
+        <th class="num">Generador sugerido</th><th class="num">Pedido</th></tr></thead>
+      <tbody>${C.porJornada.map(x => `<tr><td>J${x.num}${fechaJ(x.num) ? ' · ' + esc(fechaJ(x.num)) : ''}</td>
+        <td class="num">${(x.w / 1000).toFixed(1)} kW</td><td class="num">${Math.round(x.amp220)} A</td><td class="num">${Math.round(x.ampFase)} A</td>
+        <td class="num">${x.kva ? x.kva + ' kVA' : '—'}</td>
+        <td class="num ${x.kva && x.kvaPedido < x.kva ? 'pl-rojo' : 'muted'}">${x.kvaPedido ? x.kvaPedido + ' kVA' : (x.kva ? 'sin generador' : '—')}</td></tr>`).join('')}</tbody></table></div>
+      <div class="pad muted" style="font-size:11px">Es la suma de todo lo pedido para ese día prendido a la vez, con factor de potencia 0,8 y un 25% de margen:
+        el gaffer sabe qué no se usa en simultáneo. Con más de ~25 A por línea monofásica conviene generador o toma trifásica.</div></div>` : ''}
+    ${P.items.length ? `<div class="csblock"><h4>Totales</h4><div class="pad lz-tot">
+      <div><span>Subtotal</span><b>${fmtM(C.subtotal)}</b></div>
+      <div><span>Descuento del rental <input type="number" min="0" max="100" step="any" value="${n(P.descuento)}" class="lz-num"
+        onchange="lzCampo('descuento', this.value)"> %</span><b>− ${fmtM(C.descuento)}</b></div>
+      <div><span><label><input type="checkbox" ${P.iva ? 'checked' : ''} onchange="lzCampo('iva', this.checked)" style="width:auto"> IVA 21%</label></span><b>${fmtM(C.iva)}</b></div>
+      <div class="lz-gran"><span>Total</span><b>${fmtM(C.total)}</b></div>
+      ${hayPresu ? `<div><span>Presupuestado (rubro 11: luces, grip, generador, camión)</span><b>${fmtM(C.presu)}</b></div>
+        <div><span>Diferencia</span><b class="${C.neto > C.presu ? 'pl-rojo' : ''}">${C.neto > C.presu ? '+ ' : '− '}${fmtM(Math.abs(C.neto - C.presu))}</b></div>` : ''}
+    </div>
+    ${C.sinPrecio ? `<div class="pad muted" style="font-size:11.5px;padding-top:0">Los precios se cargan con la cotización del rental: quedan guardados para el próximo pedido a ese rental.</div>` : ''}
+    </div>` : ''}
+    <div class="csblock"><h4>Notas para el rental</h4><div class="pad">
+      <textarea rows="2" placeholder="Retiro y devolución, horarios, quién retira, si va técnico del rental, seguro…"
+        onchange="lzCampo('notas', this.value)">${esc(P.notas)}</textarea></div></div>
+    <div class="csfoot">${esc(pr.nombre)} · ${esc(py.nombre)} · Pedido de luces${P.armadoPor ? ' · armado por ' + esc(P.armadoPor) : ''} · generado con CLAP</div>
+  </div>
+  ${lzRentalsHTML(rentalesCat)}`;
+}
+/* "Cámaras & Luces", "Camaras y Luces SRL" y "Cámaras y Luces" son el mismo. */
+const nomRental = s => norm(s).replace(/\b(y|e|rental|srl|sa)\b/g, '').replace(/[^a-z0-9]/g, '');
+/* Los rentals que encontramos y no están en el catálogo, para sumarlos. */
+function lzRentalsHTML(rentalesCat){
+  const faltan = RENTALS_LUCES.filter(r => !rentalesCat.some(p => nomRental(p.nombre) === nomRental(r.nombre)));
+  if(!faltan.length) return '';
+  return `<div class="card noprint"><h3>Rentals de luces y grip</h3><div class="pad">
+    <div class="muted" style="font-size:12px;margin:0 0 10px">Encontrados en sus sitios públicos y que todavía no están en el catálogo. Sumalos para elegirlos en el pedido.</div>
+    <div class="lz-rentals">${faltan.map(r => `<div class="lz-rental"><b>${esc(r.nombre)}</b>
+      <span class="muted">${esc(r.zona)} · ${esc(r.rubros)}</span>
+      <a href="https://${esc(r.web)}" target="_blank" rel="noopener">${esc(r.web)}</a>
+      <button class="btn sm" onclick="lzSumarRental('${esc(r.nombre).replace(/'/g, "\\'")}')">Sumar al catálogo</button></div>`).join('')}</div></div></div>`;
+}
+
+/* ---------- acciones ---------- */
+function lzPrecioRecordado(P, k){
+  const t = (DB.tarifaLuces || {})[P.rentalId || '_'] || {};
+  return k && t[k] ? t[k] : 0;
+}
+function lzRecordarPrecio(P, it){
+  if(!it.k || !n(it.precio)) return;
+  DB.tarifaLuces ||= {};
+  (DB.tarifaLuces[P.rentalId || '_'] ||= {})[it.k] = n(it.precio);
+}
+function lzSumar(py, k, cant){
+  const P = pedidoDe(py), e = EQUIPO_LUZ(k);
+  const ya = P.items.find(x => x.k === k);
+  if(ya){ ya.cant = n(ya.cant) + cant; return ya; }
+  const it = nuevoItemLuz({k, cant, precio: lzPrecioRecordado(P, k)});
+  P.items.push(it);
+  return it;
+}
+function lzKit(k){
+  const py = getPy(), kit = KITS_LUCES[k]; if(!kit) return;
+  kit.items.forEach(([nombre, cant]) => { const e = EQUIPOS_LUZ.find(x => x.nombre === nombre); if(e) lzSumar(py, e.k, cant); });
+  toast(`Pedido base ${kit.l.split(' (')[0].toLowerCase()}: ${kit.items.length} renglones sumados`); R();
+}
+function lzUp(id, campo, val){
+  const P = pedidoDe(getPy()), it = P.items.find(x => x.id === id); if(!it) return;
+  it[campo] = Math.max(0, n(val));
+  if(campo === 'precio') lzRecordarPrecio(P, it);
+  R();
+}
+function lzCampo(campo, val){
+  const P = pedidoDe(getPy());
+  P[campo] = campo === 'descuento' ? Math.min(100, Math.max(0, n(val))) : val;
+  R();
+}
+function lzJornada(id, num){
+  const py = getPy(), P = pedidoDe(py), it = P.items.find(x => x.id === id); if(!it) return;
+  const todas = jornadasDeLuces(py);
+  let sel = jornadasDeItem(py, it);
+  sel = sel.includes(num) ? sel.filter(x => x !== num) : [...sel, num].sort((a,b) => a-b);
+  it.jornadas = sel.length === todas.length ? null : sel;
+  R();
+}
+function lzBorrar(id){ const P = pedidoDe(getPy()); P.items = P.items.filter(x => x.id !== id); R(); }
+function lzVaciar(){ if(!confirm('¿Vaciar el pedido de luces?')) return; pedidoDe(getPy()).items = []; R(); }
+function lzRental(val){
+  const P = pedidoDe(getPy());
+  if(val === '+'){ lzOtroRental(); return; }
+  P.rentalId = val || null;
+  const p = (DB.catalogo.personas || []).find(x => x.id === val);
+  P.rental = p ? p.nombre : '';
+  /* los renglones sin precio toman el que se usó la última vez con ese rental */
+  P.items.forEach(it => { if(!n(it.precio)) it.precio = lzPrecioRecordado(P, it.k); });
+  R();
+}
+function lzOtroRental(){
+  const nombre = prompt('Nombre del rental:'); if(!nombre || !nombre.trim()) { R(); return; }
+  lzSumarRental(nombre.trim());
+}
+/* Un rental nuevo es un proveedor del rubro 11 en el catálogo compartido. */
+function lzSumarRental(nombre){
+  const r = RENTALS_LUCES.find(x => x.nombre === nombre);
+  let p = (DB.catalogo.personas || []).find(x => x.tipo === 'proveedor' && nomRental(x.nombre) === nomRental(nombre));
+  if(!p){
+    p = nuevaPersona({nombre, tipo:'proveedor', rubro:'11', funcion:'Luces y grip', condicion:'Responsable Inscripto',
+      notas: r ? `${r.web} · ${r.zona} · ${r.rubros}` : ''});
+    DB.catalogo.personas.push(p);
+    if(typeof sbConectado === 'function' && sbConectado()) sbSubirPersona(p).catch(e => toast('No se pudo subir al catálogo compartido: ' + e.message));
+  }
+  const P = pedidoDe(getPy());
+  if(!P.rentalId){ P.rentalId = p.id; P.rental = p.nombre; }
+  toast(`${p.nombre} está en el catálogo`); R();
+}
+function lzEditar(id){
+  const P = pedidoDe(getPy()), it = P.items.find(x => x.id === id); if(!it) return;
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:480px">
+    <h3>${esc(it.nombre)}</h3><div class="mbody"><div class="grid2">
+      ${campo('Nombre','nombre',it.nombre)}
+      ${sel('Categoría','c',it.c,CATEGORIAS_LUZ.map(c => ({v:c.k, l:c.l})))}
+      ${campo('Cantidad','cant',it.cant,'number','min="0" step="1"')}
+      ${campo('Consumo por unidad (W)','w',it.w,'number','min="0" step="any"')}
+      ${campo('Precio','precio',it.precio || '','number','min="0" step="any"')}
+      ${sel('Se cobra','u',it.u,[{v:'jornada',l:'Por jornada'},{v:'unidad',l:'Por unidad (se compra)'}])}
+    </div>${campo('Notas','notas',it.notas,'text','placeholder="Con balasto flicker free, con chimera…"')}</div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="lzGuardar('${id}')">Guardar</button></div></div></div>`);
+}
+function lzGuardar(id){
+  const P = pedidoDe(getPy()), it = P.items.find(x => x.id === id), o = datos(); if(!it) return;
+  it.nombre = (o.nombre || '').trim() || it.nombre; it.c = o.c; it.u = o.u; it.notas = (o.notas || '').trim();
+  ['cant','w','precio'].forEach(k => it[k] = Math.max(0, n(o[k])));
+  lzRecordarPrecio(P, it); cerrar(); R();
+}
+
+/* ---------- elegir equipos: buscador ---------- */
+let _lz = null;
+function lzAgregar(){
+  _lz = {q:'', c:''};
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod ppmod" style="max-width:620px">
+    <h3>Sumar equipos al pedido</h3>
+    <div class="ppbusca">
+      <input type="search" id="lzq" placeholder="Buscar: skypanel, 18K, joker, bandera, generador…" autocomplete="off" oninput="lzFiltro('q', this.value)">
+      <div class="ppfiltros"><select onchange="lzFiltro('c', this.value)" aria-label="Categoría">
+        <option value="">Todas las categorías</option>
+        ${CATEGORIAS_LUZ.map(c => `<option value="${c.k}">${esc(c.l)}</option>`).join('')}</select></div>
+    </div>
+    <div class="mbody" style="padding:6px 8px" id="lzlista">${lzListaHTML()}</div>
+    <div class="mfoot"><button class="btn" onclick="lzOtroEquipo()">Otro equipo…</button>
+      <div style="flex:1"></div><button class="btn pri" onclick="cerrar()">Listo</button></div>
+  </div></div>`);
+  setTimeout(() => { const i = document.getElementById('lzq'); if(i && i.focus) i.focus(); }, 30);
+}
+function lzResultados(){
+  const qs = norm(_lz.q).split(/\s+/).filter(Boolean);
+  return EQUIPOS_LUZ.filter(e => (!_lz.c || e.c === _lz.c) &&
+    qs.every(w => norm(e.nombre + ' ' + CAT_LUZ(e.c).l).replace(/[^a-z0-9 ]/g, ' ').includes(w.replace(/[^a-z0-9]/g, '')) || norm(e.nombre).includes(w)));
+}
+function lzListaHTML(){
+  if(!_lz) return '';
+  const P = pedidoDe(getPy()), res = lzResultados();
+  if(!res.length) return `<div class="empty">Nada con eso. Usá <b>Otro equipo…</b> para cargarlo a mano.</div>`;
+  return res.map(e => { const ya = P.items.find(x => x.k === e.k);
+    return `<button type="button" class="ppfila${ya ? ' ya' : ''}" onclick="lzSumarDesdeBuscador('${e.k}')">
+      <span class="ppnom"><b>${esc(e.nombre)}</b>
+        <span class="ppfun">${esc(CAT_LUZ(e.c).l)}${e.w ? ' · ' + (e.w >= 1000 ? e.w / 1000 + ' kW' : e.w + ' W') : ''}</span></span>
+      <span class="pptar">${ya ? '× ' + ya.cant + ' en el pedido' : '+ sumar'}</span></button>`; }).join('');
+}
+function lzFiltro(k, v){ if(!_lz) return; _lz[k] = v; const el = document.getElementById('lzlista'); if(el) el.innerHTML = lzListaHTML(); }
+function lzSumarDesdeBuscador(k){
+  lzSumar(getPy(), k, 1); guardar();
+  const el = document.getElementById('lzlista'); if(el) el.innerHTML = lzListaHTML();
+  toast(`${EQUIPO_LUZ(k).nombre} sumado`);
+}
+function lzOtroEquipo(){
+  const nombre = prompt('Nombre del equipo:'); if(!nombre || !nombre.trim()) return;
+  pedidoDe(getPy()).items.push(nuevoItemLuz({nombre: nombre.trim(), c: _lz && _lz.c || 'led'}));
+  cerrar(); R();
+}
+/* render() del cerrar: la tabla de atrás se pinta con lo sumado */
+
+/* ---------- mandarlo, pasarlo al presupuesto, bajarlo ---------- */
+function textoPedidoLuces(pr, py){
+  const P = pedidoDe(py), d = py.desglose || nuevoDesglose(), js = jornadasDeLuces(py);
+  const fecha = num => { const j = d.jornadas.find(x => x.numero === num); return j && j.fecha ? fechaCorta(j.fecha) : 'J' + num; };
+  const L = [`Hola! Te paso el pedido de luces de *${py.nombre}* (${pr.nombre}).`,
+    `Jornadas: ${js.map(fecha).join(', ')}`, ''];
+  CATEGORIAS_LUZ.forEach(c => {
+    const its = P.items.filter(it => it.c === c.k && n(it.cant) > 0); if(!its.length) return;
+    L.push(`*${c.l}*`);
+    its.forEach(it => { const jj = jornadasDeItem(py, it);
+      L.push(`• ${n(it.cant)} × ${it.nombre}${it.u !== 'unidad' && jj.length !== js.length ? ` (sólo ${jj.map(fecha).join(', ')})` : ''}${it.notas ? ' — ' + it.notas : ''}`); });
+    L.push('');
+  });
+  if(P.notas) L.push(P.notas, '');
+  L.push('¿Me pasás cotización y disponibilidad? Gracias!');
+  if(P.armadoPor) L.push(P.armadoPor);
+  return L.join('\n');
+}
+function lzEnviar(){
+  const pr = getPr(), py = getPy(), P = pedidoDe(py);
+  const r = (DB.catalogo.personas || []).find(x => x.id === P.rentalId);
+  const txt = textoPedidoLuces(pr, py), wa = r ? telWhatsapp(r.tel) : '';
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+    <h3>Mandar el pedido${r ? ' a ' + esc(r.nombre) : ''}</h3><div class="mbody">
+      <textarea rows="14" id="lztxt" style="font-family:var(--mono);font-size:12px">${esc(txt)}</textarea>
+      ${r && !wa && !r.email ? `<div class="muted" style="font-size:11.5px;margin-top:6px">El rental no tiene teléfono ni mail en el catálogo: copialo y mandalo vos.</div>` : ''}
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button><div style="flex:1"></div>
+      <button class="btn" onclick="lzCopiar()">Copiar</button>
+      ${r && r.email ? `<a class="btn" href="mailto:${esc(r.email)}?subject=${encodeURIComponent('Pedido de luces · ' + py.nombre)}&body=${encodeURIComponent(txt)}" onclick="lzCampo('estado','enviado')">Mail</a>` : ''}
+      <a class="btn pri wa" href="https://wa.me/${wa}?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener" onclick="lzCampo('estado','enviado')">WhatsApp</a>
+    </div></div></div>`);
+}
+/* El total del pedido va a las líneas del rubro 11 que le corresponden: lo
+   eléctrico al grupo electrógeno, el transporte al camión, el grip al
+   paquete de grip y el resto al paquete de luces. Se crean si no están. */
+function repartoPresupuesto(py){
+  const P = pedidoDe(py), js = jornadasDeLuces(py);
+  const destino = it => it.c === 'elec' && /generador/i.test(it.nombre) ? 'Grupo electrógeno'
+    : it.c === 'serv' && /camion de grip/.test(norm(it.nombre)) ? 'Camión de grip'
+    : it.c === 'serv' && /camion/.test(norm(it.nombre)) ? 'Camión de luces'
+    : ['pies','ctrl','mov'].includes(it.c) ? 'Paquete de grip' : 'Paquete de luces';
+  const factor = (1 - Math.min(100, n(P.descuento)) / 100);
+  const out = {};
+  P.items.forEach(it => { const k = destino(it); out[k] = (out[k] || 0) + costoItemLuz(py, it) * factor; });
+  return {lineas: out, jornadas: js.length};
+}
+function lzAlPresupuesto(){
+  const py = getPy(), v = getV(), P = pedidoDe(py);
+  if(!v){ toast('No hay presupuesto abierto'); return; }
+  const {lineas, jornadas} = repartoPresupuesto(py);
+  if(!Object.values(lineas).some(x => x > 0)){ toast('El pedido todavía no tiene precios'); return; }
+  let r11 = v.rubros.find(r => r.codigo === '11');
+  if(!r11){ toast('El presupuesto no tiene el rubro 11'); return; }
+  const cambios = [];
+  Object.entries(lineas).forEach(([concepto, total]) => {
+    if(!(total > 0)) return;
+    let l = r11.lineas.find(x => norm(x.concepto) === norm(concepto) && !x.piezaId);
+    if(!l){ l = nuevaLinea({concepto}); r11.lineas.push(l); }
+    l.moneda = P.moneda; l.cantidad = 1; l.dias = jornadas; l.unidad = 'jornada';
+    l.valorUnit = Math.round(total / jornadas); l.valorOrigen = 'manual';
+    l.notas = `Del pedido de luces${P.rental ? ' (' + P.rental + ')' : ''}, sin IVA`;
+    cambios.push(`${concepto}: ${fmt(l.valorUnit, P.moneda)} × ${jornadas}`);
+  });
+  toast('Al presupuesto · ' + cambios.join(' · ')); R();
+}
+function lzCSV(){
+  const py = getPy(), P = pedidoDe(py), js = jornadasDeLuces(py);
+  const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+  const L = [['Categoría','Equipo','Cantidad','Jornadas','Consumo (W)','Precio','Se cobra','Subtotal','Notas'].map(q).join(',')];
+  P.items.forEach(it => L.push([CAT_LUZ(it.c).l, it.nombre, n(it.cant), it.u === 'unidad' ? '' : jornadasDeItem(py, it).map(x => 'J' + x).join(' '),
+    n(it.w) * n(it.cant), n(it.precio), it.u === 'unidad' ? 'unidad' : 'jornada', costoItemLuz(py, it), it.notas].map(q).join(',')));
+  bajar(`pedido-de-luces-${py.nombre}.csv`, '﻿' + L.join('\n'), 'text/csv;charset=utf-8');
+  toast('Planilla bajada');
+}
+
+function lzCopiar(){
+  const el = document.getElementById('lztxt'), txt = el ? el.value : '';
+  const ok = () => { toast('Pedido copiado'); lzCampo('estado', 'enviado'); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, () => prompt('Copiá el pedido:', txt));
+  else { prompt('Copiá el pedido:', txt); ok(); }
 }
 
 /* ===========================  ACCIONES  =================================== */

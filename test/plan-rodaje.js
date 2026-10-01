@@ -170,7 +170,7 @@ DB.ui.jornada = 2; render();
 ok('las marcas del sol en la lista (la jornada 2 llega a la hora dorada)', /Se pone el sol/.test(app.innerHTML) && /Empieza la hora dorada/.test(app.innerHTML));
 DB.ui.jornada = 1; render(); h = app.innerHTML;
 ok('botones para cargar el storyboard y la lista', /plStoryboard/.test(h) && /plShotList/.test(h));
-ok('se arrastra', /draggable="true"/.test(h));
+ok('se arrastra (cada renglón y las fichas de jornada)', /data-pl="/.test(h) && /data-pl-j="1"/.test(h) && /data-pl-lista="1"/.test(h));
 const errs = [];
 ['dia', 'jornadas', 'elenco'].forEach(k => { try { setSubPlan(k); render(); } catch (e) { errs.push(k + ': ' + e.message); } });
 ok('las tres vistas del plan andan', !errs.length, errs.join(' | '));
@@ -274,4 +274,64 @@ ok('un hueco largo antes del almuerzo se avisa', D3.avisos.some(a => /sin nada q
 const alm3 = pl3.items.find(x => x.clase === 'almuerzo');
 ok('el almuerzo quedó después de los planos de la mañana', calcularDia(p3, 1).filas.findIndex(f => f.it === alm3) > calcularDia(p3, 1).filas.findIndex(f => f.it && f.it.numero === '1'));
 
-console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');
+console.log('\n--- 14. MOVER UN RENGLÓN CAMBIA SU HORARIO ---');
+DB.ui.proyectoId = p3.id; DB.ui.jornada = 1;
+const L3 = () => pl3.items.filter(x => x.jornada === 1).sort((a,b) => a.orden - b.orden);
+const primero = L3().find(x => x.tipo === 'plano');
+const antesH = JSON.stringify(pl3.items.map(x => [x.id, x.orden, x.jornada, x.fijo]));
+const hPrev = plHoraSiSeMueve(p3, alm3.id, 1, primero.id);
+ok('calcular la hora de destino no toca nada', JSON.stringify(pl3.items.map(x => [x.id, x.orden, x.jornada, x.fijo])) === antesH);
+ok('el almuerzo puesto antes del primer plano empezaría 08:30', aHora(hPrev) === '08:30', aHora(hPrev));
+plMoverA(alm3.id, 1, primero.id);
+ok('soltado ahí, queda antes del primer plano', L3().indexOf(alm3) === L3().indexOf(primero) - 1);
+ok('y su hora fija pasa a ser la nueva: 08:30', alm3.fijo === '08:30', alm3.fijo);
+const ultimoPl = L3().filter(x => x.tipo === 'plano').slice(-1)[0];
+const wrap3 = L3().find(x => x.clase === 'wrap');
+plMoverA(ultimoPl.id, 1, L3().find(x => x.tipo === 'plano').id);
+ok('un plano movido al principio pasa a ser el primero', L3().filter(x => x.tipo === 'plano')[0] === ultimoPl);
+plMoverA(ultimoPl.id, 1, null);
+ok('soltado al final queda último (después del wrap, si así lo dejaron)', L3().slice(-1)[0] === ultimoPl);
+plMoverA(ultimoPl.id, null);
+ok('soltado sobre el banco, al banco', ultimoPl.jornada === null);
+plMoverA(wrap3.id, null);
+ok('un evento no va al banco', wrap3.jornada === 1);
+
+console.log('\n--- 15. GUION TÉCNICO EN EXCEL ---');
+const fs = require('fs'), path = require('path');
+(async () => {
+  const bytes = new Uint8Array(fs.readFileSync(path.join(__dirname, 'fixtures', 'guion-tecnico-prueba.xlsx')));
+  const H = await xlsxHojas(bytes);
+  ok('lee la hoja y encuentra las 3 imágenes', H.length === 1 && H[0].imagenes.length === 3, H[0] && H[0].imagenes.length);
+  const P = await planosDeXlsx(bytes);
+  ok('cinco planos (salta el título, el encabezado y el total)', P.length === 5, P.map(x => x.numero).join(','));
+  const [q1, q2, q3, q3a, q4] = P;
+  ok('"Plano" con números es el número, no el tamaño', q1.numero === '1' && q3a.numero === '3A');
+  ok('descripción, tamaño y movimiento', /cámara baja/.test(q1.desc) && q1.tamano === 'Plano general' && q1.movimiento === 'Dron');
+  ok('steadicam, lente, locación, INT/EXT y día', q2.movimiento === 'Steadicam' && q2.lente === '35mm' && q2.set === 'Casa - Frente' && q2.intExt === 'EXT' && q2.luz === 'dia');
+  ok('el amanecer es hora dorada', q1.luz === 'dorada');
+  ok('elenco', q2.elenco === 'Ana, Perro');
+  ok('el audio y la duración en pantalla van a notas (no son tiempo de rodaje)', /Audio: VO/.test(q3.notas) && /En pantalla: 3"/.test(q3.notas) && q3.duracion == null);
+  ok('cámara lenta y detalle', q3a.movimiento === 'Cámara lenta / alta velocidad' && q3a.tamano === 'Plano detalle');
+  ok('cada imagen va a su fila', q1.archivoImg && q2.archivoImg && q3.archivoImg && !q3a.archivoImg && q1.archivoImg !== q2.archivoImg);
+  const z = await zipEntrada(bytes, q1.archivoImg);
+  ok('y la imagen se puede sacar del archivo', z.length > 100 && z[1] === 0x50, z.length);
+
+  /* lo mismo copiado de Excel y pegado (con tabulaciones) */
+  const pegado = 'N°\tDescripción\tTamaño\tMovimiento\tLocación\n1\tAna corre por la playa\tPG\tDron\tPlaya - Orilla\n2\tSus pies en el agua\tPD\tCámara en mano\tPlaya - Orilla';
+  const G = leerGuionTecnico(filasDeTexto(pegado));
+  ok('pegado de Excel: lee la tabla', G && G.planos.length === 2 && G.planos[1].tamano === 'Plano detalle' && G.planos[0].set === 'Playa - Orilla');
+  const csv = 'Plano;Video;Audio\n1;"Logo, sobre negro";Locutor\n2;Producto;Música';
+  const G2 = leerGuionTecnico(filasDeTexto(csv));
+  ok('CSV con punto y coma y comillas', G2 && G2.planos.length === 2 && G2.planos[0].desc === 'Logo, sobre negro' && /Audio: Locutor/.test(G2.planos[0].notas));
+  ok('una lista sin encabezados no se toma por tabla', leerGuionTecnico(filasDeTexto('1 PG casa\n2 PM Ana')) === null);
+  /* desde el modal de pegar */
+  DB.ui.proyectoId = p3.id; DB.ui.jornada = 1;
+  const antes3 = pl3.items.length;
+  global.document.querySelectorAll = q => /toast/.test(q) ? [] : [{name:'texto', value:pegado}, {name:'destino', value:''}, {name:'set', value:''}];
+  plShotListOk();
+  global.document.querySelectorAll = () => [];
+  const nuevos = pl3.items.slice(antes3);
+  ok('pegar una tabla en "Pegar lista de planos" crea los planos con sus columnas', nuevos.length === 2 && nuevos[0].set === 'Playa - Orilla' && nuevos[0].movimiento === 'Dron' && nuevos[0].jornada === null);
+
+  console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');
+})().catch(e => { console.log('FALLA excepción: ' + e.stack); console.log('\n>>> 1 FALLA(S)'); });
