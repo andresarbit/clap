@@ -12,6 +12,7 @@
 let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
 
+const INVITACIONES = [];
 const TB = { organizacion: [], productora: [], usuario: [], catalogo_persona: [],
              proyecto: [], proyecto_persona: [] };
 let SEQ = 0, SESION = 'auth-andres';
@@ -37,10 +38,20 @@ global.fetch = async (url, opts = {}) => {
   if (u.includes('/auth/v1/logout')) return respu(204);
 
   if (u.includes('/rpc/productoras_para_elegir'))
-    return respu(200, TB.productora.map(p => ({ id: p.id, nombre: p.nombre })));
+    return respu(200, TB.productora.filter(p => TB.usuario.some(x => x.auth_uid === SESION && x.productora_id === p.id)).map(p => ({ id: p.id, nombre: p.nombre })));   /* privado.sql: sólo las mías */
   if (u.includes('/rpc/productora_pide_aprobacion')) {
     const pr = TB.productora.find(x => x.id === cuerpo.p);
     return respu(200, !!(pr && pr.requiere_aprobacion));
+  }
+  /* aceptar_invitacion de backend/privado.sql */
+  if (u.includes('/rpc/aceptar_invitacion')) {
+    const inv = INVITACIONES.find(x => x.token === cuerpo.p_token);
+    if (!inv) return respu(400, { message: 'Ese link de invitación no existe' });
+    let yo = TB.usuario.find(x => x.auth_uid === SESION && x.productora_id === inv.productora_id);
+    if (!yo) { yo = { id: nid('usuario'), auth_uid: SESION, productora_id: inv.productora_id,
+      nombre: cuerpo.p_nombre || 'Invitado', rol: inv.rol, email: SESION === 'auth-willy' ? 'santyno@gmail.com' : SESION + '@x.com',
+      activo: true, pendiente: false }; TB.usuario.push(yo); }
+    return respu(200, { productora_id: inv.productora_id, proyecto_id: null, rol: yo.rol });
   }
   if (u.includes('/rpc/crear_mi_productora')) {
     let org = TB.organizacion[0];
@@ -131,8 +142,7 @@ const navegadorNuevo = () => { DB = dbVacia(); sembrar(); _miFicha = null; _miPr
   console.log('--- 1. EL QUE CREA LA PRODUCTORA QUEDA EN EL CATALOGO ---');
   navegadorNuevo();
   SESION = 'auth-andres'; await conectar('andres@x.com');
-  cargarForm({ nombre: 'Andrés', tel: '11 1111-1111', productoraId: '__nueva',
-    productoraNombre: 'Nuestra Productora', rol: 'admin', area: 'produccion' });
+  cargarForm({ nombre: 'Andrés', tel: '11 1111-1111', productoraNombre: 'Nuestra Productora', area: 'produccion' });
   await confirmarAlta();
   ok('quedó su ficha en el servidor', TB.usuario.length === 1, TB.usuario[0].nombre);
   ok('Y QUEDO EN EL CATALOGO DEL SERVIDOR', TB.catalogo_persona.length === 1,
@@ -166,34 +176,31 @@ const navegadorNuevo = () => { DB = dbVacia(); sembrar(); _miFicha = null; _miPr
   SESION = 'auth-willy'; await conectar('santyno@gmail.com');
   ok('su navegador arranca sin el técnico de Andrés',
     !DB.catalogo.personas.some(p => p.nombre === TEC));
-  _prodsElegibles = await sbProductorasParaElegir();
-  ok('ve la productora de Andrés en la lista', _prodsElegibles.length === 1,
-    _prodsElegibles[0] && _prodsElegibles[0].nombre);
-  cargarForm({ nombre: 'Willy De Rose', tel: '11 4444-2222',
-    productoraId: TB.productora[0].id, productoraNombre: '', rol: 'admin', area: 'produccion' });
-  await confirmarAlta();
+  /* sin invitación no hay nada que elegir: Andrés le manda el link */
+  ok('la lista no le muestra productoras ajenas', (await sbProductorasParaElegir()).length === 0);
+  INVITACIONES.push({ token: 'tok-willy', productora_id: TB.productora[0].id, rol: 'admin' });
+  _invitacion = { v: 2, t: 'tok-willy', pr: TB.productora[0].id, prn: 'Nuestra Productora' };
+  await aceptarInvitacion();
 
-  const wServ = TB.catalogo_persona.find(x => x.nombre === 'Willy De Rose');
-  ok('WILLY QUEDO EN EL CATALOGO DEL SERVIDOR', !!wServ, wServ && wServ.email);
+  const wServ = TB.catalogo_persona.find(x => x.email === 'santyno@gmail.com');
+  ok('AL ACEPTAR, WILLY QUEDO EN EL CATALOGO DEL SERVIDOR', !!wServ, wServ && wServ.email);
   ok('y en el catálogo de su navegador',
     !!DB.catalogo.personas.find(p => norm(p.email) === 'santyno@gmail.com'));
-  ok('pero pidió admin, así que espera aprobación', (await sbMiFicha()).pendiente === true);
-  ok('y mientras espera NO ve el catálogo del equipo',
-    !DB.catalogo.personas.some(p => p.nombre === TEC));
-  DB.ui.tab = 'catalogo'; render();
-  ok('la pantalla le explica por qué',
-    /Hasta que un administrador apruebe tu alta/.test(app.innerHTML));
+  ok('entró derecho, sin esperar aprobación', (await sbMiFicha()).pendiente === false);
 
-  /* --- 4. Lo aprueban y ahí sí ve todo --------------------------------- */
-  console.log('\n--- 4. LO APRUEBAN Y VE EL CATALOGO DEL EQUIPO ---');
-  TB.usuario.find(x => x.auth_uid === 'auth-willy').pendiente = false;
-  await revisarAlta();
-  ok('ahora VE al técnico que cargó Andrés',
+  /* --- 4. y ve el catálogo del equipo ---------------------------------- */
+  console.log('\n--- 4. VE EL CATALOGO DEL EQUIPO ---');
+  ok('VE al técnico que cargó Andrés',
     !!DB.catalogo.personas.find(p => p.nombre === TEC));
   const dl = DB.catalogo.personas.find(p => p.nombre === TEC);
   ok('con la tarifa que le puso Andrés', dl && n(dl.tarifaRef) === 280000, dl && String(dl.tarifaRef));
   ok('y la función', dl && dl.funcion === 'Gaffer', dl && dl.funcion);
   ok('y VE A ANDRES', !!DB.catalogo.personas.find(p => p.nombre === 'Andrés'));
+  /* completa sus datos (nombre y teléfono) desde Mis datos */
+  _miFicha = await sbMiFicha();
+  cargarForm({ nombre: 'Willy De Rose', tel: '11 4444-2222', area: 'produccion',
+    funcion: '', dni: '', cuit: '', condicion: '', banco: '', alias: '' });
+  await guardarMiFicha();
 
   /* --- 5. Andrés ve a Willy ------------------------------------------- */
   console.log('\n--- 5. Y ANDRES VE A WILLY ---');

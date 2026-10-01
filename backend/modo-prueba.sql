@@ -168,6 +168,9 @@ select p.nombre  as "Productora",
 
 
 -- ===========================================================================
+-- ⚠ YA NO SE USA ASÍ: para cerrarlo, corré backend/privado.sql (se entra sólo
+--   con invitación, sin aprobación a mano). Lo de abajo es el plan viejo.
+-- ===========================================================================
 -- CUANDO TERMINEN DE PROBAR, PARA CERRARLO
 -- ---------------------------------------------------------------------------
 -- Son dos pasos y hay que hacer LOS DOS.

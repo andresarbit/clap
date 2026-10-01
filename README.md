@@ -737,32 +737,46 @@ lugar. Al elegir el rubro, el desplegable de subrubro se llena solo.
 
 Se regenera con `python test/gen-rubros.py`.
 
-### Alta propia: la primera vez que alguien entra
+### Privado: sin sesión no se ve nada, y se entra invitado
 
-Nadie carga usuarios a mano. El que entra con su mail por primera vez ve una
-pantalla que le pregunta tres cosas: **a que productora se suma**, **que rol
-cumple** y **de que area es**. Si todavia no hay ninguna productora, la crea el
-y queda como su administrador.
+La web es pública; los datos no. Abierta desde internet, CLAP **sin sesión no
+muestra nada**: ni el ejemplo ni lo que haya quedado guardado en ese navegador.
+Sólo el cuadro para entrar con mail y contraseña (y "me olvidé la contraseña").
+Abierta desde el disco (`file://`), para probar, no hay puerta.
 
-**El candado arranca abierto.** Mientras son dos o tres y se conocen, el que
-entra elige su rol —incluso Administracion— y queda activo al toque. Cuando la
-herramienta se abra a mas gente se cierra con un switch en la base:
+**Nadie autoriza usuarios a mano.** Cualquiera puede crearse una cuenta, pero
+una cuenta sola no ve nada: ve una pantalla que le dice que lo inviten o que
+cree su propia productora (que nace vacía y separada de todo). A una productora
+ajena se entra **sólo** con el link de **✉ Invitar**:
 
-```sql
-update productora set requiere_aprobacion = true;
-```
+- el link lleva una clave larga que genera la base (`crear_invitacion`); dice a
+  qué proyecto, con qué rol, hasta cuándo y para cuántos. No se puede inventar
+  ni cambiarle el rol: la base no lee lo que dice el link, lee la clave.
+- Administración y Productor Ejecutivo: **una sola persona, 7 días**.
+  Producción y Equipo: se puede mandar a un grupo, **30 días**.
+- se invita con un rol igual o más bajo que el propio; Equipo no invita.
+- quien lo abre entra directo con ese rol (`aceptar_invitacion`), sin que
+  nadie apruebe nada.
 
-Desde ahi el que se da de alta queda **pendiente**: entra, ve que esta
-esperando, y no accede a ningun dato hasta que un admin lo aprueba desde
-**☁ → Altas pendientes**. Los que ya estaban no se tocan.
+Lo hace cumplir **la base**, no la pantalla (`backend/privado.sql`):
 
-Lo importante es donde vive la regla: **en la base, no en esta pantalla**. Con
-el candado cerrado, la politica `usuario_autoalta` solo acepta filas con
-`pendiente = true`, y solo con el `auth_uid` de quien esta logueado. Aunque
-alguien abra la consola del navegador y mande el insert a mano, no puede
-declararse admin ni darse de alta por otro. El test lo prueba intentandolo.
+- nadie inserta su propia ficha de usuario: no hay política de alta propia.
+- `productoras_para_elegir` devuelve sólo las mías: no hay directorio de
+  productoras ajenas.
+- el rol no se lo cambia uno: `guardar_mis_datos` ignora el rol; lo cambia
+  Administración desde **☁ → Quién entra**, donde también se da de baja.
+- cambiar la productora: Administración o Ejecutivo; borrarla: sólo Administración.
+- el catálogo (DNI, CUIT, CBU) es de Administración, Ejecutivo y Producción;
+  Equipo ve sólo su ficha.
+- mi ficha del catálogo se enlaza por mail **sólo si Supabase confirmó el mail**.
 
-Vive en `backend/alta-propia.sql`, que se corre despues de `esquema.sql`.
+Sin señal en un rodaje, quien ya había entrado en ese aparato sigue
+trabajando con lo que tiene. Si en la misma compu entra otra persona, lo del
+anterior se aparta (no se borra: vuelve cuando él vuelva a entrar).
+
+El SQL se probó entero contra un Postgres de verdad (PGlite) armado como la
+base de producción con el modo prueba puesto: antes del cambio un extraño se
+anotaba como admin; después, una cuenta sin invitación no ve ni una fila.
 
 ### Datos centralizados
 
@@ -943,9 +957,10 @@ El que abre el link ve **primero** una pantalla que dice de que lo invitaron
 no tiene cuenta, la crea ahi mismo. Al aceptar queda anotado en el proyecto, la
 productora le aparece en el menu de arriba y el proyecto en el de proyectos.
 
-> La invitacion viaja dentro del link, no en una tabla nueva: no hay SQL que
-> correr y el que invita no necesita saber de antemano el mail del invitado.
-> Cualquiera con el link puede usarlo, asi que se manda por privado.
+> Lo que vale del link es la clave que guardó la base (tabla `invitacion`, en
+> `backend/privado.sql`). El que invita no necesita saber el mail del invitado
+> ni si ya tiene cuenta. Quien tiene el link entra sin aprobación, así que se
+> manda por privado.
 
 **Ojo con el orden**: anotar a la persona en el proyecto va ANTES de
 sincronizar. Con rol Produccion o Equipo el acceso a la productora sale de
@@ -1112,14 +1127,14 @@ node test/run.js test/plata.js     # ordenes de compra, caja chica y tablero
 node test/run.js test/resumen.js   # portada, pendientes y datos de ejemplo
 node test/run.js test/guia.js      # instructivo: contenido, navegacion y que no mienta
 node test/run.js test/backend.js   # conexion, login, renovacion de sesion y diagnostico
-node test/run.js test/alta.js      # alta propia, el candado y la cola de aprobacion
+node test/run.js test/puerta.js    # sin sesion no se ve nada, sin señal se sigue, dos personas en una compu
+node test/run.js test/alta.js      # sin invitacion no se entra a una ajena; crear la propia
 node test/run.js test/identidad.js # quien soy al entrar con mi mail, con el alta pendiente
 node test/run.js test/tipocambio.js # TC editable arriba, recalculo y sellado de fecha
 node test/run.js test/catalogo-compartido.js # el catalogo es UNO para el equipo, contra la base
-node test/run.js test/quien-entra.js  # aprobar y cambiar roles sin tocar la base
-node test/run.js test/modo-prueba.js  # todos entran con permisos, para probar
+node test/run.js test/quien-entra.js  # el rol lo da la invitacion o un admin; dar de baja
 node test/run.js test/menu-productoras.js # el menu de productoras sale de la base
-node test/run.js test/invitar-link.js # invitar por link: mensaje, alta y aceptacion
+node test/run.js test/invitar-link.js # invitar por link: clave de la base, rol, vencido, una sola persona
 node test/run.js test/piezas.js     # spots/episodios: reparto, no duplicar, desglose por pieza
 node test/run.js test/dos-presupuestos.js # Real vs Produccion por rol, y el IVA exento
 node test/run.js test/extras-y-actual.js  # horas extra por tramos y columna Actual

@@ -10,13 +10,17 @@
      - la pantalla previa dice quién invita, a qué, de qué productora y con
        qué rol — sin eso el link es "hacé click y confiá"
      - sin cuenta, primero la cuenta
-     - aceptar suma la productora SIN sacarme de las que ya tenía            */
+     - aceptar suma la productora SIN sacarme de las que ya tenía
+     - lo que vale del link es la clave que guarda la base: cambiarle el rol
+       a mano no sirve, y el de Administración entra una sola vez
+       (backend/privado.sql)                                                */
 
 let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
 
 const TB = { organizacion: [{id:'org-1'}], productora: [], usuario: [],
-             catalogo_persona: [], proyecto: [], proyecto_persona: [] };
+             catalogo_persona: [], proyecto: [], proyecto_persona: [], invitacion: [] };
+const ORDEN = ['equipo','produccion','ejecutivo','admin'];
 let SEQ = 0, SESION = null, CUENTAS = {};
 const uuid = () => `${(++SEQ+'').padStart(8,'0')}-0000-4000-8000-000000000000`;
 const respu = (s, b) => ({ ok: s>=200&&s<300, status:s, statusText:'x',
@@ -56,6 +60,39 @@ global.fetch = async (url, o = {}) => {
   if (u.includes('/rpc/productoras_para_elegir'))
     return respu(200, TB.productora.map(p => ({ id:p.id, nombre:p.nombre })));
   if (u.includes('/rpc/productora_pide_aprobacion')) return respu(200, false);
+  /* crear_invitacion y aceptar_invitacion, como en backend/privado.sql */
+  if (u.includes('/rpc/crear_invitacion')) {
+    const py = TB.proyecto.find(x => x.id === c.p_proyecto);
+    if (!py) return respu(400, { message:'Ese proyecto todavía no está en la web.' });
+    const yo = TB.usuario.find(x => x.auth_uid === SESION && x.productora_id === py.productora_id && x.activo);
+    if (!yo) return respu(400, { message:'No tenés acceso a ese proyecto.' });
+    if (yo.rol === 'equipo') return respu(400, { message:'Con rol Equipo no se puede invitar.' });
+    if (ORDEN.indexOf(c.p_rol) > ORDEN.indexOf(yo.rol)) return respu(400, { message:'No podés invitar con un rol más alto que el tuyo.' });
+    const t = 'tok' + (++SEQ) + 'x'.repeat(58);
+    TB.invitacion.push({ token:t, productora_id: py.productora_id, proyecto_id: py.id, rol: c.p_rol,
+      creada_por: yo.id, usos: 0, usos_max: ['admin','ejecutivo'].includes(c.p_rol) ? 1 : null, vencida: false });
+    return respu(200, t);
+  }
+  if (u.includes('/rpc/aceptar_invitacion')) {
+    if (!SESION) return respu(401, { message:'Hay que iniciar sesión' });
+    const inv = TB.invitacion.find(x => x.token === c.p_token);
+    if (!inv) return respu(400, { message:'Ese link de invitación no existe o lo dieron de baja.' });
+    if (inv.vencida) return respu(400, { message:'Ese link de invitación ya venció.' });
+    let yo = TB.usuario.find(x => x.auth_uid === SESION && x.productora_id === inv.productora_id);
+    if (!yo) {
+      if (inv.usos_max != null && inv.usos >= inv.usos_max) return respu(400, { message:'Ese link ya lo usó otra persona.' });
+      yo = { id: uuid(), auth_uid: SESION, productora_id: inv.productora_id, rol: inv.rol,
+        nombre: c.p_nombre || emailDe(SESION).split('@')[0], email: emailDe(SESION),
+        activo:true, pendiente:false, alta_el: ++SEQ };
+      TB.usuario.push(yo); inv.usos++;
+    } else {
+      yo.activo = true; yo.pendiente = false;
+      if (ORDEN.indexOf(inv.rol) > ORDEN.indexOf(yo.rol)) yo.rol = inv.rol;
+    }
+    if (inv.proyecto_id && !TB.proyecto_persona.some(x => x.proyecto_id === inv.proyecto_id && x.usuario_id === yo.id))
+      TB.proyecto_persona.push({ proyecto_id: inv.proyecto_id, usuario_id: yo.id });
+    return respu(200, { productora_id: inv.productora_id, proyecto_id: inv.proyecto_id, rol: yo.rol });
+  }
   if (u.includes('/rpc/crear_mi_productora')) {
     const pr = { id: uuid(), org_id:'org-1', nombre: String(c.p_nombre).trim(),
       fee_default:15, contingencia_default:5, iva_default:21, iibb_default:0 };
@@ -81,8 +118,9 @@ global.fetch = async (url, o = {}) => {
 
   if (met === 'POST') {
     const fila = { id: uuid(), alta_el: ++SEQ, ...c };
-    if (mm[1] === 'usuario' && fila.auth_uid !== SESION)
-      return respu(403, { message:'row-level security policy' });
+    if (mm[1] === 'usuario')     /* privado.sql: no hay alta propia */
+      return respu(403, { message:'new row violates row-level security policy' });
+    if (mm[1] === 'invitacion') return respu(403, { message:'row-level security policy' });
     /* upsert por id para proyecto y catálogo */
     if (['proyecto','catalogo_persona'].includes(mm[1]) && c.id) {
       const ya = tabla.find(x => x.id === c.id);
@@ -181,10 +219,13 @@ const navegadorNuevo = () => { DB = dbVacia(); sembrar(); _miFicha=null; _miProd
   ok('la pantalla de invitar abre', /Invitar a "Spot Verano"/.test(modal||''));
   ok('deja elegir el rol', /name="rol"/.test(modal||''));
 
+  ok('Andrés (admin) puede invitar con cualquier rol', /value="admin"/.test(modal||'') && /value="equipo"/.test(modal||''));
+  ok('avisa cuánto dura cada link', /una sola\s+persona y dura 7 días/.test(modal||''));
+
   cargarForm({ rol:'produccion' });
   let salida = '';
   global.document.getElementById = () => ({ set innerHTML(v){ salida = v; }, get innerHTML(){ return salida; } });
-  generarInvitacion();
+  await generarInvitacion();
   const link = (salida.match(/https:\/\/clap\.test\/clap\.html\?inv=[^\s"&<]+/)||[])[0];
   ok('generó el link', !!link, link && link.slice(0, 70) + '…');
 
@@ -200,19 +241,23 @@ const navegadorNuevo = () => { DB = dbVacia(); sembrar(); _miFicha=null; _miProd
   ok('la productora', inv.pr === getPr().id);
   ok('el rol', inv.rol === 'produccion');
   ok('y quién invita', inv.de === 'Andrés', inv.de);
+  ok('LLEVA LA CLAVE QUE GUARDO LA BASE', !!inv.t && TB.invitacion.some(x => x.token === inv.t));
+  ok('la base la anotó con el rol elegido', TB.invitacion.find(x => x.token === inv.t).rol === 'produccion');
 
   /* --- 3. alguien SIN cuenta abre el link ------------------------------- */
   console.log('\n--- 3. LO ABRE ALGUIEN SIN CUENTA ---');
   navegadorNuevo();
   SESION = null;
-  global.location.search = '?inv=' + link.split('inv=')[1];
+  /* y es vivo: le cambia el rol al link para entrar como Administración */
+  const tocado = aB64(JSON.stringify({ ...inv, rol:'admin' }));
+  global.location.search = '?inv=' + tocado;
   global.document.getElementById = () => null;
   const hubo = await revisarInvitacion();
   ok('la app frena y muestra la invitación', hubo === true);
   ok('dice el proyecto', /Spot Verano/.test(modal||''));
   ok('dice la productora', /Neto Films/.test(modal||''));
   ok('dice quién lo invitó', /Andrés/.test(modal||''));
-  ok('dice con qué rol entra', /Producción/.test(modal||''));
+  ok('dice con qué rol entra (lo que dice el link)', /Administración/.test(modal||''));
   ok('PIDE CREAR CUENTA ANTES', /Primero necesitás una cuenta/.test(modal||''));
   ok('con campos de mail y contraseña',
     /name="invmail"/.test(modal||'') && /name="invpass"/.test(modal||''));
@@ -230,7 +275,8 @@ const navegadorNuevo = () => { DB = dbVacia(); sembrar(); _miFicha=null; _miProd
   ok('quedó con sesión', sbConectado(), SB.user && SB.user.email);
   const suFicha = _misFichas.find(f => f.productora_id === inv.pr);
   ok('SE SUMO A LA PRODUCTORA', !!suFicha, suFicha && suFicha.rol);
-  ok('con el rol de la invitación', suFicha && suFicha.rol === 'produccion', suFicha && suFicha.rol);
+  ok('CON EL ROL QUE GUARDO LA BASE, NO EL DEL LINK TOCADO', suFicha && suFicha.rol === 'produccion', suFicha && suFicha.rol);
+  ok('la base no recibió una ficha cargada a mano', TB.usuario.filter(x => x.auth_uid === SESION).length === 1);
   ok('quedó anotado en el proyecto',
     TB.proyecto_persona.some(x => x.proyecto_id === py.id && x.usuario_id === suFicha.id));
   ok('la invitación se consumió', _invitacion === null);
@@ -254,7 +300,9 @@ const navegadorNuevo = () => { DB = dbVacia(); sembrar(); _miFicha=null; _miProd
   TB.productora.push(otra);
   const pyOtro = { id: uuid(), productora_id: otra.id, nombre:'Corto B' };
   TB.proyecto.push(pyOtro);
-  _invitacion = { v:1, py:pyOtro.id, pyn:'Corto B', pr:otra.id, prn:'Millanisima',
+  TB.invitacion.push({ token:'tok-millanisima', productora_id: otra.id, proyecto_id: pyOtro.id,
+    rol:'produccion', usos:0, usos_max:null });
+  _invitacion = { v:2, t:'tok-millanisima', py:pyOtro.id, pyn:'Corto B', pr:otra.id, prn:'Millanisima',
     rol:'produccion', de:'Otro' };
   await aceptarInvitacion();
   ok('ahora tengo DOS fichas', _misFichas.length === 2, _misFichas.length + '');
@@ -264,6 +312,49 @@ const navegadorNuevo = () => { DB = dbVacia(); sembrar(); _miFicha=null; _miProd
   const menu2 = (app.innerHTML.match(/<label>Productora<\/label>[\s\S]*?<\/select>/)||[''])[0];
   ok('el menú muestra LAS DOS',
     /Neto Films/.test(menu2) && /Millanisima/.test(menu2), menu2.replace(/\s+/g,' ').slice(0,160));
+
+  /* --- 6b. los links que no sirven -------------------------------------- */
+  console.log('\n--- 6b. LOS LINKS QUE NO SIRVEN ---');
+  diag = '';
+  _invitacion = { v:2, t:'inventada', py:'x', pyn:'Otro', pr:'y', prn:'Z', rol:'admin', de:'Nadie' };
+  await aceptarInvitacion();
+  ok('una clave inventada no entra', /no existe/.test(diag), diag.replace(/<[^>]+>/g,'').trim().slice(0,80));
+  ok('y no le crea ninguna ficha', _misFichas.length === 2);
+  TB.invitacion.find(x => x.token === 'tok-millanisima').vencida = true;
+  diag = ''; _invitacion = { v:2, t:'tok-millanisima', pr:otra.id, py:pyOtro.id };
+  /* ya está adentro: el vencido igual se rechaza, pero no le saca nada */
+  await aceptarInvitacion();
+  ok('un link vencido se rechaza', /venció/.test(diag));
+  modal = null; _invitacion = { v:1, py:py.id, pyn:'Spot Verano', pr:inv.pr, prn:'Neto Films', rol:'admin', de:'Andrés' };
+  pantallaInvitacion();
+  ok('un link de antes (sin clave) dice que es viejo', /es viejo/.test(modal||'') && /uno nuevo/.test(modal||''));
+  ok('y no ofrece aceptarlo', !/aceptarInvitacion\(\)/.test(modal||''));
+  descartarInvitacion();
+
+  /* el de Administración: una sola persona */
+  SESION = 'auth-andres'; SB.user = { id:'auth-andres', email:'andres@x.com' };
+  _miFicha = TB.usuario.find(x => x.auth_uid === 'auth-andres');
+  cargarForm({ rol:'admin' }); salida = '';
+  global.document.getElementById = () => ({ set innerHTML(v){ salida = v; }, get innerHTML(){ return salida; } });
+  DB.ui.productoraId = inv.pr; DB.ui.proyectoId = py.id;
+  getPr().proyectos.some(p => p.id === py.id) || getPr().proyectos.push(py);
+  await generarInvitacion();
+  const tAdm = JSON.parse(deB64(salida.match(/inv=([^\s"&<]+)/)[1])).t;
+  ok('el link de Administración dice que es para una persona', /una sola persona/.test(salida));
+  CUENTAS['socio@x.com'] = { id:'auth-socio', pass:'x123456' };
+  CUENTAS['colado@x.com'] = { id:'auth-colado', pass:'x123456' };
+  SESION = 'auth-socio'; SB.user = { id:'auth-socio', email:'socio@x.com' };
+  global.document.getElementById = id => id === 'invdiag'
+    ? { set innerHTML(v){ diag = v; }, get innerHTML(){ return diag; } } : null;
+  _invitacion = { v:2, t:tAdm, py:py.id, pr:inv.pr }; diag = '';
+  await aceptarInvitacion();
+  ok('el primero entra como Administración',
+    TB.usuario.some(x => x.auth_uid === 'auth-socio' && x.rol === 'admin'), diag.replace(/<[^>]+>/g,'').slice(0,60));
+  SESION = 'auth-colado'; SB.user = { id:'auth-colado', email:'colado@x.com' };
+  _invitacion = { v:2, t:tAdm, py:py.id, pr:inv.pr }; diag = '';
+  await aceptarInvitacion();
+  ok('el segundo con el mismo link, no', /ya lo usó/.test(diag) && !TB.usuario.some(x => x.auth_uid === 'auth-colado'));
+  _invitacion = null;
 
   /* --- 7. "Ahora no" no rompe nada -------------------------------------- */
   console.log('\n--- 7. "AHORA NO" ---');

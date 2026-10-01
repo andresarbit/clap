@@ -983,6 +983,26 @@ tr.csdep td{background:#f3f3f1;color:#171717}
 .lz-rental{background:#fff}
 .lz-rental a{color:#1f5fa8}
 
+/* la puerta: sin sesión, sólo esto */
+.puerta{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:24px;padding:32px 16px;background:var(--bg)}
+.puerta-marca{text-align:center}
+.puerta-marca b{display:block;font-size:30px;font-weight:700;letter-spacing:.32em;margin-right:-.32em;color:#171717}
+.puerta-marca span{display:block;margin-top:6px;font-size:12.5px;color:var(--tx2)}
+.puerta-caja{width:100%;max-width:380px;background:#fff;border:1px solid var(--line);border-radius:16px;
+  padding:24px 22px;display:flex;flex-direction:column;gap:12px}
+.puerta-caja h1{margin:0 0 2px;font-size:18px;font-weight:600;line-height:1.3;color:#171717;text-wrap:balance}
+.puerta-caja p{margin:0;font-size:13px;line-height:1.55;color:var(--tx2)}
+.puerta-caja p b{color:#171717}
+.puerta-caja input{font-size:15px;padding:9px 11px}
+.puerta-caja .btn{width:100%;padding:10px 14px;font-size:13.5px;text-align:center}
+.puerta-caja .btn.link{width:auto;align-self:flex-start;padding:2px 0;border:none;background:none;
+  color:var(--tx2);font-weight:500;text-decoration:underline;text-underline-offset:3px}
+.puerta-caja .btn.link:hover{color:#171717;background:none}
+.puerta-nota{margin-top:6px;padding-top:16px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.puerta-mas summary{cursor:pointer;font-size:12.5px;color:var(--tx2)}
+.puerta-mas[open]{display:flex;flex-direction:column;gap:10px}
+
 /* ---------- impresión ---------- */
 @page{size:A4;margin:11mm 10mm}
 @media print{
@@ -3854,6 +3874,18 @@ function sbOlvidar(){
 const sbConfigurado = () => !!(SB.url && SB.anon);
 const sbConectado   = () => !!(sbConfigurado() && SB.access && SB.user);
 
+/* ---------- la puerta ----------
+   La web es pública; los datos no. Sin sesión no se ve nada de CLAP: ni el
+   ejemplo, ni lo que quedó guardado en este navegador. Sólo el cuadro para
+   entrar. Abierto desde el disco (file://), que es como se prueba, no hay
+   puerta.
+   Adentro = con sesión, o con una sesión guardada que todavía no se pudo
+   renovar: en un rodaje sin señal hay que poder seguir trabajando con lo que
+   quedó en el aparato de quien entró y no cerró sesión. Lo que protege los
+   datos de la base no es esta pantalla: son los permisos de la base.        */
+let PUERTA = (() => { try{ return /^https?:$/.test(location.protocol); }catch(e){ return false; } })();
+const puertaCerrada = () => PUERTA && !sbConectado() && !SB.refresh;
+
 /* Normaliza lo que pegue una persona: con o sin https, con o sin barra final */
 function sbNormalizarUrl(u){
   let s = String(u||'').trim().replace(/\/+$/,'');
@@ -3888,7 +3920,8 @@ async function sbFetch(ruta, opts={}){
 /* Los errores crudos de Supabase no le dicen nada a nadie. */
 function sbMensaje(status, msg){
   const m = String(msg||'');
-  if(status===401 && /invalid.*credential|grant/i.test(m)) return 'Mail o contraseña incorrectos.';
+  /* Supabase contesta 400 (no 401) cuando el mail o la contraseña están mal */
+  if((status===400 || status===401) && /invalid.*credential|invalid_grant/i.test(m)) return 'Mail o contraseña incorrectos.';
   if(status===401) return 'La clave anónima no es válida para este proyecto.';
   if(status===400 && /already registered/i.test(m)) return 'Ese mail ya está registrado. Entrá con tu contraseña.';
   if(status===400 && /password/i.test(m)) return 'La contraseña es muy corta: mínimo 6 caracteres.';
@@ -3914,8 +3947,9 @@ async function sbLogin(email, pass){
     body: JSON.stringify({email:String(email||'').trim(), password:pass})});
   sbGuardarSesion(d); return SB.user;
 }
-async function sbRegistrar(email, pass){
-  const d = await sbFetch('/auth/v1/signup', {method:'POST', sinToken:true,
+async function sbRegistrar(email, pass, vuelta){
+  const q = vuelta ? `?redirect_to=${encodeURIComponent(vuelta)}` : '';
+  const d = await sbFetch('/auth/v1/signup' + q, {method:'POST', sinToken:true,
     body: JSON.stringify({email:String(email||'').trim(), password:pass})});
   /* si el proyecto pide confirmar el mail, no vuelve token */
   if(d && d.access_token){ sbGuardarSesion(d); return {entro:true, user:SB.user}; }
@@ -3935,18 +3969,21 @@ async function sbSesionViva(){
   if(!SB.access && !SB.refresh) return false;
   if(SB.access && Date.now() < SB.expira) return true;
   try{ await sbRenovar(); return true; }
-  catch(e){ SB.access = null; SB.user = null; sbGuardar(); return false; }
+  catch(e){
+    SB.access = null; SB.user = null;
+    /* el servidor dijo que esa sesión ya no vale: hay que volver a entrar */
+    if(e.status === 400 || e.status === 401) SB.refresh = null;
+    sbGuardar(); return false; }
 }
 async function sbSalir(){
   try{ if(SB.access) await sbFetch('/auth/v1/logout', {method:'POST'}); }catch(e){}
   SB.access = null; SB.refresh = null; SB.user = null; SB.expira = 0; sbGuardar();
 }
 
-/* --- alta propia al entrar por primera vez -------------------------------
-   Quien entra por primera vez declara su rol, su área y a qué productora se
-   suma. Si la productora tiene el candado abierto queda activo al toque; si
-   está cerrado, queda pendiente hasta que un admin lo apruebe.
-   Quién puede qué lo decide la base, no esta pantalla.                       */
+/* --- mis fichas -----------------------------------------------------------
+   Una cuenta sola no ve nada. Se está en una productora porque alguien de
+   adentro invitó (el link de ✉ Invitar) o porque es la propia. Nadie aprueba
+   a mano y nadie se anota solo en una ajena.                                */
 
 /* Una persona puede figurar en VARIAS productoras: un técnico trabaja para
    muchas. La base siempre lo permitió —`usuario` es una fila por (persona,
@@ -4001,28 +4038,9 @@ async function sbCrearProductora(nombre, ficha = {}){
   if(!id) throw new Error('La base no devolvió la productora creada.');
   return {id, nombre};
 }
-/* Quién entra esperando y quién entra derecho lo decide LA BASE, no esta
-   pantalla. Antes se decidía acá (`VE_TODO.includes(rol)` marcaba pendiente
-   siempre) y por eso, aunque en la base se abriera la puerta, el navegador
-   igual te dejaba esperando.
-
-   Ahora se pide entrar derecho y, si la base dice que no, se reintenta
-   esperando aprobación. Así el mismo navegador funciona con la base cerrada
-   y con la base en modo prueba, sin coordinar versiones con nadie.          */
-async function sbAltaPropia({productoraId, nombre, rol, area, tel}){
-  const base = {auth_uid: SB.user.id, productora_id: productoraId, nombre, rol,
-    area, tel, email: SB.user.email, activo: true};
-  const meter = async pendiente => {
-    const r = await sbFetch('/rest/v1/usuario', {method:'POST',
-      headers:{'Prefer':'return=representation'}, body: JSON.stringify({...base, pendiente})});
-    return r[0];
-  };
-  try{ return await meter(false); }
-  catch(e){
-    if(!/no te deja|policy|violates|403/i.test(String(e.message||''))) throw e;
-    return await meter(true);      /* la base pide aprobación: se respeta */
-  }
-}
+/* A una productora ajena no se entra anotándose: se entra con una invitación
+   (aceptar_invitacion, en la base) o creando la propia. La base no deja
+   insertar la ficha de uno a mano (backend/privado.sql).                    */
 async function sbAprobar(usuarioId){
   return await sbFetch(`/rest/v1/usuario?id=eq.${usuarioId}`, {method:'PATCH',
     headers:{'Prefer':'return=representation'}, body: JSON.stringify({pendiente:false})});
@@ -4357,7 +4375,29 @@ function cargar(){
     if(!raw) sembrar();
     return;
   }
-  DB = dbVacia(); sembrar(); guardar();
+  /* En la web no se siembra el ejemplo: quien entra ve lo suyo, no gente
+     inventada. Abierto desde el disco, el ejemplo sirve para mostrar. */
+  DB = dbVacia(); if(!PUERTA) sembrar(); guardar();
+}
+
+/* Cada navegador guarda los datos de quien entró. Si en la misma compu entra
+   otra persona, lo del anterior se aparta —no se borra: vuelve cuando él
+   vuelva a entrar— y el nuevo no lo ve. Lo que nunca se sincronizó (el
+   presupuesto, el plan) vive sólo acá, así que borrarlo no es una opción. */
+function asegurarDueno(){
+  if(!sbConectado() || !SB.user.id) return;
+  const uid = SB.user.id;
+  if(!DB.dueno){ DB.dueno = uid; guardar(); return; }
+  if(DB.dueno === uid) return;
+  try{ localStorage.setItem(KEY + '@' + DB.dueno, JSON.stringify(DB)); }
+  catch(e){ return; }          /* si no se pudo apartar, no se pisa nada */
+  let suyo = null;
+  try{ const raw = localStorage.getItem(KEY + '@' + uid);
+    if(raw){ suyo = JSON.parse(raw); localStorage.removeItem(KEY + '@' + uid); } }catch(e){}
+  if(suyo){ DB = suyo; migrar(); } else DB = dbVacia();
+  DB.dueno = uid;
+  _miFicha = null; _misFichas = []; _miProductora = null; SB.orgId = null;
+  guardar();
 }
 
 /* ---------- que nunca quede una pantalla en blanco ----------
@@ -4806,6 +4846,13 @@ function toast(msg){
 }
 
 function render(){
+  if(PUERTA){
+    if(puertaCerrada()) return pintarAparte(pantallaPuerta());
+    asegurarDueno();
+    if(sbConectado() && _miFicha === false) return pintarAparte(pantallaSinAcceso());
+    if(sbConectado() && _miFicha === null && !(DB.productoras||[]).length)
+      return pintarAparte(pantallaEntrando());
+  }
   const pr=getPr(), py=getPy(), v=getV();
   if(pr) DB.ui.productoraId=pr.id;
   if(py) DB.ui.proyectoId=py.id;
@@ -4821,6 +4868,94 @@ function render(){
   if(modal) app.insertAdjacentHTML('beforeend', modal);
   restaurarPantalla(antes);
   mejorarAccesibilidad(app);
+}
+
+/* Las pantallas de afuera (entrar, sin acceso) reemplazan a toda la app. */
+function pintarAparte(html){
+  const antes = capturarPantalla();
+  app.innerHTML = html;
+  if(modal) app.insertAdjacentHTML('beforeend', modal);
+  restaurarPantalla(antes);
+  mejorarAccesibilidad(app);
+}
+const marcaPuerta = () => `<div class="puerta-marca"><b>CLAP</b>
+  <span>Control, Logística y Administración de Producción</span></div>`;
+
+function pantallaPuerta(){
+  if(!sbConfigurado()) return `<div class="puerta">${marcaPuerta()}
+    <div class="puerta-caja">
+      <h1>Entrar</h1>
+      <p>Abrí el link que te mandó tu productora —la invitación a un proyecto— desde
+        este aparato. Ese link le dice a CLAP dónde están tus datos, y ahí mismo te
+        pide el mail y la contraseña.</p>
+      <details class="puerta-mas"><summary>Tengo los datos de conexión</summary>
+        ${campo('URL del proyecto','sburl','','text','placeholder="https://xxxx.supabase.co"')}
+        ${campo('Clave anónima (anon / publishable)','sbanon','','text','placeholder="sb_publishable_…"')}
+        <button class="btn" onclick="sbGuardarConfig()">Guardar</button>
+      </details>
+    </div></div>`;
+  const enter = `onkeydown="if(event.key==='Enter')puertaEntrar('entrar')"`;
+  return `<div class="puerta">${marcaPuerta()}
+    <div class="puerta-caja">
+      <h1>Entrar</h1>
+      ${campo('Mail','sbmail','','email',`autocomplete="username" ${enter}`)}
+      ${campo('Contraseña','sbpass','','password',`autocomplete="current-password" ${enter}`)}
+      <button class="btn pri" onclick="puertaEntrar('entrar')">Entrar</button>
+      <button class="btn link" onclick="olvideClave()">Me olvidé la contraseña</button>
+      <div id="sbdiag" aria-live="polite"></div>
+      <div class="puerta-nota">
+        <p><b>¿Primera vez?</b> Si te invitaron, abrí el link que te mandaron: ahí te
+          creás la cuenta y entrás directo al proyecto.</p>
+        <button class="btn" onclick="puertaEntrar('registrar')">Crear una cuenta sin invitación</button>
+      </div>
+    </div></div>`;
+}
+
+function pantallaSinAcceso(){
+  return `<div class="puerta">${marcaPuerta()}
+    <div class="puerta-caja">
+      <h1>Todavía no estás en ninguna productora</h1>
+      <p>Entraste como <b>${esc((SB.user||{}).email||'')}</b>. La cuenta está creada,
+        pero una cuenta sola no ve nada: a una productora se entra invitado.</p>
+      <p><b>Si trabajás con una productora</b>, pedile a alguien de adentro que te
+        invite: en CLAP, parado en el proyecto, toca <b>✉ Invitar</b> y te manda un link.
+        Abrilo en este aparato y entrás directo.</p>
+      <p><b>Si la productora es tuya</b>, creala: arranca vacía y sólo la ven las
+        personas que vos invites.</p>
+      <button class="btn pri" onclick="formAlta()">Crear mi productora</button>
+      <button class="btn link" onclick="sbCerrarSesion()">Cerrar sesión</button>
+    </div></div>`;
+}
+
+function pantallaEntrando(){
+  return `<div class="puerta">${marcaPuerta()}
+    <div class="puerta-caja">
+      <h1>Buscando tus productoras…</h1>
+      <p>Entraste como <b>${esc((SB.user||{}).email||'')}</b>. Si esto no avanza,
+        puede ser la conexión.</p>
+      <button class="btn" onclick="revisarAlta()">Probar de nuevo</button>
+      <button class="btn link" onclick="sbCerrarSesion()">Cerrar sesión</button>
+    </div></div>`;
+}
+
+async function puertaEntrar(cual){
+  const d = datos(), cont = document.getElementById('sbdiag');
+  const decir = h => { if(cont) cont.innerHTML = h; };
+  const mail = String(d.sbmail||'').trim(), pass = d.sbpass||'';
+  if(!mail || !pass) return decir('<div class="avisomodo turno-mal">Poné tu mail y tu contraseña.</div>');
+  decir('<div class="muted" style="font-size:12px">Entrando…</div>');
+  try{
+    if(cual === 'registrar'){
+      const r = await sbRegistrar(mail, pass, sbLinkConfigurado());
+      if(!r.entro) return decir(`<div class="sicabox"><b>Cuenta creada.</b> Te mandamos un mail a
+        ${esc(mail)} para confirmar la dirección: tocá el link y volvés acá, ya adentro.</div>`);
+    } else await sbLogin(mail, pass);
+  }catch(e){
+    return decir(`<div class="avisomodo turno-mal"><b>No pude entrar.</b> ${esc(e.message)}</div>`);
+  }
+  _miFicha = null;
+  render();
+  try{ await revisarAlta(); }catch(e){ render(); }
 }
 
 /* ---------- que redibujar no te saque de donde estabas ----------
@@ -4967,13 +5102,12 @@ function menuProductoras(pr){
   const locales = DB.productoras || [];
   const mias = sbConectado() ? locales.filter(p => p.enServidor) : locales;
   const soloAca = sbConectado() ? locales.filter(p => !p.enServidor) : [];
-  const ajenas = sbConectado()
-    ? (_todasLasProductoras||[]).filter(t => !locales.some(p => p.id === t.id))
-    : [];
+  /* las ajenas no se listan: a una productora se entra invitado */
+  const ajenas = [];
   const opt = p => `<option value="${p.id}" ${p.id===pr?.id?'selected':''}>${esc(p.nombre)}</option>`;
   return `<div class="pick"><label>Productora</label>
     <select onchange="selProductora(this.value)"
-      title="Las productoras dadas de alta en el sistema. Elegí una de «En la web» para sumarte.">
+      title="Las productoras donde estás. A otra se entra invitado.">
       ${mias.length ? (sbConectado() && (ajenas.length||soloAca.length)
           ? `<optgroup label="Mis productoras">${mias.map(opt).join('')}</optgroup>`
           : mias.map(opt).join('')) : ''}
@@ -6569,7 +6703,9 @@ const GUIA = [
         las invitaciones. <b>El presupuesto, el desglose, el plan de rodaje, el pedido de luces, los
         gastos y los partes viven en el navegador de cada uno</b>: para pasarlos se usa
         <i>Datos → Exportar</i> e <i>Importar</i>.</li>
-      <li><b>Modo prueba:</b> por ahora todos los que entran tienen permisos de administración.</li>
+      <li><b>Crear una cuenta no alcanza para entrar.</b> Sin tu mail y tu contraseña no se ve
+        nada, y una cuenta sola tampoco ve nada: a una productora se entra con el link de
+        <b>✉ Invitar</b> que te manda alguien de adentro, o creando la tuya. Nadie aprueba a mano.</li>
       <li><b>No factura ni toca ARCA/AFIP.</b> Eso necesita certificado digital y servidor; lo hace
         tu contador o un facturador. CLAP maneja el circuito y te exporta el CSV.</li>
       <li><b>No manda mails ni WhatsApp solo.</b> Prepara el mensaje y lo abre; lo enviás vos.</li>
@@ -11782,7 +11918,7 @@ function sel(l,name,val,ops,extra=''){
   return `<label class="f"><span>${l}</span><select name="${name}" ${extra}>
     ${ops.map(o=>{const v=o.v??o,t=o.l??o;return `<option value="${esc(v)}" ${String(v)===String(val)?'selected':''}>${esc(t)}</option>`}).join('')}
   </select></label>`; }
-function datos(){ const o={}; document.querySelectorAll('.mod [name]').forEach(e=>o[e.name]=e.value); return o; }
+function datos(){ const o={}; document.querySelectorAll('.puerta [name], .mod [name]').forEach(e=>o[e.name]=e.value); return o; }
 
 function editProductora(id){
   const p = id ? DB.productoras.find(x=>x.id===id) : nuevaProductora();
@@ -13795,7 +13931,8 @@ async function pintarEquipoAccesos(){
   const fila = g => {
     const estado = g.pendiente ? `<span class="chip d-par">esperando aprobación</span>`
       : !g.activo ? `<span class="chip d-no">dado de baja</span>`
-      : `<span class="chip d-si">entra y ve todo</span>`;
+      : VE_TODO.includes(g.rol) ? `<span class="chip d-si">ve toda la productora</span>`
+      : `<span class="chip d-si">ve donde lo invitaron</span>`;
     const yoMismo = yo && g.id === yo.id;
     return `<tr>
       <td><b>${esc(g.nombre||'sin nombre')}</b>${yoMismo?' <span class="muted">(vos)</span>':''}
@@ -13810,11 +13947,13 @@ async function pintarEquipoAccesos(){
       <td style="text-align:right;white-space:nowrap">
         ${g.pendiente && soyMandamas
           ? `<button class="btn sm pri" onclick="aprobarA('${g.id}')">Aprobar</button>` : ''}
+        ${soyMandamas && !yoMismo
+          ? `<button class="btn sm ${g.activo?'dgr':''}" onclick="darDeBajaA('${g.id}',${g.activo?'false':'true'})">${g.activo?'Dar de baja':'Reactivar'}</button>` : ''}
       </td></tr>`;
   };
 
   cont.innerHTML = `
-    ${!puedenAprobar.length ? `<div class="avisomodo turno-mal" style="margin-bottom:12px">
+    ${esperando.length && !puedenAprobar.length ? `<div class="avisomodo turno-mal" style="margin-bottom:12px">
       <b>Nadie puede aprobar a nadie.</b> No hay ningún administrador activo, así que
       los que están esperando no tienen a quién esperar. Se destraba corriendo
       <code>backend/destrabar.sql</code> una sola vez en el SQL Editor de Supabase.
@@ -13826,29 +13965,35 @@ async function pintarEquipoAccesos(){
       <thead><tr><th>Persona</th><th>Productora</th><th>Rol</th><th>Estado</th><th></th></tr></thead>
       <tbody>${gente.map(fila).join('')}</tbody></table></div>
     <div class="muted" style="font-size:11.5px;line-height:1.6;margin-top:12px">
-      <b>Entra y ve todo</b> es Administración o Productor Ejecutivo. Producción y Equipo
-      figuran en la productora pero sólo ven los proyectos a los que se los invita,
-      desde la solapa <b>Equipo</b>.
+      <b>Ve toda la productora</b>: Administración y Productor Ejecutivo. Producción y
+      Equipo sólo ven los proyectos a los que se los invita (✉ Invitar). Equipo no ve
+      el catálogo. Quien está <b>dado de baja</b> no ve nada hasta que lo reactives
+      o lo vuelvan a invitar.
     </div>`;
 }
 
 /* ============================  INVITACIONES  =============================
-   Un link que lleva todo lo que hace falta para entender la invitación antes
-   de aceptarla: quién invita, a qué proyecto, de qué productora y con qué rol.
-   Va dentro del link y no en una tabla nueva a propósito: no hay SQL que
-   correr, y el que invita no necesita saber de antemano el mail del invitado
-   ni que la persona ya tenga cuenta.
+   Es LA puerta de entrada a una productora: nadie aprueba a mano y nadie se
+   anota solo. El link lleva una clave larga que genera la base
+   (crear_invitacion) y que dice a qué proyecto, con qué rol, hasta cuándo y
+   para cuántas personas. Además lleva los nombres, para mostrar de qué se
+   trata ANTES de aceptar. El que invita no necesita saber el mail del
+   invitado ni si ya tiene cuenta.
 
-   Al aceptar: me sumo a la productora con ese rol, y quedo anotado en el
-   proyecto. Ahí la productora aparece en el menú de arriba y el proyecto en
-   el de proyectos, que es lo que se espera que pase.                        */
+   Al aceptar (aceptar_invitacion): quedo en la productora con ese rol y
+   anotado en el proyecto. Ahí la productora aparece en el menú de arriba y el
+   proyecto en el de proyectos.                                              */
 
 /* base64 que aguanta acentos y viaja en una URL */
 const aB64 = s => btoa(unescape(encodeURIComponent(s))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const deB64 = s => decodeURIComponent(escape(atob(String(s).replace(/-/g,'+').replace(/_/g,'/'))));
 
-function armarInvitacion({proyectoId, proyectoNombre, productoraId, productoraNombre, rol, de}){
-  const datos = {v:1, py:proyectoId, pyn:proyectoNombre, pr:productoraId,
+/* Lo que vale del link es `t`, la clave que generó la base: dice a qué
+   productora y proyecto, con qué rol, hasta cuándo y para cuántos. El resto
+   (nombres, rol) viaja sólo para mostrarlo antes de entrar; cambiarlo a mano
+   no cambia nada, porque la base no lo lee.                                 */
+function armarInvitacion({token, proyectoId, proyectoNombre, productoraId, productoraNombre, rol, de}){
+  const datos = {v:2, t:token, py:proyectoId, pyn:proyectoNombre, pr:productoraId,
     prn:productoraNombre, rol, de};
   const base = location.origin + location.pathname;
   const cn = sbConfigurado()
@@ -13860,7 +14005,7 @@ function leerInvitacion(){
     const q = new URLSearchParams(location.search).get('inv');
     if(!q) return null;
     const d = JSON.parse(deB64(q));
-    return (d && d.py && d.pr) ? d : null;
+    return (d && (d.t || (d.py && d.pr))) ? d : null;
   }catch(e){ return null; }
 }
 
@@ -13879,10 +14024,14 @@ function invitarAlProyecto(){
         Elegí con qué rol entra y mandale el link. Si no tiene cuenta, la va a poder
         crear ahí mismo antes de aceptar.
       </div>
-      ${sel('Entra como','rol','produccion',ROLES.map(r=>({v:r.k,l:r.l})))}
+      ${sel('Entra como','rol','produccion',rolesQuePuedoInvitar().map(r=>({v:r.k,l:r.l})))}
       <div class="sicabox" style="margin-top:10px">
         ${ROLES.map(r=>`<div style="margin-bottom:4px"><b>${esc(r.l)}</b> — ${esc(r.d)}</div>`).join('')}
       </div>
+      <div class="muted" style="font-size:11.5px;line-height:1.55;margin-top:8px">
+        El link de <b>Administración</b> o <b>Productor Ejecutivo</b> sirve para una sola
+        persona y dura 7 días. El de <b>Producción</b> o <b>Equipo</b> se puede mandar a un
+        grupo y dura 30 días.</div>
       <div id="invout" style="margin-top:14px"></div>
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button>
@@ -13891,19 +14040,51 @@ function invitarAlProyecto(){
   </div></div>`);
 }
 
+/* Se invita con un rol igual o más bajo que el propio; Equipo no invita.
+   La base controla lo mismo: esto es sólo para no ofrecer lo que va a rechazar. */
+function rolesQuePuedoInvitar(){
+  const yo = getUsuario(), orden = ['equipo','produccion','ejecutivo','admin'];
+  const mio = (_miFicha && _miFicha.rol) || (yo && yo.rol) || 'admin';
+  return ROLES.filter(r => orden.indexOf(r.k) <= orden.indexOf(mio));
+}
+
 /* El mensaje va corto a propósito: se manda por WhatsApp. */
 function textoInvitacion(py, pr, link){
   return `Te invitaron a participar del proyecto: "${py}" en la productora: "${pr}"\n${link}`;
 }
 
-function generarInvitacion(){
+async function sbCrearInvitacion(proyectoId, rol){
+  return await sbFetch('/rest/v1/rpc/crear_invitacion', {method:'POST',
+    body: JSON.stringify({p_proyecto: proyectoId, p_rol: rol})});
+}
+async function generarInvitacion(){
   const d = datos(), pr = getPr(), py = getPy();
   const yo = getUsuario();
   const de = (yo && yo.nombre) || (sbConectado() ? SB.user.email : '') || 'Alguien';
-  const link = armarInvitacion({proyectoId:py.id, proyectoNombre:py.nombre,
+  const cont = document.getElementById('invout');
+  const decir = h => { if(cont) cont.innerHTML = h; };
+  if(!sbConectado()) return decir('<div class="avisomodo turno-mal">Para invitar hay que tener la sesión iniciada.</div>');
+  decir('<div class="muted" style="font-size:12px">Generando el link…</div>');
+  let token = null;
+  try{
+    if(!await sbSesionViva()) throw new Error('Se cortó la sesión: volvé a entrar.');
+    try{ token = await sbCrearInvitacion(py.id, d.rol); }
+    catch(e){
+      /* el proyecto vivía sólo en este navegador: se sube y se reintenta */
+      if(!/todavía no está en la web/i.test(String(e.message||''))) throw e;
+      await sbSubirProyecto(py, pr.id);
+      token = await sbCrearInvitacion(py.id, d.rol);
+    }
+    if(!token) throw new Error('La base no devolvió el link.');
+  }catch(e){
+    const m = String(e.message||'');
+    const ayuda = /No encontré eso|crear_invitacion|Could not find/i.test(m)
+      ? '<div style="margin-top:6px">Falta correr <code>backend/privado.sql</code> en el SQL Editor de Supabase.</div>' : '';
+    return decir(`<div class="avisomodo turno-mal"><b>No pude generar el link.</b> ${esc(m)}${ayuda}</div>`);
+  }
+  const link = armarInvitacion({token, proyectoId:py.id, proyectoNombre:py.nombre,
     productoraId:pr.id, productoraNombre:pr.nombre, rol:d.rol, de});
   const msg = textoInvitacion(py.nombre, pr.nombre, link);
-  const cont = document.getElementById('invout');
   if(!cont) return;
   cont.innerHTML = `
     <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700;margin-bottom:6px">
@@ -13917,8 +14098,9 @@ function generarInvitacion(){
       <a class="btn" href="mailto:?subject=${encodeURIComponent('Invitación a '+py.nombre)}&body=${encodeURIComponent(msg)}">Mail</a>
     </div>
     <div class="muted" style="font-size:11px;margin-top:8px;line-height:1.5">
-      El link entra como <b>${esc(ROL(d.rol).l)}</b>. Cualquiera que lo tenga puede usarlo,
-      así que mandalo por privado.</div>`;
+      El link entra como <b>${esc(ROL(d.rol).l)}</b>${['admin','ejecutivo'].includes(d.rol)
+        ? ', para una sola persona, por 7 días' : ', por 30 días'}. Quien lo tenga entra
+      sin que nadie lo apruebe: mandalo por privado.</div>`;
 }
 function copiarInvitacion(){
   const t = document.getElementById('invmsg'); if(!t) return;
@@ -13944,6 +14126,18 @@ async function revisarInvitacion(){
 
 function pantallaInvitacion(){
   const inv = _invitacion; if(!inv) return;
+  if(!inv.t){
+    abrir(`<div class="ov"><div class="mod" style="max-width:480px">
+      <h3>Este link de invitación es viejo</h3>
+      <div class="mbody"><div class="muted" style="font-size:12.5px;line-height:1.6">
+        Es de antes de que CLAP pasara a ser privado y ya no sirve para entrar.
+        Pedile a ${esc(inv.de||'quien te invitó')} que te mande uno nuevo desde
+        <b>✉ Invitar</b>.</div></div>
+      <div class="mfoot"><div style="flex:1"></div>
+        <button class="btn pri" onclick="descartarInvitacion()">Entendido</button></div>
+    </div></div>`);
+    return;
+  }
   const con = sbConectado();
   const yaEstoy = con && fichaDe(inv.pr);
   abrir(`<div class="ov"><div class="mod" style="max-width:560px">
@@ -14004,9 +14198,13 @@ async function entrarYAceptar(modo){
   if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Un segundo…</div>';
   try{
     if(modo === 'crear'){
-      const r = await sbRegistrar(mail, pass);
+      /* el mail de confirmación vuelve a esta misma invitación */
+      const vuelta = location.origin + location.pathname + '?inv=' +
+        encodeURIComponent(new URLSearchParams(location.search).get('inv') || '') +
+        (sbConfigurado() ? `&sb=${encodeURIComponent(SB.url)}&k=${encodeURIComponent(SB.anon)}` : '');
+      const r = await sbRegistrar(mail, pass, vuelta);
       if(!r.entro){
-        return fallar('Te creamos la cuenta. Confirmá el mail que te llegó y volvé a abrir este link.');
+        return fallar('Te creamos la cuenta. Te llegó un mail para confirmar la dirección: tocá el link y volvés a esta invitación.');
       }
     } else {
       await sbLogin(mail, pass);
@@ -14027,34 +14225,25 @@ async function aceptarInvitacion(){
   const cont = document.getElementById('invdiag');
   if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Sumándote…</div>';
   try{
-    _misFichas = await sbMisFichas();
-    /* si no tengo ninguna ficha todavía, ésta es mi alta */
-    if(!fichaDe(inv.pr)){
-      await sbAltaPropia({productoraId: inv.pr,
-        nombre: (_misFichas[0] && _misFichas[0].nombre)
-             || (SB.user.email||'').split('@')[0].replace(/[._]/g,' '),
-        rol: inv.rol || 'produccion',
-        area: (_misFichas[0] && _misFichas[0].area) || 'produccion',
-        tel: (_misFichas[0] && _misFichas[0].tel) || ''});
-    }
+    /* La base hace todo de una: revisa la clave, me da de alta en la
+       productora con el rol del link (o me reactiva) y me anota en el
+       proyecto. Anotarme va ANTES de sincronizar, y el orden no es un
+       detalle: con rol Producción o Equipo, el acceso a la productora SALE de
+       estar anotado en un proyecto (`productoras_con_acceso`). */
+    if(!await sbSesionViva()) throw new Error('Se cortó la sesión: volvé a entrar.');
+    const yaTengo = (await sbMisFichas())[0];
+    const r = await sbFetch('/rest/v1/rpc/aceptar_invitacion', {method:'POST',
+      body: JSON.stringify({p_token: inv.t,
+        p_nombre: (yaTengo && yaTengo.nombre) || null})});
+    inv.pr = (r && r.productora_id) || inv.pr;
+    inv.py = (r && r.proyecto_id) || inv.py;
     DB.ui.productoraId = inv.pr;
+    /* quien entra queda en el catálogo de la productora (para citarlo y
+       pagarle); si falla, se reintenta la próxima vez que guarde sus datos */
+    try{ await sbFetch('/rest/v1/rpc/guardar_mis_datos', {method:'POST', body:'{}'}); }
+    catch(e){ console.warn('no pude dejarte en el catálogo todavía:', e.message); }
     _miFicha = await sbMiFicha();
     _miProductora = null; SB.orgId = null;
-
-    /* Anotarme en el proyecto va ANTES de sincronizar, y el orden no es un
-       detalle: con rol Producción o Equipo, el acceso a la productora y a sus
-       proyectos SALE de estar anotado en un proyecto
-       (`productoras_con_acceso` lo dice así). Si sincronizo primero, todavía
-       no tengo permiso y me bajo una lista vacía: la productora queda con el
-       nombre provisorio y el proyecto no aparece. */
-    const mia = fichaDe(inv.pr);
-    if(mia){
-      try{
-        await sbFetch('/rest/v1/proyecto_persona', {method:'POST',
-          headers:{'Prefer':'resolution=merge-duplicates'},
-          body: JSON.stringify({proyecto_id: inv.py, usuario_id: mia.id})});
-      }catch(e){ /* con rol alto ya entra sin esto */ }
-    }
 
     _misFichas.forEach(f => espejarFichaLocal(f, {}, false));
     await traerMiProductora();
@@ -14073,8 +14262,11 @@ async function aceptarInvitacion(){
     toast(`Listo — estás en ${inv.pyn || 'el proyecto'}`);
     R();
   }catch(e){
+    const m = String(e.message||'');
+    const ayuda = /No encontré eso|aceptar_invitacion|Could not find/i.test(m)
+      ? ' (la productora todavía no terminó de pasar a privado: avisale a quien te invitó)' : '';
     if(cont) cont.innerHTML = `<div class="avisomodo turno-mal">
-      <b>No pude sumarte.</b> ${esc(e.message)}</div>`;
+      <b>No pude sumarte.</b> ${esc(m)}${esc(ayuda)}</div>`;
   }
 }
 
@@ -14091,14 +14283,11 @@ async function sumarmeAProductora(id, opts = {}){
   if(!sbConectado()){ toast('Para esto hay que iniciar sesión (☁ arriba).'); return false; }
   const nombre = (_todasLasProductoras.find(p=>p.id===id)||{}).nombre || 'esa productora';
   const yaEstoy = fichaDe(id);
-  if(!yaEstoy && avisar && !confirm(`¿Sumarte a "${nombre}"?`)) return false;
+  if(!yaEstoy){
+    toast(`Para entrar a "${nombre}" te tienen que invitar desde un proyecto.`);
+    R(); return false;
+  }
   try{
-    if(!yaEstoy){
-      const mio = _misFichas[0] || {};
-      await sbAltaPropia({productoraId:id,
-        nombre: mio.nombre || (SB.user.email||'').split('@')[0],
-        rol, area: mio.area || area, tel: mio.tel || ''});
-    }
     DB.ui.productoraId = id; DB.ui.proyectoId = null; DB.ui.versionId = null;
     _miFicha = await sbMiFicha();          /* relee todas y elige la de acá */
     _miProductora = null; SB.orgId = null;
@@ -14148,6 +14337,15 @@ async function aprobarA(id){
   catch(e){ toast('No pude aprobarlo: ' + e.message); }
   await pintarEquipoAccesos();
 }
+async function darDeBajaA(id, activo){
+  if(!activo && !confirm('Deja de ver todo lo de la productora desde ya. ¿Seguro?')) return;
+  try{
+    await sbFetch(`/rest/v1/usuario?id=eq.${id}`, {method:'PATCH',
+      headers:{'Prefer':'return=representation'}, body: JSON.stringify({activo})});
+    toast(activo ? 'Reactivado' : 'Dado de baja');
+  }catch(e){ toast('No pude: ' + e.message); }
+  await pintarEquipoAccesos();
+}
 async function cambiarRolDe(id, rol){
   try{
     await sbFetch(`/rest/v1/usuario?id=eq.${id}`, {method:'PATCH',
@@ -14190,7 +14388,9 @@ function sbGuardarConfig(){
     return;
   }
   SB.url = url; SB.anon = anon; sbGuardar();
-  cerrar(); menuNube();
+  cerrar();
+  /* desde la puerta, al guardar aparece el cuadro para entrar; no hace falta el menú */
+  if(!puertaCerrada()) menuNube();
 }
 async function sbAccion(cual){
   const d = datos();
@@ -14231,7 +14431,7 @@ async function olvideClave(){
   const decir = h => { if(cont) cont.innerHTML = h; else toast(h.replace(/<[^>]+>/g,'')); };
   if(!RE_MAIL.test(mail)){
     decir(`<div class="avisomodo turno-mal"><b>Escribí tu mail arriba</b> y tocá de nuevo "Me olvidé la contraseña".</div>`);
-    const i = document.querySelector('.mod [name=sbmail]'); if(i && i.focus) i.focus();
+    const i = document.querySelector('[name=sbmail]'); if(i && i.focus) i.focus();
     return;
   }
   decir('<div class="muted" style="font-size:12px">Mandando el mail…</div>');
@@ -14335,17 +14535,6 @@ function copiarLinkEquipo(){
   alPortapapeles(l, 'Link copiado — el que lo abra ya queda apuntando a tu Supabase');
 }
 /* ---------- alta propia: la pantalla de primera vez ---------- */
-let _prodsElegibles = [];
-/* Que la lista venga vacia y que no haya podido traerla son DOS cosas, y
-   confundirlas manda a la persona a crear una productora que ya existe: el
-   equipo termina partido en dos productoras que no se hablan. Se guarda el
-   error aparte para poder decirlo.                                          */
-let _prodsError = null;
-async function traerProdsElegibles(){
-  try{ _prodsElegibles = await sbProductorasParaElegir() || []; _prodsError = null; }
-  catch(e){ _prodsElegibles = []; _prodsError = e.message || String(e); }
-  return _prodsElegibles;
-}
 /* Lo que sé de mi ficha en el servidor. null = no la busqué todavía;
    false = la busqué y no tengo. Se guarda para que el header pueda dibujar
    el aviso sin tener que ir al servidor en cada render.                     */
@@ -14360,11 +14549,8 @@ async function revisarAlta(){
   catch(e){ return; }
   if(_miFicha) await traerMiProductora();
   render();
-  if(_miFicha === false){
-    await traerProdsElegibles();
-    if(!modal) formAlta();
-    return;
-  }
+  /* sin ninguna productora: la pantalla lo dice y ofrece crear la propia */
+  if(_miFicha === false) return;
   /* El catálogo del equipo. Es lo que hace que la base de trabajadores sea
      una sola y no una copia por navegador: acá aparecen los compañeros que
      se dieron de alta desde otra máquina. Va después del render para no
@@ -14385,19 +14571,16 @@ async function revisarAlta(){
 function avisoAlta(){
   if(!sbConectado()) return '';
   if(_miFicha === false) return `<div class="barra-alta">
-    <b>Falta terminar tu alta.</b> Tu cuenta está creada pero todavía no dijiste
-    a qué productora te sumás ni qué hacés, así que el sistema no sabe qué mostrarte.
-    <button class="btn sm pri" onclick="abrirAlta()">Completar ahora</button></div>`;
+    <b>Todavía no estás en ninguna productora.</b> Para entrar a una, pedí que te
+    inviten (✉ Invitar, desde el proyecto). Si es tuya, creala.
+    <button class="btn sm pri" onclick="abrirAlta()">Crear mi productora</button></div>`;
   if(_miFicha && _miFicha.pendiente) return `<div class="barra-alta esperando">
     <b>Tu alta está esperando aprobación.</b> Pediste entrar como
     ${esc(ROL(_miFicha.rol).l)}. Hasta que un administrador te apruebe no vas a ver los datos.
     <button class="btn sm" onclick="editarMiFicha()">Corregir mis datos</button></div>`;
   return '';
 }
-async function abrirAlta(){
-  await traerProdsElegibles();
-  formAlta();
-}
+function abrirAlta(){ formAlta(); }
 async function pantallaAlta(){
   const cont = document.getElementById('sbdiag');
   if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Buscando tus datos…</div>';
@@ -14418,72 +14601,34 @@ async function pantallaAlta(){
       podés entrar pero no vas a ver los datos.</div>`;
     return;
   }
-  /* no tiene ficha: primera vez */
-  await traerProdsElegibles();
-  cerrar(); formAlta();
+  /* no tiene ficha: o lo invitan, o crea la suya */
+  cerrar(); render();
 }
 
 function formAlta(){
   const mail = SB.user ? SB.user.email : '';
-  abrir(`<div class="ov"><div class="mod" style="max-width:620px">
-    <h3>Primera vez acá — contanos quién sos</h3>
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+    <h3>Crear mi productora</h3>
     <div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:14px">
-        Entraste como <b>${esc(mail)}</b>. Falta decir a qué productora te sumás y qué hacés,
-        para que el sistema sepa qué mostrarte y qué podés aprobar.
+        Arranca vacía y quedás como su <b>Administración</b>. Sólo la ven las
+        personas que vos invites. Si en realidad trabajás para otra productora,
+        no la crees: pediles que te inviten.
       </div>
-      <div class="grid2">
+      ${campo('Nombre de la productora','productoraNombre','')}
+      <div class="grid2" style="margin-top:10px">
         ${campo('Tu nombre','nombre', mail.split('@')[0].replace(/[._]/g,' ')
           .replace(/\b\p{Ll}/gu,c=>c.toUpperCase()))}
         ${campo('Teléfono','tel','','text','placeholder="11 5555-1234"')}
       </div>
-      <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Productora</div>
-      ${_prodsElegibles.length ? `
-        <label class="f"><span>Sumarme a</span>
-          <select name="productoraId" onchange="alCambiarProductora(this.value)">
-            ${_prodsElegibles.map(p=>`<option value="${p.id}">${esc(p.nombre)}</option>`).join('')}
-            <option value="__nueva">— Crear una productora nueva —</option>
-          </select></label>
-        <div id="prodnueva" style="display:none;margin-top:9px">
-          ${campo('Nombre de la productora nueva','productoraNombre','')}
-        </div>`
-      : _prodsError ? `<div class="avisomodo turno-mal" style="margin-bottom:9px">
-          <b>No pude traer la lista de productoras.</b> ${esc(_prodsError)}
-          <div style="margin-top:6px">Esto <b>no</b> quiere decir que no haya ninguna.
-          Si sabés que tu productora ya está cargada, no crees una nueva —quedarían dos
-          separadas y el equipo partido—: probá de nuevo.</div>
-          <div style="margin-top:8px"><button class="btn sm" onclick="abrirAlta()">Reintentar</button></div>
-        </div>
-        ${campo('O creá una nueva, sólo si de verdad no existe','productoraNombre','')}
-        <input type="hidden" name="productoraId" value="__nueva">`
-      : `<div class="sicabox" style="margin-bottom:9px">Todavía no hay ninguna productora cargada.
-          La primera la creás vos y quedás como su administrador.</div>
-        ${campo('Nombre de tu productora','productoraNombre','')}
-        <input type="hidden" name="productoraId" value="__nueva">`}
-
-      <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Qué hacés</div>
-      <div class="grid2">
-        ${sel('Rol','rol','admin',ROLES.map(r=>({v:r.k,l:r.l})))}
-        ${sel('Área / departamento','area','produccion',
-          [{v:'',l:'— sin área —'},...AREAS.map(a=>({v:a.k,l:a.l}))])}
-      </div>
-      <div class="sicabox" style="margin-top:12px">
-        ${ROLES.map(r=>`<div style="margin-bottom:4px"><b>${esc(r.l)}</b> — ${esc(r.d)}</div>`).join('')}
-      </div>
-      ${_prodsElegibles.length ? `<div class="muted" style="font-size:11.5px;line-height:1.6;margin-top:10px">
-        Sumarte a una productora no te muestra sus proyectos: te tienen que
-        <b>invitar a cada uno</b>. Por eso podés anotar todas las productoras con las
-        que trabajás sin ver los presupuestos de ninguna.
-        <div style="margin-top:5px"><b>Administración</b> y <b>Productor Ejecutivo</b> son la
-        excepción —entran a todo—, así que si te sumás a una productora que no es tuya con
-        alguno de esos dos roles, un administrador de adentro tiene que aprobarte primero.</div>
-      </div>` : ''}
+      <div style="margin-top:10px">${sel('Tu área','area','produccion',
+          [{v:'',l:'— sin área —'},...AREAS.map(a=>({v:a.k,l:a.l}))])}</div>
       <div id="altadiag" style="margin-top:12px"></div>
     </div>
     <div class="mfoot">
-      <button class="btn" onclick="cerrar()">Después</button>
+      <button class="btn" onclick="cerrar()">Cancelar</button>
       <div style="flex:1"></div>
-      <button class="btn pri" onclick="confirmarAlta()">Darme de alta</button>
+      <button class="btn pri" onclick="confirmarAlta()">Crear</button>
     </div>
   </div></div>`);
 }
@@ -14497,20 +14642,14 @@ async function confirmarAlta(){
   const cont = document.getElementById('altadiag');
   const nombre = (d.nombre||'').trim();
   if(!nombre){ if(cont) cont.innerHTML = '<div class="avisomodo turno-mal">Poné tu nombre.</div>'; return; }
-  const nueva = d.productoraId === '__nueva';
-  if(nueva && !(d.productoraNombre||'').trim()){
+  if(!(d.productoraNombre||'').trim()){
     if(cont) cont.innerHTML = '<div class="avisomodo turno-mal">Poné el nombre de la productora.</div>'; return; }
-  if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Dando de alta…</div>';
+  if(cont) cont.innerHTML = '<div class="muted" style="font-size:12px">Creándola…</div>';
   try{
-    let pid = d.productoraId, esMia = false;
-    if(nueva){
-      /* la base crea productora + organización + mi alta como admin, de una */
-      const p = await sbCrearProductora(d.productoraNombre.trim(),
-        {nombre, rol:d.rol, area:d.area, tel:d.tel});
-      pid = p.id; esMia = true;
-    } else {
-      await sbAltaPropia({productoraId:pid, nombre, rol:d.rol, area:d.area, tel:d.tel});
-    }
+    /* la base crea productora + organización + mi alta como admin, de una */
+    const p = await sbCrearProductora(d.productoraNombre.trim(),
+      {nombre, rol:'admin', area:d.area, tel:d.tel});
+    const pid = p.id, esMia = true;
     /* Quedar en el catálogo es parte del alta, no un trámite aparte: de ahí
        salen las líneas del presupuesto, las citaciones y las órdenes de pago.
        Va por la función de la base porque el que recién entra —y más si quedó
@@ -14522,9 +14661,12 @@ async function confirmarAlta(){
           p_rubro: rubroDeArea(d.area)})});
     }catch(e){ console.warn('no pude dejarte en el catálogo todavía:', e.message); }
 
+    DB.ui.productoraId = pid; DB.ui.proyectoId = null; DB.ui.versionId = null;
     const ficha = await sbMiFicha();
     _miFicha = ficha || false;      /* para que el aviso del header se apague */
     if(ficha) await traerMiProductora();
+    await sincronizarProductoras();
+    DB.ui.productoraId = pid;
     cerrar();
     if(ficha && ficha.pendiente){
       alert('Listo. Tu alta quedó esperando que un administrador de la productora la apruebe.\n\n' +
@@ -14544,8 +14686,7 @@ async function confirmarAlta(){
       ayuda = 'Falta correr <code>backend/arranque.sql</code> en el SQL Editor de Supabase. ' +
               'Es lo que le permite a la base crear la primera productora.';
     else if(/no te deja|policy|403/i.test(m))
-      ayuda = 'La base rechazó el alta. Si la productora tiene el candado cerrado, ' +
-              'un administrador tiene que aprobarte antes.';
+      ayuda = 'La base rechazó el alta.';
     if(cont) cont.innerHTML = `<div class="avisomodo turno-mal">
       <b>No pude darte de alta.</b> ${esc(m)}
       ${ayuda ? `<div style="margin-top:6px">${ayuda}</div>` : ''}</div>`;
@@ -14685,26 +14826,27 @@ async function editarMiFicha(){
         ${campo('Teléfono','tel', f.tel||p.tel||'','text','placeholder="11 5555-1234"')}
       </div>
       <div class="grid2" style="margin-top:12px">
-        ${sel('Rol','rol', f.rol||'equipo', ROLES.map(r=>({v:r.k,l:r.l})))}
+        <div class="f"><span>Rol</span><div style="padding:7px 0;font-size:13px"><b>${esc(ROL(f.rol||'equipo').l)}</b>
+          <span class="muted" style="font-size:11.5px">· lo da la invitación; lo cambia Administración en ☁ → Quién entra</span></div></div>
         ${sel('Área / departamento','area', f.area||'',
           [{v:'',l:'— sin área —'},...AREAS.map(a=>({v:a.k,l:a.l}))])}
       </div>
 
       <div style="margin:18px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
-        Mi productora</div>
+        Mis productoras</div>
       <div class="muted" style="font-size:11.5px;line-height:1.6;margin-bottom:9px">
-        Es la productora en la que figurás. Cambiarla mueve tu ficha, y es lo que
-        decide qué ves en el menú de arriba.
+        Las productoras donde estás. A otra se entra con una invitación de alguien
+        de adentro; la tuya la podés crear acá.
       </div>
       <div style="display:flex;gap:7px;align-items:flex-end;flex-wrap:wrap">
-        <label class="f" style="flex:1;min-width:190px"><span>Figurás en</span>
+        <label class="f" style="flex:1;min-width:190px"><span>Estoy mirando</span>
           <select id="miprod" onchange="cambiarMiProductora(this.value)">
             ${(_todasLasProductoras||[]).map(t=>`<option value="${t.id}"
               ${t.id===f.productora_id?'selected':''}>${esc(t.nombre)}</option>`).join('')}
             ${!(_todasLasProductoras||[]).some(t=>t.id===f.productora_id)
               ? `<option value="${esc(f.productora_id||'')}" selected>${esc((_miProductora&&_miProductora.nombre)||'la tuya')}</option>` : ''}
           </select></label>
-        <button class="btn" onclick="crearProductoraDesdeMisDatos()">＋ Agregar productora</button>
+        <button class="btn" onclick="crearProductoraDesdeMisDatos()">＋ Crear mi productora</button>
       </div>
 
       <div style="margin:18px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
@@ -14812,7 +14954,12 @@ async function aprobarAlta(id){
   catch(e){ alert('No pude aprobarlo.\n\n'+e.message); }
 }
 
-async function sbCerrarSesion(){ await sbSalir(); cerrar(); menuNube(); toast('Sesión cerrada'); }
+async function sbCerrarSesion(){
+  await sbSalir();
+  _miFicha = null; _misFichas = []; _miProductora = null;
+  modal = null; toast('Sesión cerrada');
+  if(PUERTA) R(); else menuNube();
+}
 function sbDesconectar(){
   if(!confirm('Se borra la URL y la clave de este navegador.\n\nTus datos locales no se tocan. ¿Seguir?')) return;
   sbOlvidar(); cerrar(); menuNube();

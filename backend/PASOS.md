@@ -95,6 +95,29 @@ productora ajena, que son los que sí ven todo.
 Verificado: la tabla `proyecto_persona` existe, tapa sin login, y ninguna otra
 tabla se abrió de más.
 
+### A2g. Correr privado.sql — ⏳ FALTA (lo corrés vos)
+
+Termina el modo prueba y deja CLAP privado: **se entra sólo con invitación**.
+Cualquiera puede crearse una cuenta, pero una cuenta sola no ve nada. A una
+productora se entra con el link de ✉ Invitar, que trae una clave que guarda la
+base. Nadie aprueba a mano y nadie se anota solo en una ajena.
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Pegá **todo** `backend/privado.sql` y apretá **Run**.
+3. Al final sale una tabla: quién está en cada productora, con qué rol y qué
+   ve. **El modo prueba dejó a todos como Administración**: si hay alguien que
+   no tiene que ver todo, cambiale el rol o dalo de baja desde CLAP
+   (☁ → Quién entra).
+4. En **Authentication → Sign In / Providers → Email**, revisá:
+   - **Allow new users to sign up**: prendido (el invitado se crea la cuenta solo).
+   - **Confirm email**: prendido (nadie se registra con el mail de otro).
+
+Se puede correr dos veces sin romper nada. Se probó antes contra un Postgres
+de verdad armado como esta base (52 pruebas).
+
+Hasta que lo corras, la app nueva no puede generar links de invitación
+(avisa que falta este archivo) y la base sigue en modo prueba.
+
 ### A4. Lo único que falta de esta parte, y sólo lo podés hacer vos
 
 Crear tu cuenta pide elegir una contraseña. Eso no lo hago yo por vos: es tuya
@@ -232,7 +255,11 @@ vos desde **Authentication → Users → Add user**.
 
 Recomendación: apretá los dos el día que el link salga del círculo de dos.
 
-## El candado del alta
+## El candado del alta (reemplazado por privado.sql)
+
+> Esto era antes de `privado.sql`. Con CLAP privado ya no hay alta propia ni
+> aprobación: se entra con invitación. Queda como historia.
+
 
 Arranca **abierto**: el que entra elige su rol —incluso Administración— y queda
 activo al toque. Es lo cómodo mientras son dos o tres y se conocen.

@@ -8,7 +8,10 @@
    lectura de verdad: `productora_mia` pasa por `mis_productoras()`, que exige
    `activo AND NOT pendiente`. O sea: mientras espero aprobación NO puedo leer
    la fila de mi productora, pero SÍ mi propia ficha (`usuario_ver_mia`).
-   El doble anterior devolvía todo y por eso nunca se vio.                    */
+   El doble anterior devolvía todo y por eso nunca se vio.
+   Con CLAP privado nadie nuevo queda esperando (se entra invitado), pero las
+   altas viejas que quedaron pendientes en la base siguen existiendo: el caso
+   se arma con una de esas.                                                   */
 
 let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
@@ -40,7 +43,7 @@ global.fetch = async (url, opts = {}) => {
   if (u.includes('/auth/v1/logout')) return respu(204);
 
   if (u.includes('/rpc/productoras_para_elegir'))
-    return respu(200, TB.productora.map(p => ({ id: p.id, nombre: p.nombre })));
+    return respu(200, TB.productora.filter(p => TB.usuario.some(x => x.auth_uid === SESION && x.productora_id === p.id)).map(p => ({ id: p.id, nombre: p.nombre })));   /* privado.sql: sólo las mías */
   if (u.includes('/rpc/productora_pide_aprobacion')) {
     const pr = TB.productora.find(x => x.id === cuerpo.p);
     return respu(200, !!(pr && pr.requiere_aprobacion));
@@ -111,8 +114,7 @@ const cargarForm = campos => {
   console.log('--- 1. LA PRODUCTORA YA EXISTE ---');
   SESION = 'auth-andres';
   await conectar('andres@x.com');
-  cargarForm({ nombre: 'Andrés', tel: '', productoraId: '__nueva',
-    productoraNombre: 'Nuestra Productora', rol: 'admin', area: 'produccion' });
+  cargarForm({ nombre: 'Andrés', tel: '', productoraNombre: 'Nuestra Productora', area: 'produccion' });
   await confirmarAlta();
   ok('la productora quedó creada', TB.productora.length === 1, TB.productora[0].nombre);
 
@@ -121,10 +123,13 @@ const cargarForm = campos => {
   SESION = 'auth-willy';
   await conectar('santyno@gmail.com');
   _miFicha = null; _miProductora = null;
-  _prodsElegibles = await sbProductorasParaElegir();
-  cargarForm({ nombre: 'Willy De Rose', tel: '11 4444-2222',
-    productoraId: TB.productora[0].id, productoraNombre: '', rol: 'ejecutivo', area: 'produccion' });
-  await confirmarAlta();
+  /* su alta vieja, de antes de privado.sql: quedó esperando aprobación */
+  TB.usuario.push({ id: nid('usuario'), auth_uid: 'auth-willy', productora_id: TB.productora[0].id,
+    nombre: 'Willy De Rose', rol: 'ejecutivo', area: 'produccion', tel: '11 4444-2222',
+    email: 'santyno@gmail.com', activo: true, pendiente: true });
+  _miFicha = await sbMiFicha();
+  espejarFichaLocal(_miFicha);
+  await sincronizarCatalogo();
 
   const w = await sbMiFicha();
   ok('su ficha existe en el servidor', !!w, w && w.nombre);
@@ -229,27 +234,17 @@ const cargarForm = campos => {
     getUsuario() && getUsuario().nombre);
   ok('y sin usuario no hay permisos', !puede(getUsuario(), 'cargar'));
 
-  /* --- 10. si no puedo traer la lista, decirlo ---------------------------
-     "La lista vino vacía" y "no pude traerla" son dos cosas distintas.
-     Confundirlas manda a la persona a crear una productora que ya existe, y
-     el equipo termina partido en dos que no se hablan.                     */
-  console.log('\n--- 10. SI FALLA LA LISTA, NO DECIR QUE NO HAY NINGUNA ---');
-  const fetchBueno = global.fetch;
-  global.fetch = async (url, opts) => String(url).includes('productoras_para_elegir')
-    ? respu(500, { message: 'se cayó la conexión' })
-    : fetchBueno(url, opts);
+  /* --- 10. el alta ya no lista productoras ajenas ------------------------
+     Antes el formulario traía la lista de todas las productoras del sistema
+     para elegir a cuál sumarse. Con CLAP privado no se lista ninguna ajena:
+     o te invitan, o creás la tuya.                                          */
+  console.log('\n--- 10. EL ALTA NO LISTA PRODUCTORAS AJENAS ---');
   SESION = 'auth-nuevo';
   await conectar('nuevo@x.com');
-  modal = null; await abrirAlta();
-  ok('avisa que no pudo traer la lista', /No pude traer la lista/.test(modal));
-  ok('NO dice que no hay ninguna productora', !/Todav[ií]a no hay ninguna productora/.test(modal));
-  ok('avisa del riesgo de duplicar', /partido|separadas|no crees una nueva/i.test(modal));
-  ok('ofrece reintentar', /Reintentar/.test(modal));
-
-  global.fetch = fetchBueno;
-  modal = null; await abrirAlta();
-  ok('al reintentar aparece la productora', /Nuestra Productora/.test(modal));
-  ok('y ya no muestra el error', !/No pude traer la lista/.test(modal));
+  modal = null; abrirAlta();
+  ok('ofrece crear la propia', /Crear mi productora/.test(modal));
+  ok('no muestra la productora de otros', !/Nuestra Productora/.test(modal));
+  ok('y avisa que si trabaja para otra, lo inviten', /pediles que te inviten/.test(modal));
 
   console.log('\n' + (fallos ? '>>> ' + fallos + ' FALLAS' : '>>> TODO OK'));
   process.exitCode = fallos ? 1 : 0;

@@ -7,22 +7,20 @@
 
    Ahora sale de la base:
      - las MIAS, con su nombre real
-     - las que existen en la web y todavía no son mías, para sumarme
      - las que quedaron sólo en este navegador, marcadas aparte
-   Y elegir una de "En la web" mueve mi ficha: eso es lo que conecta el menú
-   con los trabajadores.                                                      */
+   Las ajenas NO se listan: con CLAP privado (backend/privado.sql) a una
+   productora se entra con una invitación, no eligiéndola de una lista.      */
 
 let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
 
-const TB = { organizacion: [], productora: [], usuario: [], catalogo_persona: [] };
+const TB = { organizacion: [], productora: [], usuario: [], catalogo_persona: [], invitacion: [] };
 let SEQ = 0, SESION = 'auth-a';
 const nid = p => `${p}-${++SEQ}`;
 const uuidFalso = () => `${(++SEQ+'').padStart(8,'0')}-0000-4000-8000-000000000000`;
 const respu = (s, b) => ({ ok: s >= 200 && s < 300, status: s, statusText: 'x',
   text: async () => b === undefined ? '' : JSON.stringify(b) });
 
-/* modo prueba puesto: todos entran derecho (es como va a estar la base) */
 const misProductoras = () => TB.usuario
   .filter(u => u.auth_uid === SESION && u.activo && !u.pendiente
     && ['admin','ejecutivo'].includes(u.rol))
@@ -36,9 +34,19 @@ global.fetch = async (url, opts = {}) => {
     return respu(200, { access_token:'t', refresh_token:'r', expires_in:3600,
       user:{ id: SESION, email: c.email } });
   if (u.includes('/auth/v1/logout')) return respu(204);
-  /* security definer: devuelve TODAS, sin filtrar por permisos */
+  /* privado.sql: sólo las mías */
   if (u.includes('/rpc/productoras_para_elegir'))
-    return respu(200, TB.productora.map(p => ({ id: p.id, nombre: p.nombre })));
+    return respu(200, TB.productora.filter(p => TB.usuario.some(x => x.auth_uid === SESION && x.productora_id === p.id))
+      .map(p => ({ id: p.id, nombre: p.nombre })));
+  if (u.includes('/rpc/aceptar_invitacion')) {
+    const inv = TB.invitacion.find(x => x.token === c.p_token);
+    if (!inv) return respu(400, { message: 'Ese link de invitación no existe' });
+    let yo = TB.usuario.find(x => x.auth_uid === SESION && x.productora_id === inv.productora_id);
+    if (!yo) { yo = { id: uuidFalso(), auth_uid: SESION, productora_id: inv.productora_id,
+      nombre: c.p_nombre || 'Invitado', rol: inv.rol, email: SESION + '@x.com',
+      activo: true, pendiente: false, alta_el: ++SEQ }; TB.usuario.push(yo); }
+    return respu(200, { productora_id: inv.productora_id, proyecto_id: null, rol: yo.rol });
+  }
   if (u.includes('/rpc/productora_pide_aprobacion')) return respu(200, false);
   if (u.includes('/rpc/crear_mi_productora')) {
     let org = TB.organizacion[0];
@@ -47,9 +55,8 @@ global.fetch = async (url, opts = {}) => {
       cuit: null, condicion_iva: null, jurisdiccion: null,
       fee_default: 15, contingencia_default: 5, iva_default: 21, iibb_default: 0 };
     TB.productora.push(pr);
-    const mia = TB.usuario.find(x => x.auth_uid === SESION);
-    if (mia) mia.productora_id = pr.id;      /* crear una me mueve a ella */
-    else TB.usuario.push({ id: uuidFalso(), auth_uid: SESION, productora_id: pr.id,
+    /* una ficha nueva por productora: crear otra no me saca de la anterior */
+    TB.usuario.push({ id: uuidFalso(), auth_uid: SESION, productora_id: pr.id,
       nombre: c.p_mi_nombre || 'Yo', rol: 'admin', email: SESION + '@x.com',
       activo: true, pendiente: false, alta_el: ++SEQ });
     return respu(200, pr.id);
@@ -71,8 +78,8 @@ global.fetch = async (url, opts = {}) => {
 
   if (met === 'POST') {
     const fila = { id: uuidFalso(), alta_el: ++SEQ, ...c };
-    if (m[1] === 'usuario' && fila.auth_uid !== SESION)
-      return respu(403, { message: 'row-level security policy' });
+    if (m[1] === 'usuario')       /* privado.sql: no hay alta propia */
+      return respu(403, { message: 'new row violates row-level security policy' });
     if (m[1] === 'catalogo_persona') { const ya = tabla.find(x => x.id === c.id);
       if (ya) { Object.assign(ya, c); return respu(200, [ya]); }
       tabla.push(c); return respu(200, [c]); }
@@ -107,8 +114,7 @@ const menuArriba = () => { const m = app.innerHTML.match(/<label>Productora<\/la
   console.log('--- 1. HAY PRODUCTORAS EN LA BASE ---');
   navegadorNuevo();
   SESION='auth-a'; await conectar('andres@x.com');
-  cargarForm({ nombre:'Andrés', tel:'', productoraId:'__nueva',
-    productoraNombre:'Neto Films', rol:'admin', area:'produccion' });
+  cargarForm({ nombre:'Andrés', tel:'', productoraNombre:'Neto Films', area:'produccion' });
   await confirmarAlta();
   ok('creó Neto Films', TB.productora.length===1, TB.productora[0].nombre);
   await crearProductoraEnLaWebConNombre('Millanisima');
@@ -126,37 +132,39 @@ const menuArriba = () => { const m = app.innerHTML.match(/<label>Productora<\/la
     /Sólo en esta computadora[\s\S]*?Productora Demo/.test(menu));
   ok('ofrece crear una nueva', /__nueva/.test(menu));
 
-  /* --- 3. Willy, en otra máquina, VE las productoras de la web ---------- */
-  console.log('\n--- 3. WILLY VE LAS PRODUCTORAS QUE HAY EN LA WEB ---');
+  /* --- 3. Willy, en otra máquina: sin invitación no ve ninguna ----------- */
+  console.log('\n--- 3. WILLY NO VE LAS AJENAS: ENTRA INVITADO ---');
   navegadorNuevo();
   SESION='auth-w'; await conectar('santyno@gmail.com');
-  _prodsElegibles = await sbProductorasParaElegir();
-  ok('la lista del alta trae las dos', _prodsElegibles.length===2,
-    _prodsElegibles.map(p=>p.nombre).join(' · '));
-  cargarForm({ nombre:'Willy De Rose', tel:'11 4444-2222',
-    productoraId: TB.productora[0].id, productoraNombre:'', rol:'admin', area:'produccion' });
-  await confirmarAlta();
+  ok('la lista no le trae productoras ajenas', (await sbProductorasParaElegir()).length===0);
   await sincronizarProductoras(); render();
   menu = menuArriba();
-  ok('en su menú está SU productora con nombre real', /Neto Films/.test(menu));
-  ok('y la otra, para sumarse', /En la web[\s\S]*?Millanisima/.test(menu), );
-  ok('la otra va con prefijo sumar:', /value="sumar:/.test(menu));
+  ok('su menú no ofrece las ajenas', !/Neto Films|Millanisima/.test(menu) && !/sumar:/.test(menu));
+  /* Andrés lo invita a Neto Films (la clave la guardó la base) */
+  const neto = TB.productora.find(p=>p.nombre==='Neto Films');
+  const milla = TB.productora.find(p=>p.nombre==='Millanisima');
+  TB.invitacion.push({ token:'tok-neto', productora_id: neto.id, rol:'admin' });
+  _invitacion = { v:2, t:'tok-neto', pr: neto.id, prn:'Neto Films' };
+  await aceptarInvitacion();
+  await sincronizarProductoras(); render();
+  menu = menuArriba();
+  ok('con la invitación, está SU productora con nombre real', /Neto Films/.test(menu));
+  ok('la otra sigue sin aparecer', !/Millanisima/.test(menu) && !/sumar:/.test(menu));
   ok('sigue sin decir "Mi productora"', !/>Mi productora</.test(menu));
 
-  /* --- 4. sumarse a la otra desde el menú -------------------------------- */
-  console.log('\n--- 4. ELEGIR UNA DE "EN LA WEB" ME SUMA ---');
-  const milla = TB.productora.find(p=>p.nombre==='Millanisima');
+  /* --- 4. elegir una ajena por id no lo mete ----------------------------- */
+  console.log('\n--- 4. NO HAY ATAJO PARA SUMARSE ---');
   await selProductora('sumar:' + milla.id);
-  const wf = await sbMiFicha();
-  ok('mi ficha se mudó a Millanisima', wf.productora_id === milla.id);
-  ok('y sigo siendo yo', wf.nombre === 'Willy De Rose', wf.nombre);
-  ok('la app quedó parada en esa productora', DB.ui.productoraId === milla.id);
+  ok('no le crea ficha en Millanisima', !TB.usuario.some(x => x.auth_uid==='auth-w' && x.productora_id===milla.id));
+  TB.invitacion.push({ token:'tok-milla', productora_id: milla.id, rol:'ejecutivo' });
+  _invitacion = { v:2, t:'tok-milla', pr: milla.id, prn:'Millanisima' };
+  await aceptarInvitacion();
   await sincronizarProductoras(); render();
-  ok('el menú ahora la muestra como mía', /Neto Films|Millanisima/.test(menuArriba()));
-  ok('y aparece seleccionada',
-    new RegExp('value="'+milla.id+'" selected').test(menuArriba()));
+  menu = menuArriba();
+  ok('con otra invitación, tiene las dos', /Neto Films/.test(menu) && /Millanisima/.test(menu));
+  ok('y quedó parado en la nueva', new RegExp('value="'+milla.id+'" selected').test(menu));
 
-  /* --- 5. cambiar y agregar desde "Mis datos" ---------------------------- */
+  /* --- 5. cambiar desde "Mis datos" -------------------------------------- */
   console.log('\n--- 5. DESDE MIS DATOS ---');
   _miFicha = await sbMiFicha();
   modal = null; await editarMiFicha();
@@ -165,13 +173,11 @@ const menuArriba = () => { const m = app.innerHTML.match(/<label>Productora<\/la
   ok('lista las dos', /Neto Films/.test(modal) && /Millanisima/.test(modal));
   ok('muestra la mía elegida',
     new RegExp('value="'+milla.id+'"[^>]*selected').test(modal));
-  ok('y el botón de agregar', /Agregar productora/.test(modal));
-  ok('explica qué hace', /Cambiarla mueve tu ficha/.test(modal));
-
-  const neto = TB.productora.find(p=>p.nombre==='Neto Films');
+  ok('ofrece crear la propia', /Crear mi productora/.test(modal));
+  ok('explica que a otra se entra invitado', /se entra con una invitación/.test(modal));
   await cambiarMiProductora(neto.id);
-  const wf2 = await sbMiFicha();
-  ok('cambiar desde Mis datos me mueve', wf2.productora_id === neto.id);
+  ok('cambiar desde Mis datos lo para en la otra', DB.ui.productoraId === neto.id);
+  ok('sin crear fichas nuevas', TB.usuario.filter(x => x.auth_uid==='auth-w').length === 2);
   ok('y la pantalla se vuelve a abrir', /Mis datos/.test(modal||''));
 
   /* --- 6. sin sesión, el menú no inventa nada --------------------------- */
