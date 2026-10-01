@@ -529,6 +529,42 @@ la jerga del set (ceferino, araña, palio, globo chino, huevera, Kino 4x4,
 de sumar se muestra lo entendido para corregir; lo que no se reconoce queda
 para elegirlo a mano.
 
+### Storyboard por puesta, y la planta
+
+Del storyboard sale una lista en el orden del spot; se filma por **puesta**:
+lo que comparte fondo y hacia dónde mira la cámara (el **tiro**) se hace
+junto, porque cada cambio es mover luces y grip.
+
+- **Proponer puestas** (en el banco y en cada jornada): lee cada plano y le
+  pone una letra por fondo y tiro. Lo de frente y la subjetiva van juntos; el
+  contraplano y el cenital, aparte. No pisa lo que el AD ya cargó. Después,
+  **Acomodar por puesta** ordena el día de lo abierto a lo cerrado.
+- **Agrupar por** puesta, tiro, personaje o fondo, para mirar el banco como
+  lo piensa un AD. Agrupar por personaje usa el elenco o, si no está, los
+  nombres de la descripción, sin tocar el elenco.
+- **Planta de cámara** (opcional): imagen o PDF por jornada; se ve mientras
+  se arma el día y sale impresa con el plan.
+- Cada plano tiene **Tiro** en la ficha (de frente, contraplano, lateral,
+  subjetiva, cenital).
+
+Sin IA se lee el texto de cada cuadro. Con la IA prendida aparece **Leer los
+cuadros con IA**: mira la imagen y completa lo vacío (fondo, tiro,
+personajes, tamaño, INT/EXT, luz, puesta), con la planta si la hay. Prueba:
+`test/puestas.js`.
+
+### La IA (opcional, paga, apagada)
+
+La clave de la IA no puede ir en la página, que es pública. Vive como secreto
+de Supabase y la usa sólo la función `backend/funciones/clap-ia`:
+- atiende sólo a quien tiene sesión y está activo en la productora;
+- cuenta el uso del mes y frena en un tope (`backend/ia.sql`);
+- sin clave contesta "apagada" y no cuesta nada: los botones de IA no
+  aparecen y todo lo demás funciona igual.
+
+Hace dos cosas: leer respuestas de rentals desordenadas y mirar los cuadros
+del storyboard. Cómo prenderla: `backend/PASOS.md`. Pruebas:
+`test/funcion-ia.js` (la función, con Supabase y la IA simulados).
+
 ### Pedir a varios rentals
 
 Los rentals no tienen la web ni las listas al día: se les manda el pedido y
@@ -1146,6 +1182,8 @@ node test/run.js test/plan-rodaje.js # plan de rodaje: sol, cascada, avisos, sto
 node test/run.js test/pedido-luces.js # pedido de luces: equipos, jornadas, potencia, totales, rental
 node test/run.js test/pedido-luces-importar.js # interpretar el pedido del gaffer (texto, Excel, Word)
 node test/run.js test/rentales.js  # mail por rental, leer respuestas OK/NO, reparto y precios guardados
+node test/run.js test/puestas.js   # storyboard por puesta/tiro/personaje/fondo, planta, IA simulada
+node test/run.js test/funcion-ia.js # la funcion del servidor: sesion, productora, sin clave, tope
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
 node test/run.js test/contactos.js # lista de contactos y su circuito con catalogo y callsheet

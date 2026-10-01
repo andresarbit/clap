@@ -793,6 +793,16 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
   border-bottom:1px dashed var(--line2)}
 .pl-marca.sol{color:#e6c84a}.pl-marca.dorada{color:#f0a64a}.pl-marca.azul{color:#8fa8ff}
 .pl-bancoc h3{margin-bottom:10px}
+.pl-agrupar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:12.5px}
+.pl-agrupar label{display:flex;gap:6px;align-items:center}
+.pl-agrupar select{width:auto;min-width:190px;font-size:12.5px;padding:4px 28px 4px 8px}
+.pl-grupo{margin:14px 0 6px;font-size:13px;font-weight:600}
+.pl-grupo .muted{font-weight:500;margin-left:4px}
+.pl-plgrilla{display:flex;flex-wrap:wrap;gap:12px}
+.pl-plgrilla figure{margin:0;max-width:320px}
+.pl-plgrilla img{width:100%;border:1px solid var(--line);border-radius:8px;cursor:zoom-in;background:#fff}
+.pl-plgrilla figcaption{font-size:11.5px;color:var(--tx2);margin-top:4px}
+@media print{.pl-plgrilla figure{max-width:100%}}
 .pl-grilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
 .pl-carta{border:1px solid var(--line);border-radius:var(--r);background:var(--bg2);overflow:hidden;cursor:grab;display:flex;flex-direction:column}
 .pl-carta img,.pl-cimg{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--bg3);display:block}
@@ -8454,7 +8464,7 @@ function nuevoItemPlan(o={}){
   if(base.tipo === 'escena') return {...base, escenaId:o.escenaId || null};
   return {...base, numero:o.numero || '', desc:o.desc || '', piezaId:o.piezaId || null,
     escenaId:o.escenaId || null, set:o.set || '', emplazamiento:o.emplazamiento || '',
-    tamano:o.tamano || '', movimiento:o.movimiento || '', lente:o.lente || '',
+    tamano:o.tamano || '', movimiento:o.movimiento || '', lente:o.lente || '', tiro:o.tiro || '',
     intExt:o.intExt || '', luz:o.luz || '', elenco:o.elenco || '', elementos:o.elementos || '',
     img:o.img || '', tomaBuena:o.tomaBuena || '', prioridad:o.prioridad || ''};
 }
@@ -8816,6 +8826,146 @@ function acomodarPorEmplazamiento(py, num){
   return movidos;
 }
 
+/* ---------- puestas: los planos como los piensa un AD ----------
+   Del storyboard sale una lista en el orden del spot; se filma por PUESTA:
+   todo lo que comparte fondo y hacia dónde mira la cámara (el tiro) se hace
+   junto, porque cada cambio es mover luces y grip. CLAP propone las puestas
+   leyendo cada cuadro —el texto del cuadro; con la IA prendida, también la
+   imagen— y el asistente de dirección las corrige. Es una base más amable,
+   no un plan cerrado.
+   La puesta se guarda en `emplazamiento` (A, B, C… por fondo), que es lo que
+   ya usa "Acomodar por emplazamiento".                                     */
+const TIROS = [
+  {k:'',        l:'—'},
+  {k:'frente',  l:'De frente'},
+  {k:'contra',  l:'Contraplano'},
+  {k:'lateral', l:'Lateral'},
+  {k:'pov',     l:'Subjetiva (POV)'},
+  {k:'arriba',  l:'Cenital / aéreo'},
+];
+const TIRO = k => TIROS.find(x => x.k === k) || TIROS[0];
+function tiroDeTexto(t, tamano){
+  const s = norm(String(t || ''));
+  if(/contra ?plano|contra ?campo|\breverse\b|plano inverso|\binverso\b|desde atras|de espaldas a camara/.test(s)) return 'contra';
+  if(/\bpov\b|subjetiv|punto de vista/.test(s)) return 'pov';
+  if(/cenital|top ?shot|desde arriba|\bdron(e)?\b|aereo|picado total/.test(s) || /Cenital|Aéreo/.test(tamano || '')) return 'arriba';
+  if(/lateral|de perfil|\bperfil\b|de costado/.test(s)) return 'lateral';
+  return '';
+}
+/* los personajes del plano: el elenco cargado o, si no hay, los nombres que
+   aparecen en la descripción (sólo para agrupar: no se toca el elenco) */
+function personajesDePlano(it, nombres){
+  const cargados = String(it.elenco || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean);
+  if(cargados.length) return cargados;
+  return personajesDeDescripcion(it.desc || '', nombres || new Set())
+    .map(x => x.charAt(0) + x.slice(1).toLowerCase());
+}
+const grupoTiro = k => k === 'contra' ? 'contra' : k === 'arriba' ? 'arriba' : k === 'lateral' ? 'lateral' : 'frente';
+/* Propone la puesta de cada plano. Por fondo (set), una letra por tiro: lo de
+   frente y la subjetiva van juntos, el contraplano aparte, lo cenital
+   aparte. No pisa lo que el AD ya cargó, salvo que se pida. */
+function proponerPuestas(planos, pisar = false){
+  const letrasDe = {}, clave = {};
+  let cambiados = 0;
+  const setK = it => lugarBase(it.set) + '|' + norm(it.set || '');
+  planos.forEach(it => { if(!it.tiro) it.tiro = tiroDeTexto(it.desc, it.tamano); });
+  if(!pisar) planos.forEach(it => { if(it.emplazamiento){
+    (letrasDe[setK(it)] ||= new Set()).add(it.emplazamiento);
+    clave[setK(it) + '|' + grupoTiro(it.tiro) + '|' + (it.intExt || '')] ||= it.emplazamiento; } });
+  planos.forEach(it => {
+    if(it.emplazamiento && !pisar) return;
+    const k = setK(it) + '|' + grupoTiro(it.tiro) + '|' + (it.intExt || '');
+    if(!clave[k]){
+      const usadas = (letrasDe[setK(it)] ||= new Set());
+      let i = 0; while(usadas.has(String.fromCharCode(65 + i % 26) + (i >= 26 ? Math.floor(i / 26) : ''))) i++;
+      clave[k] = String.fromCharCode(65 + i % 26) + (i >= 26 ? Math.floor(i / 26) : '');
+      usadas.add(clave[k]);
+    }
+    if(it.emplazamiento !== clave[k]){ it.emplazamiento = clave[k]; cambiados++; }
+  });
+  return cambiados;
+}
+const CRITERIOS_AGRUPAR = [
+  {k:'',          l:'Orden del storyboard'},
+  {k:'puesta',    l:'Puesta'},
+  {k:'tiro',      l:'Tiro'},
+  {k:'personaje', l:'Personaje'},
+  {k:'fondo',     l:'Fondo'},
+];
+function gruposDePlanos(planos, criterio){
+  if(!criterio) return [{titulo:'', planos}];
+  const nombres = nombresEnDescripciones(planos.map(x => x.desc || ''));
+  const clave = it => criterio === 'puesta' ? `${it.set || 'Sin fondo'} · ${it.emplazamiento ? 'puesta ' + it.emplazamiento : 'sin puesta'}`
+    : criterio === 'tiro' ? (TIRO(it.tiro || tiroDeTexto(it.desc, it.tamano)).k ? TIRO(it.tiro || tiroDeTexto(it.desc, it.tamano)).l : 'De frente / sin dato')
+    : criterio === 'personaje' ? (personajesDePlano(it, nombres).join(' + ') || 'Sin personajes')
+    : (it.set || 'Sin fondo cargado');
+  const out = [];
+  planos.forEach(it => { const k = clave(it); let g = out.find(x => x.titulo === k);
+    if(!g){ g = {titulo:k, planos:[]}; out.push(g); } g.planos.push(it); });
+  return out;
+}
+function plAgrupar(v){ DB.ui.plAgrupar = v || ''; R(); }
+function plProponerPuestas(num){
+  const py = getPy(), p = planDe(py);
+  const planos = p.items.filter(x => x.tipo === 'plano' && (num === undefined ? true : (x.jornada ?? null) === num))
+    .sort((a, b) => (a.jornada ?? 0) - (b.jornada ?? 0) || a.orden - b.orden);
+  if(!planos.length){ toast('No hay planos'); return; }
+  const k = proponerPuestas(planos);
+  const puestas = new Set(planos.map(x => (x.set || '') + '|' + x.emplazamiento)).size;
+  toast(k ? `${puestas} puesta${puestas == 1 ? '' : 's'} propuesta${puestas == 1 ? '' : 's'} · corregilas en cada plano (✎)` : 'Los planos ya tenían puesta: no se tocó nada');
+  RP();
+}
+
+/* ---------- la planta de cámara ----------
+   Algunos DF la mandan: el dibujo del set visto desde arriba con cada
+   posición de cámara. Si está, se sube a la jornada, queda a la vista del AD
+   mientras arma el día y sale impresa con el plan.                         */
+function plantasDe(py, num){ const p = planDe(py); p.plantas ||= []; return p.plantas.filter(x => (x.jornada ?? null) === (num ?? null)); }
+async function imagenDePdf(file, ancho = 1600){
+  const L = await cargarPdfjs();
+  const pdf = await L.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
+  const page = await pdf.getPage(1), vp0 = page.getViewport({scale:1});
+  const vp = page.getViewport({scale: Math.min(4, ancho / vp0.width)});
+  const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+  const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+  await page.render({canvasContext: cx, viewport: vp}).promise;
+  return cv.toDataURL('image/jpeg', 0.75);
+}
+async function plSubirPlanta(input, num){
+  const files = [...(input.files || [])]; input.value = '';
+  if(!files.length) return;
+  const py = getPy(), p = planDe(py); p.plantas ||= [];
+  for(const f of files){
+    try{
+      const img = /\.pdf$/i.test(f.name) || /pdf$/i.test(f.type) ? await imagenDePdf(f) : (await achicarImagen(f, 1600, 0.75)).dataUrl;
+      p.plantas.push({id: uid('pt'), jornada: num ?? null, nombre: f.name.replace(/\.[^.]+$/, ''), img});
+    }catch(e){ toast(`No pude abrir ${f.name}: ${e.message}`); }
+  }
+  const esp = espacioUsado();
+  toast(`Planta cargada${esp.pct > 80 ? ' · ⚠ el navegador está casi lleno' : ''}`); RP();
+}
+function plBorrarPlanta(id){
+  const p = planDe(getPy()); if(!confirm('¿Quitar esta planta?')) return;
+  p.plantas = (p.plantas || []).filter(x => x.id !== id); RP();
+}
+function plVerPlanta(id){
+  const x = (planDe(getPy()).plantas || []).find(y => y.id === id); if(!x) return;
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:1100px">
+    <h3>${esc(x.nombre || 'Planta')}</h3><div class="mbody" style="text-align:center"><img src="${x.img}" alt="Planta de cámara" style="max-width:100%;border-radius:8px"></div>
+    <div class="mfoot"><button class="btn dgr" onclick="plBorrarPlanta('${x.id}')">Quitar</button><div style="flex:1"></div>
+      <button class="btn pri" onclick="cerrar()">Cerrar</button></div></div></div>`);
+}
+function plPlantaHTML(py, num){
+  const ps = plantasDe(py, num);
+  return `<div class="csblock pl-plantas"><h4>Planta de cámara</h4><div class="pad">
+    ${ps.length ? `<div class="pl-plgrilla">${ps.map(x => `<figure><img src="${x.img}" alt="Planta ${esc(x.nombre)}" onclick="plVerPlanta('${x.id}')">
+      <figcaption>${esc(x.nombre)}</figcaption></figure>`).join('')}</div>`
+      : `<div class="muted noprint" style="font-size:12px;line-height:1.55">Si el DF mandó la planta (el set visto desde arriba con las posiciones de cámara), subila acá: queda a la vista mientras armás el día y sale impresa con el plan. Es opcional.</div>`}
+    <label class="btn sm noprint" style="margin-top:8px;display:inline-block">${ps.length ? '+ Otra planta' : 'Subir planta'}
+      <input type="file" accept="image/*,.pdf" multiple style="display:none" onchange="plSubirPlanta(this, ${num == null ? 'null' : num})"></label>
+  </div></div>`;
+}
+
 /* ---------- storyboard y shot list ----------
    Una línea por plano. Entiende "1A PG exterior casa, travelling" y también
    "Plano 3 - PP de la chica mirando". Lo que no reconoce queda en la
@@ -9055,7 +9205,8 @@ function plDiaHTML(pr, py, v){
         ${PLAN_EVENTOS.map(e => `<option value="${e.k}">${esc(e.l)}</option>`).join('')}</select>
       <button class="btn sm" onclick="plStoryboard()" title="Imágenes, un PDF, o el guion técnico en Excel: cada cuadro o renglón es un plano">Cargar storyboard o guion técnico</button>
       <button class="btn sm" onclick="plShotList()" title="Pegá la lista de planos del director, uno por renglón">Pegar lista de planos</button>
-      <button class="btn sm" onclick="plAcomodar()" title="Junta los planos del mismo set y emplazamiento, de lo abierto a lo cerrado, y deja para el final los de hora dorada y noche">Acomodar por emplazamiento</button>
+      <button class="btn sm" onclick="plProponerPuestas(${num})" title="Lee cada plano y le propone una puesta: mismo fondo y mismo tiro (de frente, contraplano, cenital) van juntos. No pisa lo que ya cargaste">Proponer puestas</button>
+      <button class="btn sm" onclick="plAcomodar()" title="Junta los planos del mismo set y puesta, de lo abierto a lo cerrado, y deja para el final los de hora dorada y noche">Acomodar por puesta</button>
       <div style="flex:1"></div>
       ${D.items && D.filmados < D.items && d.jornadas.length ? `<button class="btn sm" onclick="plPendientes()"
         title="Lo que quedó pendiente o se cayó pasa a otra jornada">Mover lo no filmado…</button>` : ''}
@@ -9068,6 +9219,7 @@ function plDiaHTML(pr, py, v){
       ${filasHTML.join('') || `<div class="empty">Esta jornada está vacía. Sumá planos, eventos o arrastralos desde el banco.</div>`}
     </div>
     ${plElencoDiaHTML(py, num, D)}
+    ${plPlantaHTML(py, num)}
     <div class="csblock"><h4>Notas del AD</h4><div class="pad">
       <textarea rows="2" placeholder="Prioridades del día, qué se puede sacrificar si se atrasa, seguridad, restricciones de la locación…"
         onchange="plUpJornada('notasPlan', this.value)">${esc(j.notasPlan || '')}</textarea></div></div>
@@ -9154,7 +9306,8 @@ function plFilaHTML(py, f, mal){
       ${dur}${estado}${acciones}</div>`;
   }
   const meta = [it.set && `<span class="pl-tag">${esc(it.set)}</span>`,
-    it.emplazamiento && `<span class="pl-tag">Empl. ${esc(it.emplazamiento)}</span>`,
+    it.emplazamiento && `<span class="pl-tag">Puesta ${esc(it.emplazamiento)}</span>`,
+    it.tiro && `<span>${esc(TIRO(it.tiro).l)}</span>`,
     it.tamano && `<span>${esc(TAM_CORTO[it.tamano] || it.tamano)}</span>`, it.movimiento && `<span>${esc(it.movimiento)}</span>`,
     it.lente && `<span>${esc(it.lente)}</span>`, it.intExt && `<span class="eie ${it.intExt==='INT'?'int':'ext'}">${esc(it.intExt)}</span>`,
     it.luz && `<span class="pl-luzt ${it.luz}">${esc(LUZ(it.luz).l)}</span>`,
@@ -9202,7 +9355,12 @@ function plBancoHTML(py){
       <button class="btn sm" onclick="plStoryboard(true)">Cargar storyboard o guion técnico</button>
       <button class="btn sm" onclick="plShotList(true)">Pegar lista de planos</button>
       <button class="btn sm" onclick="plEditar(null,'plano',true)">+ Plano</button></h3>
-    ${banco.length ? `<div class="pl-grilla">${banco.map(it => `<div class="pl-carta" data-pl="${it.id}">
+    ${banco.length > 1 ? `<div class="pl-agrupar"><label class="muted">Agrupar por
+        <select onchange="plAgrupar(this.value)">${CRITERIOS_AGRUPAR.map(c => `<option value="${c.k}" ${(DB.ui.plAgrupar || '') === c.k ? 'selected' : ''}>${esc(c.l)}</option>`).join('')}</select></label>
+      <button class="btn sm" onclick="plProponerPuestas(null)" title="Lee cada plano y le propone una puesta: mismo fondo y mismo tiro van juntos. No pisa lo que ya cargaste">Proponer puestas</button>
+      ${iaActiva() ? `<button class="btn sm" onclick="plLeerCuadrosIA()" title="La IA mira cada cuadro: fondo, tiro, personajes, tamaño, interior o exterior">Leer los cuadros con IA</button>` : ''}</div>` : ''}
+    ${banco.length ? `${gruposDePlanos(banco, DB.ui.plAgrupar || '').map(g => `${g.titulo ? `<h5 class="pl-grupo">${esc(g.titulo)} <span class="muted">${g.planos.length}</span></h5>` : ''}
+      <div class="pl-grilla">${g.planos.map(it => `<div class="pl-carta" data-pl="${it.id}">
         ${it.img ? `<img src="${it.img}" alt="" onclick="plVerImagen('${it.id}')">` : `<div class="pl-cimg">${esc(it.numero || '—')}</div>`}
         <div class="pl-ctx"><b>${esc(it.numero || '—')}</b> ${esc(it.desc || '')}</div>
         <div class="pl-cacc">
@@ -9210,7 +9368,7 @@ function plBancoHTML(py){
             ${d.jornadas.map(j => `<option value="${j.numero}">J${j.numero}</option>`).join('')}</select>
           <button class="btn sm" onclick="plEditar('${it.id}')">✎</button>
           <button class="btn sm dgr" onclick="plBorrar('${it.id}')">×</button></div>
-      </div>`).join('')}</div>
+      </div>`).join('')}</div>`).join('')}
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
         ${d.jornadas.map(j => `<button class="btn sm" onclick="plTodoA(${j.numero})">Todo el banco → J${j.numero}</button>`).join('')}</div>`
     : `<div class="muted" style="font-size:12px;line-height:1.6">Acá quedan los planos que todavía no tienen jornada.
@@ -9470,7 +9628,8 @@ function plEditar(id, tipo, alBanco){
     ${campo('Qué se ve','desc',it.desc,'text','placeholder="La chica abre la heladera y sonríe"')}
     <div class="grid2">
       ${campo('Set','set',it.set,'text','list="pl-sets" placeholder="Casa - Cocina (locación - set)"')}
-      ${campo('Emplazamiento','emplazamiento',it.emplazamiento,'text','placeholder="A, B, C… los del mismo van juntos"')}
+      ${campo('Puesta (emplazamiento)','emplazamiento',it.emplazamiento,'text','placeholder="A, B, C… los de la misma van juntos"')}
+      ${sel('Tiro','tiro',it.tiro || '',TIROS.map(x => ({v:x.k, l:x.l})))}
       ${sel('Tamaño','tamano',it.tamano,[{v:'',l:'—'}, ...TAMANOS.map(x => ({v:x, l:x}))])}
       ${sel('Movimiento','movimiento',it.movimiento,[{v:'',l:'—'}, ...MOVIMIENTOS.map(x => ({v:x, l:x}))])}
       ${campo('Lente','lente',it.lente,'text','placeholder="35mm"')}
@@ -9503,7 +9662,7 @@ async function plGuardar(){
   const py = getPy(), o = datos(), E = _plEditando; if(!E) return;
   const it = E.it;
   if(o.sinImg === undefined){ const c = document.querySelector('.mod [name=sinImg]'); o.sinImg = c && c.checked ? '1' : ''; }
-  ['numero','desc','set','emplazamiento','tamano','movimiento','lente','intExt','luz','elenco','elementos','tomaBuena','notas','clase','fijo','prioridad']
+  ['numero','desc','set','emplazamiento','tiro','tamano','movimiento','lente','intExt','luz','elenco','elementos','tomaBuena','notas','clase','fijo','prioridad']
     .forEach(k => { if(o[k] !== undefined) it[k] = String(o[k]).trim(); });
   if(o.duracion !== undefined) it.duracion = n(o.duracion) > 0 ? n(o.duracion) : null;
   if(o.piezaId !== undefined) it.piezaId = o.piezaId || null;
@@ -11658,6 +11817,91 @@ function lzRentalesHTML(pr, py){
    todo lo de arriba funciona igual, sin ella. */
 let _ia = null;
 const iaActiva = () => !!(_ia && _ia.activa);
+
+/* ---------- la IA, desde la página ----------
+   La página nunca tiene la clave: le pide a la función "clap-ia" de Supabase
+   (backend/funciones/clap-ia), con la sesión de quien está usando CLAP. Si la
+   función no está, o está pero sin clave, `_ia.activa` queda en false y los
+   botones de IA no aparecen: todo sigue andando sin ella.                 */
+const IA_RUTA = '/functions/v1/clap-ia';
+async function iaPedir(tarea, datos = {}){
+  if(!sbConectado()) throw new Error('Hay que iniciar sesión');
+  if(!await sbSesionViva()) throw new Error('Se cortó la sesión: volvé a entrar');
+  const pr = getPr();
+  let res;
+  try{
+    res = await fetch(SB.url + IA_RUTA, {method:'POST',
+      headers:{apikey: SB.anon, Authorization: 'Bearer ' + SB.access, 'Content-Type': 'application/json'},
+      body: JSON.stringify({tarea, productora: pr && pr.id, ...datos})});
+  }catch(e){ throw new Error('No pude llegar a la IA'); }
+  let d = {};
+  try{ d = JSON.parse(await res.text() || '{}'); }catch(e){}
+  if(!res.ok) throw new Error(d.error || d.message || ('Error ' + res.status));
+  return d;
+}
+async function iaCargarEstado(){
+  if(!sbConectado()){ _ia = null; return _ia; }
+  try{ _ia = await iaPedir('estado'); }
+  catch(e){ _ia = {activa:false, motivo: e.message}; }
+  return _ia;
+}
+
+/* la respuesta de un rental, leída por la IA (entiende lo desordenado) */
+async function lzRespuestaIA(){
+  const txt = datos().respuesta || '';
+  if(!String(txt).trim()){ toast('Pegá la respuesta primero'); return; }
+  const py = getPy(), P = pedidoDe(py), C = cotizDe(P), id = _lzResp && _lzResp.id;
+  if(!id) return;
+  const items = itemsParaMail(py);
+  const numeros = (C[id] && C[id].numeros) || Object.fromEntries(items.map((it, i) => [i + 1, it.id]));
+  const numDe = Object.fromEntries(Object.entries(numeros).map(([k, v]) => [v, +k]));
+  toast('Leyendo con IA…');
+  let d;
+  try{ d = await iaPedir('respuesta_rental', {texto: txt,
+    items: items.map((it, i) => ({n: numDe[it.id] || i + 1, nombre: it.nombre, cant: n(it.cant)}))}); }
+  catch(e){ toast('La IA no pudo leerla: ' + e.message + '. Probá con "Leer respuesta".'); return; }
+  const L = {items: {}, total: n(d.total)};
+  items.forEach((it, i) => {
+    const x = (d.items || []).find(y => +y.n === (numDe[it.id] || i + 1)) || {};
+    L.items[it.id] = {estado: ESTADOS_COTIZ.some(e => e.k === x.estado) ? x.estado : '?',
+      cant: x.cant == null || x.cant === '' ? null : n(x.cant), precio: n(x.precio), nota: String(x.nota || '').slice(0, 200)};
+  });
+  lzRespuestaMostrar(txt, L);
+}
+
+/* los cuadros del storyboard, mirados por la IA: completa lo vacío (fondo,
+   tiro, personajes, tamaño…) y propone puestas. Nada de lo que el AD ya
+   cargó se pisa. Va de a 20 cuadros. */
+async function plLeerCuadrosIA(){
+  const py = getPy(), p = planDe(py);
+  const planos = p.items.filter(x => x.tipo === 'plano' && x.jornada == null).sort((a, b) => a.orden - b.orden);
+  if(!planos.length){ toast('El banco está vacío'); return; }
+  const planta = (p.plantas || [])[0];
+  let hechos = 0;
+  for(let i = 0; i < planos.length; i += 20){
+    const tanda = planos.slice(i, i + 20);
+    toast(`Mirando los cuadros ${i + 1} a ${i + tanda.length} de ${planos.length}…`);
+    let d;
+    try{ d = await iaPedir('storyboard', {cuadros: tanda.map(x => ({n: x.numero || x.id, img: x.img || '', texto: x.desc || ''})),
+      planta: planta ? planta.img : undefined}); }
+    catch(e){ toast('La IA no pudo: ' + e.message); break; }
+    (d.cuadros || []).forEach(c => {
+      const it = tanda.find(x => String(x.numero || x.id) === String(c.n)); if(!it) return;
+      if(!it.set && c.fondo) it.set = String(c.fondo).slice(0, 80);
+      if(!it.tiro && TIROS.some(t => t.k && t.k === c.tiro)) it.tiro = c.tiro;
+      if(!it.elenco && Array.isArray(c.personajes) && c.personajes.length) it.elenco = c.personajes.map(String).join(', ').slice(0, 120);
+      if(!it.tamano && TAMANOS.includes(c.tamano)) it.tamano = c.tamano;
+      if(!it.movimiento && MOVIMIENTOS.includes(c.movimiento)) it.movimiento = c.movimiento;
+      if(!it.intExt && /^(INT|EXT)$/.test(c.intExt || '')) it.intExt = c.intExt;
+      if(!it.luz && LUCES.some(l => l.k && l.k === c.luz)) it.luz = c.luz;
+      if(!it.emplazamiento && /^[A-Z]{1,2}\d?$/.test(c.puesta || '')) it.emplazamiento = c.puesta;
+      hechos++;
+    });
+  }
+  proponerPuestas(planos);
+  toast(`${hechos} cuadro${hechos == 1 ? '' : 's'} leído${hechos == 1 ? '' : 's'} · revisalos y corregí lo que haga falta`);
+  RP();
+}
 
 /* ---------- importar un presupuesto en Excel ----------
    Los presupuestos que circulan son planillas AICP o parecidas, cada una a su
@@ -15013,6 +15257,8 @@ async function revisarAlta(){
   render();
   const s = await sincronizarCatalogo();
   if(s && (s.nuevos || s.tocados)) render();
+  /* ¿hay IA? si no está prendida no aparece nada y no se gasta nada */
+  iaCargarEstado().then(x => { if(x && x.activa) render(); });
 }
 
 /* La barra que aparece arriba de todo cuando falta terminar el alta. */
@@ -15404,7 +15650,7 @@ async function aprobarAlta(id){
 
 async function sbCerrarSesion(){
   await sbSalir();
-  _miFicha = null; _misFichas = []; _miProductora = null;
+  _miFicha = null; _misFichas = []; _miProductora = null; _ia = null;
   modal = null; toast('Sesión cerrada');
   if(PUERTA) R(); else menuNube();
 }

@@ -131,6 +131,24 @@ los proyectos suben, quien crea uno queda anotado en él, y Equipo sigue sin
 poder crear proyectos ni ver los ajenos. Probado contra un Postgres armado
 como esta base.
 
+### La IA (opcional, paga) — APAGADA, no hace falta hacer nada
+
+CLAP funciona entero sin IA. Si un día se decide prenderla (lee respuestas de
+rentals desordenadas y mira los cuadros del storyboard), son cuatro pasos y
+cuesta por uso:
+
+1. Abrir una cuenta en console.anthropic.com, cargar crédito y crear una
+   clave (empieza con `sk-ant-`). La clave no se pega en ningún lado de CLAP.
+2. Supabase → **Edge Functions** → **Deploy a new function** → **Via editor**.
+   Nombre: `clap-ia`. Pegar todo `backend/funciones/clap-ia/index.ts`. Deploy.
+3. Supabase → **Edge Functions** → **Secrets**: agregar `ANTHROPIC_API_KEY`
+   con la clave, y si se quiere `IA_TOPE_MENSUAL` (usos por productora por
+   mes; si no está, 300).
+4. SQL Editor: correr `backend/ia.sql` (el contador del tope).
+
+Al recargar CLAP aparecen "Leer con IA" en las respuestas de rentals y "Leer
+los cuadros con IA" en el banco de planos. Para apagarla: borrar el secreto.
+
 ### A4. Lo único que falta de esta parte, y sólo lo podés hacer vos
 
 Crear tu cuenta pide elegir una contraseña. Eso no lo hago yo por vos: es tuya
