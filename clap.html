@@ -806,6 +806,9 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
 .pl-selbar select{width:auto;font-size:12.5px;padding:4px 26px 4px 8px}
 .pl-seltip{font-size:11px;flex-basis:100%}
 .pl-selesp{height:120px}
+.pl-selmaestra{display:inline-flex;gap:7px;align-items:center;font-size:12.5px;font-weight:600;cursor:pointer;margin-right:6px}
+.pl-selmaestra input{width:17px;height:17px;margin:0;accent-color:#171717;cursor:pointer}
+.pl-listacab{padding:8px 12px 6px 42px;border-bottom:1px solid var(--line)}
 .pl-marco{position:fixed;z-index:250;pointer-events:none;border:1px solid #1f5fa8;background:rgba(31,95,168,.08);border-radius:3px}
 .pl-marcado{outline:2px dashed #1f5fa8;outline-offset:-2px}
 body.pl-marcando,body.pl-marcando *{user-select:none;cursor:crosshair!important}
@@ -4912,6 +4915,7 @@ function render(){
   if(modal) app.insertAdjacentHTML('beforeend', modal);
   restaurarPantalla(antes);
   mejorarAccesibilidad(app);
+  try{ app.querySelectorAll('input[data-indet]').forEach(x => x.indeterminate = true); }catch(e){}
 }
 
 /* Las pantallas de afuera (entrar, sin acceso) reemplazan a toda la app. */
@@ -4921,6 +4925,7 @@ function pintarAparte(html){
   if(modal) app.insertAdjacentHTML('beforeend', modal);
   restaurarPantalla(antes);
   mejorarAccesibilidad(app);
+  try{ app.querySelectorAll('input[data-indet]').forEach(x => x.indeterminate = true); }catch(e){}
 }
 const marcaPuerta = () => `<div class="puerta-marca"><b>CLAP</b>
   <span>Control, Logística y Administración de Producción</span></div>`;
@@ -9222,8 +9227,9 @@ function plDiaHTML(pr, py, v){
         ${PLAN_EVENTOS.map(e => `<option value="${e.k}">${esc(e.l)}</option>`).join('')}</select>
       <button class="btn sm" onclick="plStoryboard()" title="Imágenes, un PDF, o el guion técnico en Excel: cada cuadro o renglón es un plano">Cargar storyboard o guion técnico</button>
       <button class="btn sm" onclick="plShotList()" title="Pegá la lista de planos del director, uno por renglón">Pegar lista de planos</button>
-      <button class="btn sm" onclick="plSelTodo(${num})" title="Marca todo el día para moverlo o borrarlo de una vez">Seleccionar todo</button>
+      <button class="btn sm pri" onclick="plArmarRodaje()" title="Reparte de nuevo TODO lo que no se filmó (todas las jornadas y el banco), desde la jornada 1: junta fondos y puestas, ordena, pone almuerzos, cita al elenco y crea las jornadas que hagan falta. Se puede deshacer">Armar el rodaje</button>
       <button class="btn sm pri" onclick="plArmarDia(${num})" title="Propone puestas, ordena por puesta (de lo abierto a lo cerrado), pone el almuerzo en un cambio de puesta, cita al elenco y, si no entra en las horas, pasa puestas enteras a la jornada siguiente. Se puede deshacer">Armar el día</button>
+      ${hayDeshacer(py) ? `<button class="btn sm" onclick="plDeshacerBoton()" title="Vuelve a como estaba antes del último armado">↶ Deshacer el armado</button>` : ''}
       <div style="flex:1"></div>
       ${D.items && D.filmados < D.items && d.jornadas.length ? `<button class="btn sm" onclick="plPendientes()"
         title="Lo que quedó pendiente o se cayó pasa a otra jornada">Mover lo no filmado…</button>` : ''}
@@ -9233,6 +9239,7 @@ function plDiaHTML(pr, py, v){
       <button class="chipb ${!filtro?'on':''}" onclick="DB.ui.plPieza=null;R()">Todo</button>
       ${piezas.map(x => `<button class="chipb ${filtro===x.id?'on':''}" onclick="DB.ui.plPieza='${x.id}';R()">${esc(nombrePieza(py, x.id))}</button>`).join('')}</div>` : ''}
 
+    ${filasHTML.length ? `<div class="pl-listacab">${plSelMaestra(p.items.filter(x => x.jornada === num).map(x => x.id), 'Todo el día')}</div>` : ''}
     <div class="pl-lista" data-pl-lista="${num}">
       ${filasHTML.join('') || `<div class="empty">Esta jornada está vacía. Sumá planos, eventos o arrastralos desde el banco.</div>`}
     </div>
@@ -9373,11 +9380,11 @@ function plBancoHTML(py){
       <button class="btn sm" onclick="plStoryboard(true)">Cargar storyboard o guion técnico</button>
       <button class="btn sm" onclick="plShotList(true)">Pegar lista de planos</button>
       <button class="btn sm" onclick="plEditar(null,'plano',true)">+ Plano</button></h3>
-    ${banco.length > 1 ? `<div class="pl-agrupar"><label class="muted">Agrupar por
+    ${banco.length > 1 ? `<div class="pl-agrupar">${plSelMaestra(banco.map(x => x.id), 'Todos')}<label class="muted">Agrupar por
         <select onchange="plAgrupar(this.value)">${CRITERIOS_AGRUPAR.map(c => `<option value="${c.k}" ${(DB.ui.plAgrupar || '') === c.k ? 'selected' : ''}>${esc(c.l)}</option>`).join('')}</select></label>
-      <button class="btn sm pri" onclick="plArmarRodaje()" title="Reparte el banco en jornadas: junta fondos y puestas, ordena cada día, pone el almuerzo, cita al elenco y crea las jornadas que hagan falta. Se puede deshacer">Armar el rodaje</button>
+      <button class="btn sm pri" onclick="plArmarRodaje()" title="Reparte en jornadas todo lo que no se filmó (lo del banco y lo que ya estaba en jornadas): junta fondos y puestas, ordena cada día, pone el almuerzo, cita al elenco y crea las jornadas que hagan falta. Se puede deshacer">Armar el rodaje</button>
       <button class="btn sm" onclick="plProponerPuestas(null)" title="Sólo les pone puesta a los planos del banco, sin repartirlos">Sólo proponer puestas</button>
-      <button class="btn sm" onclick="plSelTodo(null)">Seleccionar todo</button>
+      ${hayDeshacer(py) ? `<button class="btn sm" onclick="plDeshacerBoton()">↶ Deshacer el armado</button>` : ''}
       ${iaActiva() ? `<button class="btn sm" onclick="plLeerCuadrosIA()" title="La IA mira cada cuadro: fondo, tiro, personajes, tamaño, interior o exterior">Leer los cuadros con IA</button>` : ''}</div>` : ''}
     ${banco.length ? `${gruposDePlanos(banco, DB.ui.plAgrupar || '').map(g => `${g.titulo ? `<h5 class="pl-grupo"><label><input type="checkbox" class="noprint"
         ${g.planos.every(x => _plSel.has(x.id)) ? 'checked' : ''} onchange="plSelGrupo(${esc(JSON.stringify(g.planos.map(x => x.id)))}, this.checked)"
@@ -10451,6 +10458,18 @@ function plSelTodo(num){
   R();
 }
 function plSelNada(){ _plSel.clear(); _plSelUlt = null; R(); }
+/* La casilla de arriba de todo: si hay algo marcado ahí, desmarca; si no,
+   marca todo. Medio tildada cuando hay algunos. */
+function plSelMaestra(ids, texto){
+  const n0 = ids.filter(id => _plSel.has(id)).length;
+  return `<label class="pl-selmaestra noprint"><input type="checkbox" ${n0 && n0 === ids.length ? 'checked' : ''} ${n0 && n0 < ids.length ? 'data-indet="1"' : ''}
+    onchange="plSelMaestraClick(${esc(JSON.stringify(ids))})" aria-label="${esc(texto)}"> ${esc(texto)}${n0 ? ` <span class="muted">· ${n0} de ${ids.length}</span>` : ''}</label>`;
+}
+function plSelMaestraClick(ids){
+  if(ids.some(id => _plSel.has(id))) ids.forEach(id => _plSel.delete(id));
+  else ids.forEach(id => _plSel.add(id));
+  R();
+}
 
 /* mover un bloque: a otra jornada (al final, o antes de un renglón) o al banco */
 function plMoverVarios(ids, num, antesDe){
@@ -10595,6 +10614,10 @@ function ubicarAlmuerzo(py, num){
   /* un día corto: se filma todo y después se come */
   probar(films[films.length - 1].orden + 0.5, true);
   if(!mejor) return alm;
+  /* un día cortito (se termina de filmar antes de las 3 h): no hay almuerzo,
+     con el desayuno de la citación alcanza */
+  if(mejor.inicio - calcularDia(py, num).inicio < 180 && mejor.orden > films[films.length - 1].orden){
+    p.items = p.items.filter(x => x !== alm); reordenar(py, num); return null; }
   alm.orden = mejor.orden;
   reordenar(py, num);
   alm.fijo = aHora(Math.round(mejor.inicio / 5) * 5);
@@ -10631,6 +10654,7 @@ function armarDia(py, num, rep){
   /* lo que no entra en la jornada pasa a la siguiente, por puestas enteras:
      primero las que no dependen de una luz (la hora dorada es de este día) */
   let movidos = 0;
+  const pasaron = [];   /* en el orden en que se pasaron (la última puesta primero) */
   for(let v = 0; v < 80; v++){
     const D = calcularDia(py, num);
     if(!(D.extra > 0)) break;
@@ -10646,8 +10670,26 @@ function armarDia(py, num, rep){
     if(!d.jornadas.some(x => x.numero === num + 1)){ nuevaJornadaPlan(py); rep.creadas++; }
     mover.forEach(it => { if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); if(e) e.jornada = num + 1; }
       meterEnJornada(py, it, num + 1); });
+    pasaron.push(mover);
     movidos += mover.length;
     ubicarAlmuerzo(py, num);
+  }
+  /* Pasar una puesta entera puede dejar el día corto. Como hace un AD, se
+     empieza hoy y se termina mañana a primera hora en el mismo lugar: se
+     traen de vuelta sus primeros planos mientras entren en las horas. */
+  if(pasaron.length){
+    const ultima = pasaron[pasaron.length - 1].filter(it => !ANCLADO(it));
+    for(const it of ultima){
+      const enEsc = it.tipo === 'escena' ? escenaDe(py, it.escenaId) : null;
+      if(enEsc) enEsc.jornada = num;
+      meterEnJornada(py, it, num); ubicarAlmuerzo(py, num);
+      if(calcularDia(py, num).extra > 0){
+        if(enEsc) enEsc.jornada = num + 1;
+        meterEnJornada(py, it, num + 1); ubicarAlmuerzo(py, num);
+        break;
+      }
+      movidos--;
+    }
   }
   rep.pasados += movidos;
   rep.citados += citarDia(py, num);
@@ -10655,27 +10697,39 @@ function armarDia(py, num, rep){
   if(movidos && rep.profundidad < 60){ rep.profundidad++; armarDia(py, num + 1, rep); }
   return rep;
 }
-/* El banco entero, repartido en jornadas: se juntan los fondos y las puestas,
-   se llena la primera jornada libre y lo que no entra va pasando. */
+/* El rodaje entero, de nuevo: todo lo que no se filmó —lo que ya estaba en
+   jornadas y lo del banco— se junta por fondo y por puesta, se mete desde la
+   jornada 1 y lo que no entra va pasando a la siguiente. Lo filmado no se
+   mueve. Las jornadas que quedan sin nada se avisan (no se borran solas). */
 function armarRodaje(py){
   const p = planDe(py), d = py.desglose || (py.desglose = nuevoDesglose());
-  const banco = p.items.filter(x => x.jornada == null && x.tipo === 'plano').sort((a, b) => a.orden - b.orden);
-  if(!banco.length) return null;
-  proponerPuestas(banco);
+  const pos = x => x.jornada == null ? 1e6 : x.jornada;
+  const todos = p.items.filter(x => x.tipo !== 'evento' && x.estado !== 'filmado')
+    .sort((a, b) => (pos(a) - pos(b)) || (a.orden - b.orden));
+  if(!todos.length) return null;
+  proponerPuestas(todos.filter(x => x.tipo === 'plano'));
   if(!d.jornadas.length) nuevaJornadaPlan(py);
   asegurarEventosBase(py);
-  const libre = d.jornadas.find(j => !filmablesDe(py, j.numero).some(x => x.estado !== 'filmado'));
-  const destino = (libre || d.jornadas[d.jornadas.length - 1]).numero;
-  /* por fondo y por puesta, en el orden en que aparecen; de lo abierto a lo cerrado */
+  const lugar = x => x.tipo === 'escena' ? 'e|' + setDeItem(py, x) : lugarBase(x.set) + '|' + norm(x.set || '');
   const primeraSet = {}, primeraPuesta = {};
-  banco.forEach((x, i) => { const s = lugarBase(x.set) + '|' + norm(x.set || ''); if(!(s in primeraSet)) primeraSet[s] = i;
-    const k = s + '|' + x.emplazamiento; if(!(k in primeraPuesta)) primeraPuesta[k] = i; });
-  const ordenados = [...banco].sort((a, b) => {
-    const sa = lugarBase(a.set) + '|' + norm(a.set || ''), sb = lugarBase(b.set) + '|' + norm(b.set || '');
-    return (primeraSet[sa] - primeraSet[sb]) || (primeraPuesta[sa + '|' + a.emplazamiento] - primeraPuesta[sb + '|' + b.emplazamiento])
-      || (RANGO_TAMANO(a.tamano) - RANGO_TAMANO(b.tamano)); });
-  ordenados.forEach(it => meterEnJornada(py, it, destino));
-  return armarDia(py, destino);
+  todos.forEach((x, i) => { const s = lugar(x); if(!(s in primeraSet)) primeraSet[s] = i;
+    const k = claveGrupo(py, x); if(!(k in primeraPuesta)) primeraPuesta[k] = i; });
+  const ordenados = [...todos].sort((a, b) => (primeraSet[lugar(a)] - primeraSet[lugar(b)])
+    || (primeraPuesta[claveGrupo(py, a)] - primeraPuesta[claveGrupo(py, b)])
+    || (a.tipo === 'plano' && b.tipo === 'plano' ? RANGO_TAMANO(a.tamano) - RANGO_TAMANO(b.tamano) : 0));
+  /* todos a la jornada 1, antes del wrap, de una (sin acomodar uno por uno) */
+  const antes = new Set(todos.map(x => x.jornada).filter(x => x != null && x !== 1));
+  const wrap = p.items.find(x => x.jornada === 1 && x.tipo === 'evento' && x.clase === 'wrap');
+  const base = wrap ? wrap.orden - 0.5 : Math.max(0, ...p.items.filter(x => x.jornada === 1).map(x => x.orden)) + 1;
+  ordenados.forEach((it, i) => {
+    if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); if(e) e.jornada = 1; }
+    it.jornada = 1; it.orden = base + i * 0.0001;
+  });
+  reordenar(py, 1);
+  antes.forEach(num => reordenar(py, num));
+  const rep = armarDia(py, 1);
+  rep.vacias = d.jornadas.filter(j => !filmablesDe(py, j.numero).length).map(j => j.numero);
+  return rep;
 }
 
 /* ---------- deshacer ---------- */
@@ -10693,6 +10747,12 @@ function plDeshacer(){
   DB.ui.jornada = A.jornada; _plAntes = null; _plSel.clear();
   cerrar(); toast('Volvió como estaba'); R();
 }
+/* el botón de la barra: puede haber cambios hechos después del armado */
+function plDeshacerBoton(){
+  if(!confirm('Vuelve el plan a como estaba antes del último armado (o de quitar la jornada). Lo que cambiaste después se pierde. ¿Seguir?')) return;
+  plDeshacer();
+}
+const hayDeshacer = py => !!(_plAntes && py && _plAntes.pyId === py.id);
 function plResumenArmado(py, rep, titulo){
   const nums = [...rep.jornadas].sort((a, b) => a - b), d = py.desglose;
   const filas = nums.map(num => { const D = calcularDia(py, num), j = d.jornadas.find(x => x.numero === num) || {};
@@ -10706,7 +10766,10 @@ function plResumenArmado(py, rep, titulo){
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
         Por puesta, de lo abierto a lo cerrado; el almuerzo en un cambio de puesta; ${rep.citados} citacion${rep.citados == 1 ? '' : 'es'} del elenco y de maquillaje/vestuario pasadas al callsheet.
         ${rep.pasados ? `<b>${rep.pasados} ${rep.pasados == 1 ? 'pasó' : 'pasaron'} a la jornada siguiente</b> porque no entraba${rep.pasados == 1 ? '' : 'n'} en las horas` : 'Todo entra en las horas'}${rep.creadas ? `, y se ${rep.creadas == 1 ? 'creó 1 jornada' : `crearon ${rep.creadas} jornadas`}` : ''}.
-        Es una propuesta: corregí lo que haga falta arrastrando.</div>
+        Es una propuesta: corregí lo que haga falta arrastrando.
+        ${(() => { const cortos = nums.filter(num => { const D = calcularDia(py, num); return D.items && D.minutosFilmando < 90; });
+          return cortos.length && nums.length > 1 ? `<div style="margin-top:6px"><b>${cortos.map(x => 'J' + x).join(', ')}</b> ${cortos.length == 1 ? 'tiene' : 'tienen'} menos de una hora y media de rodaje: quizás convenga hacer horas extra el día anterior en vez de sumar una jornada.</div>` : ''; })()}
+        ${(rep.vacias || []).length ? `<div style="margin-top:6px"><b>${rep.vacias.map(x => 'J' + x).join(', ')} ${rep.vacias.length == 1 ? 'quedó vacía' : 'quedaron vacías'}</b>: quitala${rep.vacias.length == 1 ? '' : 's'} si no hace${rep.vacias.length == 1 ? '' : 'n'} falta (Quitar esta jornada).</div>` : ''}</div>
       <div class="scrollx"><table class="tbl cst"><thead><tr><th>Jornada</th><th class="num">Planos</th><th class="num">Citación</th>
         <th class="num">Almuerzo</th><th class="num">Wrap</th><th class="num">Extras</th><th class="num">Avisos</th></tr></thead>
         <tbody>${filas}</tbody></table></div>
@@ -10725,7 +10788,7 @@ function plArmarRodaje(){
   const py = getPy();
   plFoto(py);
   const rep = armarRodaje(py);
-  if(!rep){ toast('El banco está vacío'); return; }
+  if(!rep){ _plAntes = null; toast('No hay planos sin filmar para armar'); return; }
   DB.ui.jornada = Math.min(...rep.jornadas); DB.ui.subPlan = 'dia';
   plResumenArmado(py, rep, 'Rodaje armado');
 }

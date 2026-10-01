@@ -102,6 +102,27 @@ ok('no queda nada colgado en una jornada que no existe', p.items.every(x => x.jo
 plQuitarJornada(1);
 ok('si se quita la primera, lo suyo pasa a la que queda primera', p.items.filter(x => x.tipo === 'plano').every(x => x.jornada === 1 || x.jornada == null));
 
+console.log('\n--- 7b. ARMAR EL RODAJE CON TODO YA REPARTIDO ---');
+/* todo repartido a mano, mal: cada plano en cualquier jornada */
+while (d.jornadas.length < 3) nuevaJornadaPlan(py);
+p.items.filter(x => x.tipo === 'plano').forEach((x, i) => { x.estado = 'pendiente'; meterEnJornada(py, x, (i % 3) + 1); });
+const filmado = p.items.find(x => x.numero === '9'); filmado.estado = 'filmado'; const jFilmado = filmado.jornada;
+DB.ui.jornada = 1; render();
+ok('"Armar el rodaje" está en la barra del día, no sólo en el banco', /plArmarRodaje\(\)/.test(app.innerHTML) && /plArmarDia\(1\)/.test(app.innerHTML));
+plFoto(py);
+const r7 = armarRodaje(py);
+ok('reacomoda lo que ya estaba en jornadas', r7 && [...r7.jornadas].length >= 1 && d.jornadas.every(j => calcularDia(py, j.numero).extra === 0));
+ok('cada fondo queda junto: no se mezcla la cocina entre días salteados', (() => {
+  const dias = set => [...new Set(p.items.filter(x => x.tipo === 'plano' && x.set === set && x.estado !== 'filmado').map(x => x.jornada))].sort();
+  const c = dias('Casa - Cocina'); return c.every((x, i) => i === 0 || x === c[i - 1] + 1); })());
+ok('lo filmado no se movió', filmado.jornada === jFilmado);
+render();
+ok('aparece "Deshacer el armado" en la barra', /plDeshacerBoton\(\)/.test(app.innerHTML));
+plDeshacer();
+ok('y deshace', p.items.find(x => x.numero === '1').jornada === 1 && p.items.find(x => x.numero === '2').jornada === 2);
+render();
+ok('después de deshacer, el botón se va', !/plDeshacerBoton\(\)/.test(app.innerHTML));
+
 console.log('\n--- 8. EL RENGLÓN DICE EN QUÉ JORNADA ESTÁ ---');
 DB.ui.jornada = 1; render();
 ok('el desplegable muestra la jornada actual', /<option value="" selected>J1<\/option>/.test(app.innerHTML));

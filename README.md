@@ -547,8 +547,14 @@ junto, porque cada cambio es mover luces y grip.
   (la crea si no está) y la arma también. No toca lo filmado ni las
   citaciones escritas a mano. Muestra cómo quedó cada día y se puede
   **deshacer**.
-- **Armar el rodaje** (en el banco): reparte todo el banco en jornadas con la
-  misma lógica.
+- **Armar el rodaje** (en la barra de cada jornada y en el banco): reparte de
+  nuevo TODO lo que no se filmó —lo del banco y lo que ya estaba en
+  jornadas— desde la jornada 1, juntando fondos y puestas. Si una puesta no
+  entra entera, se empieza ese día y se termina el siguiente a primera hora
+  (no se deja el día corto). Un día cortito no lleva almuerzo. El resumen
+  avisa las jornadas que quedaron vacías y las de muy poco rodaje (quizás
+  convenga horas extra el día anterior).
+- **↶ Deshacer el armado** queda en la barra hasta que se deshace.
 - **Quitar esta jornada**: cualquiera, no sólo la última. Lo que tenía pasa
   al día anterior que queda y las siguientes se renumeran.
 - El desplegable de cada renglón dice en qué jornada está ("J1") y lleva a
@@ -562,7 +568,9 @@ junto, porque cada cambio es mover luces y grip.
   subjetiva, cenital).
 - **Seleccionar varios**: casilla en cada cuadro del banco y en cada renglón
   de la jornada; Shift marca un rango y el título de cada grupo marca el grupo
-  entero. Con el mouse también se marca **arrastrando**: un rectángulo desde
+  entero, y el **cuadrado de arriba de todo** ("Todos" en el banco, "Todo el
+  día" en la jornada) marca todo o, si hay algo marcado, desmarca. Con el
+  mouse también se marca **arrastrando**: un rectángulo desde
   un lugar vacío (Shift o Ctrl suma), o apretando sobre una casilla y
   pasando por las demás. En el celular, con la casilla. Con lo marcado:
   mover a una jornada o al banco, ponerles puesta o borrar de una vez.
