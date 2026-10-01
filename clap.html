@@ -304,6 +304,10 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .dropz:hover{border-color:var(--ac);background:rgba(224,169,46,.04)}
 .dropz.sobre{border-color:var(--ac);background:rgba(224,169,46,.1)}
 .dropz b{font-size:14px}
+.dgdrop{display:flex;flex-direction:column;gap:4px;cursor:pointer}
+.dgmini{padding:0 16px 8px}
+.dgmini .dgdrop{padding:9px 14px;flex-direction:row;gap:10px;align-items:baseline;flex-wrap:wrap;border-width:1px}
+.dgmini .dgdrop b{font-size:12.5px}
 .dropz span{font-size:11.5px;color:var(--tx3)}
 /* disponibilidad en el catálogo */
 .disp{display:inline-block;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;border:1px solid}
@@ -3589,13 +3593,17 @@ function tagsDelProyecto(py){
    distinguir lo propuesto por la máquina de lo confirmado por una persona.   */
 function detectar(e){
   const t = ' ' + norm(e.texto).replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ') + ' ';
+  const hits = [];
   Object.entries(DICC).forEach(([dep, palabras])=>{
-    const hall = [];
-    palabras.forEach(p=>{ if(t.includes(' '+norm(p)+' ')) hall.push(p); });
-    if(hall.length){
-      e.elementos[dep] = [...new Set([...(e.elementos[dep]||[]), ...hall])];
-      e.auto[dep] = hall;
-    }
+    palabras.forEach(p=>{ const q = norm(p); if(t.includes(' '+q+' ')) hits.push({dep, p, q}); });
+  });
+  /* "cámara lenta" es equipo; la "cámara" suelta de adentro no es utilería */
+  const validos = hits.filter(h => !hits.some(o => o !== h && o.q.length > h.q.length && (' '+o.q+' ').includes(' '+h.q+' ')));
+  const porDep = {};
+  validos.forEach(h => (porDep[h.dep] ||= []).push(h.p));
+  Object.entries(porDep).forEach(([dep, hall]) => {
+    e.elementos[dep] = [...new Set([...(e.elementos[dep]||[]), ...hall])];
+    e.auto[dep] = hall;
   });
 }
 
@@ -5605,30 +5613,36 @@ function vistaDesglose(py){
   const r = resumenDesglose(d);
   /* el plan de rodaje era una sub-solapa de acá; ahora es una solapa propia */
   const sub = DB.ui.subDesglose && DB.ui.subDesglose !== 'plan' ? DB.ui.subDesglose : 'escenas';
-  const S=[['escenas','Escenas'],['deptos','Por departamento'],['tags','Tags']];
+  const S=[['escenas', planPorEscenas(py) ? 'Escenas' : 'Bloques'],['deptos','Por departamento'],['tags','Permisos y seguros']];
+  /* en publicidad las páginas no dicen nada: se cuenta en bloques y planos */
+  const ficcion = planPorEscenas(py);
+  const elementos = Object.values(r.porDepto).reduce((s, m) => s + (m ? m.size : 0), 0);
+  const planos = planDe(py).items.filter(x => x.tipo === 'plano').length;
   return `<div class="card">
     <div class="resu">
-      <div><b>${r.escenas}</b><span>Escenas</span></div>
-      <div><b>${octavosATexto(r.octavos)}</b><span>Páginas</span></div>
+      <div><b>${r.escenas}</b><span>${ficcion ? 'Escenas' : 'Bloques'}</span></div>
+      ${ficcion ? `<div><b>${octavosATexto(r.octavos)}</b><span>Páginas</span></div>` : `<div><b>${planos}</b><span>Planos en el plan</span></div>`}
       <div><b>${r.personajes.length}</b><span>Personajes</span></div>
       <div><b>${r.locaciones.length}</b><span>Locaciones</span></div>
       <div><b>${r.ext}</b><span>Exteriores</span></div>
       <div><b>${r.noches}</b><span>Noches</span></div>
-      <div><b>${d.jornadas.length||r.jornadasEstimadas}</b><span>Jornadas${d.jornadas.length?'':' est.'}</span></div>
+      ${ficcion ? `<div><b>${d.jornadas.length||r.jornadasEstimadas}</b><span>Jornadas${d.jornadas.length?'':' est.'}</span></div>`
+                : `<div><b>${elementos}</b><span>Elementos</span></div>`}
     </div>
     <div class="subtabs">${S.map(([k,l])=>
       `<button class="subtab ${sub===k?'on':''}" onclick="setSub('${k}')">${l}</button>`).join('')}
       <div class="spacer" style="flex:1"></div>
       <button class="btn sm noprint solo-cel" onclick="plegarTodo(${!d.escenas.every(e=>e.abierta)})">${d.escenas.every(e=>e.abierta)?'Compactar':'Expandir'}</button>
-      <button class="btn sm noprint" onclick="reDetectar()" title="Volver a pasar el diccionario, conservando lo que agregaste a mano">Re-detectar</button>
       ${TIPO(py.tipo).varias?`<button class="btn sm noprint pzadd" onclick="addPiezaPreguntando()"
         title="Agregar ${esc(unidadDe(py).toLowerCase())} a este proyecto">+ ${esc(unidadDe(py))}</button>`:''}
       <button class="btn sm noprint" onclick="addEscena()">+ Escena</button>
+      <button class="btn sm noprint" onclick="document.getElementById('dgfile').click()" title="Otro guion, guion técnico o storyboard: se suma a lo que ya hay">+ Material</button>
       <button class="btn sm noprint" onclick="menuGuion()">Guion ▾</button>
       <button class="btn sm noprint" onclick="setTab('plan')" title="Repartir en jornadas y armar el día hora por hora">Plan de rodaje →</button>
       <button class="btn sm pri noprint" onclick="aPresupuesto()">→ Presupuesto</button>
     </div>
     ${sub==='escenas' ? barraPiezasDesglose(py, d) : ''}
+    <div class="noprint dgmini">${cajaMaterialHTML()}</div>
     <div class="pad">${
       sub==='deptos' ? deptosHTML(r) : sub==='tags' ? tagsHTML(py) :
       (d.modo && d.modo!=='encabezados' ? avisoModoHTML(d) : '') +
@@ -5646,11 +5660,13 @@ function importadorHTML(){
       <div class="paso"><b>3</b><span>Recién ahí lo mandás al presupuesto</span></div>
     </div>
     <div class="pad">
-      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
-        El sistema separa las escenas y saca INT/EXT, locación, momento del día, los personajes
-        con diálogo y la extensión en octavos de página. Después propone los elementos por
-        departamento con un diccionario: <b>lo propuesto lo confirmás o lo borrás vos</b>.
-        Nada se toca del presupuesto hasta que vos lo mandes.
+      ${cajaMaterialHTML()}
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin:12px 0 10px">
+        Del guion se separan las escenas (o los bloques, si es un guion de publicidad sin
+        encabezados) con su INT/EXT, locación, momento y personajes. Del storyboard y del guion
+        técnico, cada cuadro o renglón es un bloque, y sus planos van al plan de rodaje. Después
+        un diccionario propone los elementos por departamento: <b>lo propuesto lo confirmás o lo
+        borrás vos</b>. Nada se toca del presupuesto hasta que vos lo mandes. <b>O pegá el guion acá:</b>
       </div>
       <textarea id="gtxt" rows="12" oninput="guionInput(this)"
         onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')importarGuion()"
@@ -5660,8 +5676,6 @@ function importadorHTML(){
       <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
         <button class="btn pri grande" id="gbtn" onclick="importarGuion()">Desglosar</button>
         <span class="muted" style="font-size:10.5px">o Ctrl+Enter</span>
-        <button class="btn" onclick="document.getElementById('gfile').click()">Subir archivo(s)</button>
-        <span class="muted" style="font-size:11px">PDF · Word · Final Draft · RTF · txt<br>Podés subir <b>varios a la vez</b>: cada guion es un spot</span>
         <input type="file" id="gfile" multiple accept=".txt,.fountain,.fdx,.docx,.doc,.rtf,.pdf" style="display:none" onchange="subirGuion(this)">
         <div style="flex:1"></div>
         <button class="btn" onclick="guionEjemplo()">Probar con un guion de ejemplo</button>
@@ -5724,7 +5738,7 @@ function escHTML(e,d,py){
         ${[...new Set(['DÍA','NOCHE','TARDE','MAÑANA','AMANECER','ATARDECER','MADRUGADA','CONTINUO',e.momento])]
           .map(x=>`<option ${x===e.momento?'selected':''}>${esc(x)}</option>`).join('')}
       </select>
-      <span class="epg">${octavosATexto(e.octavos)} pg</span>
+      ${planPorEscenas(py) ? `<span class="epg">${octavosATexto(e.octavos)} pg</span>` : ''}
       <span class="ecnt solo-cel">${e.personajes.length + Object.values(e.elementos).reduce((s,v)=>s+v.length,0)} el.</span>
       ${piezas.length?`<span class="jda noprint" title="A qué ${esc(unidadDe(py).toLowerCase())} pertenece esta escena">
         <span class="muted" style="font-size:9.5px;font-weight:700">${esc(unidadDe(py).slice(0,5).toUpperCase())}</span>
@@ -5732,18 +5746,13 @@ function escHTML(e,d,py){
           <option value="">—</option>
           ${piezas.map(p=>`<option value="${p.id}" ${p.id===e.piezaId?'selected':''}>${esc(nombrePieza(py,p.id))}</option>`).join('')}
         </select></span>`:''}
-      <span class="jda noprint"><span class="muted" style="font-size:9.5px;font-weight:700">JORN.</span>
-        <select onchange="setJornada('${e.id}',this.value)">
-          <option value="">—</option>
-          ${Array.from({length:Math.max(d.jornadas.length, 8)},(_,i)=>i+1).map(nn=>
-            `<option value="${nn}" ${e.jornada===nn?'selected':''}>${nn}</option>`).join('')}
-        </select></span>
+      ${e.jornada ? `<span class="muted noprint" style="font-size:10.5px" title="Se cambia en el plan de rodaje">J${e.jornada}</span>` : ''}
     </div>
     <div class="ebody">
       <div class="drow">
         <span class="dlbl" style="color:${DEPTO('elenco').c}"><i class="ddot" style="background:${DEPTO('elenco').c}"></i>Elenco</span>
         <span class="dels">${e.personajes.map(p=>elHTML(e.id,'personajes',p,DEPTO('elenco').c,false)).join('')
-          || '<span class="muted" style="font-size:11.5px;padding-top:4px">sin diálogo</span>'}
+          || `<span class="muted" style="font-size:11.5px;padding-top:4px">${planPorEscenas(py) ? 'sin diálogo' : 'sin elenco'}</span>`}
           <button class="elmas noprint" onclick="addEl('${e.id}','personajes')">+</button></span>
       </div>
       ${deps.map(dp=>{
@@ -6096,9 +6105,12 @@ const GUIA = [
       <li><b>Productoras</b> — creá tu productora con su CUIT y condición de IVA. Podés tener
         todas las que manejes; cada una está aislada de las otras.</li>
       <li><b>Equipo</b> — cargá a las personas con su rol. Sin esto no funciona el circuito de gastos.</li>
-      <li><b>Desglose</b> — pegá el guion. De ahí salen las escenas, el elenco, los elementos y el plan de rodaje.</li>
-      <li><b>Presupuesto</b> — armalo a mano o mandá el desglose con el botón <i>→ Presupuesto</i>.</li>
-      <li><b>Callsheet</b> — se arma solo con el guion, el presupuesto y el catálogo.</li>
+      <li><b>Desglose</b> — soltá lo que mandó la agencia: guion, guion técnico (Excel) o storyboard.
+        De ahí salen los bloques o escenas, el elenco, las locaciones y los elementos.</li>
+      <li><b>Presupuesto</b> — armalo desde una plantilla, a mano, o mandá el desglose con <i>→ Presupuesto</i>.</li>
+      <li><b>Plan de rodaje</b> — el día hora por hora: planos o escenas, almuerzo, traslados y la luz.</li>
+      <li><b>Pedido de luces</b> — lo arma el gaffer o el segundo de foto: equipos, potencia y precios.</li>
+      <li><b>Callsheet</b> — se arma solo con el plan, el presupuesto y el catálogo.</li>
       <li><b>Rodaje</b> — citaciones, parte del día y horas extra.</li>
       <li><b>Gastos</b> — órdenes de compra, comprobantes, caja chica y el tablero de plata.</li>
     </ol>
@@ -6121,9 +6133,18 @@ const GUIA = [
     <p><b>Vista Cliente / Interna:</b> la del cliente muestra sólo el resumen por rubro, sin el
     detalle de líneas ni el circuito de pago.</p>`},
 
-  {t:'Desglose de guion', c:`
-    <p>Pegá el guion o subí el archivo: acepta <b>PDF, Word (.docx), .doc, RTF, Final Draft (.fdx),
-    .txt y Fountain</b>. Mientras escribís, un cartel te dice en vivo qué está encontrando.</p>
+  {t:'Desglose', c:`
+    <p><b>Soltá en la caja lo que mandó la agencia</b>, uno o varios archivos a la vez:</p>
+    <ul>
+      <li><b>Guion</b> — PDF, Word (.docx, .doc), RTF, Final Draft (.fdx), .txt o Fountain. También
+        se puede pegar. Mientras escribís, un cartel te dice en vivo qué está encontrando.</li>
+      <li><b>Guion técnico en Excel</b> — cada renglón es un bloque del desglose y un plano del plan
+        de rodaje, con su cuadro si viene pegado en la planilla.</li>
+      <li><b>Storyboard</b> (PDF o imágenes, también los hechos con IA) — los cuadros van al banco del
+        plan de rodaje. Si el PDF trae la descripción de cada cuadro, esa descripción se desglosa: la
+        locación, el momento, los personajes y los elementos salen de ahí. Si el PDF no tiene
+        encabezados de escena, CLAP pregunta si es un guion o un storyboard.</li>
+    </ul>
     <p><b>Si el guion tiene encabezados</b> (<code>INT. COCINA - DÍA</code>, o de publicidad como
     <code>PLANO 1</code>), los usa y el resultado es exacto.</p>
     <p><b>Si no tiene ninguno</b> —como la mayoría de los guiones de publicidad— corta por párrafo
@@ -6135,7 +6156,25 @@ const GUIA = [
     con un diccionario. Los que salen <b>con borde punteado son sugerencias</b>: confirmalas
     dejándolas o borralas con la ×. Vas a ver falsos positivos, es esperable.</p>
     <p class="tip">Desglosar <b>no toca el presupuesto</b>. Sólo va si tocás <i>→ Presupuesto</i>
-    y confirmás en la lista con checkboxes.</p>`},
+    y confirmás en la lista con checkboxes; lo que ya está en el presupuesto viene destildado para no
+    duplicarlo. En publicidad se cuenta en bloques (no en páginas), y las jornadas se reparten en el
+    <b>Plan de rodaje</b>. Borrar el desglose no borra las jornadas ni el callsheet.</p>`},
+
+  {t:'Plan de rodaje', c:`
+    <p>El día minuto a minuto. En publicidad se planifica por <b>planos</b> (los del storyboard o la
+    lista de planos); en cine y series, por <b>escenas</b> del desglose.</p>
+    <p>Las horas salen solas desde la citación: cada renglón se arrastra arriba o abajo y el día se
+    recalcula. Se suman solos los cambios de emplazamiento y los traslados, y la luz del día (salida,
+    puesta, hora dorada y azul) se calcula con la fecha y el lugar.</p>
+    <p>Avisa lo que un asistente de dirección mira: un exterior de día después de la puesta, el
+    almuerzo tarde, las horas extra, el descanso entre jornadas. El orden del día va al callsheet.</p>`},
+
+  {t:'Pedido de luces', c:`
+    <p>Lo arma el gaffer o el segundo del director de fotografía. Se suma equipo por equipo, con un
+    pedido base, o <b>soltando el pedido</b> como venga (Excel, Word, PDF o texto): CLAP lo lee y
+    muestra lo que entendió antes de sumarlo.</p>
+    <p>Calcula la potencia de cada jornada y el generador que hace falta, y compara con precios
+    publicados por los rentals. <i>Pasar al presupuesto</i> lleva el total a las líneas del rubro 11.</p>`},
 
   {t:'Callsheet y contactos', c:`
     <p>Son <b>dos documentos distintos</b> en la misma solapa:</p>
@@ -6226,13 +6265,19 @@ const GUIA = [
   {t:'Lo que todavía no hace', c:`
     <p>Para que no te lleves sorpresas:</p>
     <ul>
-      <li><b>No hay usuarios reales</b> ni contraseñas. El rol se simula.</li>
+      <li><b>No todo se comparte todavía.</b> Por la base (con tu usuario y contraseña) se comparten
+        las productoras, los datos de cada proyecto, el catálogo de gente y proveedores, el equipo y
+        las invitaciones. <b>El presupuesto, el desglose, el plan de rodaje, el pedido de luces, los
+        gastos y los partes viven en el navegador de cada uno</b>: para pasarlos se usa
+        <i>Datos → Exportar</i> e <i>Importar</i>.</li>
+      <li><b>Modo prueba:</b> por ahora todos los que entran tienen permisos de administración.</li>
       <li><b>No factura ni toca ARCA/AFIP.</b> Eso necesita certificado digital y servidor; lo hace
         tu contador o un facturador. CLAP maneja el circuito y te exporta el CSV.</li>
       <li><b>No manda mails ni WhatsApp solo.</b> Prepara el mensaje y lo abre; lo enviás vos.</li>
-      <li><b>No sincroniza entre dispositivos.</b> Se pasa con el export/import de JSON.</li>
-      <li>El desglose de un guion sin encabezados es una <b>propuesta</b>, no una lectura exacta.</li>
-      <li>Un <b>PDF escaneado</b> es una imagen: no tiene texto que leer y te avisa que necesita OCR.</li>
+      <li>El desglose de un guion sin encabezados o de un storyboard es una <b>propuesta</b>, no una
+        lectura exacta.</li>
+      <li>Un <b>PDF escaneado</b> o un storyboard que es sólo imagen no tiene texto que leer: los
+        cuadros entran al plan, pero los elementos se cargan a mano.</li>
       <li>La escala del SICA <b>vence</b>: los valores dicen hasta cuándo rigen.</li>
     </ul>`},
 ];
@@ -6935,7 +6980,7 @@ function resumenJornadas(py, v){
 function jornadasHTML(py,v){
   const J = resumenJornadas(py, v);
   if(!J.filas.length) return `<div class="pad muted" style="font-size:12.5px">
-    Todavía no hay jornadas planificadas. Armá el plan en <b>Desglose → Plan de rodaje</b>.</div>`;
+    Todavía no hay jornadas planificadas. Armá el plan en la solapa <b>Plan de rodaje</b>.</div>`;
   const conMov = J.filas.filter(f=>f.total);
   return `${J.sinJornada?`<div class="pad"><div class="avisomodo turno-mal">
       <b>${J.sinJornada} comprobante${J.sinJornada==1?'':'s'} de catering o seguridad sin jornada · ${fmt(J.sinJornadaMonto,J.base)}</b>
@@ -9085,6 +9130,262 @@ function plStoryboard(alBanco){
     </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
       <button class="btn pri" onclick="plStoryboardOk()">Cargar</button></div></div></div>`);
 }
+
+/* ---------- el material de la agencia ----------
+   Lo que llega para presupuestar un spot ya no es sólo un guion: es el guion
+   de dos columnas, el guion técnico en Excel o el storyboard (cada vez más
+   hecho con IA) en PDF o imágenes. Todo entra por la misma caja:
+     - guion (PDF, Word, Final Draft, RTF, txt) → escenas, como siempre;
+     - guion técnico (.xlsx) → un bloque por renglón, y los planos (con su
+       cuadro si viene pegado) al banco del plan de rodaje;
+     - storyboard (PDF o imágenes) → los cuadros al banco del plan, y el
+       texto que trae cada cuadro (la descripción del board) al desglose,
+       donde el diccionario saca los elementos.                            */
+
+/* El texto de cada celda de la grilla: pdf.js da cada pedazo de texto con su
+   posición, y se reparte en la misma grilla con la que se cortan los
+   cuadros. Así cada cuadro se queda con su descripción. */
+function textoPorCelda(items, W, H, cols, filas){
+  const celdas = Array.from({length: cols * filas}, () => []);
+  (items || []).forEach(it => {
+    const s = String(it.str || '').trim(); if(!s || !it.transform) return;
+    const x = it.transform[4], y = H - it.transform[5];
+    const c = Math.min(cols - 1, Math.max(0, Math.floor(x / (W / cols))));
+    const f = Math.min(filas - 1, Math.max(0, Math.floor(y / (H / filas))));
+    celdas[f * cols + c].push({s, x, y});
+  });
+  return celdas.map(l => {
+    l.sort((a, b) => (Math.abs(a.y - b.y) > 4 ? a.y - b.y : a.x - b.x));
+    let out = '', yPrev = null;
+    l.forEach(p => { out += (yPrev == null ? '' : Math.abs(p.y - yPrev) > 4 ? '\n' : ' ') + p.s; yPrev = p.y; });
+    return out.trim();
+  });
+}
+/* "Frame 3: Ana abre la heladera" → número 3 y la descripción. */
+function leerCaption(t){
+  const s = String(t || '').trim();
+  const m = s.match(/^(?:frame|cuadro|plano|shot|toma|escena|esc\.?)?\s*#?\s*(\d{1,3}[a-z]?)\s*(?:[.:)\-–—]\s*|\s+(?=[A-ZÁÉÍÓÚÑa-záéíóúñ]))/i);
+  if(m && (/^(frame|cuadro|plano|shot|toma|esc)/i.test(s) || /^\d{1,3}[a-z]?\s*[.:)\-–—]/i.test(s)))
+    return {numero: m[1].toUpperCase(), desc: s.slice(m[0].length).trim()};
+  return {numero: '', desc: s};
+}
+/* Escenas del desglose a partir de descripciones sueltas (cuadros o
+   renglones). Cada una pasa por el mismo lector de los guiones sin
+   encabezados: infiere locación, INT/EXT y momento, y el diccionario
+   propone los elementos. Si no dice dónde, sigue en la locación anterior. */
+/* En un storyboard los personajes no vienen en MAYÚSCULA como en un guion:
+   "Ana abre la puerta", "el padre saluda". Un nombre propio es una palabra
+   con mayúscula en medio de la oración (o al principio, si en otro cuadro
+   aparece en el medio); los roles se reconocen por la palabra. */
+const NO_NOMBRE = new Set(['el','la','los','las','un','una','unos','unas','del','al','en','con','por','para','de','y','o',
+  'frame','cuadro','plano','primer','primerisimo','detalle','exterior','interior','packshot','insert','general','medio',
+  'vista','toma','camara','luz','ella','ellos','ellas','se','su','sus','mientras','luego','despues','cuando','afuera',
+  'adentro','fin','logo','super','placa','texto','voz','off','musica','producto','marca','cierre','apertura','escena']);
+const ROLES_PERSONAJE = /\b(padre|madre|hij[oa]s?|abuel[oa]s?|nen[ea]s?|nin[oa]s?|chic[oa]s?|mujer|hombre|senor[a]?|amig[oa]s?|novi[oa]|espos[oa]|marido|vecin[oa]|moz[oa]|cliente|vendedor[a]?|bebe|medic[oa]|enfermer[oa]|policia|profesor[a]?|alumn[oa]s?|jefe|jefa|cajer[oa])\b/g;
+function nombresEnDescripciones(textos){
+  const medio = new Set(), inicio = new Set();
+  textos.forEach(t => {
+    for(const m of String(t).matchAll(/[A-ZÁÉÍÓÚÑ][a-záéíóúñ]{2,}/g)){
+      const w = m[0]; if(NO_NOMBRE.has(norm(w))) continue;
+      const antes = t.slice(0, m.index);
+      ((!antes.trim() || /[.!?:]\s*$/.test(antes)) ? inicio : medio).add(w);
+    }
+  });
+  return new Set([...medio, ...[...inicio].filter(w => medio.has(w))]);
+}
+function personajesDeDescripcion(t, nombres){
+  const out = [];
+  nombres.forEach(w => { if(new RegExp('(^|[^A-Za-zÁÉÍÓÚÑáéíóúñ])' + w + '($|[^A-Za-zÁÉÍÓÚÑáéíóúñ])').test(t)) out.push(w.toUpperCase()); });
+  const singular = r => r.replace(/(os|as)$/, m => m === 'os' ? 'o' : 'a').replace(/^(senor)(a?)$/, 'señor$2').replace(/^nin(o|a)$/, 'niñ$1');
+  for(const m of norm(t).matchAll(ROLES_PERSONAJE)) out.push(singular(m[1]).toUpperCase());
+  return [...new Set(out)];
+}
+function escenasDeDescripciones(lista, piezaId){
+  /* las descripciones vienen cortadas en renglones: una sola línea cada una */
+  const textos = lista.map(x => String(x.texto || '').replace(/\s*\n\s*/g, ' ').trim());
+  /* juntas, para que la locación y el momento sigan de un cuadro al otro */
+  let base = parseGuionLibre(textos.join('\n\n'));
+  if(base.length !== textos.length) base = textos.map(t => (t && parseGuionLibre(t)[0]) || nuevaEscena({texto:t}));
+  const nombres = nombresEnDescripciones(textos);
+  let prev = null;
+  return lista.map((x, i) => {
+    const texto = textos[i];
+    const e = base[i];
+    e.personajes = personajesDeDescripcion(texto, nombres);
+    e.numero = x.numero || String(i + 1);
+    e.encabezado = x.titulo || (texto.split('\n')[0] || '').slice(0, 90);
+    e.texto = texto;
+    if(x.locacion) e.locacion = x.locacion.toUpperCase();
+    else if((!e.locacion || e.locacion === 'Sin locación') && prev){ e.locacion = prev.locacion; e.intExt = prev.intExt; }
+    /* "interior del auto": el vehículo es la locación */
+    const veh = norm(texto).match(/\b(?:interior|dentro|adentro) (?:del|de la|de un|de una) (auto|coche|camioneta|colectivo|tren|avion|subte|taxi|camion|micro|barco|ascensor)\b/);
+    if(veh && !x.locacion){ e.locacion = veh[1].toUpperCase(); e.intExt = 'INT'; }
+    if(x.intExt) e.intExt = x.intExt;
+    if(x.momento) e.momento = x.momento;
+    if(x.personajes && x.personajes.length) e.personajes = [...new Set([...x.personajes, ...e.personajes])];
+    e.octavos = 1;
+    e.piezaId = piezaId || null;
+    prev = e;
+    return e;
+  });
+}
+/* Suma escenas y planos al proyecto, enlazados entre sí. */
+function sumarMaterial(py, escenas, planos, origen, modo){
+  const d = getD(), p = planDe(py);
+  if(!d.escenas.length){ d.modo = modo; d.importado = hoy(); }
+  const base = d.escenas.length;
+  escenas.forEach((e, i) => { if(!d.escenas.some(x => x.numero === e.numero && (x.piezaId || null) === (e.piezaId || null))) return;
+    e.numero = String(base + i + 1); });
+  d.escenas.push(...escenas);
+  planos.forEach(x => { p.items.push(x); meterEnJornada(py, x, null); });
+  DB.ui.subDesglose = 'escenas';
+  const conElem = escenas.filter(e => Object.values(e.elementos).some(v => v.length) || e.personajes.length).length;
+  toast(`${origen}: ${escenas.length ? escenas.length + ' bloque' + (escenas.length == 1 ? '' : 's') + ' al desglose' + (conElem ? ` (${conElem} con elementos detectados)` : '') : 'sin texto para desglosar'}` +
+    (planos.length ? ` · ${planos.length} plano${planos.length == 1 ? '' : 's'} al banco del plan de rodaje` : ''));
+}
+const MOMENTO_DE_LUZ = {noche:'NOCHE', dorada:'ATARDECER', azul:'ATARDECER', dia:'DÍA'};
+
+/* Guion técnico en Excel: cada renglón es un bloque y un plano. */
+async function materialDesdeXlsx(py, file){
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const filas = await planosDeXlsx(bytes);
+  if(!filas.length) throw new Error(`En ${file.name} no encontré las columnas de un guion técnico (Plano, Descripción, Tamaño…).`);
+  const piezaId = piezaActual();
+  const escenas = escenasDeDescripciones(filas.map(x => ({
+    numero: x.numero, texto: [x.desc, x.notas].filter(Boolean).join('\n'), locacion: x.set,
+    intExt: x.intExt, momento: (MOMENTOS.includes(norm(x.momento).toUpperCase()) || MOMENTOS.includes(x.momento) ? x.momento : '') || MOMENTO_DE_LUZ[x.luz] || '',
+    personajes: String(x.elenco || '').split(/[,;]/).map(s => s.trim().toUpperCase()).filter(Boolean)})), piezaId);
+  const planos = [];
+  for(let i = 0; i < filas.length; i++){
+    const {fila, archivoImg, momento, ...x} = filas[i];
+    let img = '';
+    if(archivoImg){ try{
+      const b = await zipEntrada(bytes, archivoImg);
+      const tipo = /\.png$/i.test(archivoImg) ? 'image/png' : /\.gif$/i.test(archivoImg) ? 'image/jpeg' : 'image/jpeg';
+      img = (await achicarImagen(new Blob([b], {type: tipo}), 320, 0.6)).dataUrl; }catch(e){} }
+    planos.push(nuevoItemPlan({...x, tipo:'plano', numero: x.numero || String(i + 1), img, piezaId, escenaId: escenas[i] && escenas[i].id}));
+  }
+  sumarMaterial(py, escenas, planos, file.name, 'tecnico');
+}
+/* Storyboard: cuadros (de un PDF cortado en grilla o de imágenes sueltas). */
+function materialDesdeCuadros(py, cuadros, origen){
+  const piezaId = piezaActual();
+  const caps = cuadros.map(c => leerCaption(c.texto));
+  const conTexto = caps.map((c, i) => ({c, i})).filter(x => x.c.desc.length > 3);
+  const escenas = escenasDeDescripciones(conTexto.map(x => ({numero: x.c.numero || String(x.i + 1), texto: x.c.desc,
+    titulo: 'Cuadro ' + (x.c.numero || x.i + 1)})), piezaId);
+  let k = sigNumeroPlano(py, piezaId);
+  const planos = cuadros.map((c, i) => {
+    const cap = caps[i], sl = cap.desc ? (leerShotList(cap.desc.replace(/\n/g, ' '))[0] || {}) : {};
+    const esc = escenas[conTexto.findIndex(x => x.i === i)];
+    const numero = cap.numero || String(k++);
+    return nuevoItemPlan({tipo:'plano', numero, img: c.img, piezaId, desc: cap.desc.replace(/\n/g, ' '),
+      tamano: sl.tamano || '', movimiento: sl.movimiento || '', intExt: sl.intExt || '', luz: sl.luz || '', lente: sl.lente || '',
+      set: esc ? (esc.locacion !== 'Sin locación' ? esc.locacion : '') : '', escenaId: esc ? esc.id : null});
+  });
+  sumarMaterial(py, escenas, planos, origen, 'storyboard');
+  if(!conTexto.length && cuadros.length)
+    setTimeout(() => toast('El storyboard no trae texto en los cuadros: los planos están en el plan; los elementos se cargan a mano o pegando la descripción.'), 2600);
+}
+
+/* ---------- la caja ---------- */
+function cajaMaterialHTML(){
+  return `<div id="dgdrop" class="dropz dgdrop" ondragover="event.preventDefault();this.classList.add('sobre')"
+      ondragleave="this.classList.remove('sobre')" ondrop="soltarMaterial(event)"
+      onclick="document.getElementById('dgfile').click()">
+      <b>Soltá acá lo que mandó la agencia</b>
+      <span>Guion (PDF, Word, Final Draft, txt) · guion técnico (Excel) · storyboard (PDF o imágenes, también los hechos con IA).
+        Se pueden varios a la vez.</span>
+    </div>
+    <input type="file" id="dgfile" multiple style="display:none" onchange="soltarMaterial(this)"
+      accept=".txt,.fountain,.fdx,.docx,.doc,.rtf,.pdf,.xlsx,.xlsm,.csv,image/*">`;
+}
+let _dgPendientes = [];
+async function soltarMaterial(ev){
+  const files = ev.dataTransfer ? [...ev.dataTransfer.files] : [...(ev.files || [])];
+  if(ev.preventDefault) ev.preventDefault();
+  const z = document.getElementById('dgdrop'); if(z) z.classList.remove('sobre');
+  if(ev.value !== undefined) ev.value = '';
+  if(!files.length) return;
+  const py = getPy();
+  const imagenes = files.filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif)$/i.test(f.name));
+  const guiones = [], dudosos = [];
+  for(const f of files){
+    if(imagenes.includes(f)) continue;
+    try{
+      if(/\.(xlsx|xlsm)$/i.test(f.name)){ toast('Leyendo ' + f.name + '…'); await materialDesdeXlsx(py, f); continue; }
+      if(/\.pdf$/i.test(f.name)){
+        /* un PDF con encabezados de escena es un guion; si no, se pregunta */
+        const txt = await pdfATexto(new Uint8Array(await f.arrayBuffer()));
+        if(parseGuion(txt).length) guiones.push(f); else dudosos.push({f, txt});
+        continue;
+      }
+      guiones.push(f);
+    }catch(e){ toast(f.name + ': ' + e.message); }
+  }
+  if(imagenes.length){
+    const orden = imagenes.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+    const cuadros = [];
+    for(const f of orden){ try{ cuadros.push({img:(await achicarImagen(f, 320, 0.6)).dataUrl, texto:''}); }catch(e){} }
+    materialDesdeCuadros(py, cuadros, `${imagenes.length} imagen${imagenes.length == 1 ? '' : 'es'}`);
+  }
+  if(guiones.length){
+    if(getD().escenas.length){
+      for(const f of guiones){ try{
+        const {escenas} = desglosar(await archivoATexto(f));
+        escenas.forEach(e => e.piezaId = piezaActual());
+        sumarMaterial(py, escenas, [], f.name, 'encabezados');
+      }catch(e){ toast(f.name + ': ' + e.message); } }
+    } else await subirGuion({files: guiones, value: ''});
+  }
+  _dgPendientes = dudosos;
+  if(dudosos.length) preguntarPdf();
+  else R();
+}
+/* Un PDF sin encabezados de escena puede ser un guion de publicidad (prosa
+   o dos columnas) o un storyboard. Se pregunta: equivocarse acá es tirar el
+   storyboard como texto o cortar un guion en cuadros. */
+function preguntarPdf(){
+  const x = _dgPendientes[0]; if(!x){ R(); return; }
+  const pocas = x.txt.replace(/\s+/g, ' ').length < 2500;
+  abrir(`<div class="ov"><div class="mod" style="max-width:520px">
+    <h3>¿Qué es «${esc(x.f.name)}»?</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">No tiene encabezados de escena (INT./EXT.).
+        ${pocas ? 'Tiene poco texto: <b>parece un storyboard</b>.' : 'Tiene bastante texto: <b>parece un guion</b> de publicidad.'}</div>
+      <div class="grid2">
+        <button class="btn ${pocas ? '' : 'pri'}" onclick="pdfComoGuion()">Es un guion<br><span class="muted" style="font-size:11px">se lee el texto y se desglosa</span></button>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${sel('Cuadros por página','grilla','3x2',[['1x1','1 (la página entera)'],['2x1','2 (uno al lado del otro)'],['1x2','2 (uno arriba del otro)'],
+            ['2x2','4 (2 × 2)'],['3x2','6 (3 × 2)'],['2x3','6 (2 × 3)'],['3x3','9 (3 × 3)'],['4x3','12 (4 × 3)']].map(([v, l]) => ({v, l})))}
+          <button class="btn ${pocas ? 'pri' : ''}" onclick="pdfComoStoryboard()">Es un storyboard</button>
+        </div>
+      </div>
+      <div id="dgestado" class="muted" style="font-size:12px;margin-top:10px"></div>
+    </div><div class="mfoot"><button class="btn" onclick="_dgPendientes.shift();cerrar();preguntarPdf()">Saltear</button></div></div></div>`);
+}
+async function pdfComoGuion(){
+  const x = _dgPendientes.shift(); cerrar();
+  if(x){ const partes = partirGuiones(x.txt);
+    if(partes.length > 1) confirmarVariosGuiones(partes.map((g, k) => ({titulo: g.titulo || `${x.f.name} (${k+1})`, texto: g.texto, archivo: x.f.name})), getPy());
+    else importarGuion(x.txt); }
+  if(_dgPendientes.length) preguntarPdf();
+}
+let _dgCargando = false;
+async function pdfComoStoryboard(){
+  if(_dgCargando) return;
+  const x = _dgPendientes[0]; if(!x) return;
+  const [cols, filas] = String(datos().grilla || '1x1').split('x').map(Number);
+  const est = document.getElementById('dgestado');
+  _dgCargando = true;
+  try{
+    const cuadros = await cuadrosDePdf(x.f, cols || 1, filas || 1, t => { if(est) est.textContent = t; });
+    _dgPendientes.shift(); cerrar();
+    materialDesdeCuadros(getPy(), cuadros, x.f.name);
+  }catch(e){ if(est) est.textContent = e.message || 'No pude leer el PDF'; return; }
+  finally{ _dgCargando = false; }
+  if(_dgPendientes.length) preguntarPdf(); else R();
+}
+
 let _pdfjs = null;
 function cargarPdfjs(){
   if(_pdfjs) return _pdfjs;
@@ -9122,10 +9423,12 @@ async function cuadrosDePdf(file, cols, filas, avance){
     const vp = page.getViewport({scale: Math.min(3, (360 * cols) / vp0.width)});
     const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
     await page.render({canvasContext: cv.getContext('2d'), viewport: vp}).promise;
+    let textos = [];
+    try{ textos = textoPorCelda((await page.getTextContent()).items, vp0.width, vp0.height, cols, filas); }catch(e){}
     const w = cv.width / cols, h = cv.height / filas;
     for(let f = 0; f < filas; f++) for(let c = 0; c < cols; c++){
       const url = recorteCuadro(cv, c*w, f*h, w, h);
-      if(url) out.push({img:url, pagina:i});
+      if(url) out.push({img:url, pagina:i, texto: textos[f*cols + c] || ''});
     }
   }
   return out;
@@ -9174,7 +9477,9 @@ async function plStoryboardOk(){
   let k = sigNumeroPlano(py, piezaId);
   const p = planDe(py);
   cuadros.forEach(c => {
-    const {fila, archivoImg, ...x} = c.datos || {};
+    let {fila, archivoImg, ...x} = c.datos || {};
+    if(!c.datos && c.texto){ const cap = leerCaption(c.texto), sl = leerShotList(cap.desc.replace(/\n/g, ' '))[0] || {};
+      x = {numero: cap.numero, desc: cap.desc.replace(/\n/g, ' '), tamano: sl.tamano || '', movimiento: sl.movimiento || '', intExt: sl.intExt || '', luz: sl.luz || ''}; }
     const it = nuevoItemPlan({...x, tipo:'plano', numero: x.numero || String(k), img:c.img, piezaId});
     const nn = parseInt(it.numero, 10); k = isFinite(nn) ? Math.max(k, nn + 1) : k + 1;
     p.items.push(it); meterEnJornada(py, it, num); });
@@ -9338,7 +9643,8 @@ function leerGuionTecnico(filas){
       intExt: /ext/i.test(ie) ? 'EXT' : /int/i.test(ie) ? 'INT' : (base.intExt || ''),
       luz: /noche|night/.test(luzTxt) ? 'noche' : /dorad|atardec|amanec|ocaso|golden/.test(luzTxt) ? 'dorada' : /azul|blue/.test(luzTxt) ? 'azul'
         : /dia|day/.test(luzTxt) ? 'dia' : (base.luz || ''),
-      elenco: val(f, 'elenco'), duracion: n(val(f, 'tiempo')) > 0 ? n(val(f, 'tiempo')) : null, notas});
+      elenco: val(f, 'elenco'), duracion: n(val(f, 'tiempo')) > 0 ? n(val(f, 'tiempo')) : null, notas,
+      momento: val(f, 'luz').toUpperCase()});
   }
   return {planos: out, filaEncabezado: mejor.i, columnas: Object.keys(M)};
 }
@@ -11226,6 +11532,11 @@ function quitarTag(k){
 /* Aviso permanente cuando el guion se leyó sin encabezados: que quede claro
    que lo de abajo es una propuesta y no una lectura exacta.                  */
 function avisoModoHTML(d){
+  if(d.modo === 'storyboard' || d.modo === 'tecnico') return `<div class="avisomodo noprint">
+    <b>Desglosado desde ${d.modo === 'storyboard' ? 'el storyboard' : 'el guion técnico'}.</b>
+    Cada ${d.modo === 'storyboard' ? 'cuadro' : 'renglón'} es un bloque; la locación y el momento salen de su descripción y los
+    elementos los propone el diccionario. Revisalos: lo propuesto está punteado. Los planos están en el banco del
+    <a href="#" onclick="event.preventDefault();setTab('plan')">plan de rodaje</a>.</div>`;
   return `<div class="avisomodo noprint">
     <b>Este guion no tenía encabezados.</b>
     ${d.modo==='bloque'
@@ -11505,6 +11816,7 @@ function menuGuion(){
       <div class="muted" style="font-size:11.5px;line-height:1.5;margin-bottom:4px">
         Importado el ${esc(d.importado||'—')} · ${d.escenas.length} escenas.</div>
       <button class="btn" onclick="verGuion()">Ver / reemplazar el guion</button>
+      <button class="btn" onclick="cerrar();reDetectar()" title="Volver a pasar el diccionario, conservando lo que agregaste a mano">Volver a detectar los elementos</button>
       <button class="btn" onclick="expDesgloseCSV()">⬇ Exportar el desglose (.csv)</button>
       <button class="btn dgr" onclick="borrarDesglose()">Borrar el desglose de este proyecto</button>
     </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div>
@@ -11527,8 +11839,13 @@ function reimportar(){
   cerrar(); importarGuion(t);
 }
 function borrarDesglose(){
-  if(!confirm('Borrar el guion y todo el desglose de este proyecto?')) return;
-  getPy().desglose = nuevoDesglose(); cerrar(); toast('Desglose borrado');
+  if(!confirm('Borrar el guion y todo el desglose de este proyecto? Las jornadas, el plan de rodaje y los datos del callsheet se conservan.')) return;
+  /* las jornadas no son del guion: tienen fecha, horarios, citaciones y el
+     plan de rodaje. Borrarlas acá se llevaba puesto el callsheet. */
+  const viejo = getPy().desglose;
+  getPy().desglose = nuevoDesglose({jornadas: viejo.jornadas, paginasPorJornada: viejo.paginasPorJornada});
+  getPy().desglose.jornadasMin = viejo.jornadasMin || viejo.jornadas.length;
+  cerrar(); toast('Desglose borrado (las jornadas quedan)'); R();
 }
 /* Vuelve a pasar el diccionario conservando lo agregado a mano: sólo se
    descartan las sugerencias viejas que ya no aparecen.                       */
@@ -12592,6 +12909,17 @@ const escenasPorNumero = (d, nums) =>
   d.escenas.filter(e => (nums||[]).map(String).includes(String(e.numero)));
 
 function propuestaPresupuesto(){
+  const res = propuestaPresupuestoBase();
+  /* lo que ya está en el presupuesto (mismo rubro, mismo concepto, misma
+     pieza) se marca: si no, mandar dos veces el desglose duplica todo */
+  const v = getV();
+  if(v) res.lineas.forEach(l => {
+    const rb = v.rubros.find(x => x.codigo === l.rubro);
+    l.ya = !!(rb && rb.lineas.some(x => norm(x.concepto) === norm(l.concepto) && (x.piezaId || null) === (l.piezaId || null)));
+  });
+  return res;
+}
+function propuestaPresupuestoBase(){
   const d=getD(), r=resumenDesglose(d), out=[];
   const jorn = d.jornadas.length || r.jornadasEstimadas;
   /* elenco: los días son las jornadas en las que realmente aparece */
@@ -12645,6 +12973,7 @@ function aPresupuesto(){
   const v=getV(); if(!v){ toast('Este proyecto no tiene presupuesto'); return; }
   const {lineas, jornadas} = propuestaPresupuesto();
   if(!lineas.length){ toast('No hay nada para enviar'); return; }
+  const yaEstan = lineas.filter(l => l.ya).length;
   const porRubro={};
   lineas.forEach((l,i)=>{ (porRubro[l.rubro] ||= []).push({...l,i}); });
   abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
@@ -12652,16 +12981,16 @@ function aPresupuesto(){
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">
         Se crean <b>${lineas.length} líneas</b> en <b>${esc(v.nombre)}</b> con el concepto, la cantidad
         y los días ya calculados desde el desglose. <b>Los valores quedan en cero</b> — los ponés vos.
-        Destildá lo que no quieras.</div>
+        Destildá lo que no quieras.${yaEstan ? ` <b>${yaEstan} ya están en el presupuesto</b> y vienen destildadas: mandarlas de nuevo las duplica.` : ''}</div>
       ${Object.keys(porRubro).sort().map(cod=>{
         const rb = v.rubros.find(x=>x.codigo===cod);
         return `<div style="margin-bottom:11px">
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);font-weight:700;margin-bottom:4px">
             <span class="rcode">${esc(cod)}</span> ${esc(rb?rb.nombre:'(rubro inexistente)')}</div>
           ${porRubro[cod].map(l=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:3px 0;cursor:pointer">
-            <input type="checkbox" data-i="${l.i}" checked style="width:auto;margin-top:3px;flex:none">
+            <input type="checkbox" data-i="${l.i}" ${l.ya ? '' : 'checked'} style="width:auto;margin-top:3px;flex:none">
             <span style="flex:1;min-width:0">
-              <span style="font-size:12.5px">${esc(l.concepto)}</span>
+              <span style="font-size:12.5px">${esc(l.concepto)}</span>${l.ya ? ' <span class="chip c-otr">ya está</span>' : ''}
               <span class="muted" style="font-size:10.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                 ${l.cantidad} × ${l.dias} ${esc(l.unidad)}${l.nota?' · '+esc(l.nota):''}</span>
               ${piezasDe(getPy()).length?`<span class="chip ${l.piezaId?'pz-si':'pz-com'}" style="margin-top:2px;display:inline-block">${

@@ -443,6 +443,31 @@ El plan vive con el resto del desglose en el navegador (como las escenas): no
 se comparte por la base todavia. Los cuadros del storyboard se guardan chicos
 (320 px) para no llenar el navegador.
 
+### Desglose: el material de la agencia
+
+Una sola caja recibe lo que manda la agencia, uno o varios archivos a la vez:
+
+- **Guion** (PDF, Word, Final Draft, RTF, txt, o pegado): escenas por
+  encabezado o, en publicidad sin encabezados, bloques por parrafo.
+- **Guion tecnico en Excel**: cada renglon es un bloque del desglose (con la
+  locacion, INT/EXT, momento y elenco de sus columnas) y un plano del plan de
+  rodaje, con su cuadro si viene pegado en la planilla.
+- **Storyboard** (PDF o imagenes, tambien los hechos con IA): los cuadros van
+  al banco del plan de rodaje. Si el PDF trae la descripcion de cada cuadro, se
+  lee por su posicion en la grilla y se desglosa: locacion e INT/EXT (con
+  continuidad entre cuadros), momento, personajes aunque esten escritos en
+  minuscula ("Ana", "el padre"), y elementos por departamento. Cada plano queda
+  enlazado a su bloque. Un PDF sin encabezados de escena pregunta si es guion o
+  storyboard.
+
+Cambios de la revision (oct. 2026): en publicidad se cuenta en bloques y
+planos, no en paginas ni octavos; el selector de jornada de cada escena se
+saco (las jornadas se reparten en el Plan de rodaje); *→ Presupuesto* marca lo
+que ya esta en el presupuesto y lo deja destildado para no duplicarlo; borrar
+el desglose ya no borra las jornadas ni el callsheet; "camara lenta" ya no
+propone "camara" como utileria (una palabra que es parte de un elemento mas
+largo no cuenta); *Re-detectar* paso al menu del guion.
+
 ### Pedido de luces
 
 Solapa **Pedido de luces**, la arma el gaffer o el segundo del director de
@@ -1026,6 +1051,7 @@ El motor de cálculo y los caminos de render se prueban headless (sin navegador)
 node test/run.js test/pruebas.js    # presupuesto: cálculo, capas, versionado
 node test/run.js test/parser.js     # parser de guion contra test/guion-ejemplo.txt
 node test/run.js test/desglose.js   # desglose, jornadas y puente al presupuesto
+node test/run.js test/desglose-material.js # guion tecnico y storyboard (con su texto) al desglose y al plan
 node test/run.js test/importar.js  # PDF, DOCX, RTF, FDX y .doc contra test/muestras/
 node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
 node test/run.js test/plan-rodaje.js # plan de rodaje: sol, cascada, avisos, storyboard, guion tecnico, arrastre, cine
