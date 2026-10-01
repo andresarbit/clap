@@ -635,7 +635,7 @@ asistentes de producción cierran el día:
   contratadas (por defecto, las de la jornada). Lo que pasa del contrato se
   paga al valor hora de su jornada.
 
-Eso llega a **Alta y liquidación**:
+Eso llega a **Liquidación**:
 - las horas extra de cada uno, también las del **elenco** (que fichaba con
   el nombre del personaje y no llegaban);
 - las **jornadas trabajadas** contra las presupuestadas: una de más se suma

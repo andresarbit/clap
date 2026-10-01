@@ -938,6 +938,7 @@ header{background:var(--bg);border-bottom:1px solid var(--line)}
 .pick label{color:var(--tx3)}
 .pick select{background-color:#fff}
 .tabs{gap:20px;padding:0 16px}
+.tab-sep{flex:none;width:1px;align-self:center;height:16px;background:var(--line2);margin:0 -6px}
 .tab{padding:10px 0 9px;color:var(--tx2);border-bottom:none;font-weight:500;font-size:13.5px;border-radius:0}
 .tab:hover{color:var(--tx)}
 .tab.on{color:var(--tx);box-shadow:inset 0 -2px 0 #171717}
@@ -5245,7 +5246,22 @@ function chipIdentidad(pr){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['resumen','Resumen'],['presu','Presupuesto'],['desglose','Desglose'],['plan','Plan de rodaje'],['luces','Pedido de luces'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['personal','Alta y liquidación'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras'],['guia','Instructivo']];
+  /* Las solapas en el orden en que se recorre una producción, separadas por
+     etapa: preparar → rodar → pagar y cerrar; lo de la productora (que no
+     es de un proyecto) al final, y el instructivo al fondo. El alta (seguro,
+     datos) va antes del rodaje y la liquidación después: son la misma
+     pantalla, pero se llega desde su momento. */
+  const TABS=[
+    [['resumen','Resumen','El proyecto de un vistazo: qué falta, cuánto va']],
+    [['presu','Presupuesto','Cotizar y ganar el trabajo'],['desglose','Desglose','Guion, guion técnico o storyboard: qué hace falta'],
+     ['plan','Plan de rodaje','Jornadas, orden, horarios y citaciones'],['luces','Pedido de luces','Equipos y rentals'],
+     ['personal:alta','Altas y seguro','Datos de la gente y alta en el seguro, antes de rodar']],
+    [['callsheet','Callsheet','La hoja de citación de cada jornada'],['rodaje','Rodaje','En el set: citaciones, parte del día, llegadas y liberaciones, horas']],
+    [['gastos','Gastos','Comprobantes, órdenes de compra y caja chica'],['personal:liquidacion','Liquidación','Lo que se le paga a cada uno y a cada proveedor']],
+    [['catalogo','Catálogo','La base de gente y proveedores de la productora'],['equipo','Equipo y roles','Quién usa CLAP en la productora y qué puede aprobar'],
+     ['config','Productoras','Datos de las productoras y sus proyectos']],
+    [['guia','Instructivo','Cómo se usa CLAP']]];
+  const tabOn = k => { const [t, sub] = k.split(':'); return DB.ui.tab === t && (!sub || (DB.ui.subPersonal || 'alta') === sub); };
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -5272,8 +5288,8 @@ function header(pr,py,v){
         title="${sbConectado()?'Conectado a Supabase como '+esc(SB.user.email):'Sin conectar — los datos viven sólo en este navegador'}">☁</button>
       <button class="btn" onclick="menuDatos()">Datos ▾</button>
     </div>
-    <div class="tabs">${TABS.map(([k,l])=>
-      `<button class="tab ${DB.ui.tab===k?'on':''}" onclick="setTab('${k}')">${l}</button>`).join('')}</div>
+    <div class="tabs">${TABS.map(grupo => grupo.map(([k,l,t])=>
+      `<button class="tab ${tabOn(k)?'on':''}" onclick="setTab('${k}')" title="${esc(t)}">${l}</button>`).join('')).join('<span class="tab-sep" aria-hidden="true"></span>')}</div>
   </header>`;
 }
 
@@ -6630,16 +6646,20 @@ const GUIA = [
     <ol class="pasos-guia">
       <li><b>Productoras</b> — creá tu productora con su CUIT y condición de IVA. Podés tener
         todas las que manejes; cada una está aislada de las otras.</li>
-      <li><b>Equipo</b> — cargá a las personas con su rol. Sin esto no funciona el circuito de gastos.</li>
+      <li><b>Equipo y roles</b> — cargá a las personas con su rol. Sin esto no funciona el circuito de gastos.</li>
       <li><b>Desglose</b> — soltá lo que mandó la agencia: guion, guion técnico (Excel) o storyboard.
         De ahí salen los bloques o escenas, el elenco, las locaciones y los elementos.</li>
       <li><b>Presupuesto</b> — armalo desde una plantilla, a mano, o mandá el desglose con <i>→ Presupuesto</i>.</li>
       <li><b>Plan de rodaje</b> — el día hora por hora: planos o escenas, almuerzo, traslados y la luz.</li>
       <li><b>Pedido de luces</b> — lo arma el gaffer o el segundo de foto: equipos, potencia y precios.</li>
+      <li><b>Altas y seguro</b> — antes de rodar: los datos de cada uno y la planilla para el seguro.</li>
       <li><b>Callsheet</b> — se arma solo con el plan, el presupuesto y el catálogo.</li>
-      <li><b>Rodaje</b> — citaciones, parte del día y horas extra.</li>
+      <li><b>Rodaje</b> — en el set: llegadas, liberaciones, parte del día y horas extra.</li>
       <li><b>Gastos</b> — órdenes de compra, comprobantes, caja chica y el tablero de plata.</li>
+      <li><b>Liquidación</b> — lo que se le paga a cada uno y a cada proveedor, con las horas reales.</li>
     </ol>
+    <p>Arriba, las solapas van en ese orden y separadas por etapa: preparar, rodar, pagar y cerrar.
+    Al final, lo que es de la productora y no de un proyecto (catálogo, equipo y roles, productoras).</p>
     <p class="tip">La solapa <b>Resumen</b> es la portada: te dice cómo viene la plata y qué está
     esperando algo tuyo. Todo lo que aparece ahí es clickeable y te lleva al lugar.</p>`},
 
@@ -6780,7 +6800,7 @@ const GUIA = [
       <li>Si borrás los datos del navegador o usás el modo incógnito, <b>se pierde</b>.</li>
       <li>Otra persona con el mismo archivo tiene <b>sus propios datos</b>, no los tuyos.</li>
       <li>El espacio es de unos <b>5 MB</b>. Las fotos de comprobantes son lo que más ocupa; se
-        achican solas al cargarlas. Hay un medidor en la solapa <b>Equipo</b>.</li>
+        achican solas al cargarlas. Hay un medidor en la solapa <b>Equipo y roles</b>.</li>
     </ul>
     <p class="tip"><b>Exportá el respaldo seguido</b> desde <i>Datos → Exportar todo</i>. Ese
     <code>.json</code> es tu copia de seguridad <b>y</b> la forma de pasarle el trabajo a otra
@@ -13104,7 +13124,11 @@ function confirmarImportarPresupuesto(){
 
 const R = () => { guardar(); render(); };
 
-function setTab(t){ DB.ui.tab=t; R(); }
+function setTab(t){
+  const [tab, sub] = String(t).split(':');
+  DB.ui.tab = tab;
+  if(tab === 'personal' && sub) DB.ui.subPersonal = sub;
+  R(); }
 function setVista(v){ DB.ui.vista=v; R(); }
 function selProductora(id){
   /* el menú de arriba también sirve para sumarse a una productora ajena o
@@ -14996,7 +15020,7 @@ function rdProveedoresHTML(py, v, j, cfg){
   const fch = j.parte.fichadas;
   return `<div class="csblock"><h4>Locaciones, equipos y transporte</h4>
     <div class="pad muted noprint" style="font-size:11.5px;padding-bottom:0">Lo que se cobra por jornada: cuándo llegó o se retiró, cuándo se fue o se devolvió.
-      Si pasa de las horas contratadas, la diferencia se paga como extra (en Alta y liquidación → Proveedores).</div>
+      Si pasa de las horas contratadas, la diferencia se paga como extra (en Liquidación → Proveedores del rodaje).</div>
     <div class="scrollx"><table class="tbl cst">
       <thead><tr><th>Qué</th><th style="width:96px">Llegó / retiro</th><th style="width:96px">Se fue / devolución</th>
         <th style="width:70px" title="Horas contratadas por jornada">Contrato</th><th style="width:62px">Horas</th><th style="width:62px">Extras</th></tr></thead>
@@ -16602,7 +16626,7 @@ async function menuPendientes(){
       </tr>`).join('')}</tbody></table></div>
       <div class="muted" style="font-size:11.5px;margin-top:10px">
         Al aprobar entra con el rol que pidió. Si no corresponde, aprobalo igual y
-        cambiáselo en <b>Equipo</b>.</div>`;
+        cambiáselo en <b>Equipo y roles</b>.</div>`;
   }catch(e){
     cont.innerHTML = `<div class="avisomodo turno-mal">${esc(e.message)}</div>`;
   }
