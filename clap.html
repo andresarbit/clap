@@ -14072,13 +14072,18 @@ async function generarInvitacion(){
     catch(e){
       /* el proyecto vivía sólo en este navegador: se sube y se reintenta */
       if(!/todavía no está en la web/i.test(String(e.message||''))) throw e;
-      await sbSubirProyecto(py, pr.id);
+      try{ await sbSubirProyecto(py, pr.id); }
+      catch(e2){
+        /* hasta backend/subir-proyectos.sql la base rechazaba todo proyecto nuevo */
+        throw new Error('No pude subir el proyecto a la web. ' + (e2.status === 403
+          ? 'Falta correr backend/subir-proyectos.sql en el SQL Editor de Supabase.' : e2.message));
+      }
       token = await sbCrearInvitacion(py.id, d.rol);
     }
     if(!token) throw new Error('La base no devolvió el link.');
   }catch(e){
     const m = String(e.message||'');
-    const ayuda = /No encontré eso|crear_invitacion|Could not find/i.test(m)
+    const ayuda = /No encontré eso|Could not find/i.test(m)
       ? '<div style="margin-top:6px">Falta correr <code>backend/privado.sql</code> en el SQL Editor de Supabase.</div>' : '';
     return decir(`<div class="avisomodo turno-mal"><b>No pude generar el link.</b> ${esc(m)}${ayuda}</div>`);
   }

@@ -118,6 +118,19 @@ de verdad armado como esta base (52 pruebas).
 Hasta que lo corras, la app nueva no puede generar links de invitación
 (avisa que falta este archivo) y la base sigue en modo prueba.
 
+### A2h. Correr subir-proyectos.sql — ⏳ FALTA (lo corrés vos)
+
+Desde `permisos.sql` (25/08) la base rechazaba todo proyecto nuevo que se
+subía desde el navegador: la regla que decide quién ve un proyecto lo buscaba
+en la tabla, y en el instante de subirlo todavía no estaba. Se vio al invitar
+("No pude generar el link"): para invitar, el proyecto tiene que estar en la
+base.
+
+Pegá todo `backend/subir-proyectos.sql` en el SQL Editor y **Run**. Desde ahí
+los proyectos suben, quien crea uno queda anotado en él, y Equipo sigue sin
+poder crear proyectos ni ver los ajenos. Probado contra un Postgres armado
+como esta base.
+
 ### A4. Lo único que falta de esta parte, y sólo lo podés hacer vos
 
 Crear tu cuenta pide elegir una contraseña. Eso no lo hago yo por vos: es tuya
