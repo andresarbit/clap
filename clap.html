@@ -11,7 +11,7 @@
 :root{
   --bg:#0d0e10; --bg2:#141519; --bg3:#1b1d22; --bg4:#23262c;
   --line:#2c2f36; --line2:#3a3e46;
-  --tx:#e8e9ec; --tx2:#9ba1ac; --tx3:#6b7280;
+  --tx:#e8e9ec; --tx2:#9ba1ac; --tx3:#8b919c;
   --ac:#e0a92e;        /* dorado — acento principal */
   --ac2:#f2c65c;
   --ok:#3fb27f; --warn:#e0913e; --bad:#e05a5a; --info:#5b9bd5;
@@ -70,6 +70,25 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 .card>h3{padding:10px 13px;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--tx2);
   border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;font-weight:700}
 .card>h3 .spacer{flex:1}
+/* en pantallas angostas los botones del título bajan de renglón en vez de
+   quedar cortados fuera de la tarjeta */
+.card>h3{flex-wrap:wrap;row-gap:6px}
+/* foco de teclado visible en todo lo que se puede activar */
+button:focus-visible,a:focus-visible,[role=button]:focus-visible,summary:focus-visible,.tab:focus-visible{
+  outline:2px solid var(--ac);outline-offset:2px;border-radius:4px}
+@media (pointer:coarse){
+  /* con el dedo: botones chicos de al menos 36 px */
+  .btn.sm,.pl-acc .btn.sm,.lz-acc .btn.sm,.elmas{min-height:36px;min-width:36px}
+}
+@media (prefers-reduced-motion:reduce){
+  .dropz,.barra i{transition:none}
+}
+@media (max-width:760px){
+  /* en el celular el encabezado sube con la página: fijo ocupaba el 38%
+     de la pantalla */
+  .app{height:auto;min-height:100dvh}
+  main{overflow:visible}
+}
 .pad{padding:13px}
 .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
 .f{display:flex;flex-direction:column;gap:3px}
@@ -4647,6 +4666,7 @@ function render(){
   if(py) DB.ui.proyectoId=py.id;
   if(v)  DB.ui.versionId=v.id;
 
+  const antes = capturarPantalla();
   app.innerHTML = `<div class="app">
     ${avisoAlta()}
     ${header(pr,py,v)}
@@ -4654,6 +4674,139 @@ function render(){
     ${v && DB.ui.tab==='presu' ? barraTotal(v) : ''}
   </div>`;
   if(modal) app.insertAdjacentHTML('beforeend', modal);
+  restaurarPantalla(antes);
+  mejorarAccesibilidad(app);
+}
+
+/* ---------- que redibujar no te saque de donde estabas ----------
+   Toda la app se redibuja después de cada cambio. Sin esto, tocar un valor
+   al final del presupuesto te mandaba arriba de todo y el teclado perdía el
+   foco. Si seguís en la misma pantalla se vuelve al mismo scroll, al mismo
+   campo y a la misma posición del cursor; al cambiar de solapa, arriba.   */
+let _pantallaPrevia = '';
+const ENFOCABLES = 'button,input,select,textarea,a[href],[tabindex]';
+function clavePantalla(){
+  const u = DB.ui || {};
+  return [u.tab, u.proyectoId, u.versionId, u.subDesglose, u.subPlan, u.subCall, u.subRodaje, u.subGasto, u.subPersonal, u.jornada].join('|');
+}
+function capturarPantalla(){
+  const c = {vista: clavePantalla(), modal: !!document.querySelector?.('.mod')};
+  try{
+    const m = document.querySelector('main');
+    c.main = m ? m.scrollTop : 0;
+    c.win = typeof window.scrollY === 'number' ? window.scrollY : 0;
+    const mod = document.querySelector('.mod .mbody') || document.querySelector('.mod');
+    c.mod = mod ? mod.scrollTop : 0;
+    c.x = [...document.querySelectorAll('.scrollx,.pl-chips,.pztabs,.tabs')].map(e => e.scrollLeft);
+    const a = document.activeElement;
+    if(a && a !== document.body && app.contains(a)){
+      const todos = [...app.querySelectorAll(ENFOCABLES)];
+      c.foco = {i: todos.indexOf(a), firma: firmaFoco(a)};
+      if(typeof a.selectionStart === 'number'){ try{ c.foco.sel = [a.selectionStart, a.selectionEnd]; }catch(e){} }
+    }
+  }catch(e){}
+  return c;
+}
+const firmaFoco = el => [el.tagName, el.id, el.getAttribute('name'), el.getAttribute('onclick'), el.getAttribute('onchange')].join('·');
+function restaurarPantalla(c){
+  try{
+    const misma = c.vista === clavePantalla();
+    const m = document.querySelector('main');
+    if(misma){
+      if(m) m.scrollTop = c.main;
+      if(c.win && window.scrollTo) window.scrollTo(0, c.win);
+      [...document.querySelectorAll('.scrollx,.pl-chips,.pztabs,.tabs')].forEach((e, i) => { if(c.x && c.x[i]) e.scrollLeft = c.x[i]; });
+    } else {
+      if(m) m.scrollTop = 0;
+      if(c.win && window.scrollTo) window.scrollTo(0, 0);
+    }
+    const mod = document.querySelector('.mod .mbody') || document.querySelector('.mod');
+    if(mod && c.modal) mod.scrollTop = c.mod;
+    /* el foco: el mismo control si sigue estando; si se abrió una ventana,
+       su primer campo */
+    let el = null;
+    if(c.foco){
+      const todos = [...app.querySelectorAll(ENFOCABLES)];
+      el = todos[c.foco.i] && firmaFoco(todos[c.foco.i]) === c.foco.firma ? todos[c.foco.i]
+         : todos.find(x => firmaFoco(x) === c.foco.firma) || null;
+    }
+    if(!el && document.querySelector('.mod') && !c.modal){
+      const mm = document.querySelector('.mod');
+      el = mm.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=file]),select,textarea') || mm.querySelector('button');
+    }
+    if(el && el.focus){
+      el.focus({preventScroll: true});
+      if(c.foco && c.foco.sel && el.setSelectionRange){ try{ el.setSelectionRange(c.foco.sel[0], c.foco.sel[1]); }catch(e){} }
+    }
+  }catch(e){}
+}
+
+/* ---------- accesibilidad, después de cada dibujo ----------
+   Lo que se puede tocar y no es un botón (encabezados de rubro, cajas para
+   soltar archivos) se puede usar con el teclado; cada campo de una tabla se
+   nombra con el título de su columna; los botones que son sólo un símbolo
+   dicen qué hacen; las ventanas se anuncian como diálogo.                 */
+/* El campo que guarda cada input, sacado de su onchange: upLinea(…,'cantidad',this.value) */
+const NOMBRE_CAMPO = {concepto:'Concepto', cantidad:'Cantidad', dias:'Días', valorUnit:'Valor unitario', unidad:'Unidad',
+  moneda:'Moneda', circuito:'Circuito de pago', comprobante:'Comprobante', notas:'Notas', piezaId:'Pieza', area:'Área',
+  etapa:'Etapa', nombre:'Nombre', funcion:'Función', tel:'Teléfono', email:'Mail', citacion:'Citación', fecha:'Fecha',
+  maquillaje:'Maquillaje', set:'En set', entrada:'Entrada', salida:'Salida', precio:'Precio', cant:'Cantidad',
+  descuento:'Descuento', tc:'Tipo de cambio', locacion:'Locación', momento:'Momento', importe:'Importe', estado:'Estado',
+  direccion:'Dirección', contacto:'Contacto', rol:'Rol', duracion:'Duración', fijo:'Hora fija'};
+const NOMBRE_SIMBOLO = {'×':'Quitar', '✎':'Editar', '↑':'Subir', '↓':'Bajar', '→':'Mover', '⋮⋮':'Arrastrar', '☁':'Conexión', '⟳':'Sincronizar'};
+function mejorarAccesibilidad(root){
+  try{
+    if(!root || !root.querySelectorAll) return;
+    root.querySelectorAll('[onclick]').forEach(el => {
+      if(/^(BUTTON|A|INPUT|SELECT|TEXTAREA|LABEL|SUMMARY|OPTION)$/.test(el.tagName) || el.classList.contains('ov')) return;
+      if(!el.hasAttribute('role')) el.setAttribute('role', 'button');
+      if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    });
+    root.querySelectorAll('input:not([type=hidden]),select,textarea').forEach(el => {
+      if(el.getAttribute('aria-label') || el.closest('label') || (el.id && root.querySelector(`label[for="${el.id}"]`))) return;
+      let nombre = '';
+      const td = el.closest('td');
+      if(td){
+        const tabla = td.closest('table'), cab = tabla && tabla.tHead && tabla.tHead.rows[0];
+        const th = cab && cab.cells[td.cellIndex];
+        nombre = th ? th.textContent.trim() : '';
+      }
+      if(!nombre){
+        const m = String(el.getAttribute('onchange') || el.getAttribute('oninput') || '').match(/'([a-zA-Z]+)'\s*,\s*(?:this\.(?:value|checked)|n\()/);
+        if(m) nombre = NOMBRE_CAMPO[m[1]] || m[1];
+      }
+      if(!nombre){ const pick = el.closest('.pick'); const lb = pick && pick.querySelector('label'); if(lb) nombre = lb.textContent.trim(); }
+      if(!nombre && el.tagName === 'SELECT' && el.options && el.options[0] && el.options[0].value === '') nombre = el.options[0].textContent.trim();
+      if(!nombre && el.classList.contains('pl-est')) nombre = 'Estado';
+      nombre = nombre || el.title || el.placeholder || '';
+      if(nombre) el.setAttribute('aria-label', nombre);
+    });
+    root.querySelectorAll('button').forEach(b => {
+      if(b.getAttribute('aria-label')) return;
+      const t = b.textContent.trim();
+      if(NOMBRE_SIMBOLO[t]) b.setAttribute('aria-label', b.title || NOMBRE_SIMBOLO[t]);
+    });
+    const tabs = root.querySelector('.tabs');
+    if(tabs){ tabs.setAttribute('role', 'navigation'); tabs.setAttribute('aria-label', 'Solapas');
+      tabs.querySelectorAll('.tab').forEach(t => { if(t.classList.contains('on')) t.setAttribute('aria-current', 'page'); }); }
+    root.querySelectorAll('.mod').forEach(m => {
+      m.setAttribute('role', 'dialog'); m.setAttribute('aria-modal', 'true');
+      const h = m.querySelector('h3'); if(h){ h.id ||= 'modal-titulo'; m.setAttribute('aria-labelledby', h.id); }
+    });
+  }catch(e){}
+}
+/* Enter o espacio activan lo que tiene role=button; Escape cierra la ventana. */
+if(typeof document !== 'undefined' && typeof document.addEventListener === 'function'){
+  document.addEventListener('keydown', ev => {
+    const t = ev.target;
+    if((ev.key === 'Enter' || ev.key === ' ') && t && t.getAttribute && t.getAttribute('role') === 'button' &&
+       !/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(t.tagName)){ ev.preventDefault(); t.click(); return; }
+    if(ev.key === 'Escape' && modal && !_plDrag){
+      /* no cerrar si se está escribiendo en un cuadro de texto largo */
+      if(t && t.tagName === 'TEXTAREA' && t.value) return;
+      cerrar();
+    }
+  });
 }
 
 /* El menú de productoras, arriba a la izquierda.
@@ -9717,8 +9870,9 @@ function plDragMover(ev){
   D.ghost.style.top = (ev.clientY - D.dy) + 'px';
   /* auto-scroll cerca de los bordes */
   const main = document.querySelector('main');
-  if(main){ const mr = main.getBoundingClientRect();
+  if(main && main.scrollHeight > main.clientHeight + 4){ const mr = main.getBoundingClientRect();
     if(ev.clientY < mr.top + 50) main.scrollTop -= 14; else if(ev.clientY > mr.bottom - 50) main.scrollTop += 14; }
+  else if(window.scrollBy){ if(ev.clientY < 60) window.scrollBy(0, -14); else if(ev.clientY > innerHeight - 60) window.scrollBy(0, 14); }
   document.querySelectorAll('.pl-chip.drop,#pl-banco.drop').forEach(x => x.classList.remove('drop'));
   D.destino = null;
   const bajo = document.elementFromPoint(ev.clientX, ev.clientY);

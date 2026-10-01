@@ -953,6 +953,19 @@ invitarlo al equipo (Organization → Team) o configurar un SMTP propio
 Si la sesion se cayo porque la base estuvo pausada, se renueva sola al abrir:
 no hace falta volver a escribir la contraseña.
 
+### Redibujar sin perder el lugar, y accesibilidad
+
+La app se redibuja entera despues de cada cambio. Desde oct. 2026, si seguis en
+la misma pantalla se conserva el scroll, el foco y la posicion del cursor (antes
+tocar un valor al final del presupuesto te mandaba arriba de todo); al cambiar
+de solapa vuelve arriba. Despues de cada dibujo: lo clickeable que no es boton
+(encabezados de rubro, cajas para soltar archivos) se usa con Enter o espacio;
+cada campo se nombra por su columna o por el dato que guarda; las ventanas son
+dialogos que abren con el foco en el primer campo y cierran con Escape; las
+solapas son navegacion y marcan la actual. El texto secundario paso a #8b919c
+(contraste AA). En el celular el encabezado sube con la pagina y los botones
+chicos miden al menos 36 px con el dedo.
+
 ### Que nunca quede una pantalla en blanco
 
 Una app de una sola pagina que se rompe al arrancar no muestra un error: muestra
