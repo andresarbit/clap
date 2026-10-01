@@ -764,9 +764,11 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
 .pl-dood td.pl-t{color:var(--ac);font-weight:700}
 /* ---------- pedido de luces ---------- */
 .lz-cab{border-bottom:1px solid var(--line)}
+.lz-tab{table-layout:fixed;width:100%}
 .lz-tab input{border:1px solid var(--line);background:var(--bg3);border-radius:5px}
 .lz-tab td{vertical-align:middle}
 .lz-acc{white-space:nowrap;text-align:right}
+.lz-ref{display:block;font-size:10px;color:var(--tx3);margin-top:2px;white-space:nowrap}
 @media (max-width:760px){ .lz-tab th:nth-child(4),.lz-tab td:nth-child(4){display:none} .lz-precio{width:84px} .lz-tab td:first-child{min-width:110px} }
 .lz-num{width:58px;padding:4px 6px;text-align:right;font-family:var(--mono)}
 .lz-precio{width:104px;padding:4px 6px;text-align:right;font-family:var(--mono)}
@@ -9546,28 +9548,36 @@ const EQUIPOS_LUZ = [
   ['hmi','HMI 18K Fresnel',18000],['hmi','HMI 12K Fresnel',12000],['hmi','Arrimax 18/12',18000],
   ['hmi','HMI 6K Fresnel',6000],['hmi','HMI 4K Fresnel',4000],['hmi','HMI 4K Par',4000],
   ['hmi','HMI 2.5K Fresnel',2500],['hmi','HMI 2.5K Par',2500],['hmi','HMI 1.2K Par',1500],['hmi','HMI 575 Par',700],
-  ['hmi','Arri M90',9000],['hmi','Arri M40',4000],['hmi','Arri M18',2000],
+  ['hmi','HMI 12K Par',12000],['hmi','HMI 6K Par',6000],
+  ['hmi','Arri M90',9000],['hmi','Arri M40',4000],['hmi','Arri M18',2000],['hmi','Arri M8',800],['hmi','HMI Pocket Par 400',400],
   ['hmi','Joker 1600',1600],['hmi','Joker 800',800],['hmi','Joker 400',400],
   ['led','Arri SkyPanel S360-C',1500],['led','Arri SkyPanel S120-C',400],['led','Arri SkyPanel S60-C',450],['led','Arri SkyPanel S30-C',220],
   ['led','Aputure LS 1200d Pro',1440],['led','Aputure LS 600d Pro',720],['led','Aputure LS 600c Pro',720],['led','Aputure LS 300d II',350],
   ['led','Aputure Nova P300c',360],['led','Creamsource Vortex24',1950],['led','Creamsource Vortex8',650],
-  ['led','Astera Titan Tube',72],['led','Astera Helios Tube',36],['led','LiteMat Plus 4',200],['led','LiteMat Plus 2',100],
-  ['led','Panel LED 1x1 bicolor',100],
+  ['led','Astera Titan Tube',72],['led','Astera Titan (kit 8 tubos)',576],['led','Astera Titan (kit 4 tubos)',288],
+  ['led','Astera Helios Tube',36],['led','Astera Helios (kit 8 tubos)',288],['led','LiteMat Plus 4',200],['led','LiteMat Plus 2',100],
+  ['led','Nanlux Evoke 1200',1200],['led','Nanlite Forza 500',500],['led','Nanlite Forza 300',300],['led','Nanlite Forza 60',60],
+  ['led','Litepanels Gemini 2x1',650],['led','Litepanels Gemini 1x1',200],['led','Panel LED 1x1 bicolor',100],
   ['tung','Fresnel 20K',20000],['tung','Fresnel 10K',10000],['tung','Fresnel 5K',5000],['tung','Fresnel 2K',2000],
   ['tung','Fresnel 1K',1000],['tung','Fresnel 650',650],['tung','Fresnel 300',300],
-  ['tung','Blonde 2K (abierta)',2000],['tung','Redhead 800',800],['tung','Maxi Brute 9 lámparas',5850],['tung','Mini Brute 6 lámparas',3900],
+  ['tung','Blonde 2K (abierta)',2000],['tung','Abierta 1K',1000],['tung','Redhead 800',800],['tung','Maxi Brute 9 lámparas',5850],
+  ['tung','Mini Brute 6 lámparas',3900],['tung','Mini Brute 4 lámparas',2600],
   ['tung','Par 64',1000],['tung','Space light 6K',6000],['tung','Kit Dedolight (3 unidades)',450],
   ['fluo','Kino Flo 4 tubos 4\'',312],['fluo','Kino Flo 4 tubos 2\'',160],['fluo','Kino Flo 2 tubos 4\'',160],
   ['prac','Chinese lantern 60 cm',500],['prac','Chinese lantern 90 cm',1000],['prac','Lámparas prácticas dimerizables',60],
   ['pies','C-stand con brazo',0],['pies','Trípode combo',0],['pies','Trípode baby',0],['pies','High roller',0],
   ['pies','Super clamp / mafer',0],['pies','Magic arm',0],['pies','Saco de arena',0],['pies','Juego de apple box',0],
-  ['ctrl','Bandera 18x24',0],['ctrl','Bandera 24x36',0],['ctrl','Floppy 4x4',0],['ctrl','Cutter 10x42',0],['ctrl','Difusor 4x4',0],
+  ['ctrl','Bandera 18x24',0],['ctrl','Bandera 24x36',0],['ctrl','Kit de banderas',0],['ctrl','Survival kit Matthews',0],
+  ['ctrl','Tamizador 4x4 con telas',0],['ctrl','Floppy 4x4',0],['ctrl','Cutter 10x42',0],['ctrl','Difusor 4x4',0],
   ['ctrl','Marco 6x6 con telas',0],['ctrl','Marco 8x8 con telas',0],['ctrl','Marco 12x12 con telas',0],['ctrl','Marco 20x20 con telas',0],
   ['ctrl','Butterfly 12x12 armado',0],['ctrl','Tela ultrabounce',0],['ctrl','Tela grid cloth',0],['ctrl','Tela negra (duvetyne)',0],
   ['ctrl','Tela silk / difusora',0],['ctrl','Rebotador de telgopor',0],['ctrl','Espejo',0],['ctrl','Chimera / softbox',0],['ctrl','Grilla (egg crate)',0],
   ['mov','Dolly con rieles',0],['mov','Rieles rectos (tramo)',0],['mov','Rieles curvos (tramo)',0],['mov','Slider',0],['mov','Pluma / jib',0],
-  ['elec','Generador 20 kVA',0,{kva:20}],['elec','Generador 45 kVA',0,{kva:45}],['elec','Generador 60 kVA',0,{kva:60}],
-  ['elec','Generador 100 kVA',0,{kva:100}],['elec','Generador 150 kVA',0,{kva:150}],['elec','Generador 200 kVA',0,{kva:200}],
+  ['elec','Generador Honda EU20is (2 kVA)',0,{kva:2}],['elec','Generador Honda EU30is (3 kVA)',0,{kva:3}],
+  ['elec','Generador Honda EU65is (6,5 kVA)',0,{kva:6.5}],
+  ['elec','Generador 20 kVA',0,{kva:20}],['elec','Generador 45 kVA',0,{kva:45}],['elec','Generador 66 kVA',0,{kva:66}],
+  ['elec','Generador 88 kVA',0,{kva:88}],['elec','Generador 110 kVA',0,{kva:110}],['elec','Generador 150 kVA',0,{kva:150}],
+  ['elec','Generador 200 kVA',0,{kva:200}],['elec','Tablero monofásico',0],
   ['elec','Distribuidor trifásico',0],['elec','Cable de fuerza (tramo)',0],['elec','Prolongaciones y zapatillas (juego)',0],
   ['elec','Dimmer 2K',0],['elec','Dimmer 5K',0],['elec','Consola DMX y cableado',0],['elec','Transmisor inalámbrico DMX (CRMX)',0],
   ['cons','Gelatina CTO (pliego)',0,{u:'unidad'}],['cons','Gelatina CTB (pliego)',0,{u:'unidad'}],['cons','Gelatina ND (pliego)',0,{u:'unidad'}],
@@ -9581,9 +9591,18 @@ const EQUIPO_LUZ = k => EQUIPOS_LUZ.find(e => e.k === k) || null;
 /* Rentals de luces y grip encontrados en sus sitios públicos. Son una ayuda
    para elegir; el contacto de cada uno se guarda en el catálogo. */
 const RENTALS_LUCES = [
-  {nombre:'Cámaras y Luces', web:'camarasyluces.com', zona:'CABA (Morlote 856)', rubros:'cámara, luces, grip, generadores, camiones, estudios'},
-  {nombre:'Alfavision', web:'alfavisionsrl.wixsite.com/sitioweb', zona:'Munro, Vicente López', rubros:'cámara, luces, grip, generadores, grúas'},
-  {nombre:'Camauer', web:'camauer.vercel.app', zona:'Parque Chas, CABA', rubros:'cámara, ópticas, luces, grip, energía'},
+  {nombre:'Estudios Babylon', web:'estudiosbabylon.com.ar', zona:'Charlone 81, CABA', rubros:'cámara, ópticas, luces, grip, generadores, estudio',
+   tel:'11 5150-0024', email:'info@estudiosbabylon.com.ar', precios:'bab'},
+  {nombre:'Camauer', web:'camauer.com', zona:'CABA', rubros:'cámara, ópticas, luces, grip, generadores, estudio (antes Provideogrip)',
+   tel:'11 4471-6347', email:'camauer@camauer.com', precios:'cam'},
+  {nombre:'Alfavision', web:'alfavisionsrl.wixsite.com/sitioweb', zona:'Domingo de Acassuso 4753, Munro', rubros:'cámara, lentes, luces, grip',
+   tel:'011 4762-4473', email:'servicios@alfavisionsrl.com.ar'},
+  {nombre:'AJAF Cinema', web:'ajafcinema.com', zona:'F. F. de Amador 3945, Munro', rubros:'cámara, luces, grip, generadores, estudio', tel:'11 5060-2761'},
+  {nombre:'Ala Norte Cine Digital', web:'alanortecinedigital.com', zona:'V. S. de Liniers 1565, Vicente López', rubros:'cámara, luces, grip, generadores, estudio (precios en su web)',
+   tel:'11 4718-0732', email:'info@alanortecinedigital.com'},
+  {nombre:'Cámaras y Luces', web:'camarasyluces.com', zona:'Morlote 856, CABA', rubros:'cámara, luces, grip, generadores, camiones, estudios', tel:'11 5263-7772'},
+  {nombre:'Sullair Argentina', web:'sullairargentina.com', zona:'CABA', rubros:'grupos electrógenos de 20 a 2.250 kVA, torres de iluminación',
+   tel:'11 5941-4444', email:'contacto@sullair.com.ar'},
   {nombre:'Estudio Alasur', web:'estudioalasur.com.ar', zona:'Buenos Aires', rubros:'cámara, luces, grip, generadores'},
   {nombre:'RawCine', web:'rawcine.com.ar', zona:'Buenos Aires', rubros:'cámara, lentes, iluminación'},
   {nombre:'Seguí Rodando', web:'seguirodando.com', zona:'CABA', rubros:'cámara, iluminación, sonido, grip'},
@@ -9593,24 +9612,73 @@ const RENTALS_LUCES = [
   {nombre:'Algo Así Rental', web:'algoasirental.com', zona:'Buenos Aires', rubros:'cámara, lentes, luces, sonido'},
 ];
 
+/* Precios publicados, en pesos por jornada, para tener una referencia antes
+   de cotizar. Sólo dos fuentes argentinas los publican completos: la lista
+   de Babylon (octubre 2026, oficial) y la de Camauer en un marketplace
+   (alquilerdecamaras.com.ar, 30/09/2026). Cada rental cotiza distinto y
+   descuenta: es referencia, no el precio de un pedido.                     */
+const FUENTES_PRECIO_LUZ = {
+  bab: {rental:'Estudios Babylon', fecha:'oct. 2026', url:'https://www.estudiosbabylon.com.ar/img/babylon-rental-lista-precios.pdf',
+        nota:'lista oficial; jornada de hasta 24 h; sin IVA ni seguro; +25% domingos y feriados'},
+  cam: {rental:'Camauer', fecha:'30/09/2026', url:'https://www.alquilerdecamaras.com.ar/rentals/camauer/',
+        nota:'publicado en alquilerdecamaras.com.ar, por día'},
+};
+const PRECIOS_REF_LUZ = {
+  'HMI 12K Par':{cam:450000}, 'HMI 6K Par':{cam:245000}, 'Arri M40':{bab:240000, cam:210000}, 'Arri M18':{bab:176000, cam:155000},
+  'Arri M8':{cam:120000}, 'HMI Pocket Par 400':{bab:112000}, 'HMI 4K Par':{bab:192000, cam:120000}, 'HMI 2.5K Par':{bab:160000, cam:138000},
+  'HMI 1.2K Par':{bab:134400, cam:108000}, 'HMI 575 Par':{bab:96000, cam:80000},
+  'Arri SkyPanel S120-C':{cam:180000}, 'Arri SkyPanel S60-C':{bab:128000, cam:160000}, 'Arri SkyPanel S30-C':{bab:112000, cam:100000},
+  'Aputure LS 1200d Pro':{cam:150000}, 'Aputure LS 600c Pro':{cam:150000}, 'Aputure LS 600d Pro':{cam:115000},
+  'Nanlux Evoke 1200':{bab:144000, cam:150000}, 'Nanlite Forza 500':{bab:104000, cam:97000}, 'Nanlite Forza 300':{bab:80000, cam:75000},
+  'Nanlite Forza 60':{bab:38400, cam:26000}, 'Litepanels Gemini 2x1':{cam:116000}, 'Litepanels Gemini 1x1':{cam:72000},
+  'Astera Titan (kit 8 tubos)':{cam:230000}, 'Astera Titan (kit 4 tubos)':{cam:130000}, 'Astera Helios (kit 8 tubos)':{cam:170000},
+  'Fresnel 10K':{bab:112000, cam:108000}, 'Fresnel 5K':{bab:64000, cam:24000}, 'Fresnel 2K':{bab:32000, cam:12000},
+  'Fresnel 1K':{bab:24000, cam:9000}, 'Fresnel 650':{bab:24000, cam:8000}, 'Fresnel 300':{bab:24000, cam:7000},
+  'Blonde 2K (abierta)':{bab:32000, cam:11000}, 'Abierta 1K':{bab:24000, cam:9000}, 'Maxi Brute 9 lámparas':{bab:112000, cam:48000},
+  'Mini Brute 6 lámparas':{cam:30000}, 'Mini Brute 4 lámparas':{bab:32000}, 'Par 64':{bab:24000, cam:5000}, 'Space light 6K':{bab:104000},
+  'Kit Dedolight (3 unidades)':{bab:64000}, 'Kino Flo 4 tubos 4\'':{bab:38400}, 'Kino Flo 4 tubos 2\'':{bab:32000},
+  'C-stand con brazo':{bab:3200}, 'Trípode combo':{bab:4000, cam:4000}, 'Trípode baby':{bab:4000, cam:4000},
+  'Super clamp / mafer':{bab:2400, cam:3000}, 'Magic arm':{bab:3200, cam:8000}, 'Saco de arena':{bab:2400, cam:3000},
+  'Bandera 18x24':{bab:3200, cam:3000}, 'Bandera 24x36':{bab:3200, cam:3000}, 'Floppy 4x4':{cam:4000},
+  'Kit de banderas':{bab:16000, cam:26000}, 'Survival kit Matthews':{bab:32000, cam:32000},
+  'Marco 6x6 con telas':{bab:80000, cam:58000}, 'Tamizador 4x4 con telas':{bab:64000, cam:44000},
+  'Tela grid cloth':{cam:30000}, 'Tela ultrabounce':{cam:26000},
+  'Dolly con rieles':{bab:72000, cam:68000}, 'Rieles rectos (tramo)':{bab:16000}, 'Rieles curvos (tramo)':{bab:16000},
+  'Generador Honda EU20is (2 kVA)':{bab:40000, cam:52000}, 'Generador Honda EU30is (3 kVA)':{bab:72000, cam:70000},
+  'Generador Honda EU65is (6,5 kVA)':{bab:112000, cam:105000}, 'Generador 66 kVA':{bab:240000}, 'Generador 88 kVA':{cam:600000},
+  'Generador 110 kVA':{bab:400000}, 'Tablero monofásico':{cam:45000}, 'Distribuidor trifásico':{bab:32000, cam:45000},
+  'Cable de fuerza (tramo)':{bab:16000}, 'Dimmer 2K':{bab:19200}, 'Dimmer 5K':{bab:25600, cam:12000}, 'Consola DMX y cableado':{bab:80000},
+};
+const refDe = e => (e && PRECIOS_REF_LUZ[e.nombre]) || null;
+/* El rental del pedido, si es uno de los que publican precios. */
+function fuenteDelRental(P){
+  const p = P.rentalId && (DB.catalogo.personas || []).find(x => x.id === P.rentalId);
+  const r = p && RENTALS_LUCES.find(x => nomRental(x.nombre) === nomRental(p.nombre));
+  return r && r.precios || null;
+}
+function textoRef(e){
+  const r = refDe(e); if(!r) return '';
+  return Object.entries(r).map(([k, v]) => `${FUENTES_PRECIO_LUZ[k].rental.replace('Estudios ', '')} ${fmt(v, 'ARS')}`).join(' · ');
+}
+
 /* Pedidos base para no arrancar de cero: se suman y después se ajustan. */
 const KITS_LUCES = {
   chico: {l:'Chico (spot chico, contenido, estudio)', items:[
-    ['Arri SkyPanel S60-C',2],['Aputure LS 600d Pro',2],['Aputure LS 300d II',1],['Astera Titan Tube',4],['Joker 800',1],
+    ['Arri SkyPanel S60-C',2],['Aputure LS 600d Pro',2],['Aputure LS 300d II',1],['Astera Titan (kit 4 tubos)',1],['Joker 800',1],
     ['Kino Flo 4 tubos 4\'',2],['C-stand con brazo',10],['Trípode combo',4],['Bandera 18x24',4],['Bandera 24x36',4],
     ['Floppy 4x4',2],['Marco 8x8 con telas',1],['Saco de arena',12],['Juego de apple box',1],
     ['Prolongaciones y zapatillas (juego)',1],['Gelatina CTO (pliego)',2],['Gelatina CTB (pliego)',2],['Cinta gaffer (rollo)',2]]},
   mediano: {l:'Mediano (publicidad estándar, serie)', items:[
     ['HMI 4K Par',1],['Arri M18',2],['Arri SkyPanel S360-C',1],['Arri SkyPanel S60-C',4],['Aputure LS 1200d Pro',2],
-    ['Astera Titan Tube',8],['Kino Flo 4 tubos 4\'',2],['Fresnel 2K',2],['Fresnel 1K',2],['Kit Dedolight (3 unidades)',1],
+    ['Astera Titan (kit 8 tubos)',1],['Kino Flo 4 tubos 4\'',2],['Fresnel 2K',2],['Fresnel 1K',2],['Kit Dedolight (3 unidades)',1],
     ['C-stand con brazo',20],['Trípode combo',6],['High roller',2],['Bandera 18x24',6],['Bandera 24x36',6],['Floppy 4x4',4],
     ['Marco 12x12 con telas',2],['Butterfly 12x12 armado',1],['Dolly con rieles',1],['Rieles rectos (tramo)',6],
-    ['Saco de arena',24],['Juego de apple box',2],['Generador 60 kVA',1],['Distribuidor trifásico',1],['Cable de fuerza (tramo)',6],
+    ['Saco de arena',24],['Juego de apple box',2],['Generador 66 kVA',1],['Distribuidor trifásico',1],['Cable de fuerza (tramo)',6],
     ['Dimmer 2K',2],['Camión de luces con chofer',1],['Gelatina CTO (pliego)',4],['Gelatina CTB (pliego)',4],
     ['Difusión 216 / 250 (pliego)',4],['Cinta gaffer (rollo)',4]]},
   grande: {l:'Grande (exteriores, noche, gran escala)', items:[
     ['HMI 18K Fresnel',2],['HMI 12K Fresnel',1],['Arri M90',2],['Arri M40',2],['Arri SkyPanel S360-C',2],['Arri SkyPanel S60-C',8],
-    ['Creamsource Vortex24',2],['Astera Titan Tube',16],['Maxi Brute 9 lámparas',2],['Fresnel 5K',2],['Fresnel 2K',4],
+    ['Creamsource Vortex24',2],['Astera Titan (kit 8 tubos)',2],['Maxi Brute 9 lámparas',2],['Fresnel 5K',2],['Fresnel 2K',4],
     ['C-stand con brazo',30],['Trípode combo',10],['High roller',6],['Bandera 24x36',10],['Floppy 4x4',6],
     ['Marco 12x12 con telas',3],['Marco 20x20 con telas',1],['Butterfly 12x12 armado',2],['Dolly con rieles',1],['Rieles rectos (tramo)',10],
     ['Saco de arena',40],['Juego de apple box',3],['Generador 150 kVA',1],['Distribuidor trifásico',2],['Cable de fuerza (tramo)',12],
@@ -9651,7 +9719,7 @@ function costoItemLuz(py, it){
 }
 /* Generador sugerido: la carga con factor de potencia 0,8 y un 25% de
    margen, redondeada al tamaño de generador que se alquila. */
-const KVA_GENERADORES = [20, 45, 60, 100, 150, 200, 300, 500];
+const KVA_GENERADORES = [2, 3, 6.5, 20, 45, 66, 88, 110, 150, 200, 300, 500];
 function generadorPara(watts){
   if(!watts) return 0;
   const kva = watts / 0.8 / 1000 * 1.25;
@@ -9700,7 +9768,8 @@ function vistaLuces(pr, py, v){
             title="${esc(fechaJ(num) || 'Jornada ' + num)}">J${num}</button>`).join('')}</div>`}</td>
       <td class="num muted">${it.w ? (n(it.w) * n(it.cant) >= 1000 ? (n(it.w) * n(it.cant) / 1000).toFixed(1).replace('.0','') + ' kW' : n(it.w) * n(it.cant) + ' W') : '—'}</td>
       <td><input type="number" min="0" step="any" value="${n(it.precio) || ''}" placeholder="—" class="lz-precio"
-        onchange="lzUp('${it.id}','precio',this.value)" title="Precio por ${it.u === 'unidad' ? 'unidad' : 'jornada'}"></td>
+        onchange="lzUp('${it.id}','precio',this.value)" title="Precio por ${it.u === 'unidad' ? 'unidad' : 'jornada'}">
+        ${textoRef(EQUIPO_LUZ(it.k)) ? `<span class="lz-ref" title="Precios publicados por jornada (sin IVA)">${esc(textoRef(EQUIPO_LUZ(it.k)))}</span>` : ''}</td>
       <td class="num">${n(it.precio) ? fmtM(costoItemLuz(py, it)) : '<span class="muted">—</span>'}</td>
       <td class="noprint lz-acc"><button class="btn sm" onclick="lzEditar('${it.id}')" title="Editar">✎</button>
         <button class="btn sm dgr" onclick="lzBorrar('${it.id}')" title="Quitar">×</button></td></tr>`;
@@ -9734,7 +9803,11 @@ function vistaLuces(pr, py, v){
         ${Object.entries(KITS_LUCES).map(([k, x]) => `<option value="${k}">${esc(x.l)}</option>`).join('')}</select>
       ${P.items.length ? `<button class="btn sm" onclick="lzEnviar()" title="El pedido en texto, para mandar por WhatsApp o mail">Mandar al rental</button>
       <button class="btn sm" onclick="lzAlPresupuesto()" title="Pasa el total a las líneas de luces, grip, generador y camión del rubro 11">Pasar al presupuesto</button>
-      <button class="btn sm" onclick="lzCSV()">Bajar planilla</button>` : ''}
+      <button class="btn sm" onclick="lzCSV()">Bajar planilla</button>
+      <select class="pl-evsel" onchange="if(this.value){lzCompletarPrecios(this.value);this.value=''}" title="Para tener un número antes de cotizar">
+        <option value="">Completar precios vacíos con…</option>
+        ${Object.entries(FUENTES_PRECIO_LUZ).map(([k, f]) => `<option value="${k}">Lista ${esc(f.rental)} (${esc(f.fecha)})</option>`).join('')}
+        <option value="min">El más barato publicado</option></select>` : ''}
       <div style="flex:1"></div>
       ${P.items.length ? `<button class="btn sm dgr" onclick="lzVaciar()">Vaciar</button>` : ''}
     </div>
@@ -9765,7 +9838,8 @@ function vistaLuces(pr, py, v){
       ${hayPresu ? `<div><span>Presupuestado (rubro 11: luces, grip, generador, camión)</span><b>${fmtM(C.presu)}</b></div>
         <div><span>Diferencia</span><b class="${C.neto > C.presu ? 'pl-rojo' : ''}">${C.neto > C.presu ? '+ ' : '− '}${fmtM(Math.abs(C.neto - C.presu))}</b></div>` : ''}
     </div>
-    ${C.sinPrecio ? `<div class="pad muted" style="font-size:11.5px;padding-top:0">Los precios se cargan con la cotización del rental: quedan guardados para el próximo pedido a ese rental.</div>` : ''}
+    <div class="pad muted" style="font-size:11px;padding-top:0;line-height:1.6">Los precios se cargan con la cotización del rental y quedan guardados para el próximo pedido a ese rental.
+      Referencias publicadas: ${Object.values(FUENTES_PRECIO_LUZ).map(f => `<a href="${f.url}" target="_blank" rel="noopener">${esc(f.rental)}</a> (${esc(f.fecha)}, ${esc(f.nota)})`).join(' · ')}.</div>
     </div>` : ''}
     <div class="csblock"><h4>Notas para el rental</h4><div class="pad">
       <textarea rows="2" placeholder="Retiro y devolución, horarios, quién retira, si va técnico del rental, seguro…"
@@ -9784,6 +9858,8 @@ function lzRentalsHTML(rentalesCat){
     <div class="muted" style="font-size:12px;margin:0 0 10px">Encontrados en sus sitios públicos y que todavía no están en el catálogo. Sumalos para elegirlos en el pedido.</div>
     <div class="lz-rentals">${faltan.map(r => `<div class="lz-rental"><b>${esc(r.nombre)}</b>
       <span class="muted">${esc(r.zona)} · ${esc(r.rubros)}</span>
+      ${r.tel || r.email ? `<span class="muted">${esc([r.tel, r.email].filter(Boolean).join(' · '))}</span>` : ''}
+      ${r.precios ? `<span style="color:var(--ok);font-size:11px">Publica precios</span>` : ''}
       <a href="https://${esc(r.web)}" target="_blank" rel="noopener">${esc(r.web)}</a>
       <button class="btn sm" onclick="lzSumarRental('${esc(r.nombre).replace(/'/g, "\\'")}')">Sumar al catálogo</button></div>`).join('')}</div></div></div>`;
 }
@@ -9791,7 +9867,10 @@ function lzRentalsHTML(rentalesCat){
 /* ---------- acciones ---------- */
 function lzPrecioRecordado(P, k){
   const t = (DB.tarifaLuces || {})[P.rentalId || '_'] || {};
-  return k && t[k] ? t[k] : 0;
+  if(k && t[k]) return t[k];
+  /* si el rental publica lista, su precio; si no, nada (no se inventa) */
+  const f = fuenteDelRental(P), r = refDe(EQUIPO_LUZ(k));
+  return f && r && r[f] ? r[f] : 0;
 }
 function lzRecordarPrecio(P, it){
   if(!it.k || !n(it.precio)) return;
@@ -9810,6 +9889,18 @@ function lzKit(k){
   const py = getPy(), kit = KITS_LUCES[k]; if(!kit) return;
   kit.items.forEach(([nombre, cant]) => { const e = EQUIPOS_LUZ.find(x => x.nombre === nombre); if(e) lzSumar(py, e.k, cant); });
   toast(`Pedido base ${kit.l.split(' (')[0].toLowerCase()}: ${kit.items.length} renglones sumados`); R();
+}
+function lzCompletarPrecios(fuente){
+  const P = pedidoDe(getPy());
+  let k = 0, sin = 0;
+  P.items.forEach(it => {
+    if(n(it.precio)) return;
+    const r = refDe(EQUIPO_LUZ(it.k));
+    const v = !r ? 0 : fuente === 'min' ? Math.min(...Object.values(r)) : (r[fuente] || 0);
+    if(v){ it.precio = v; k++; } else sin++;
+  });
+  toast(`${k} precio${k == 1 ? '' : 's'} completado${k == 1 ? '' : 's'}${sin ? ` · ${sin} sin precio publicado` : ''}. Es referencia: cotizá con el rental.`);
+  R();
 }
 function lzUp(id, campo, val){
   const P = pedidoDe(getPy()), it = P.items.find(x => x.id === id); if(!it) return;
@@ -9852,7 +9943,7 @@ function lzSumarRental(nombre){
   let p = (DB.catalogo.personas || []).find(x => x.tipo === 'proveedor' && nomRental(x.nombre) === nomRental(nombre));
   if(!p){
     p = nuevaPersona({nombre, tipo:'proveedor', rubro:'11', funcion:'Luces y grip', condicion:'Responsable Inscripto',
-      notas: r ? `${r.web} · ${r.zona} · ${r.rubros}` : ''});
+      tel: r && r.tel || '', email: r && r.email || '', notas: r ? `${r.web} · ${r.zona} · ${r.rubros}` : ''});
     DB.catalogo.personas.push(p);
     if(typeof sbConectado === 'function' && sbConectado()) sbSubirPersona(p).catch(e => toast('No se pudo subir al catálogo compartido: ' + e.message));
   }
@@ -9911,7 +10002,8 @@ function lzListaHTML(){
   return res.map(e => { const ya = P.items.find(x => x.k === e.k);
     return `<button type="button" class="ppfila${ya ? ' ya' : ''}" onclick="lzSumarDesdeBuscador('${e.k}')">
       <span class="ppnom"><b>${esc(e.nombre)}</b>
-        <span class="ppfun">${esc(CAT_LUZ(e.c).l)}${e.w ? ' · ' + (e.w >= 1000 ? e.w / 1000 + ' kW' : e.w + ' W') : ''}</span></span>
+        <span class="ppfun">${esc(CAT_LUZ(e.c).l)}${e.w ? ' · ' + (e.w >= 1000 ? e.w / 1000 + ' kW' : e.w + ' W') : ''}</span>
+        ${textoRef(e) ? `<span class="ppnota">Publicado: ${esc(textoRef(e))}</span>` : ''}</span>
       <span class="pptar">${ya ? '× ' + ya.cant + ' en el pedido' : '+ sumar'}</span></button>`; }).join('');
 }
 function lzFiltro(k, v){ if(!_lz) return; _lz[k] = v; const el = document.getElementById('lzlista'); if(el) el.innerHTML = lzListaHTML(); }
