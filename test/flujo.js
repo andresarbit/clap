@@ -6,6 +6,8 @@
    ========================================================================== */
 let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
+/* los valores de abajo son los de la escala agosto–septiembre 2026: se fija la fecha */
+hoy = () => '2026-09-15'; SICA = escalaSICA();
 const paso = t => console.log('\n═══ ' + t + ' ' + '═'.repeat(Math.max(0, 62 - t.length)));
 
 /* arrancamos de cero, sin la semilla */

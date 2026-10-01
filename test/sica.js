@@ -1,6 +1,8 @@
 /* La escala de convenio embebida y su uso como referencia. */
 let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
+/* los valores de abajo son los de la escala agosto–septiembre 2026: se fija la fecha */
+hoy = () => '2026-09-15'; SICA = escalaSICA();
 
 console.log('--- 1. LA ESCALA ---');
 console.log('  fuente:', SICA.fuente, '· vigente', SICA.vigencia, 'a', SICA.hasta, '·', SICA.cargos.length, 'cargos');

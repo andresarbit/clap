@@ -45,9 +45,9 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
 .wrap{padding:14px;max-width:1500px;margin:0 auto}
 
 /* ---------- controls ---------- */
-select,input[type=text],input[type=search],input[type=email],input[type=password],input[type=number],input[type=date],textarea{
+select,input[type=text],input[type=search],input[type=email],input[type=password],input[type=number],input[type=date],input[type=time],textarea{
   background:var(--bg3);border:1px solid var(--line);border-radius:6px;padding:6px 8px;
-  color:var(--tx);outline:none;min-width:0;width:100%}
+  color:var(--tx);outline:none;min-width:0;width:100%;color-scheme:dark}
 select:focus,input:focus,textarea:focus{border-color:var(--ac);background:var(--bg4)}
 select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--tx3) 50%),linear-gradient(135deg,var(--tx3) 50%,transparent 50%);
   background-position:calc(100% - 13px) 13px,calc(100% - 8px) 13px;background-size:5px 5px;background-repeat:no-repeat;padding-right:24px}
@@ -660,6 +660,119 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
   .stick .val{font-size:16px}
   .brand b{font-size:16px;letter-spacing:.18em}
   .brand span{font-size:7px;letter-spacing:0}
+}
+/* ---------- plan de rodaje ---------- */
+.pl-subs{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.pl-chips{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin}
+.pl-chip{position:relative;flex:none;display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:108px;
+  padding:7px 11px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg2);text-align:left;color:var(--tx2)}
+.pl-chip b{color:var(--tx);font-size:13px}
+.pl-chip span{font-size:10.5px;line-height:1.3;white-space:nowrap}
+.pl-chip.on{border-color:var(--ac);background:var(--bg3)}
+.pl-chip.on b{color:var(--ac)}
+.pl-chip.drop{border-color:var(--info);background:var(--bg4)}
+.pl-chip.pl-mas{justify-content:center;align-items:center;min-width:88px;color:var(--tx2);border-style:dashed}
+.pl-chip.pl-banco{border-style:dashed}
+.pl-chip.pl-banco.vacio{opacity:.6}
+.pl-dot{position:absolute;top:7px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--bad)}
+.pl-cabdatos{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.pl-cabdatos .f{margin:0;min-width:120px}
+.pl-horas{grid-template-columns:repeat(auto-fit,minmax(104px,1fr))}
+.pl-rojo{color:var(--bad)!important}
+.pl-franja{padding:10px 14px 4px;border-top:1px solid var(--line)}
+.pl-fbar{position:relative;height:26px;border-radius:6px;overflow:hidden;background:var(--bg3)}
+.pl-luz{position:absolute;top:0;bottom:0}
+.pl-luz.noche{background:#161a2b}.pl-luz.azul{background:#23345c}.pl-luz.dorada{background:#6b4a17}.pl-luz.dia{background:#2d3a33}
+.pl-bl{position:absolute;top:5px;bottom:5px;border-radius:3px;border-right:1px solid var(--bg)}
+.pl-bl.film{background:var(--ac)}.pl-bl.ev{background:var(--tx3)}.pl-bl.comida{background:var(--info)}
+.pl-bl.imp{background:repeating-linear-gradient(45deg,var(--line2) 0 3px,transparent 3px 6px);top:9px;bottom:9px}
+.pl-fhoras{position:relative;height:16px;font:10px var(--mono);color:var(--tx3)}
+.pl-fhoras span{position:absolute;transform:translateX(-50%);top:2px}
+.pl-fhoras span:first-child{transform:none}
+.pl-avisos{padding:8px 14px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:3px}
+.pl-av{font-size:12px;line-height:1.45}
+.pl-av.mal{color:var(--bad)}.pl-av.aviso{color:var(--warn)}
+.pl-barra{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:9px 14px;border-top:1px solid var(--line);background:var(--bg2)}
+.pl-evsel{width:auto;padding:4px 26px 4px 8px;font-size:12px}
+.pl-piezas{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:0 14px 9px;background:var(--bg2);font-size:12px}
+.chipb{padding:3px 10px;border:1px solid var(--line);border-radius:20px;font-size:11.5px;color:var(--tx2)}
+.chipb.on{border-color:var(--ac);color:var(--ac)}
+.pl-lista{border-top:1px solid var(--line)}
+.pl-fila{display:grid;grid-template-columns:16px 58px minmax(0,1fr) 78px 104px auto;gap:10px;align-items:center;
+  padding:8px 12px 8px 8px;border-bottom:1px solid var(--line);border-left:3px solid transparent}
+.pl-fila.drop{box-shadow:inset 0 2px 0 var(--info)}
+.pl-fila.mal{border-left-color:var(--bad)}
+.pl-fila.pl-ev{background:var(--bg2)}
+.pl-fila.pl-ev.almuerzo{background:rgba(91,155,213,.09)}
+.pl-fila.filmado{opacity:.55}
+.pl-fila.filmado .pl-tit{text-decoration:line-through}
+.pl-fila.cayo .pl-tit{color:var(--bad)}
+.pl-fila.tira-intd{border-left-color:#d9d9d9}.pl-fila.tira-extd{border-left-color:#e6c84a}
+.pl-fila.tira-intn{border-left-color:#4f7fd6}.pl-fila.tira-extn{border-left-color:#3fa66b}
+.pl-asa{cursor:grab;color:var(--tx3);font-size:11px;letter-spacing:-2px;user-select:none}
+.pl-h{display:flex;flex-direction:column;font-family:var(--mono);line-height:1.15}
+.pl-h b{font-size:14px;color:var(--tx)}
+.pl-h span{font-size:10.5px;color:var(--tx3)}
+.pl-main{min-width:0}
+.pl-conimg{display:flex;gap:10px;align-items:center}
+.pl-img{width:92px;height:52px;object-fit:cover;border-radius:5px;flex:none;background:var(--bg3);cursor:zoom-in;border:1px solid var(--line)}
+.pl-img.vacia{display:flex;align-items:center;justify-content:center;font:600 13px var(--mono);color:var(--tx3);cursor:default}
+.pl-tit{font-size:13px;line-height:1.35;overflow-wrap:anywhere}
+.pl-num{font-family:var(--mono);color:var(--ac);margin-right:4px}
+.pl-meta{display:flex;flex-wrap:wrap;gap:4px 8px;margin-top:3px;font-size:11px;color:var(--tx2);align-items:center}
+.pl-tag{padding:0 6px;border:1px solid var(--line2);border-radius:4px;font-size:10.5px}
+.pl-tag.rojo{border-color:var(--bad);color:var(--bad)}
+.pl-tag.seg{border-style:dashed;color:var(--tx3)}
+.pl-luzt{padding:0 6px;border-radius:4px;font-size:10.5px}
+.pl-luzt.dia{background:#2d3a33;color:#bfe3c9}.pl-luzt.dorada{background:#6b4a17;color:#ffd98a}
+.pl-luzt.azul{background:#23345c;color:#b8cbff}.pl-luzt.noche{background:#161a2b;color:#aab3d6}
+.pl-dur{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--tx3)}
+.pl-dur input{width:52px;padding:4px 5px;text-align:right;font-family:var(--mono)}
+.pl-est{padding:4px 24px 4px 7px;font-size:11.5px}
+.pl-est.filmado{border-color:var(--ok);color:var(--ok)}.pl-est.cayo{border-color:var(--bad);color:var(--bad)}
+.pl-acc{display:flex;gap:3px;align-items:center}
+.pl-acc .btn.sm{padding:3px 7px}
+.pl-mover{width:auto;padding:3px 22px 3px 6px;font-size:11px}
+.pl-imp{display:flex;gap:10px;align-items:center;padding:3px 12px 3px 34px;border-bottom:1px solid var(--line);
+  font-size:11px;color:var(--tx3);font-style:italic}
+.pl-imp .pl-h{font-size:11px;width:58px;flex:none;font-style:normal}
+.pl-imp.traslado{color:var(--warn)}
+.pl-marca{display:flex;gap:8px;align-items:center;padding:3px 12px 3px 34px;font-size:11px;font-weight:600;
+  border-bottom:1px dashed var(--line2)}
+.pl-marca.sol{color:#e6c84a}.pl-marca.dorada{color:#f0a64a}.pl-marca.azul{color:#8fa8ff}
+.pl-bancoc h3{margin-bottom:10px}
+.pl-grilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.pl-carta{border:1px solid var(--line);border-radius:var(--r);background:var(--bg2);overflow:hidden;cursor:grab;display:flex;flex-direction:column}
+.pl-carta img,.pl-cimg{width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--bg3);display:block}
+.pl-cimg{display:flex;align-items:center;justify-content:center;font:600 18px var(--mono);color:var(--tx3)}
+.pl-ctx{padding:6px 8px 0;font-size:11.5px;line-height:1.35;flex:1}
+.pl-ctx b{font-family:var(--mono);color:var(--ac)}
+.pl-cacc{display:flex;gap:4px;padding:6px 8px 8px}
+.pl-cacc select{flex:1;padding:3px 4px;font-size:11px}
+.pl-dood td.pl-t{color:var(--ac);font-weight:700}
+.pl-mini{width:64px;height:36px;object-fit:cover;border-radius:3px;vertical-align:middle;margin-right:7px;border:1px solid var(--line)}
+.pl-dood td.pl-e{color:var(--warn)}
+@media (max-width:760px){
+  .pl-fila{grid-template-columns:52px auto minmax(0,1fr) auto;grid-template-areas:"h m m m" "d e . a";gap:6px 8px;padding:9px 10px}
+  .pl-fila .pl-asa,.pl-fila .pl-acc .sube{display:none}
+  .pl-fila .pl-h{grid-area:h}.pl-fila .pl-main{grid-area:m}.pl-fila .pl-dur{grid-area:d}
+  .pl-fila .pl-est{grid-area:e;width:auto}.pl-fila .pl-acc{grid-area:a;justify-content:flex-end}
+  .pl-img{width:72px;height:41px}
+  .pl-imp,.pl-marca{padding-left:10px}
+  .pl-cabdatos{width:100%}
+}
+@media print{
+  .pl-dia .pl-fila{grid-template-columns:52px minmax(0,1fr) 60px;padding:4px 0;border-color:#ddd;background:#fff!important;opacity:1;break-inside:avoid}
+  .pl-dia .pl-fila .pl-asa,.pl-dia .pl-fila .pl-acc,.pl-dia .pl-fila .pl-est{display:none}
+  .pl-dia .pl-h b,.pl-dia .pl-tit{color:#000}
+  .pl-dia .pl-meta,.pl-dia .pl-h span{color:#444}
+  .pl-dia .pl-dur input{border:none;background:transparent;color:#000;width:30px;padding:0}
+  .pl-dia .pl-img{width:80px;height:45px;border-color:#bbb}
+  .pl-imp,.pl-marca{color:#555!important;border-color:#ddd}
+  .pl-franja{display:none}
+  .pl-av{color:#000!important}
+  .pl-luzt,.pl-tag{background:#fff!important;color:#000!important;border:1px solid #999}
+  .pl-horas{grid-template-columns:repeat(8,1fr)}
 }
 /* ---------- impresión ---------- */
 @page{size:A4;margin:11mm 10mm}
@@ -1492,7 +1605,9 @@ function nuevaPersona(o={}){
     notas:o.notas||''};
 }
 
-function hoy(){const d=new Date();return d.toISOString().slice(0,10)}
+/* La fecha de acá, no la de Greenwich: con toISOString, desde las 21 h de
+   Argentina ya era "mañana" (y cambiaba la escala SICA vigente). */
+function hoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 
 /* ========================  PLANTILLAS  ===================================
    Arrancar un presupuesto desde cero es copiar el último parecido y borrar.
@@ -2591,12 +2706,18 @@ function armarCallsheet(py, v, numJornada){
   const escenas = d.escenas.filter(e=>e.jornada===numJornada)
     .sort((a,b)=>String(a.numero).localeCompare(String(b.numero),undefined,{numeric:true}));
   const octavos = escenas.reduce((s,e)=>s+e.octavos,0);
-  const locaciones = [...new Set(escenas.map(e=>e.locacion))];
+  const setsPlan = ((py.plan && py.plan.items) || []).filter(x => x.jornada === numJornada && x.tipo === 'plano' && x.set)
+    .sort((a,b) => a.orden - b.orden).map(x => x.set.split(/\s[-–—/]\s/)[0].trim());
+  const locaciones = [...new Set([...escenas.map(e=>e.locacion), ...setsPlan])];
 
-  /* elenco: los personajes con diálogo en las escenas del día */
-  const elenco = [...new Set(escenas.flatMap(e=>e.personajes))].sort().map(p=>({
+  /* elenco: los personajes con diálogo en las escenas del día, y los que
+     figuran en los planos del plan de rodaje (en publicidad no hay escenas) */
+  const planos = ((py.plan && py.plan.items) || []).filter(x => x.jornada === numJornada && x.tipo === 'plano');
+  const delPlano = x => String(x.elenco || '').split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
+  const elenco = [...new Set([...escenas.flatMap(e=>e.personajes), ...planos.flatMap(delPlano)])].sort().map(p=>({
     clave:'p:'+p, personaje:p,
-    escenas: escenas.filter(e=>e.personajes.includes(p)).map(e=>e.numero),
+    escenas: [...escenas.filter(e=>e.personajes.includes(p)).map(e=>e.numero),
+              ...planos.filter(x => delPlano(x).includes(p)).map(x => 'P' + (x.numero || ''))],
     persona: DB.catalogo.personas.find(x=>norm(x.nombre)===norm(p) || norm(x.funcion)===norm(p)) || null,
   }));
 
@@ -4549,7 +4670,7 @@ function chipIdentidad(pr){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['resumen','Resumen'],['guia','Instructivo'],['presu','Presupuesto'],['desglose','Desglose'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['personal','Alta y liquidación'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
+  const TABS=[['resumen','Resumen'],['guia','Instructivo'],['presu','Presupuesto'],['desglose','Desglose'],['plan','Plan de rodaje'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['personal','Alta y liquidación'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -4604,6 +4725,7 @@ function cuerpo(pr,py,v){
     </div></div>`;
   }
   if(DB.ui.tab==='desglose')  return vistaDesglose(py);
+  if(DB.ui.tab==='plan')      return vistaPlan(pr,py,v);
   if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,v);
   if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,v);
   if(DB.ui.tab==='gastos')    return vistaGastos(pr,py,v);
@@ -5438,8 +5560,9 @@ function vistaDesglose(py){
      arriba del importador también.                                         */
   if(!d.escenas.length) return barraPiezasDesglose(py, d, true) + importadorHTML();
   const r = resumenDesglose(d);
-  const sub = DB.ui.subDesglose || 'escenas';
-  const S=[['escenas','Escenas'],['deptos','Por departamento'],['tags','Tags'],['plan','Plan de rodaje']];
+  /* el plan de rodaje era una sub-solapa de acá; ahora es una solapa propia */
+  const sub = DB.ui.subDesglose && DB.ui.subDesglose !== 'plan' ? DB.ui.subDesglose : 'escenas';
+  const S=[['escenas','Escenas'],['deptos','Por departamento'],['tags','Tags']];
   return `<div class="card">
     <div class="resu">
       <div><b>${r.escenas}</b><span>Escenas</span></div>
@@ -5459,11 +5582,12 @@ function vistaDesglose(py){
         title="Agregar ${esc(unidadDe(py).toLowerCase())} a este proyecto">+ ${esc(unidadDe(py))}</button>`:''}
       <button class="btn sm noprint" onclick="addEscena()">+ Escena</button>
       <button class="btn sm noprint" onclick="menuGuion()">Guion ▾</button>
+      <button class="btn sm noprint" onclick="setTab('plan')" title="Repartir en jornadas y armar el día hora por hora">Plan de rodaje →</button>
       <button class="btn sm pri noprint" onclick="aPresupuesto()">→ Presupuesto</button>
     </div>
     ${sub==='escenas' ? barraPiezasDesglose(py, d) : ''}
     <div class="pad">${
-      sub==='deptos' ? deptosHTML(r) : sub==='tags' ? tagsHTML(py) : sub==='plan' ? planHTML(py,d,r) :
+      sub==='deptos' ? deptosHTML(r) : sub==='tags' ? tagsHTML(py) :
       (d.modo && d.modo!=='encabezados' ? avisoModoHTML(d) : '') +
       escenasVisibles(py, d).map(e=>escHTML(e,d,py)).join('') +
       (sub==='escenas' ? `<button class="btn sm noprint" style="margin-top:4px" onclick="addEscena()">+ Escena al final</button>` : '')
@@ -7196,9 +7320,9 @@ function invitar(proyectoId, usuarioId, si){
 function vistaRodaje(pr,py,v){
   const d = py.desglose;
   if(!d.jornadas.length) return `<div class="card"><div class="empty">
-    Todavía no hay jornadas.<br><span style="font-size:12px">Armá el plan en
-    <b>Desglose → Plan de rodaje</b> y volvé acá.</span><br><br>
-    <button class="btn pri" onclick="setTab('desglose');setSub('plan')">Ir al plan de rodaje</button></div></div>`;
+    Todavía no hay jornadas.<br><span style="font-size:12px">Armalas en la solapa
+    <b>Plan de rodaje</b> y volvé acá.</span><br><br>
+    <button class="btn pri" onclick="setTab('plan')">Ir al plan de rodaje</button></div></div>`;
 
   const num = d.jornadas.some(x=>x.numero===DB.ui.jornada) ? DB.ui.jornada : d.jornadas[0].numero;
   DB.ui.jornada = num;
@@ -7511,19 +7635,25 @@ function vistaContactos(pr,py,v){
 
 function hojaCitacionHTML(pr,py,v){
   const d = py.desglose;
-  if(!d.escenas.length) return `<div class="card"><div class="empty">
-    Primero cargá el guion en la solapa <b>Desglose</b>.<br>
-    <span style="font-size:12px">El callsheet se arma solo con las escenas de cada jornada.</span><br><br>
-    <button class="btn pri" onclick="setTab('desglose')">Ir al desglose</button></div></div>`;
+  /* En publicidad no siempre hay guion desglosado: el día sale del plan de
+     planos. Sin escenas y sin jornadas no hay de dónde armarlo. */
+  if(!d.escenas.length && !d.jornadas.length) return `<div class="card"><div class="empty">
+    Todavía no hay jornadas.<br>
+    <span style="font-size:12px">Armá el plan de rodaje (con el storyboard o la lista de planos),
+      o cargá el guion en <b>Desglose</b>.</span><br><br>
+    <button class="btn pri" onclick="setTab('plan')">Ir al plan de rodaje</button>
+    <button class="btn" onclick="setTab('desglose')">Ir al desglose</button></div></div>`;
   if(!d.jornadas.length) return `<div class="card"><div class="empty">
     Las escenas todavía no están repartidas en jornadas.<br>
-    <span style="font-size:12px">Andá a <b>Desglose → Plan de rodaje</b> y tocá "Auto-agrupar".</span><br><br>
-    <button class="btn pri" onclick="setTab('desglose');setSub('plan')">Ir al plan de rodaje</button></div></div>`;
+    <span style="font-size:12px">Andá a <b>Plan de rodaje → Todas las jornadas</b> y tocá "Auto-agrupar".</span><br><br>
+    <button class="btn pri" onclick="DB.ui.subPlan='jornadas';setTab('plan')">Ir al plan de rodaje</button></div></div>`;
 
   const num = DB.ui.jornada && d.jornadas.some(x=>x.numero===DB.ui.jornada) ? DB.ui.jornada : d.jornadas[0].numero;
   DB.ui.jornada = num;
+  volcarHorarios(py, num);
   const C = armarCallsheet(py, v, num);
   const j = C.j;
+  const orden = planDe(py).items.some(x => x.jornada === num && x.tipo !== 'evento');
   const F = (l,campo,val,tipo='text',ph='') => `<label class="f"><span>${l}</span>
     <input type="${tipo}" value="${esc(val??'')}" placeholder="${esc(ph)}" onchange="upJornada('${campo}',this.value)"></label>`;
 
@@ -7532,7 +7662,7 @@ function hojaCitacionHTML(pr,py,v){
         ${d.jornadas.map(x=>`<option value="${x.numero}" ${x.numero===num?'selected':''}>Jornada ${x.numero}${x.fecha?' · '+x.fecha:''}</option>`).join('')}
       </select></div>
       <div style="flex:1"></div>
-      <button class="btn" onclick="setTab('desglose');setSub('plan')">Editar el plan</button>
+      <button class="btn" onclick="setTab('plan')">Editar el plan</button>
       <button class="btn pri" onclick="window.print()">Imprimir / PDF</button>
     </div>
 
@@ -7553,8 +7683,10 @@ function hojaCitacionHTML(pr,py,v){
           <div><b>${esc(j.citacion||'—')}</b><span>Citación general</span></div>
           <div><b>${esc(j.comida||'—')}</b><span>Comida</span></div>
           <div><b>${esc(j.wrap||'—')}</b><span>Wrap estimado</span></div>
-          <div><b>${C.escenas.length}</b><span>Escenas</span></div>
-          <div><b>${octavosATexto(C.octavos)}</b><span>Páginas</span></div>
+          ${C.escenas.length || !orden ? `<div><b>${C.escenas.length}</b><span>Escenas</span></div>
+          <div><b>${octavosATexto(C.octavos)}</b><span>Páginas</span></div>` : (() => { const D = calcularDia(py, num);
+            return `<div><b>${D.items}</b><span>Planos</span></div>
+          <div><b>${D.primera != null ? aHora(D.primera) : '—'}</b><span>Primer plano</span></div>`; })()}
           <div><b>${esc(j.amanecer||'—')} / ${esc(j.atardecer||'—')}</b><span>Sale / se pone el sol</span></div>
         </div>
       </div>
@@ -7572,7 +7704,9 @@ function hojaCitacionHTML(pr,py,v){
               onchange="upDireccion('${esc(l).replace(/'/g,"\\'")}','notas',this.value)">
           </div></div>`;}).join(''))}
 
-      ${bloqueCS('Plan del día', `<div class="scrollx"><table class="tbl cst">
+      ${orden ? bloqueCS('Orden del día', plOrdenHTML(py, num)) : ''}
+
+      ${C.escenas.length || !orden ? bloqueCS(orden ? 'Escenas del día' : 'Plan del día', `<div class="scrollx"><table class="tbl cst">
         <thead><tr><th style="width:38px">Esc</th><th style="width:46px">I/E</th><th>Locación</th>
           <th style="width:82px">Momento</th><th style="width:52px">Pág.</th><th>Elenco</th><th>Notas</th></tr></thead>
         <tbody>${C.escenas.map(e=>`<tr>
@@ -7584,7 +7718,7 @@ function hojaCitacionHTML(pr,py,v){
           <td class="muted">${esc(e.personajes.join(', ')||'—')}</td>
           <td><input type="text" value="${esc(e.notas)}" placeholder="—" onchange="upEscNota('${e.id}',this.value)"></td>
         </tr>`).join('')||'<tr><td colspan="7" class="empty">Esta jornada no tiene escenas asignadas</td></tr>'}</tbody>
-      </table></div>`)}
+      </table></div>`) : ''}
 
       ${C.elenco.length?bloqueCS('Elenco', `<div class="scrollx"><table class="tbl cst">
         <thead><tr><th>Personaje</th><th>Intérprete</th><th style="width:78px">Citación</th>
@@ -7649,6 +7783,29 @@ function hojaCitacionHTML(pr,py,v){
         · generado con CLAP</div>
     </div>`;
 }
+/* El orden del día que va en el callsheet: lo mismo que el plan, sin los
+   controles, para imprimir y mandar. */
+function plOrdenHTML(py, num){
+  const D = calcularDia(py, num);
+  return `<div class="scrollx"><table class="tbl cst pl-orden">
+    <thead><tr><th style="width:50px">Hora</th><th style="width:44px">#</th><th>Qué</th><th style="width:22%">Set / empl.</th>
+      <th style="width:16%">Técnica</th><th style="width:70px">Luz</th><th style="width:16%">Elenco</th></tr></thead>
+    <tbody>${D.filas.map(f => {
+      if(!f.it) return f.implicita === 'libre' ? '' : `<tr class="muted"><td class="num">${aHora(f.inicio)}</td><td></td>
+        <td colspan="5" style="font-style:italic">${esc(f.texto)} · ${durTexto(f.dur)}</td></tr>`;
+      const it = f.it;
+      if(it.tipo === 'evento') return `<tr class="csdep"><td class="num">${aHora(f.inicio)}</td><td></td>
+        <td colspan="5"><b>${esc(it.desc || PLAN_EVENTO(it.clase).l)}</b> · ${durTexto(f.dur)}</td></tr>`;
+      if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId) || {};
+        return `<tr><td class="num">${aHora(f.inicio)}</td><td><b class="enum">${esc(e.numero || '')}</b></td>
+          <td><span class="eie ${e.intExt==='INT'?'int':'ext'}">${esc(e.intExt || '')}</span> ${esc(e.momento || '')} · ${octavosATexto(n(e.octavos))} pg</td>
+          <td>${esc(e.locacion || '')}</td><td></td><td></td><td class="muted">${esc((e.personajes || []).join(', '))}</td></tr>`; }
+      return `<tr><td class="num">${aHora(f.inicio)}</td><td><b class="enum">${esc(it.numero || '')}</b></td>
+        <td>${it.img ? `<img class="pl-mini" src="${it.img}" alt="">` : ''}${esc(it.desc || '')}</td><td>${esc([it.set, it.emplazamiento && 'empl. ' + it.emplazamiento].filter(Boolean).join(' · '))}</td>
+        <td class="muted">${esc([TAM_CORTO[it.tamano] || it.tamano, it.movimiento, it.lente].filter(Boolean).join(' · '))}</td>
+        <td class="muted">${esc(it.luz ? LUZ(it.luz).l : (it.intExt || ''))}</td><td class="muted">${esc(it.elenco || '')}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
 function bloqueCS(titulo, contenido, cls=''){
   return `<div class="csblock ${cls}"><h4>${esc(titulo)}</h4>${contenido}</div>`;
 }
@@ -7656,6 +7813,1342 @@ function diaSemana(f){
   const D=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const p=String(f).split('-'); if(p.length!==3) return '';
   return D[new Date(+p[0],+p[1]-1,+p[2]).getDay()]||'';
+}
+
+/* =========================  PLAN DE RODAJE  ==============================
+   Lo que arma un asistente de dirección para cada jornada: el orden en que se
+   filma, a qué hora cae cada cosa, los cortes, los traslados y qué luz hay.
+   Repartir escenas en jornadas es sólo el primer paso; el plan es el día
+   minuto a minuto, que se imprime, va al callsheet y se compara con lo que
+   pasó en el set.
+
+   Cambia según el formato:
+     PUBLICIDAD, videoclip, institucional, contenido: se planifica por PLANOS,
+       los del storyboard. Se ordenan por emplazamiento (cada vez que la cámara
+       cambia de lugar hay que volver a iluminar) y por la luz del día, no por
+       el orden en que aparecen en el spot.
+     CINE y SERIE: se planifica por ESCENAS del desglose, con sus octavos de
+       página. Si el director tiene la planta de cámara, se suman planos.
+
+   Todo es una lista ordenada de ÍTEMS por jornada. Un ítem es un plano, una
+   escena o un evento (desayuno, ensayo, almuerzo, traslado, wrap…). La hora
+   de cada uno no se escribe: se calcula en cascada desde la citación, con las
+   duraciones. Mover un plano recalcula el día entero. Sólo los eventos con
+   hora FIJA (el almuerzo a las 13:30) no se corren: si el día llega tarde a
+   ellos, se avisa. Los ítems sin jornada son el BANCO: el storyboard entero
+   recién cargado, antes de repartirlo.                                      */
+
+const PLAN_EVENTOS = [
+  {k:'desayuno',   l:'Citación y desayuno',       dur:30},
+  {k:'prelight',   l:'Armado y pre-light',         dur:60},
+  {k:'ensayo',     l:'Ensayo',                     dur:20},
+  {k:'maquillaje', l:'Maquillaje y vestuario',     dur:45},
+  {k:'traslado',   l:'Traslado de locación',       dur:45},
+  {k:'almuerzo',   l:'Almuerzo',                   dur:60},
+  {k:'break',      l:'Break / merienda',           dur:15},
+  {k:'cambio',     l:'Cambio de set / de luz',     dur:30},
+  {k:'packshot',   l:'Packshot / producto',        dur:60},
+  {k:'wrap',       l:'Wrap y desarme',             dur:45},
+  {k:'otro',       l:'Otro',                       dur:15},
+];
+const PLAN_EVENTO = k => PLAN_EVENTOS.find(e => e.k === k) || PLAN_EVENTOS[PLAN_EVENTOS.length-1];
+
+const TAMANOS = ['Gran plano general','Plano general','Plano conjunto','Plano americano','Plano medio',
+  'Primer plano','Primerísimo primer plano','Plano detalle','Insert','Cenital','Aéreo','Plano secuencia'];
+const TAM_CORTO = {'Gran plano general':'GPG','Plano general':'PG','Plano conjunto':'PC','Plano americano':'PA',
+  'Plano medio':'PM','Primer plano':'PP','Primerísimo primer plano':'PPP','Plano detalle':'PD','Insert':'Insert',
+  'Cenital':'Cenital','Aéreo':'Aéreo','Plano secuencia':'Secuencia'};
+const MOVIMIENTOS = ['Fijo','Paneo','Cámara en mano','Travelling','Dolly','Steadicam','Gimbal','Grúa',
+  'Dron','Camera car','Cámara lenta / alta velocidad'];
+/* Minutos de cámara de un plano según cómo se mueve, SIN el cambio de
+   emplazamiento, que se suma aparte cuando la cámara cambia de lugar. Es un
+   punto de partida que se corrige plano por plano: un primer plano fijo con
+   un nene o un animal puede llevar una hora. */
+const MIN_POR_MOVIMIENTO = {'Fijo':15,'Paneo':15,'Cámara en mano':15,'Travelling':25,'Dolly':25,
+  'Steadicam':25,'Gimbal':20,'Grúa':35,'Dron':25,'Camera car':45,'Cámara lenta / alta velocidad':25};
+const MIN_PLANO = 15;
+const LUCES = [
+  {k:'',       l:'Cualquier luz'},
+  {k:'dia',    l:'De día'},
+  {k:'dorada', l:'Hora dorada'},
+  {k:'azul',   l:'Hora azul'},
+  {k:'noche',  l:'De noche'},
+];
+const LUZ = k => LUCES.find(x => x.k === k) || LUCES[0];
+const ESTADOS_PLAN = [
+  {k:'pendiente', l:'Pendiente'},
+  {k:'filmado',   l:'Filmado'},
+  {k:'cayo',      l:'Se cayó'},
+];
+
+/* Formato del plan según el tipo de proyecto. */
+const planPorEscenas = py => !!py && (py.tipo === 'cine' || py.tipo === 'serie');
+
+/* Lugares para el sol. Todos UTC-3 sin horario de verano, que es Argentina y
+   Uruguay; con otra zona se carga a mano latitud, longitud y huso. */
+const LUGARES_SOL = [
+  {k:'caba',       l:'Buenos Aires',    lat:-34.6037, lon:-58.3816, tz:-3},
+  {k:'lp',         l:'La Plata',        lat:-34.9214, lon:-57.9544, tz:-3},
+  {k:'mdq',        l:'Mar del Plata',   lat:-38.0055, lon:-57.5426, tz:-3},
+  {k:'rosario',    l:'Rosario',         lat:-32.9442, lon:-60.6505, tz:-3},
+  {k:'cordoba',    l:'Córdoba',         lat:-31.4201, lon:-64.1888, tz:-3},
+  {k:'mendoza',    l:'Mendoza',         lat:-32.8895, lon:-68.8458, tz:-3},
+  {k:'salta',      l:'Salta',           lat:-24.7821, lon:-65.4232, tz:-3},
+  {k:'tucuman',    l:'Tucumán',         lat:-26.8083, lon:-65.2176, tz:-3},
+  {k:'bariloche',  l:'Bariloche',       lat:-41.1335, lon:-71.3103, tz:-3},
+  {k:'ushuaia',    l:'Ushuaia',         lat:-54.8019, lon:-68.3030, tz:-3},
+  {k:'mvd',        l:'Montevideo',      lat:-34.9011, lon:-56.1645, tz:-3},
+  {k:'punta',      l:'Punta del Este',  lat:-34.9667, lon:-54.9500, tz:-3},
+];
+
+function nuevoPlan(o={}){
+  return {lugar:o.lugar || 'caba', lat:o.lat ?? null, lon:o.lon ?? null, tz:o.tz ?? -3,
+    minCambio:o.minCambio ?? 20, minTraslado:o.minTraslado ?? 60,
+    horasHastaComida:o.horasHastaComida ?? 6, minMaquillaje:o.minMaquillaje ?? 90,
+    items:o.items || []};
+}
+function nuevoItemPlan(o={}){
+  const base = {id:uid('pi'), jornada:o.jornada ?? null, orden:o.orden ?? 0, tipo:o.tipo || 'plano',
+    duracion:o.duracion ?? null, fijo:o.fijo || '', notas:o.notas || '', estado:o.estado || 'pendiente'};
+  if(base.tipo === 'evento') return {...base, clase:o.clase || 'otro', desc:o.desc || ''};
+  if(base.tipo === 'escena') return {...base, escenaId:o.escenaId || null};
+  return {...base, numero:o.numero || '', desc:o.desc || '', piezaId:o.piezaId || null,
+    escenaId:o.escenaId || null, set:o.set || '', emplazamiento:o.emplazamiento || '',
+    tamano:o.tamano || '', movimiento:o.movimiento || '', lente:o.lente || '',
+    intExt:o.intExt || '', luz:o.luz || '', elenco:o.elenco || '', elementos:o.elementos || '',
+    img:o.img || '', tomaBuena:o.tomaBuena || '', prioridad:o.prioridad || ''};
+}
+function planDe(py){
+  const base = nuevoPlan();
+  py.plan ||= base;
+  for(const k in base) if(py.plan[k] === undefined) py.plan[k] = base[k];
+  return py.plan;
+}
+
+/* ---------- horas ---------- */
+const aMin = t => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t||'')); return m ? (+m[1])*60 + (+m[2]) : null; };
+const aHora = min => { if(min == null || !isFinite(min)) return ''; const m = Math.round(min);
+  const h = Math.floor(m/60), mm = ((m % 60) + 60) % 60;
+  return String(((h % 24) + 24) % 24).padStart(2,'0') + ':' + String(mm).padStart(2,'0'); };
+const durTexto = min => { const m = Math.round(Math.abs(min)); const h = Math.floor(m/60), r = m % 60;
+  return h ? (r ? `${h} h ${r} min` : `${h} h`) : `${r} min`; };
+
+/* ---------- el sol ----------
+   Algoritmo del Almanac for Computers (el que publica NOAA, simplificado):
+   la hora en que el sol cruza una altura dada, con un par de minutos de
+   error. Cenit 90,833° es la salida y la puesta (con la refracción). La
+   hora dorada va del sol a 6° sobre el horizonte (cenit 84°) a 4° abajo
+   (94°); la azul, de 4° a 6° abajo (94° a 96°): dura unos 20 minutos.      */
+function horaSol(fechaISO, lat, lon, tz, cenit, salida){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(fechaISO||'')); if(!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const N = Math.floor(275*mo/9) - Math.floor((mo+9)/12) * (1 + Math.floor((y - 4*Math.floor(y/4) + 2)/3)) + d - 30;
+  const rad = Math.PI/180, lngH = lon/15;
+  const t = N + ((salida ? 6 : 18) - lngH)/24;
+  const M = 0.9856*t - 3.289;
+  let L = M + 1.916*Math.sin(M*rad) + 0.020*Math.sin(2*M*rad) + 282.634;
+  L = ((L % 360) + 360) % 360;
+  let RA = Math.atan(0.91764*Math.tan(L*rad))/rad;
+  RA = ((RA % 360) + 360) % 360;
+  RA = (RA + (Math.floor(L/90)*90 - Math.floor(RA/90)*90))/15;
+  const sinDec = 0.39782*Math.sin(L*rad), cosDec = Math.cos(Math.asin(sinDec));
+  const cosH = (Math.cos(cenit*rad) - sinDec*Math.sin(lat*rad)) / (cosDec*Math.cos(lat*rad));
+  if(cosH > 1 || cosH < -1) return null;
+  const H = (salida ? 360 - Math.acos(cosH)/rad : Math.acos(cosH)/rad) / 15;
+  const T = H + RA - 0.06571*t - 6.622;
+  const UT = ((T - lngH) % 24 + 24) % 24;
+  return Math.round((((UT + tz) % 24 + 24) % 24) * 60);
+}
+function lugarPlan(py){
+  const p = planDe(py);
+  if(p.lugar === 'otro' && p.lat != null && p.lon != null && p.lat !== '' && p.lon !== '')
+    return {k:'otro', l:'Otro lugar', lat:n(p.lat), lon:n(p.lon), tz:n(p.tz) || -3};
+  return LUGARES_SOL.find(x => x.k === p.lugar) || LUGARES_SOL[0];
+}
+/* La luz de un día, en minutos desde medianoche. */
+function solDelDia(py, fechaISO){
+  const L = lugarPlan(py);
+  const f = (cenit, salida) => horaSol(fechaISO, L.lat, L.lon, L.tz, cenit, salida);
+  const sale = f(90.833, true), pone = f(90.833, false);
+  if(sale == null || pone == null) return null;
+  return {lugar:L.l, amanecer:sale, atardecer:pone,
+    doradaAm:[f(94,true), f(84,true)], doradaPm:[f(84,false), f(94,false)],
+    azulAm:[f(96,true), f(94,true)], azulPm:[f(94,false), f(96,false)]};
+}
+
+/* ---------- duración de cada ítem ---------- */
+function minPorPagina(py){
+  const d = py.desglose || nuevoDesglose();
+  const cfg = py.configRodaje || nuevaConfigRodaje();
+  const util = horasJornadaDe(cfg)*60 - 60;            /* menos armado y cortes */
+  return Math.max(20, Math.round(util / Math.max(0.5, n(d.paginasPorJornada) || 4)));
+}
+const escenaDe = (py, id) => (py.desglose?.escenas || []).find(x => x.id === id) || null;
+function duracionItem(py, it){
+  if(n(it.duracion) > 0) return n(it.duracion);
+  if(it.tipo === 'evento') return PLAN_EVENTO(it.clase).dur;
+  if(it.tipo === 'escena'){
+    const e = escenaDe(py, it.escenaId);
+    return Math.round(((e ? n(e.octavos) : 8) / 8) * minPorPagina(py));
+  }
+  return MIN_POR_MOVIMIENTO[it.movimiento] || MIN_PLANO;
+}
+/* Set de un ítem de filmación y el lugar físico al que pertenece. "CASA DE
+   ANA - COCINA" y "CASA DE ANA - LIVING" son la misma locación: pasar de una
+   a otra es un cambio de set, no un traslado de toda la unidad. */
+function setDeItem(py, it){
+  if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); return e ? (e.locacion || '') : ''; }
+  return it.set || '';
+}
+const lugarBase = s => norm(String(s||'').split(/\s[-–—/]\s|\s*[.,(]\s*/)[0]).trim();
+const conLugar = s => /\s[-–—/]\s/.test(String(s||''));
+
+/* ---------- el día calculado ----------
+   Devuelve las filas con su hora, las filas implícitas (cambio de
+   emplazamiento, traslado, tiempo libre) y los avisos. No modifica nada. */
+function calcularDia(py, num){
+  const p = planDe(py), d = py.desglose || nuevoDesglose();
+  const j = (d.jornadas || []).find(x => x.numero === num) || nuevaJornada({numero:num});
+  const cfg = py.configRodaje || nuevaConfigRodaje();
+  const cambio = n(p.minCambio) || 0, traslado = n(p.minTraslado) || 0;
+  const items = p.items.filter(x => x.jornada === num).sort((a,b) => a.orden - b.orden);
+  const filas = [], avisos = [];
+  const inicio = aMin(j.citacion) ?? 7*60;
+  let t = inicio, prev = null, trasladoManual = false;
+  items.forEach(it => {
+    if(it.tipo !== 'evento'){
+      const s = setDeItem(py, it);
+      if(prev){
+        const ps = setDeItem(py, prev);
+        /* Las locaciones del desglose son lugares de verdad: si cambian, es
+           traslado. En los planos el set puede ser "Cocina" y "Living" de la
+           misma casa, así que sólo es traslado si se escribió como
+           "Locación - set" y la locación cambia. */
+        const sonLugares = it.tipo === 'escena' || (conLugar(s) && conLugar(ps));
+        if(s && ps && sonLugares && lugarBase(s) !== lugarBase(ps)){
+          if(!trasladoManual && traslado){
+            filas.push({implicita:'traslado', inicio:t, fin:t + traslado, dur:traslado, texto:`Traslado a ${s}`}); t += traslado; }
+        } else if(cambio && (s !== ps ||
+            (it.tipo === 'plano' && prev.tipo === 'plano' && (!it.emplazamiento || it.emplazamiento !== prev.emplazamiento)))){
+          filas.push({implicita:'cambio', inicio:t, fin:t + cambio, dur:cambio,
+            texto: s !== ps && s ? `Cambio de set: ${s}` : 'Cambio de emplazamiento'}); t += cambio;
+        }
+      }
+      prev = it; trasladoManual = false;
+    } else if(it.clase === 'traslado') trasladoManual = true;
+    const fijo = aMin(it.fijo);
+    let tarde = 0;
+    if(fijo != null){
+      if(t < fijo){ filas.push({implicita:'libre', inicio:t, fin:fijo, dur:fijo - t, texto:'Tiempo libre'}); t = fijo; }
+      else if(t > fijo) tarde = t - fijo;
+    }
+    const dur = duracionItem(py, it);
+    filas.push({it, inicio:t, fin:t + dur, dur, tarde});
+    t += dur;
+  });
+  const fin = t;
+  const sol = j.fecha ? solDelDia(py, j.fecha) : null;
+  const sale = aMin(j.amanecer) ?? (sol && sol.amanecer);
+  const pone = aMin(j.atardecer) ?? (sol && sol.atardecer);
+  const filmar = items.filter(x => x.tipo !== 'evento');
+  const filasFilm = filas.filter(f => f.it && f.it.tipo !== 'evento');
+
+  /* --- avisos --- */
+  const comida = filas.find(f => f.it && f.it.tipo === 'evento' && f.it.clase === 'almuerzo');
+  const hastaComida = n(p.horasHastaComida) || 6;
+  if(filmar.length){
+    if(!comida && fin - inicio > hastaComida*60)
+      avisos.push({nivel:'mal', txt:`No hay almuerzo en un día de ${durTexto(fin - inicio)}.`});
+    else if(comida && comida.inicio - inicio > hastaComida*60)
+      avisos.push({nivel:'mal', txt:`El almuerzo cae ${durTexto(comida.inicio - inicio)} después de la citación: el máximo es ${hastaComida} h.`});
+    if(comida && fin - comida.fin > hastaComida*60)
+      avisos.push({nivel:'aviso', txt:`Después del almuerzo se trabajan ${durTexto(fin - comida.fin)} seguidas: conviene un break o una segunda comida.`});
+  }
+  const neto = (fin - inicio) - (cfg.descontarComida !== false && comida ? comida.dur : 0);
+  const extra = Math.max(0, neto - horasJornadaDe(cfg)*60);
+  if(extra > 0 && filmar.length){
+    avisos.push({nivel:'mal', txt:`Termina ${aHora(fin)}: ${durTexto(extra)} de horas extra sobre la jornada de ${horasJornadaDe(cfg)} h.`});
+    /* lo primero que se corta en un día atrasado son los planos de seguridad */
+    const seg = filas.filter(f => f.it && f.it.tipo === 'plano' && f.it.prioridad === 'seguridad' && f.it.estado !== 'filmado');
+    const recupera = seg.reduce((s, f) => s + f.dur, 0);
+    if(seg.length) avisos.push({nivel:'aviso', txt:`Si se cortan los ${seg.length} plano${seg.length == 1 ? '' : 's'} de seguridad (${seg.map(f => f.it.numero).join(', ')}) se recuperan ${durTexto(recupera)}${recupera >= extra ? ' y no hay extras' : ''}.`});
+  }
+  filas.forEach((f, i) => {
+    if(f.implicita !== 'libre' || f.dur < 45) return;
+    const sig = filas[i+1];
+    avisos.push({nivel:'aviso', txt:`${durTexto(f.dur)} sin nada que hacer antes de ${sig && sig.it ? etiquetaItem(py, sig.it).replace(/^El |^La /, '').toLowerCase() : 'lo que sigue'} (${aHora(f.inicio)} a ${aHora(f.fin)}): adelantalo o sumá planos.`});
+  });
+  /* comidas que paga la producción (CCT 235/75, art. 77) */
+  if(filmar.length && fin > 21*60 && !filas.some(f => f.it && f.it.tipo === 'evento' && f.it.clase === 'almuerzo' && f.inicio >= 19*60))
+    avisos.push({nivel:'aviso', txt:`La jornada pasa de las 21 h (termina ${aHora(fin)}): corresponde dar cena, y desde las 21 corre el horario nocturno.`});
+  if(filmar.length && inicio <= 7*60 && !filas.some(f => f.it && f.it.tipo === 'evento' && f.it.clase === 'desayuno'))
+    avisos.push({nivel:'aviso', txt:`Con citación ${aHora(inicio)} corresponde desayuno y no está en el plan.`});
+  filas.forEach(f => {
+    if(f.it && f.tarde > TOLERANCIA_FIJO) avisos.push({nivel:'mal', id:f.it.id,
+      txt:`${etiquetaItem(py, f.it)} tenía hora fija ${f.it.fijo} y el día llega ${durTexto(f.tarde)} tarde.`});
+  });
+  if(sale != null && pone != null) filasFilm.forEach(f => {
+    const it = f.it, et = etiquetaItem(py, it);
+    let luz = it.tipo === 'plano' ? it.luz : '';
+    let ext = false;
+    if(it.tipo === 'plano') ext = it.intExt === 'EXT';
+    else { const e = escenaDe(py, it.escenaId);
+      if(e && e.intExt !== 'INT'){ ext = true;
+        if(/NOCHE|NIGHT|MADRUGADA/i.test(e.momento || '')) luz = 'noche';
+        else if(/ATARDECER|OCASO|CREP/i.test(e.momento || '')) luz = 'dorada';
+        else if(/AMANECER|ALBA/i.test(e.momento || '')) luz = 'dorada';
+        else luz = luz || 'dia'; } }
+    if(luz === 'dia' || (ext && !luz)){
+      if(f.fin > pone) avisos.push({nivel:'mal', id:it.id, txt:`${et} es de día y termina ${aHora(f.fin)}, con el sol ya puesto (${aHora(pone)}).`});
+      else if(f.inicio < sale) avisos.push({nivel:'mal', id:it.id, txt:`${et} es de día y empieza ${aHora(f.inicio)}, antes de que salga el sol (${aHora(sale)}).`});
+    }
+    if(luz === 'dorada' && sol){
+      const [a1, a2] = sol.doradaAm, [p1, p2] = sol.doradaPm;
+      const dentro = (f.inicio >= a1 - 10 && f.inicio <= a2) || (f.inicio >= p1 - 10 && f.inicio <= p2);
+      if(!dentro) avisos.push({nivel:'aviso', id:it.id, anclar:it.tipo === 'plano' ? p1 : null,
+        txt:`${et} es de hora dorada: ese día va de ${aHora(a1)} a ${aHora(a2)} y de ${aHora(p1)} a ${aHora(p2)}, y está puesto ${aHora(f.inicio)}.`});
+    }
+    if(luz === 'azul' && sol){
+      const [a1, a2] = sol.azulAm, [p1, p2] = sol.azulPm;
+      const dentro = (f.inicio >= a1 - 10 && f.inicio <= a2) || (f.inicio >= p1 - 10 && f.inicio <= p2);
+      if(!dentro) avisos.push({nivel:'aviso', id:it.id, anclar:it.tipo === 'plano' ? p1 : null, txt:`${et} es de hora azul: son unos 20 minutos, ${aHora(a1)}–${aHora(a2)} a la mañana y ${aHora(p1)}–${aHora(p2)} a la tarde. Está puesto ${aHora(f.inicio)}.`});
+    }
+    if(luz === 'noche' && ext && f.inicio < pone + 30 && f.fin > sale)
+      avisos.push({nivel:'aviso', id:it.id, txt:`${et} es de noche en exterior y empieza ${aHora(f.inicio)}: todavía hay luz hasta las ${aHora(pone + 30)}.`});
+  });
+  /* descanso con la jornada anterior, si las fechas son seguidas */
+  const ant = (d.jornadas || []).find(x => x.numero === num - 1);
+  if(ant && ant.fecha && j.fecha && p.items.some(x => x.jornada === ant.numero)){
+    const dias = Math.round((new Date(j.fecha) - new Date(ant.fecha)) / 864e5);
+    if(dias === 1){
+      const finAnt = calcularFin(py, ant.numero);
+      const descanso = inicio + 24*60 - finAnt, min = n(cfg.minTurnaround) || 12;
+      if(finAnt != null && descanso < min*60)
+        avisos.push({nivel:'mal', txt:`Entre el wrap de la jornada ${ant.numero} (${aHora(finAnt)}) y esta citación hay ${durTexto(descanso)}: el mínimo es ${min} h.`});
+    }
+  }
+  /* emplazamientos: cada vez que la cámara cambia de lugar */
+  let prevK = null, cuenta = 0;
+  filasFilm.forEach(f => { const k = setDeItem(py, f.it) + '|' + (f.it.tipo === 'plano' ? (f.it.emplazamiento || f.it.id) : f.it.id);
+    if(k !== prevK){ cuenta++; prevK = k; } });
+  return {j, filas, inicio, fin, extra, neto, avisos, sol, sale, pone, comida, emplazamientos: cuenta,
+    items: filmar.length, filmados: filmar.filter(x => x.estado === 'filmado').length,
+    minutosFilmando: filasFilm.reduce((s, f) => s + f.dur, 0),
+    primera: filasFilm.length ? filasFilm[0].inicio : null};
+}
+/* Sólo la hora de fin, sin avisos (para no recursar entre jornadas). */
+function calcularFin(py, num){
+  const p = planDe(py), d = py.desglose || nuevoDesglose();
+  const j = (d.jornadas || []).find(x => x.numero === num);
+  if(!j) return null;
+  const sinAvisos = {...py, desglose:{...d, jornadas:d.jornadas.filter(x => x.numero === num)}};
+  return calcularDia(sinAvisos, num).fin;
+}
+function etiquetaItem(py, it){
+  if(it.tipo === 'evento') return it.desc || PLAN_EVENTO(it.clase).l;
+  if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); return e ? `La escena ${e.numero}` : 'La escena'; }
+  return `El plano ${it.numero || '—'}`;
+}
+
+/* ---------- escenas del desglose ↔ ítems del plan ----------
+   La jornada de cada escena se sigue guardando en la escena, así el
+   callsheet, el parte y el desglose no cambian. El plan agrega el ORDEN y los
+   horarios. Esto los mantiene de acuerdo, y lo filmado también: una escena
+   tildada en el parte es una escena filmada en el plan y al revés. */
+function sincronizarPlan(py){
+  const p = planDe(py), d = py.desglose || (py.desglose = nuevoDesglose());
+  const ids = new Set(d.escenas.map(e => e.id));
+  p.items = p.items.filter(it => it.tipo !== 'escena' || ids.has(it.escenaId));
+  d.escenas.forEach(e => {
+    let it = p.items.find(x => x.tipo === 'escena' && x.escenaId === e.id);
+    if(!e.jornada){ if(it) it.jornada = null; return; }
+    if(!it){
+      it = nuevoItemPlan({tipo:'escena', escenaId:e.id, jornada:e.jornada});
+      p.items.push(it); meterEnJornada(py, it, e.jornada);
+    } else if(it.jornada !== e.jornada){
+      meterEnJornada(py, it, e.jornada);
+    }
+    const j = d.jornadas.find(x => x.numero === e.jornada);
+    const filmada = !!(j && j.parte && (j.parte.filmadas || []).includes(e.id));
+    if(filmada) it.estado = 'filmado';
+    else if(it.estado === 'filmado') it.estado = 'pendiente';
+  });
+  /* una jornada con ítems del plan tiene que existir, aunque no tenga escenas */
+  const maxPlan = p.items.reduce((m, x) => Math.max(m, x.jornada || 0), 0);
+  if(maxPlan > (d.jornadasMin || 0)) d.jornadasMin = maxPlan;
+  if((d.jornadasMin || 0) > d.jornadas.length) sincronizarJornadas(d);
+  return p;
+}
+/* Mete un ítem en una jornada. Lo que se filma va a continuación de lo
+   último que se filma (o, en un día vacío, después del desayuno y el
+   armado); un evento va al final, antes del wrap. Después los eventos con
+   hora fija —el almuerzo— se reubican en el lugar del día que les toca. */
+const EVENTOS_DE_APERTURA = ['desayuno','prelight','maquillaje','ensayo'];
+function meterEnJornada(py, it, num){
+  const p = planDe(py);
+  it.jornada = num;
+  if(num == null){ it.orden = Math.max(0, ...p.items.filter(x => x !== it && x.jornada == null).map(x => x.orden)) + 1; return; }
+  const otros = p.items.filter(x => x !== it && x.jornada === num).sort((a,b) => a.orden - b.orden);
+  const wrap = [...otros].reverse().find(x => x.tipo === 'evento' && x.clase === 'wrap');
+  if(it.tipo === 'evento') it.orden = wrap ? wrap.orden - 0.5 : (otros.length ? otros[otros.length-1].orden + 1 : 1);
+  else {
+    const ultimo = [...otros].reverse().find(x => x.tipo !== 'evento');
+    const primeroNoApertura = otros.find(x => x.tipo === 'evento' && !EVENTOS_DE_APERTURA.includes(x.clase));
+    it.orden = ultimo ? ultimo.orden + 0.5
+      : primeroNoApertura ? primeroNoApertura.orden - 0.5
+      : (otros.length ? otros[otros.length-1].orden + 1 : 1);
+  }
+  reordenar(py, num);
+  ubicarFijos(py, num);
+}
+/* Lo que tiene hora fija se corre en la lista hasta caer donde le toca:
+   primero hacia adelante mientras antes le quede un hueco en el que entra
+   el plano siguiente, después hacia atrás mientras llegue más de un cuarto
+   de hora tarde. En ese orden, para que no vaya y venga. */
+const TOLERANCIA_FIJO = 15;
+function ubicarFijos(py, num){
+  const p = planDe(py);
+  const lista = () => p.items.filter(x => x.jornada === num).sort((a,b) => a.orden - b.orden);
+  const cambiar = (a, b) => { [a.orden, b.orden] = [b.orden, a.orden]; };
+  const fijos = lista().filter(x => aMin(x.fijo) != null).sort((a,b) => aMin(a.fijo) - aMin(b.fijo));
+  fijos.forEach(f => {
+    for(let v = 0; v < 200; v++){
+      const L = lista(), i = L.indexOf(f), sig = L[i+1];
+      if(!sig || sig.tipo === 'evento' || aMin(sig.fijo) != null) break;
+      const D = calcularDia(py, num), fila = D.filas.find(r => r.it === f);
+      const hueco = D.filas.find(r => r.implicita === 'libre' && r.fin === fila.inicio);
+      if(!hueco || hueco.dur < duracionItem(py, sig) + (n(p.minCambio) || 0)) break;
+      cambiar(f, sig);
+    }
+    for(let v = 0; v < 200; v++){
+      const L = lista(), i = L.indexOf(f), ant = L[i-1];
+      if(!ant || ant.tipo === 'evento' || aMin(ant.fijo) != null) break;
+      const D = calcularDia(py, num), fila = D.filas.find(r => r.it === f);
+      if(!(fila.tarde > TOLERANCIA_FIJO)) break;
+      cambiar(f, ant);
+    }
+  });
+  reordenar(py, num);
+}
+/* Una jornada nueva arranca con lo que tiene toda jornada. */
+function eventosBase(num, j){
+  return [
+    nuevoItemPlan({tipo:'evento', clase:'desayuno', jornada:num, orden:1}),
+    nuevoItemPlan({tipo:'evento', clase:'prelight', jornada:num, orden:2, desc:'Armado del primer emplazamiento'}),
+    nuevoItemPlan({tipo:'evento', clase:'almuerzo', jornada:num, orden:50, fijo:(j && j.comida) || '13:00'}),
+    nuevoItemPlan({tipo:'evento', clase:'wrap', jornada:num, orden:100}),
+  ];
+}
+function reordenar(py, num){
+  planDe(py).items.filter(x => x.jornada === num).sort((a,b) => a.orden - b.orden)
+    .forEach((x, i) => x.orden = i + 1);
+}
+
+/* ---------- acomodar por emplazamiento ----------
+   Lo que hace un AD con el storyboard: junta los planos que comparten set y
+   emplazamiento (cada cambio es luz y grip de nuevo) y dentro de cada uno va
+   de lo más abierto a lo más cerrado, que es como se ilumina. Los de hora
+   dorada, azul o noche quedan al final, pegados a la puesta. Los eventos no
+   se mueven: los planos vuelven a los huecos que ocupaban los planos.
+   Devuelve cuántos cambiaron de lugar. */
+const RANGO_TAMANO = t => { const i = TAMANOS.indexOf(t); return i < 0 ? 5 : i; };
+function acomodarPorEmplazamiento(py, num){
+  const p = planDe(py);
+  const lista = p.items.filter(x => x.jornada === num).sort((a,b) => a.orden - b.orden);
+  const planos = lista.filter(x => x.tipo === 'plano');
+  if(planos.length < 2) return 0;
+  const tardeRango = x => ({dorada:1, azul:2, noche:3})[x.luz] || 0;
+  const clave = x => lugarBase(x.set) + '|' + (x.set || '') + '|' + (x.emplazamiento || '');
+  const primeraSet = {}, primeraEmpl = {};
+  planos.forEach((x, i) => {
+    const s = lugarBase(x.set) + '|' + (x.set || '');
+    if(!(s in primeraSet)) primeraSet[s] = i;
+    if(!(clave(x) in primeraEmpl)) primeraEmpl[clave(x)] = i;
+  });
+  const ordenados = [...planos].sort((a, b) =>
+    (tardeRango(a) - tardeRango(b)) ||
+    (primeraSet[lugarBase(a.set) + '|' + (a.set||'')] - primeraSet[lugarBase(b.set) + '|' + (b.set||'')]) ||
+    (primeraEmpl[clave(a)] - primeraEmpl[clave(b)]) ||
+    (RANGO_TAMANO(a.tamano) - RANGO_TAMANO(b.tamano)));
+  let k = 0, movidos = 0;
+  const nueva = lista.map(x => x.tipo === 'plano' ? ordenados[k++] : x);
+  nueva.forEach((x, i) => { if(lista[i] !== x) movidos++; x.orden = i + 1; });
+  return movidos;
+}
+
+/* ---------- storyboard y shot list ----------
+   Una línea por plano. Entiende "1A PG exterior casa, travelling" y también
+   "Plano 3 - PP de la chica mirando". Lo que no reconoce queda en la
+   descripción, que es lo que importa. */
+const ABREV_TAMANO = [[/\bGPG\b|gran plano general/i,'Gran plano general'],[/\bPPP\b|primer[ií]simo/i,'Primerísimo primer plano'],
+  [/\bPG\b|plano general|\bwide\b|\bWS\b/i,'Plano general'],[/\bPC\b|plano conjunto/i,'Plano conjunto'],
+  [/\bPA\b|plano americano/i,'Plano americano'],[/\bPM\b|plano medio|\bMS\b/i,'Plano medio'],
+  [/\bPP\b|primer plano|close ?up|\bCU\b/i,'Primer plano'],[/\bPD\b|detalle|\bECU\b/i,'Plano detalle'],
+  [/\binsert\b/i,'Insert'],[/\bcenital\b|top ?shot/i,'Cenital'],[/\ba[eé]reo\b/i,'Aéreo'],[/plano secuencia|\boner\b/i,'Plano secuencia']];
+const ABREV_MOV = [[/\bsteadicam\b/i,'Steadicam'],[/\bgimbal\b|\bronin\b/i,'Gimbal'],[/\bgr[uú]a\b|technocrane|\bjib\b/i,'Grúa'],
+  [/\bdron(e)?\b/i,'Dron'],[/camera ?car|\bcar mount\b|\btrineo\b/i,'Camera car'],[/\btrav?elling\b|\btracking\b/i,'Travelling'],
+  [/\bdolly\b|\bslider\b/i,'Dolly'],[/c[aá]mara en mano|\bhandheld\b|\bhand ?held\b/i,'Cámara en mano'],[/\bpaneo\b|\bpan\b|\btilt\b/i,'Paneo'],
+  [/slow ?motion|c[aá]mara lenta|\bphantom\b|high ?speed/i,'Cámara lenta / alta velocidad'],[/\bfijo\b|\btr[ií]pode\b|\blocked\b/i,'Fijo']];
+function leerShotList(texto){
+  return String(texto||'').replace(/\r\n?/g,'\n').split('\n').map(x => x.trim()).filter(x => x.length > 1).map(linea => {
+    let resto = linea;
+    const mNum = /^(?:plano|toma|shot|p\.?)?\s*#?\s*(\d{1,3}[a-z]?)(?=[\s.:)\-–—]|$)[\s.:)\-–—]*/i.exec(resto);
+    const numero = mNum ? mNum[1].toUpperCase() : '';
+    if(mNum) resto = resto.slice(mNum[0].length);
+    const tam = ABREV_TAMANO.find(([re]) => re.test(resto));
+    const mov = ABREV_MOV.find(([re]) => re.test(resto));
+    const intExt = /\bEXT\b|exterior/i.test(resto) ? 'EXT' : /\bINT\b|interior/i.test(resto) ? 'INT' : '';
+    const luz = /hora dorada|golden/i.test(resto) ? 'dorada' : /hora azul|blue hour/i.test(resto) ? 'azul'
+      : /\bnoche\b|\bnight\b/i.test(resto) ? 'noche' : '';
+    const mLente = /\b(\d{2,3})\s?mm\b/i.exec(resto);
+    return {numero, desc: resto.trim() || linea, tamano: tam ? tam[1] : '', movimiento: mov ? mov[1] : '',
+      intExt, luz, lente: mLente ? mLente[1] + 'mm' : ''};
+  });
+}
+/* El número que sigue para un plano nuevo de esa pieza. */
+function sigNumeroPlano(py, piezaId){
+  const nums = planDe(py).items.filter(x => x.tipo === 'plano' && (x.piezaId || null) === (piezaId || null))
+    .map(x => parseInt(x.numero, 10)).filter(x => isFinite(x));
+  return (nums.length ? Math.max(...nums) : 0) + 1;
+}
+
+/* ---------- elenco: a qué hora se lo necesita ----------
+   Por cada actor, la primera cosa del día en la que está. La citación
+   sugerida es esa hora menos maquillaje y vestuario: citar a todo el elenco a
+   la hora general es pagar horas de espera y cansarlos antes de filmar. */
+function elencoDeItem(py, it){
+  if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); return e ? e.personajes : []; }
+  if(it.tipo === 'plano') return String(it.elenco || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean);
+  return [];
+}
+function elencoDelDia(py, num, D){
+  D ||= calcularDia(py, num);
+  const ant = n(planDe(py).minMaquillaje) || 0;
+  const out = {};
+  D.filas.forEach(f => { if(!f.it) return;
+    elencoDeItem(py, f.it).forEach(nom => {
+      const k = norm(nom);
+      if(!out[k]) out[k] = {nombre:nom, primera:f.inicio, ultima:f.fin, items:[]};
+      out[k].ultima = Math.max(out[k].ultima, f.fin);
+      out[k].items.push(f.it.tipo === 'escena' ? (escenaDe(py, f.it.escenaId)?.numero || '') : (f.it.numero || ''));
+    }); });
+  return Object.values(out).sort((a,b) => a.primera - b.primera).map(x => ({...x,
+    citacion: Math.max(D.inicio, x.primera - ant)}));
+}
+
+/* ---------- Day out of days ----------
+   Qué actor trabaja qué jornada. Sirve para contratar por jornada y juntar
+   al elenco caro en menos días: un actor que trabaja la 1 y la 5 cobra (o
+   queda retenido) las del medio. */
+function diasDelElenco(py){
+  const d = py.desglose || nuevoDesglose(), p = planDe(py);
+  const nums = (d.jornadas || []).map(j => j.numero).sort((a,b) => a-b);
+  const porActor = {}, nombres = {};
+  const suma = (nom, j) => { const k = norm(nom); nombres[k] ||= nom; (porActor[k] ||= new Set()).add(j); };
+  d.escenas.forEach(e => { if(e.jornada) e.personajes.forEach(x => suma(x, e.jornada)); });
+  p.items.forEach(it => { if(it.jornada && it.tipo === 'plano') elencoDeItem(py, it).forEach(x => suma(x, it.jornada)); });
+  return {jornadas: nums, filas: Object.keys(porActor).sort().map(k => {
+    const js = [...porActor[k]].sort((a,b) => a-b);
+    const primera = js[0], ultima = js[js.length-1];
+    /* los códigos de siempre: SW empieza, W trabaja, WF termina, SWF un solo
+       día, H espera retenido entre dos jornadas de trabajo */
+    const codigo = x => !porActor[k].has(x) ? (x > primera && x < ultima ? 'H' : '')
+      : primera === ultima ? 'SWF' : x === primera ? 'SW' : x === ultima ? 'WF' : 'W';
+    return {personaje:nombres[k], jornadas:porActor[k], trabaja:js.length, primera, ultima,
+      codigos: Object.fromEntries(nums.map(x => [x, codigo(x)])),
+      espera: nums.filter(x => x > primera && x < ultima && !porActor[k].has(x)).length};
+  })};
+}
+
+/* ---------- la solapa Plan de rodaje ---------- */
+function vistaPlan(pr, py, v){
+  const d = getD(), p = sincronizarPlan(py);
+  asegurarEventosBase(py);
+  const S = [['dia','Día por día'],['jornadas','Todas las jornadas']];
+  if(d.escenas.length || p.items.some(x => x.tipo === 'plano' && x.elenco)) S.push(['elenco','Elenco por jornada']);
+  const sub = S.some(s => s[0] === DB.ui.subPlan) ? DB.ui.subPlan : 'dia';
+  const tabs = `<div class="noprint pl-subs">
+    <div class="seg">${S.map(([k,l]) => `<button class="${sub===k?'on':''}" onclick="setSubPlan('${k}')">${l}</button>`).join('')}</div>
+    <div style="flex:1"></div>
+    <button class="btn sm" onclick="plAjustes()" title="Lugar para el sol y los tiempos que usa el cálculo">Ajustes ⚙</button>
+    <button class="btn sm" onclick="window.print()">Imprimir / PDF</button>
+  </div>`;
+  if(sub === 'jornadas') return tabs + plTodasHTML(py);
+  if(sub === 'elenco') return tabs + plElencoHTML(py);
+  return tabs + plDiaHTML(pr, py, v);
+}
+function setSubPlan(k){ DB.ui.subPlan = k; R(); }
+
+/* Una jornada que el plan ve por primera vez arranca con desayuno, armado,
+   almuerzo y wrap. Se hace una sola vez: si después se borran, no vuelven. */
+function asegurarEventosBase(py){
+  const d = getD(), p = planDe(py);
+  d.jornadas.forEach(j => {
+    if(j.planBase) return;
+    j.planBase = true;
+    if(p.items.some(x => x.jornada === j.numero && x.tipo === 'evento')) return;
+    const base = eventosBase(j.numero, j);
+    const propios = p.items.filter(x => x.jornada === j.numero).sort((a,b) => a.orden - b.orden);
+    /* desayuno y armado arriba, almuerzo a la mitad, wrap al final */
+    const mitad = Math.ceil(propios.length / 2);
+    const lista = [base[0], base[1], ...propios.slice(0, mitad), base[2], ...propios.slice(mitad), base[3]];
+    p.items.push(...base);
+    lista.forEach((x, i) => x.orden = i + 1);
+  });
+}
+
+function jornadaDelPlan(){
+  const d = getD();
+  if(!d.jornadas.length) return null;
+  const num = d.jornadas.some(x => x.numero === DB.ui.jornada) ? DB.ui.jornada : d.jornadas[0].numero;
+  DB.ui.jornada = num;
+  return num;
+}
+
+/* La jornada en el callsheet: el plan es el que sabe a qué hora se come y a
+   qué hora se termina. Si el día tiene plan, esos dos datos salen de acá. */
+function volcarHorarios(py, num){
+  const d = getD(), j = d.jornadas.find(x => x.numero === num);
+  if(!j) return;
+  if(!planDe(py).items.some(x => x.jornada === num && x.tipo !== 'evento')) return;
+  const D = calcularDia(py, num);
+  if(D.comida) j.comida = aHora(D.comida.inicio);
+  j.wrap = aHora(D.fin);
+  if(D.sol && (!j.amanecer || j.solAuto)){ j.amanecer = aHora(D.sol.amanecer); j.atardecer = aHora(D.sol.atardecer); j.solAuto = true; }
+}
+
+function plChipsJornadas(py, num){
+  const d = getD(), p = planDe(py);
+  const banco = p.items.filter(x => x.jornada == null && x.tipo === 'plano').length;
+  return `<div class="pl-chips noprint">
+    ${d.jornadas.map(j => {
+      const D = calcularDia(py, j.numero);
+      const mal = D.avisos.some(a => a.nivel === 'mal');
+      return `<button class="pl-chip ${j.numero===num?'on':''}" onclick="selJornada(${j.numero})"
+        ondragover="event.preventDefault();this.classList.add('drop')" ondragleave="this.classList.remove('drop')"
+        ondrop="plSoltarEn(event, ${j.numero})" title="Soltá un plano acá para pasarlo a esta jornada">
+        <b>J${j.numero}</b>
+        <span>${j.fecha ? esc(fechaCorta(j.fecha)) : 'sin fecha'}</span>
+        <span>${D.items} ${planPorEscenas(py) ? 'esc' : 'pl'} · ${D.items ? 'wrap ' + aHora(D.fin) : '—'}</span>
+        ${mal ? '<i class="pl-dot" title="Tiene avisos"></i>' : ''}
+      </button>`; }).join('')}
+    <button class="pl-chip pl-mas" onclick="plJornadaNueva()">+ Jornada</button>
+    <button class="pl-chip pl-banco ${banco?'':'vacio'}" onclick="document.getElementById('pl-banco')?.scrollIntoView({behavior:'smooth'})"
+      ondragover="event.preventDefault();this.classList.add('drop')" ondragleave="this.classList.remove('drop')"
+      ondrop="plSoltarEn(event, 0)" title="Los planos sin jornada">
+      <b>Banco</b><span>${banco} plano${banco==1?'':'s'} sin jornada</span></button>
+  </div>`;
+}
+const fechaCorta = f => { const p = String(f).split('-'); return p.length === 3 ? `${diaSemana(f).slice(0,3)} ${+p[2]}/${+p[1]}` : f; };
+
+function plDiaHTML(pr, py, v){
+  const d = getD(), p = planDe(py);
+  const num = jornadaDelPlan();
+  if(num == null) return `<div class="card"><div class="empty">
+      Todavía no hay jornadas.<br>
+      <span style="font-size:12px">${planPorEscenas(py) && d.escenas.length
+        ? 'Repartí las escenas en <b>Todas las jornadas</b>, o creá la primera y armala a mano.'
+        : 'Creá la primera jornada y cargá el storyboard o la lista de planos.'}</span><br><br>
+      <button class="btn pri" onclick="plJornadaNueva()">Crear la jornada 1</button>
+      ${planPorEscenas(py) && d.escenas.length ? `<button class="btn" onclick="setSubPlan('jornadas')">Repartir escenas</button>` : ''}
+    </div></div>${plBancoHTML(py)}`;
+  volcarHorarios(py, num);
+  const D = calcularDia(py, num), j = D.j;
+  const cfg = py.configRodaje || nuevaConfigRodaje();
+  const piezas = piezasDe(py);
+  const filtro = piezas.some(x => x.id === DB.ui.plPieza) ? DB.ui.plPieza : null;
+  const malos = new Set(D.avisos.filter(a => a.id).map(a => a.id));
+  const L = lugarPlan(py);
+  const F = (l, campo, val, tipo='text', extra='') => `<label class="f"><span>${l}</span>
+    <input type="${tipo}" value="${esc(val ?? '')}" ${extra} onchange="plUpJornada('${campo}', this.value)"></label>`;
+
+  /* marcas del sol que caen dentro del día, para intercalarlas en la lista */
+  const marcas = [];
+  if(D.sol){
+    marcas.push({t:D.sol.amanecer, txt:`Sale el sol · ${aHora(D.sol.amanecer)}`, c:'sol'});
+    marcas.push({t:D.sol.doradaPm[0], txt:`Empieza la hora dorada · ${aHora(D.sol.doradaPm[0])}`, c:'dorada'});
+    marcas.push({t:D.sol.atardecer, txt:`Se pone el sol · ${aHora(D.sol.atardecer)}`, c:'dorada'});
+    marcas.push({t:D.sol.azulPm[1], txt:`Termina la hora azul · ${aHora(D.sol.azulPm[1])}: es de noche`, c:'azul'});
+  }
+  const visibles = D.filas.filter(f => !filtro || !f.it || f.it.tipo !== 'plano' || f.it.piezaId === filtro);
+  let mi = 0; marcas.sort((a,b) => a.t - b.t);
+  const filasHTML = [];
+  visibles.forEach(f => {
+    while(mi < marcas.length && marcas[mi].t <= f.inicio){
+      if(marcas[mi].t >= D.inicio) filasHTML.push(plMarcaHTML(marcas[mi])); mi++; }
+    filasHTML.push(f.it ? plFilaHTML(py, f, malos.has(f.it.id)) : plImplicitaHTML(f));
+  });
+  while(mi < marcas.length && marcas[mi].t <= D.fin){ if(marcas[mi].t >= D.inicio) filasHTML.push(plMarcaHTML(marcas[mi])); mi++; }
+
+  const horas = durTexto(D.neto);
+  return `${plChipsJornadas(py, num)}
+  <div class="cs pl-dia">
+    <div class="cshead">
+      <div><div class="csttl">Plan de rodaje · Jornada ${num}<span class="muted" style="font-weight:500"> de ${d.jornadas.length}</span></div>
+        <div class="cssub">${esc(py.nombre)} · ${esc(pr.nombre)}${j.fecha ? ' · ' + esc(diaSemana(j.fecha)) + ' ' + esc(j.fecha.split('-').reverse().join('/')) : ''}</div></div>
+      <div class="pl-cabdatos noprint">
+        ${F('Fecha','fecha',j.fecha,'date')}
+        ${F('Citación','citacion',j.citacion,'time')}
+        <label class="f"><span>Lugar (para el sol)</span><select onchange="plLugar(this.value)">
+          ${LUGARES_SOL.map(x => `<option value="${x.k}" ${x.k===L.k?'selected':''}>${esc(x.l)}</option>`).join('')}
+          <option value="otro" ${L.k==='otro'?'selected':''}>Otro (coordenadas)…</option></select></label>
+      </div>
+    </div>
+    <div class="cshoras pl-horas">
+      <div><b>${esc(j.citacion || '—')}</b><span>Citación</span></div>
+      <div><b>${D.primera != null ? aHora(D.primera) : '—'}</b><span>Primer ${planPorEscenas(py) ? 'escena' : 'plano'}</span></div>
+      <div><b>${D.comida ? aHora(D.comida.inicio) : '—'}</b><span>Almuerzo</span></div>
+      <div><b class="${D.extra ? 'pl-rojo' : ''}">${D.items ? aHora(D.fin) : '—'}</b><span>Wrap estimado</span></div>
+      <div><b class="${D.extra ? 'pl-rojo' : ''}">${D.items ? horas : '—'}</b><span>${D.extra ? `${durTexto(D.extra)} de extras` : `de ${horasJornadaDe(cfg)} h de jornada`}</span></div>
+      <div><b>${D.filmados}/${D.items}</b><span>${planPorEscenas(py) ? 'Escenas' : 'Planos'} filmados</span></div>
+      <div><b>${D.emplazamientos || '—'}</b><span>Emplazamientos</span></div>
+      <div><b>${D.sol ? aHora(D.sol.amanecer) + ' / ' + aHora(D.sol.atardecer) : (j.fecha ? '—' : 'poné la fecha')}</b><span>Sale / se pone el sol</span></div>
+    </div>
+    ${plFranjaHTML(py, D)}
+    ${D.avisos.length ? `<div class="pl-avisos">${D.avisos.map(a =>
+      `<div class="pl-av ${a.nivel}">${a.nivel === 'mal' ? '●' : '○'} ${esc(a.txt)}${a.anclar != null
+        ? ` <button class="btn sm noprint" onclick="plAnclar('${a.id}','${aHora(a.anclar)}')">Anclarlo a las ${aHora(a.anclar)}</button>` : ''}</div>`).join('')}</div>` : ''}
+
+    <div class="pl-barra noprint">
+      <button class="btn sm pri" onclick="plEditar(null,'plano')">+ Plano</button>
+      <select class="pl-evsel" onchange="if(this.value){plNuevoEvento(this.value);this.value=''}">
+        <option value="">+ Evento…</option>
+        ${PLAN_EVENTOS.map(e => `<option value="${e.k}">${esc(e.l)}</option>`).join('')}</select>
+      <button class="btn sm" onclick="plStoryboard()" title="Imágenes o un PDF: cada cuadro es un plano">Cargar storyboard</button>
+      <button class="btn sm" onclick="plShotList()" title="Pegá la lista de planos del director, uno por renglón">Pegar lista de planos</button>
+      <button class="btn sm" onclick="plAcomodar()" title="Junta los planos del mismo set y emplazamiento, de lo abierto a lo cerrado, y deja para el final los de hora dorada y noche">Acomodar por emplazamiento</button>
+      <div style="flex:1"></div>
+      ${D.items && D.filmados < D.items && d.jornadas.length ? `<button class="btn sm" onclick="plPendientes()"
+        title="Lo que quedó pendiente o se cayó pasa a otra jornada">Mover lo no filmado…</button>` : ''}
+    </div>
+    ${piezas.length > 1 ? `<div class="pl-piezas noprint"><span class="muted">Mostrar</span>
+      <button class="chipb ${!filtro?'on':''}" onclick="DB.ui.plPieza=null;R()">Todo</button>
+      ${piezas.map(x => `<button class="chipb ${filtro===x.id?'on':''}" onclick="DB.ui.plPieza='${x.id}';R()">${esc(nombrePieza(py, x.id))}</button>`).join('')}</div>` : ''}
+
+    <div class="pl-lista" ondragover="event.preventDefault()" ondrop="plSoltarAlFinal(event, ${num})">
+      ${filasHTML.join('') || `<div class="empty">Esta jornada está vacía. Sumá planos, eventos o arrastralos desde el banco.</div>`}
+    </div>
+    ${plElencoDiaHTML(py, num, D)}
+    <div class="csblock"><h4>Notas del AD</h4><div class="pad">
+      <textarea rows="2" placeholder="Prioridades del día, qué se puede sacrificar si se atrasa, seguridad, restricciones de la locación…"
+        onchange="plUpJornada('notasPlan', this.value)">${esc(j.notasPlan || '')}</textarea></div></div>
+    <div class="csfoot">${esc(pr.nombre)} · ${esc(py.nombre)} · Plan de la jornada ${num} · generado con CLAP</div>
+  </div>
+  ${plBancoHTML(py)}`;
+}
+
+/* La franja del día: de la citación al wrap, con la luz de fondo. De un
+   vistazo se ve si el exterior cae de día y dónde está la hora dorada. */
+function plFranjaHTML(py, D){
+  if(!D.filas.length) return '';
+  const a = Math.min(D.inicio, D.sol ? D.sol.amanecer - 30 : D.inicio) , b = Math.max(D.fin, D.inicio + 60);
+  const t0 = Math.floor(Math.min(D.inicio, a < D.inicio - 120 ? D.inicio : a) / 60) * 60;
+  const t1 = Math.ceil(b / 60) * 60, tot = t1 - t0;
+  const pct = x => ((Math.max(t0, Math.min(t1, x)) - t0) / tot * 100).toFixed(2);
+  let fondo = '';
+  if(D.sol){
+    const s = D.sol;
+    const tramos = [[t0, s.azulAm[0], 'noche'], [s.azulAm[0], s.azulAm[1], 'azul'], [s.doradaAm[0], s.doradaAm[1], 'dorada'],
+      [s.doradaAm[1], s.doradaPm[0], 'dia'], [s.doradaPm[0], s.doradaPm[1], 'dorada'], [s.azulPm[0], s.azulPm[1], 'azul'], [s.azulPm[1], t1, 'noche']];
+    fondo = tramos.filter(([x, y]) => y > t0 && x < t1).map(([x, y, c]) =>
+      `<i class="pl-luz ${c}" style="left:${pct(x)}%;width:${(pct(y) - pct(x)).toFixed(2)}%"></i>`).join('');
+  }
+  const bloques = D.filas.map(f => {
+    const c = !f.it ? 'imp' : f.it.tipo === 'evento' ? (f.it.clase === 'almuerzo' ? 'comida' : 'ev') : 'film';
+    const tit = f.it ? `${aHora(f.inicio)} ${f.it.tipo === 'plano' ? 'Plano ' + (f.it.numero || '') : f.it.tipo === 'escena' ? 'Esc ' + (escenaDe(py, f.it.escenaId)?.numero || '') : (f.it.desc || PLAN_EVENTO(f.it.clase).l)}` : f.texto;
+    return `<i class="pl-bl ${c}" style="left:${pct(f.inicio)}%;width:${Math.max(0.3, pct(f.fin) - pct(f.inicio)).toFixed(2)}%" title="${esc(tit)}"></i>`;
+  }).join('');
+  const horas = [];
+  for(let h = t0; h <= t1; h += 60) horas.push(`<span style="left:${pct(h)}%">${String((h/60)%24).padStart(2,'0')}</span>`);
+  return `<div class="pl-franja" title="Cada bloque es un plano, escena o evento; el fondo es la luz del día">
+    <div class="pl-fbar">${fondo}${bloques}</div><div class="pl-fhoras">${horas.join('')}</div></div>`;
+}
+
+function plMarcaHTML(m){
+  return `<div class="pl-marca ${m.c}"><span>${m.c === 'azul' ? '☾' : '☀'}</span>${esc(m.txt)}</div>`;
+}
+function plImplicitaHTML(f){
+  return `<div class="pl-imp ${f.implicita}"><span class="pl-h">${aHora(f.inicio)}</span>
+    <span>${f.implicita === 'libre' ? '·' : '↻'} ${esc(f.texto)} · ${durTexto(f.dur)}</span></div>`;
+}
+function plFilaHTML(py, f, mal){
+  const it = f.it, id = it.id;
+  const d = getD();
+  const mover = `<select class="pl-mover" onchange="plMover('${id}', this.value)" title="Pasar a otra jornada">
+      <option value="">→</option>
+      ${d.jornadas.map(j => j.numero === it.jornada ? '' : `<option value="${j.numero}">J${j.numero}</option>`).join('')}
+      ${it.tipo !== 'evento' ? '<option value="banco">Banco</option>' : ''}</select>`;
+  const acciones = `<div class="pl-acc noprint">
+      <button class="btn sm sube" onclick="plSubir('${id}',-1)" title="Antes">↑</button>
+      <button class="btn sm sube" onclick="plSubir('${id}',1)" title="Después">↓</button>
+      ${mover}
+      <button class="btn sm" onclick="plEditar('${id}')" title="Editar">✎</button>
+      <button class="btn sm dgr" onclick="plBorrar('${id}')" title="${it.tipo === 'escena' ? 'Sacar de la jornada' : 'Borrar'}">×</button></div>`;
+  const dur = `<label class="pl-dur" title="Minutos. Vacío = el cálculo automático">
+      <input type="number" min="1" step="5" value="${n(it.duracion) > 0 ? n(it.duracion) : ''}" placeholder="${f.dur}"
+        onchange="plDur('${id}', this.value)"><span>min</span></label>`;
+  const drag = `draggable="true" ondragstart="plArrastrar(event,'${id}')" ondragover="event.preventDefault();this.classList.add('drop')"
+      ondragleave="this.classList.remove('drop')" ondrop="plSoltarSobre(event,'${id}')"`;
+  const hora = `<div class="pl-h"><b>${aHora(f.inicio)}</b><span>${aHora(f.fin)}</span></div>`;
+
+  if(it.tipo === 'evento'){
+    const ev = PLAN_EVENTO(it.clase);
+    return `<div class="pl-fila pl-ev ${it.clase} ${mal ? 'mal' : ''}" ${drag}>
+      <span class="pl-asa noprint">⋮⋮</span>${hora}
+      <div class="pl-main"><div class="pl-tit">${esc(it.desc || ev.l)}${it.desc && it.desc !== ev.l ? `<span class="muted"> · ${esc(ev.l)}</span>` : ''}</div>
+        <div class="pl-meta">${it.fijo ? `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>` : ''}${f.tarde > TOLERANCIA_FIJO ? `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>` : ''}${it.notas ? `<span>${esc(it.notas)}</span>` : ''}</div></div>
+      ${dur}<span></span>${acciones}</div>`;
+  }
+  const estado = `<select class="pl-est ${it.estado}" onchange="plEstado('${id}', this.value)">
+      ${ESTADOS_PLAN.map(x => `<option value="${x.k}" ${x.k===it.estado?'selected':''}>${x.l}</option>`).join('')}</select>`;
+  if(it.tipo === 'escena'){
+    const e = escenaDe(py, it.escenaId) || {};
+    const noche = /NOCHE|NIGHT|MADRUGADA/.test(e.momento || '');
+    const tira = (e.intExt === 'INT' ? 'int' : 'ext') + (noche ? 'n' : 'd');
+    return `<div class="pl-fila pl-esc tira-${tira} ${it.estado} ${mal ? 'mal' : ''}" ${drag}>
+      <span class="pl-asa noprint">⋮⋮</span>${hora}
+      <div class="pl-main"><div class="pl-tit"><b class="pl-num">Esc ${esc(e.numero || '')}</b>
+        <span class="eie ${e.intExt==='INT'?'int':'ext'}">${esc(e.intExt || '')}</span> ${esc(e.locacion || '')}
+        <span class="emom ${/NOCHE|NIGHT|MADRUGADA/.test(e.momento||'')?'noche':''}">${esc(e.momento || '')}</span></div>
+        <div class="pl-meta"><span>${octavosATexto(n(e.octavos))} pg</span>
+          ${(e.personajes || []).length ? `<span>${esc(e.personajes.join(', '))}</span>` : ''}
+          ${it.notas ? `<span>${esc(it.notas)}</span>` : ''}</div></div>
+      ${dur}${estado}${acciones}</div>`;
+  }
+  const meta = [it.set && `<span class="pl-tag">${esc(it.set)}</span>`,
+    it.emplazamiento && `<span class="pl-tag">Empl. ${esc(it.emplazamiento)}</span>`,
+    it.tamano && `<span>${esc(TAM_CORTO[it.tamano] || it.tamano)}</span>`, it.movimiento && `<span>${esc(it.movimiento)}</span>`,
+    it.lente && `<span>${esc(it.lente)}</span>`, it.intExt && `<span class="eie ${it.intExt==='INT'?'int':'ext'}">${esc(it.intExt)}</span>`,
+    it.luz && `<span class="pl-luzt ${it.luz}">${esc(LUZ(it.luz).l)}</span>`,
+    it.elenco && `<span>👤 ${esc(it.elenco)}</span>`,
+    it.piezaId && piezasDe(py).length > 1 && `<span class="pl-tag">${esc(nombrePieza(py, it.piezaId))}</span>`,
+    it.tomaBuena && `<span>Toma buena: ${esc(it.tomaBuena)}</span>`,
+    it.fijo && `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>`, f.tarde > TOLERANCIA_FIJO && `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>`,
+    it.prioridad === 'seguridad' && `<span class="pl-tag seg" title="Es lo primero que se corta si el día se atrasa">de seguridad</span>`].filter(Boolean).join('');
+  return `<div class="pl-fila pl-plano ${it.estado} ${mal ? 'mal' : ''}" ${drag}>
+    <span class="pl-asa noprint">⋮⋮</span>${hora}
+    <div class="pl-main pl-conimg">
+      ${it.img ? `<img class="pl-img" src="${it.img}" alt="" onclick="plVerImagen('${id}')">` : `<span class="pl-img vacia">${esc(it.numero || '—')}</span>`}
+      <div><div class="pl-tit"><b class="pl-num">${esc(it.numero || '—')}</b> ${esc(it.desc || '')}</div>
+        <div class="pl-meta">${meta}${it.notas ? `<span class="muted">${esc(it.notas)}</span>` : ''}</div></div></div>
+    ${dur}${estado}${acciones}</div>`;
+}
+
+/* El elenco del día con la hora a la que se lo necesita. */
+function plElencoDiaHTML(py, num, D){
+  const E = elencoDelDia(py, num, D);
+  if(!E.length) return '';
+  const j = D.j, p = planDe(py);
+  return `<div class="csblock"><h4>Elenco del día
+      <button class="btn sm noprint" style="float:right;margin-top:-3px" onclick="plCitarElenco()"
+        title="Escribe estas horas en la citación de cada actor del callsheet">Pasar las citaciones al callsheet</button></h4>
+    <div class="scrollx"><table class="tbl cst">
+      <thead><tr><th>Personaje / actor</th><th style="width:96px">Citación sugerida</th><th style="width:86px">En set</th>
+        <th style="width:86px">Libera</th><th>En</th><th style="width:90px">Citación cargada</th></tr></thead>
+      <tbody>${E.map(x => { const c = (j.citaciones['p:' + x.nombre] || {}).citacion || '';
+        return `<tr><td><b>${esc(x.nombre)}</b></td><td class="num">${aHora(x.citacion)}</td><td class="num">${aHora(x.primera)}</td>
+          <td class="num">${aHora(x.ultima)}</td><td class="muted">${esc(x.items.filter(Boolean).join(', '))}</td>
+          <td class="num ${c && c !== aHora(x.citacion) ? 'pl-rojo' : 'muted'}">${esc(c || '—')}</td></tr>`; }).join('')}
+      </tbody></table></div>
+    <div class="pad muted" style="font-size:11px">La sugerida es ${durTexto(n(p.minMaquillaje))} antes de su primer plano, por maquillaje y vestuario (se cambia en Ajustes).</div></div>`;
+}
+
+function plBancoHTML(py){
+  const p = planDe(py);
+  const banco = p.items.filter(x => x.jornada == null && x.tipo === 'plano').sort((a,b) => a.orden - b.orden);
+  const d = getD();
+  return `<div class="card pl-bancoc noprint" id="pl-banco" ondragover="event.preventDefault()" ondrop="plSoltarEn(event, 0)">
+    <h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Banco de planos
+      <span class="muted" style="font-size:12px;font-weight:500">${banco.length ? `${banco.length} sin jornada · arrastralos a una jornada o usá →` : 'vacío'}</span>
+      <span style="flex:1"></span>
+      <button class="btn sm" onclick="plStoryboard(true)">Cargar storyboard</button>
+      <button class="btn sm" onclick="plShotList(true)">Pegar lista de planos</button>
+      <button class="btn sm" onclick="plEditar(null,'plano',true)">+ Plano</button></h3>
+    ${banco.length ? `<div class="pl-grilla">${banco.map(it => `<div class="pl-carta" draggable="true" ondragstart="plArrastrar(event,'${it.id}')">
+        ${it.img ? `<img src="${it.img}" alt="" onclick="plVerImagen('${it.id}')">` : `<div class="pl-cimg">${esc(it.numero || '—')}</div>`}
+        <div class="pl-ctx"><b>${esc(it.numero || '—')}</b> ${esc(it.desc || '')}</div>
+        <div class="pl-cacc">
+          <select onchange="plMover('${it.id}', this.value)"><option value="">→ Jornada</option>
+            ${d.jornadas.map(j => `<option value="${j.numero}">J${j.numero}</option>`).join('')}</select>
+          <button class="btn sm" onclick="plEditar('${it.id}')">✎</button>
+          <button class="btn sm dgr" onclick="plBorrar('${it.id}')">×</button></div>
+      </div>`).join('')}</div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+        ${d.jornadas.map(j => `<button class="btn sm" onclick="plTodoA(${j.numero})">Todo el banco → J${j.numero}</button>`).join('')}</div>`
+    : `<div class="muted" style="font-size:12px;line-height:1.6">Acá quedan los planos que todavía no tienen jornada.
+       Cargá el storyboard (imágenes o PDF) o pegá la lista de planos y después repartilos.</div>`}
+  </div>`;
+}
+
+/* ---------- todas las jornadas ---------- */
+function plTodasHTML(py){
+  const d = getD();
+  const cfg = py.configRodaje || nuevaConfigRodaje();
+  const filas = d.jornadas.map(j => {
+    const D = calcularDia(py, j.numero);
+    const locs = [...new Set(D.filas.filter(f => f.it && f.it.tipo !== 'evento').map(f => setDeItem(py, f.it)).filter(Boolean))];
+    return `<tr onclick="selJornada(${j.numero});setSubPlan('dia')" style="cursor:pointer">
+      <td><b>J${j.numero}</b></td><td>${j.fecha ? esc(fechaCorta(j.fecha)) : '<span class="muted">—</span>'}</td>
+      <td class="num">${esc(j.citacion || '')}</td><td class="num">${D.items}</td>
+      <td class="num">${D.items ? durTexto(D.minutosFilmando) : '—'}</td>
+      <td class="num">${D.items ? aHora(D.fin) : '—'}</td>
+      <td class="num ${D.extra ? 'pl-rojo' : 'muted'}">${D.extra ? durTexto(D.extra) : '—'}</td>
+      <td class="num">${D.filmados}/${D.items}</td>
+      <td class="muted" style="font-size:11px">${esc(locs.join(' · '))}</td>
+      <td>${D.avisos.length ? `<span class="${D.avisos.some(a => a.nivel === 'mal') ? 'pl-rojo' : 'muted'}">${D.avisos.length} aviso${D.avisos.length == 1 ? '' : 's'}</span>` : '<span class="muted">ok</span>'}</td></tr>`;
+  });
+  const tot = d.jornadas.map(j => calcularDia(py, j.numero));
+  const r = resumenDesglose(d);
+  return `<div class="cs">
+    <div class="cshead"><div><div class="csttl">Todas las jornadas</div>
+      <div class="cssub">${esc(py.nombre)} · jornada de ${horasJornadaDe(cfg)} h</div></div>
+      <div style="text-align:right"><div class="csj">${d.jornadas.length}<span> jornadas</span></div>
+        <div class="cssub">${tot.reduce((s, D) => s + D.items, 0)} ${planPorEscenas(py) ? 'escenas' : 'planos'} ·
+          ${durTexto(tot.reduce((s, D) => s + D.extra, 0))} de extras previstas</div></div></div>
+    <div class="scrollx"><table class="tbl cst">
+      <thead><tr><th style="width:40px">J</th><th style="width:84px">Fecha</th><th style="width:62px">Citación</th>
+        <th style="width:44px">${planPorEscenas(py) ? 'Esc' : 'Pl.'}</th><th style="width:84px">Filmando</th><th style="width:62px">Wrap</th>
+        <th style="width:80px">Extras</th><th style="width:62px">Filmado</th><th>Locaciones</th><th style="width:80px"></th></tr></thead>
+      <tbody>${filas.join('') || '<tr><td colspan="10" class="empty">Sin jornadas</td></tr>'}</tbody></table></div>
+    <div class="pad noprint" style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn sm" onclick="plJornadaNueva()">+ Jornada</button>
+      ${d.jornadas.length ? `<button class="btn sm dgr" onclick="plQuitarJornada()">Quitar la última jornada</button>` : ''}</div>
+  </div>
+  ${d.escenas.length ? `<div class="card"><h3>Repartir escenas en jornadas</h3>
+    <div class="muted" style="font-size:12px;margin:-4px 0 10px">El orden dentro de cada jornada y los horarios se arman en <b>Día por día</b>.</div>
+    ${planHTML(py, d, r)}</div>` : ''}`;
+}
+
+/* ---------- elenco por jornada (day out of days) ---------- */
+function plElencoHTML(py){
+  const X = diasDelElenco(py);
+  if(!X.filas.length) return `<div class="card"><div class="empty">Todavía no hay elenco en ninguna jornada.<br>
+    <span style="font-size:12px">Sale de los personajes de las escenas y del campo Elenco de cada plano.</span></div></div>`;
+  return `<div class="cs"><div class="cshead"><div><div class="csttl">Elenco por jornada</div>
+      <div class="cssub"><b>SW</b> empieza · <b>W</b> trabaja · <b>WF</b> termina · <b>SWF</b> un solo día · <b>H</b> retenido entre dos jornadas (se paga o se negocia)</div></div></div>
+    <div class="scrollx"><table class="tbl cst pl-dood">
+      <thead><tr><th>Personaje</th>${X.jornadas.map(n => `<th class="num">J${n}</th>`).join('')}
+        <th class="num">Trabaja</th><th class="num">Retenido</th></tr></thead>
+      <tbody>${X.filas.map(f => `<tr><td><b>${esc(f.personaje)}</b></td>
+        ${X.jornadas.map(n => { const c = f.codigos[n]; return `<td class="num ${c === 'H' ? 'pl-e' : c ? 'pl-t' : ''}">${c}</td>`; }).join('')}
+        <td class="num">${f.trabaja}</td><td class="num ${f.espera ? 'pl-rojo' : 'muted'}">${f.espera || '—'}</td></tr>`).join('')}
+      </tbody></table></div></div>`;
+}
+
+/* ===========================  ACCIONES DEL PLAN  ========================== */
+const plItem = id => planDe(getPy()).items.find(x => x.id === id);
+function RP(){ const py = getPy(); if(py && DB.ui.jornada) volcarHorarios(py, DB.ui.jornada); R(); }
+
+function plUpJornada(campo, val){
+  const j = jornadaActiva();
+  j[campo] = val;
+  if(campo === 'fecha'){ j.solAuto = true; j.amanecer = ''; j.atardecer = '';
+    const s = val ? solDelDia(getPy(), val) : null;
+    if(s){ j.amanecer = aHora(s.amanecer); j.atardecer = aHora(s.atardecer); } }
+  RP();
+}
+function plLugar(k){
+  const p = planDe(getPy());
+  if(k === 'otro'){ plAjustes(); return; }
+  p.lugar = k;
+  getD().jornadas.forEach(j => { if(j.solAuto) j.amanecer = ''; });
+  RP();
+}
+function plJornadaNueva(){
+  const py = getPy(), d = getD();
+  d.jornadasMin = d.jornadas.length + 1;
+  sincronizarJornadas(d);
+  const j = d.jornadas[d.jornadas.length - 1];
+  const ant = d.jornadas[d.jornadas.length - 2];
+  if(ant && ant.fecha && !j.fecha){ const f = new Date(ant.fecha + 'T12:00:00'); f.setDate(f.getDate() + 1);
+    j.fecha = f.toISOString().slice(0, 10); }
+  if(ant){ j.citacion = ant.citacion; }
+  asegurarEventosBase(py);
+  DB.ui.jornada = j.numero; DB.ui.subPlan = 'dia';
+  toast(`Jornada ${j.numero} creada`); RP();
+}
+function plQuitarJornada(){
+  const py = getPy(), d = getD(), p = planDe(py);
+  const j = d.jornadas[d.jornadas.length - 1]; if(!j) return;
+  if(d.escenas.some(e => e.jornada === j.numero)){ toast(`La jornada ${j.numero} tiene escenas: sacalas antes.`); return; }
+  const planos = p.items.filter(x => x.jornada === j.numero && x.tipo === 'plano');
+  if(!confirm(`¿Quitar la jornada ${j.numero}?${planos.length ? ` Sus ${planos.length} planos vuelven al banco.` : ''}`)) return;
+  planos.forEach(x => meterEnJornada(py, x, null));
+  p.items = p.items.filter(x => x.jornada !== j.numero);
+  d.jornadasMin = d.jornadas.length - 1;
+  d.jornadas = d.jornadas.filter(x => x !== j);
+  if(DB.ui.jornada === j.numero) DB.ui.jornada = d.jornadas.length ? d.jornadas[d.jornadas.length - 1].numero : null;
+  R();
+}
+function plSubir(id, dir){
+  const py = getPy(), it = plItem(id); if(!it || it.jornada == null) return;
+  const lista = planDe(py).items.filter(x => x.jornada === it.jornada).sort((a,b) => a.orden - b.orden);
+  const i = lista.indexOf(it), k = i + dir;
+  if(k < 0 || k >= lista.length) return;
+  [lista[i].orden, lista[k].orden] = [lista[k].orden, lista[i].orden];
+  RP();
+}
+/* Pasa un ítem a otra jornada (o al banco). Una escena se mueve también en
+   el desglose: es la misma decisión vista desde otro lado. */
+function moverItem(py, it, num){
+  if(it.tipo === 'escena'){
+    const e = escenaDe(py, it.escenaId);
+    if(e){ e.jornada = num; sincronizarJornadas(getD()); }
+  }
+  meterEnJornada(py, it, num);
+}
+function plMover(id, val){
+  if(!val) return;
+  const py = getPy(), it = plItem(id); if(!it) return;
+  const num = val === 'banco' ? null : parseInt(val, 10);
+  if(it.tipo === 'evento' && num == null) return;
+  moverItem(py, it, num);
+  toast(num == null ? 'Al banco' : `Pasado a la jornada ${num}`); RP();
+}
+function plTodoA(num){
+  const py = getPy();
+  planDe(py).items.filter(x => x.jornada == null && x.tipo === 'plano').sort((a,b) => a.orden - b.orden)
+    .forEach(x => meterEnJornada(py, x, num));
+  DB.ui.jornada = num; toast(`El banco pasó a la jornada ${num}`); RP();
+}
+function plEstado(id, val){
+  const py = getPy(), it = plItem(id); if(!it) return;
+  it.estado = val;
+  if(it.tipo === 'escena' && it.jornada){
+    const j = normalizarJornada(getD().jornadas.find(x => x.numero === it.jornada));
+    j.parte.filmadas = val === 'filmado' ? [...new Set([...j.parte.filmadas, it.escenaId])]
+                                         : j.parte.filmadas.filter(x => x !== it.escenaId);
+  }
+  R();
+}
+/* Fija la hora de un plano (la ventana de luz) y lo ubica en el día. */
+function plAnclar(id, hora){
+  const py = getPy(), it = plItem(id); if(!it || it.jornada == null) return;
+  it.fijo = hora;
+  const L = planDe(py).items.filter(x => x.jornada === it.jornada && x !== it).sort((a,b) => a.orden - b.orden);
+  const D = calcularDia(py, it.jornada);
+  /* va antes de lo primero que hoy empieza después de esa hora */
+  const despues = D.filas.find(f => f.it && f.it !== it && f.inicio >= aMin(hora) && !(f.it.tipo === 'evento' && EVENTOS_DE_APERTURA.includes(f.it.clase)));
+  it.orden = despues ? despues.it.orden - 0.5 : Math.max(0, ...L.map(x => x.orden)) + 1;
+  reordenar(py, it.jornada); ubicarFijos(py, it.jornada);
+  toast(`Plano ${it.numero} anclado a las ${hora}`); RP();
+}
+function plDur(id, val){ const it = plItem(id); if(!it) return; it.duracion = n(val) > 0 ? n(val) : null; RP(); }
+function plBorrar(id){
+  const py = getPy(), it = plItem(id); if(!it) return;
+  if(it.tipo === 'escena'){ moverItem(py, it, null); toast('La escena volvió a quedar sin jornada'); RP(); return; }
+  if(!confirm(`¿Borrar ${etiquetaItem(py, it).replace(/^El |^La /, '').toLowerCase()}?`)) return;
+  const p = planDe(py); p.items = p.items.filter(x => x !== it); RP();
+}
+function plNuevoEvento(clase){
+  const py = getPy(), num = DB.ui.jornada; if(num == null) return;
+  const it = nuevoItemPlan({tipo:'evento', clase});
+  planDe(py).items.push(it);
+  meterEnJornada(py, it, num);
+  if(clase === 'wrap'){ it.orden = 9999; reordenar(py, num); }
+  RP();
+}
+function plAcomodar(){
+  const py = getPy(), num = DB.ui.jornada; if(num == null) return;
+  const k = acomodarPorEmplazamiento(py, num);
+  ubicarFijos(py, num);
+  toast(k ? 'Acomodado por set y emplazamiento' : 'Ya estaba acomodado (o hay menos de dos planos)'); RP();
+}
+function plPendientes(){
+  const d = getD(), num = DB.ui.jornada;
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:420px">
+    <h3>Lo que no se filmó en la jornada ${num}</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">Los planos o escenas pendientes y los que se cayeron
+        pasan a otra jornada (al final, antes del wrap) o al banco. Lo filmado queda donde está.</div>
+      ${sel('Pasarlo a','destino', String(num + 1), [...d.jornadas.filter(j => j.numero !== num).map(j => ({v:String(j.numero), l:'Jornada ' + j.numero})), {v:'banco', l:'Al banco'}])}
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="plPendientesOk()">Mover</button></div></div></div>`);
+}
+function plPendientesOk(){
+  const py = getPy(), num = DB.ui.jornada, o = datos();
+  const dest = o.destino === 'banco' ? null : parseInt(o.destino, 10);
+  const lista = planDe(py).items.filter(x => x.jornada === num && x.tipo !== 'evento' && x.estado !== 'filmado')
+    .sort((a,b) => a.orden - b.orden);
+  lista.forEach(x => { if(x.estado === 'cayo') x.estado = 'pendiente'; moverItem(py, x, dest); });
+  cerrar(); toast(`${lista.length} pasado${lista.length == 1 ? '' : 's'} ${dest ? 'a la jornada ' + dest : 'al banco'}`);
+  if(dest) DB.ui.jornada = dest; RP();
+}
+function plCitarElenco(){
+  const py = getPy(), num = DB.ui.jornada, j = jornadaActiva();
+  const E = elencoDelDia(py, num);
+  E.forEach(x => { const c = (j.citaciones['p:' + x.nombre] ||= {});
+    c.citacion = aHora(x.citacion); c.maquillaje = aHora(x.citacion); c.set = aHora(x.primera); });
+  toast(`${E.length} citacion${E.length == 1 ? '' : 'es'} pasada${E.length == 1 ? '' : 's'} al callsheet`); R();
+}
+
+/* ---------- arrastrar y soltar ---------- */
+let _plArrastrado = null;
+function plArrastrar(ev, id){ _plArrastrado = id; try{ ev.dataTransfer.setData('text/plain', id); ev.dataTransfer.effectAllowed = 'move'; }catch(e){} }
+function plSoltarSobre(ev, idDestino){
+  ev.preventDefault(); ev.stopPropagation();
+  const py = getPy(), it = plItem(_plArrastrado), dest = plItem(idDestino); _plArrastrado = null;
+  if(!it || !dest || it === dest || dest.jornada == null) return;
+  if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); if(e && e.jornada !== dest.jornada){ e.jornada = dest.jornada; sincronizarJornadas(getD()); } }
+  it.jornada = dest.jornada; it.orden = dest.orden - 0.5;
+  reordenar(py, dest.jornada); RP();
+}
+function plSoltarEn(ev, num){
+  ev.preventDefault(); ev.stopPropagation();
+  const py = getPy(), it = plItem(_plArrastrado); _plArrastrado = null;
+  if(!it) return;
+  if(!num && it.tipo === 'evento') return;
+  moverItem(py, it, num || null); toast(num ? `Pasado a la jornada ${num}` : 'Al banco'); RP();
+}
+function plSoltarAlFinal(ev, num){
+  if(ev.defaultPrevented && ev.cancelBubble) return;
+  plSoltarEn(ev, num);
+}
+
+/* ---------- editar un plano o un evento ---------- */
+function plEditar(id, tipo, alBanco){
+  const py = getPy(), d = getD();
+  const it = id ? plItem(id) : nuevoItemPlan({tipo, numero: tipo === 'plano' ? String(sigNumeroPlano(py, DB.ui.plPieza || null)) : '',
+    piezaId: DB.ui.plPieza || null});
+  if(!it) return;
+  const piezas = piezasDe(py);
+  const opsJ = [{v:'', l:'Banco (sin jornada)'}, ...d.jornadas.map(j => ({v:String(j.numero), l:'Jornada ' + j.numero}))];
+  const dondeVal = id ? String(it.jornada ?? '') : (alBanco || DB.ui.jornada == null ? '' : String(DB.ui.jornada));
+  let cuerpo;
+  if(it.tipo === 'evento'){
+    cuerpo = `<div class="grid2">
+      ${sel('Tipo','clase',it.clase,PLAN_EVENTOS.map(e => ({v:e.k, l:e.l})))}
+      ${campo('Descripción','desc',it.desc,'text','placeholder="Opcional: Traslado al estudio 2"')}
+      ${campo('Duración (min)','duracion',it.duracion ?? '','number','min="1" step="5" placeholder="' + PLAN_EVENTO(it.clase).dur + '"')}
+      ${campo('Hora fija','fijo',it.fijo,'time')}
+    </div>
+    <div class="muted" style="font-size:11.5px;margin-top:6px">Con hora fija el evento no se corre: si el día llega antes queda tiempo libre, si llega tarde se avisa.</div>
+    ${campo('Notas','notas',it.notas)}`;
+  } else if(it.tipo === 'escena'){
+    const e = escenaDe(py, it.escenaId) || {};
+    cuerpo = `<div class="muted" style="font-size:12.5px;margin-bottom:10px">Escena ${esc(e.numero || '')} · ${esc(e.intExt || '')} ${esc(e.locacion || '')} · ${esc(e.momento || '')} · ${octavosATexto(n(e.octavos))} pg</div>
+      <div class="grid2">${campo('Duración (min)','duracion',it.duracion ?? '','number','min="1" step="5" placeholder="' + duracionItem(py, {...it, duracion:null}) + ' (por páginas)"')}
+      ${campo('Hora fija','fijo',it.fijo,'time')}</div>${campo('Notas del AD','notas',it.notas)}`;
+  } else {
+    cuerpo = `<div class="grid2">
+      ${campo('Plano N°','numero',it.numero,'text','placeholder="1, 1A, 12B"')}
+      ${sel('Jornada','jornada',dondeVal,opsJ)}
+    </div>
+    ${campo('Qué se ve','desc',it.desc,'text','placeholder="La chica abre la heladera y sonríe"')}
+    <div class="grid2">
+      ${campo('Set','set',it.set,'text','list="pl-sets" placeholder="Casa - Cocina (locación - set)"')}
+      ${campo('Emplazamiento','emplazamiento',it.emplazamiento,'text','placeholder="A, B, C… los del mismo van juntos"')}
+      ${sel('Tamaño','tamano',it.tamano,[{v:'',l:'—'}, ...TAMANOS.map(x => ({v:x, l:x}))])}
+      ${sel('Movimiento','movimiento',it.movimiento,[{v:'',l:'—'}, ...MOVIMIENTOS.map(x => ({v:x, l:x}))])}
+      ${campo('Lente','lente',it.lente,'text','placeholder="35mm"')}
+      ${sel('INT / EXT','intExt',it.intExt,[{v:'',l:'—'},{v:'INT',l:'Interior'},{v:'EXT',l:'Exterior'}])}
+      ${sel('Luz','luz',it.luz,LUCES.map(x => ({v:x.k, l:x.l})))}
+      ${campo('Duración (min)','duracion',it.duracion ?? '','number','min="1" step="5" placeholder="' + (MIN_POR_MOVIMIENTO[it.movimiento] || MIN_PLANO) + ' (según movimiento)"')}
+      ${campo('Elenco','elenco',it.elenco,'text','placeholder="Ana, Nene (separados por coma)"')}
+      ${campo('Elementos','elementos',it.elementos,'text','placeholder="Producto, auto, lluvia…"')}
+      ${piezas.length ? sel(unidadDe(py),'piezaId',it.piezaId || '',[{v:'',l:'Todas / compartido'}, ...piezas.map(x => ({v:x.id, l:nombrePieza(py, x.id)}))]) : ''}
+      ${d.escenas.length ? sel('Escena','escenaId',it.escenaId || '',[{v:'',l:'—'}, ...d.escenas.map(e => ({v:e.id, l:'Esc ' + e.numero + ' · ' + e.locacion}))]) : ''}
+      ${campo('Toma buena','tomaBuena',it.tomaBuena,'text','placeholder="T3, T5"')}
+      ${sel('Prioridad','prioridad',it.prioridad,[{v:'',l:'Imprescindible'},{v:'seguridad',l:'De seguridad (se corta primero)'}])}
+      ${campo('Hora fija (opcional)','fijo',it.fijo,'time','title="Para anclarlo a una luz o a la disponibilidad de alguien"')}
+    </div>
+    ${campo('Notas','notas',it.notas)}
+    <label class="f"><span>Cuadro del storyboard</span><input type="file" accept="image/*" id="pl-img"></label>
+    ${it.img ? `<div style="display:flex;gap:10px;align-items:center;margin-top:6px"><img src="${it.img}" style="max-width:160px;border-radius:6px">
+      <label style="display:flex;gap:6px;align-items:center;font-size:12px"><input type="checkbox" name="sinImg" value="1" style="width:auto"> Quitar la imagen</label></div>` : ''}
+    <datalist id="pl-sets">${[...new Set(planDe(py).items.map(x => x.set).filter(Boolean))].map(s => `<option value="${esc(s)}">`).join('')}</datalist>`;
+  }
+  _plEditando = {id, it};
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:640px">
+    <h3>${id ? 'Editar' : 'Nuevo'} ${it.tipo === 'evento' ? 'evento' : it.tipo === 'escena' ? 'escena en el plan' : 'plano'}</h3>
+    <div class="mbody">${cuerpo}</div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="plGuardar()">Guardar</button></div></div></div>`);
+}
+let _plEditando = null;
+async function plGuardar(){
+  const py = getPy(), o = datos(), E = _plEditando; if(!E) return;
+  const it = E.it;
+  if(o.sinImg === undefined){ const c = document.querySelector('.mod [name=sinImg]'); o.sinImg = c && c.checked ? '1' : ''; }
+  ['numero','desc','set','emplazamiento','tamano','movimiento','lente','intExt','luz','elenco','elementos','tomaBuena','notas','clase','fijo','prioridad']
+    .forEach(k => { if(o[k] !== undefined) it[k] = String(o[k]).trim(); });
+  if(o.duracion !== undefined) it.duracion = n(o.duracion) > 0 ? n(o.duracion) : null;
+  if(o.piezaId !== undefined) it.piezaId = o.piezaId || null;
+  if(o.escenaId !== undefined) it.escenaId = o.escenaId || null;
+  if(o.sinImg === '1') it.img = '';
+  const f = document.getElementById('pl-img');
+  if(f && f.files && f.files[0]){
+    try{ it.img = (await achicarImagen(f.files[0], 320, 0.6)).dataUrl; }catch(e){ toast(e.message); }
+  }
+  const p = planDe(py);
+  if(!E.id){ p.items.push(it); }
+  if(it.tipo === 'plano' && o.jornada !== undefined){
+    const num = o.jornada === '' ? null : parseInt(o.jornada, 10);
+    if(!E.id || num !== it.jornada) meterEnJornada(py, it, num);
+  } else if(!E.id) meterEnJornada(py, it, DB.ui.jornada);
+  _plEditando = null; cerrar(); RP();
+}
+function plVerImagen(id){
+  const it = plItem(id); if(!it || !it.img) return;
+  abrir(`<div class="ov" onclick="cerrar()"><div class="mod" style="max-width:560px;text-align:center">
+    <h3>Plano ${esc(it.numero || '')}</h3><div class="mbody"><img src="${it.img}" style="width:100%;border-radius:8px">
+    <div style="margin-top:8px">${esc(it.desc || '')}</div></div></div></div>`);
+}
+
+/* ---------- ajustes ---------- */
+function plAjustes(){
+  const p = planDe(getPy());
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+    <h3>Ajustes del plan</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">Con esto se calculan los horarios. Son del proyecto:
+        un spot en estudio y una película en exteriores no se planifican con los mismos tiempos.</div>
+      <div class="grid2">
+        ${sel('Lugar (para el sol)','lugar',p.lugar,[...LUGARES_SOL.map(x => ({v:x.k, l:x.l})), {v:'otro', l:'Otro (coordenadas)'}])}
+        ${campo('Huso horario (UTC)','tz',p.tz,'number','step="0.5"')}
+        ${campo('Latitud (si es otro)','lat',p.lat ?? '','number','step="any" placeholder="-34.60"')}
+        ${campo('Longitud (si es otro)','lon',p.lon ?? '','number','step="any" placeholder="-58.38"')}
+        ${campo('Cambio de emplazamiento (min)','minCambio',p.minCambio,'number','min="0" step="5"')}
+        ${campo('Traslado de locación (min)','minTraslado',p.minTraslado,'number','min="0" step="5"')}
+        ${campo('Máximo sin comer (h)','horasHastaComida',p.horasHastaComida,'number','min="1" step="0.5"')}
+        ${campo('Maquillaje y vestuario del elenco (min)','minMaquillaje',p.minMaquillaje,'number','min="0" step="15"')}
+      </div>
+      <div class="muted" style="font-size:11.5px;line-height:1.55;margin-top:10px">Las horas de la jornada y el descanso mínimo entre jornadas son las de
+        <b>Rodaje → Condiciones</b>.</div>
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="plAjustesOk()">Guardar</button></div></div></div>`);
+}
+function plAjustesOk(){
+  const p = planDe(getPy()), o = datos();
+  p.lugar = o.lugar; p.tz = n(o.tz) || -3;
+  p.lat = o.lat === '' ? null : n(o.lat); p.lon = o.lon === '' ? null : n(o.lon);
+  ['minCambio','minTraslado','horasHastaComida','minMaquillaje'].forEach(k => p[k] = Math.max(0, n(o[k])));
+  getD().jornadas.forEach(j => { if(j.solAuto) j.amanecer = ''; });
+  cerrar(); RP();
+}
+
+/* ---------- storyboard ----------
+   Imágenes sueltas (una por plano, en orden de nombre) o un PDF. El PDF de un
+   storyboard casi siempre trae varios cuadros por página, así que se elige
+   la grilla y se corta cada página en cuadros. El lector de PDF se baja la
+   primera vez que se usa, no antes. */
+function plStoryboard(alBanco){
+  const py = getPy(), d = getD(), piezas = piezasDe(py);
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+    <h3>Cargar storyboard</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">Cada cuadro se vuelve un plano, numerado en orden.
+        Después se completa el set, el emplazamiento y la luz, y se acomoda.</div>
+      <label class="f"><span>Imágenes (JPG, PNG) o un PDF</span><input type="file" id="pl-sb" accept="image/*,.pdf,application/pdf" multiple></label>
+      <div class="grid2">
+        ${sel('Cuadros por página (PDF)','grilla','1x1',[['1x1','1 (la página entera)'],['1x2','2 (uno arriba del otro)'],['2x1','2 (uno al lado del otro)'],
+          ['2x2','4 (2 × 2)'],['3x2','6 (3 × 2)'],['2x3','6 (2 × 3)'],['3x3','9 (3 × 3)'],['4x3','12 (4 × 3)']].map(([v,l]) => ({v, l})))}
+        ${sel('Van a','destino',alBanco || DB.ui.jornada == null ? '' : String(DB.ui.jornada),[{v:'', l:'Banco (sin jornada)'}, ...d.jornadas.map(j => ({v:String(j.numero), l:'Jornada ' + j.numero}))])}
+        ${piezas.length ? sel(unidadDe(py),'piezaId',DB.ui.plPieza || '',[{v:'',l:'Todas / compartido'}, ...piezas.map(x => ({v:x.id, l:nombrePieza(py, x.id)}))]) : ''}
+      </div>
+      <div id="pl-sb-estado" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="plStoryboardOk()">Cargar</button></div></div></div>`);
+}
+let _pdfjs = null;
+function cargarPdfjs(){
+  if(_pdfjs) return _pdfjs;
+  const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  _pdfjs = new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = base + 'pdf.min.js';
+    s.onload = () => { const L = window.pdfjsLib; if(!L){ _pdfjs = null; rej(new Error('No se pudo abrir el lector de PDF')); return; }
+      L.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js'; res(L); };
+    s.onerror = () => { _pdfjs = null; rej(new Error('No se pudo bajar el lector de PDF (¿sin internet?)')); };
+    document.head.appendChild(s);
+  });
+  return _pdfjs;
+}
+/* Un cuadro recortado de un canvas, chico: se guarda en el navegador. */
+function recorteCuadro(cv, x, y, w, h, maxLado = 320){
+  const k = Math.min(1, maxLado / Math.max(w, h));
+  const o = document.createElement('canvas'); o.width = Math.max(1, Math.round(w*k)); o.height = Math.max(1, Math.round(h*k));
+  const cx = o.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, o.width, o.height);
+  cx.drawImage(cv, x, y, w, h, 0, 0, o.width, o.height);
+  /* un cuadro casi todo blanco (el final de la última página) no es un plano */
+  let vacio = false;
+  try{ const px = cx.getImageData(0, 0, o.width, o.height).data; let dist = 0, cnt = 0;
+    for(let i = 0; i < px.length; i += 4*37){ dist += 765 - (px[i] + px[i+1] + px[i+2]); cnt++; }
+    vacio = cnt > 0 && dist / cnt < 6; }catch(e){}
+  return vacio ? null : o.toDataURL('image/jpeg', 0.6);
+}
+async function cuadrosDePdf(file, cols, filas, avance){
+  const L = await cargarPdfjs();
+  const pdf = await L.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
+  const out = [];
+  for(let i = 1; i <= pdf.numPages; i++){
+    avance && avance(`Leyendo página ${i} de ${pdf.numPages}…`);
+    const page = await pdf.getPage(i);
+    const vp0 = page.getViewport({scale:1});
+    const vp = page.getViewport({scale: Math.min(3, (360 * cols) / vp0.width)});
+    const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+    await page.render({canvasContext: cv.getContext('2d'), viewport: vp}).promise;
+    const w = cv.width / cols, h = cv.height / filas;
+    for(let f = 0; f < filas; f++) for(let c = 0; c < cols; c++){
+      const url = recorteCuadro(cv, c*w, f*h, w, h);
+      if(url) out.push({img:url, pagina:i});
+    }
+  }
+  return out;
+}
+let _plCargando = false;
+async function plStoryboardOk(){
+  if(_plCargando) return;
+  const py = getPy(), o = datos();
+  const inp = document.getElementById('pl-sb'), estado = document.getElementById('pl-sb-estado');
+  const files = inp && inp.files ? [...inp.files] : [];
+  if(!files.length){ toast('Elegí las imágenes o el PDF'); return; }
+  const avance = t => { if(estado) estado.textContent = t; };
+  const [cols, filas] = String(o.grilla || '1x1').split('x').map(Number);
+  const piezaId = o.piezaId || null, num = o.destino === '' || o.destino == null ? null : parseInt(o.destino, 10);
+  const cuadros = [];
+  _plCargando = true;
+  try{
+    const orden = files.sort((a,b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
+    for(const f of orden){
+      if(/pdf$/i.test(f.type) || /\.pdf$/i.test(f.name)) cuadros.push(...await cuadrosDePdf(f, cols || 1, filas || 1, avance));
+      else { avance(`Achicando ${f.name}…`); cuadros.push({img:(await achicarImagen(f, 320, 0.6)).dataUrl, nombre:f.name}); }
+    }
+  }catch(e){ avance(''); toast(e.message || 'No pude leer el archivo'); return; }
+  finally{ _plCargando = false; }
+  if(!cuadros.length){ toast('No encontré cuadros en lo que subiste'); return; }
+  let k = sigNumeroPlano(py, piezaId);
+  const p = planDe(py);
+  cuadros.forEach(c => { const it = nuevoItemPlan({tipo:'plano', numero:String(k++), img:c.img, piezaId}); p.items.push(it); meterEnJornada(py, it, num); });
+  cerrar();
+  const esp = espacioUsado();
+  toast(`${cuadros.length} plano${cuadros.length == 1 ? '' : 's'} cargado${cuadros.length == 1 ? '' : 's'}${esp.pct > 80 ? ' · ⚠ el navegador está casi lleno' : ''}`);
+  RP();
+}
+
+/* ---------- lista de planos pegada ---------- */
+function plShotList(alBanco){
+  const py = getPy(), d = getD(), piezas = piezasDe(py);
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:600px">
+    <h3>Pegar la lista de planos</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:8px">Un plano por renglón, como la manda el director.
+        Se reconoce el número, el tamaño (PG, PM, PP, PD…), el movimiento (travelling, steadicam, dron…), INT/EXT, la lente y la luz (hora dorada, noche).</div>
+      <textarea name="texto" rows="10" placeholder="1 PG EXT casa, dron, hora dorada&#10;2 PM Ana entra a la cocina, steadicam&#10;3 PD mano abre la heladera, 100mm&#10;3A PP Ana sonríe"></textarea>
+      <div class="grid2">
+        ${sel('Van a','destino',alBanco || DB.ui.jornada == null ? '' : String(DB.ui.jornada),[{v:'', l:'Banco (sin jornada)'}, ...d.jornadas.map(j => ({v:String(j.numero), l:'Jornada ' + j.numero}))])}
+        ${piezas.length ? sel(unidadDe(py),'piezaId',DB.ui.plPieza || '',[{v:'',l:'Todas / compartido'}, ...piezas.map(x => ({v:x.id, l:nombrePieza(py, x.id)}))]) : ''}
+        ${campo('Set de todos (opcional)','set','','text','placeholder="Casa - Cocina"')}
+      </div>
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="plShotListOk()">Cargar</button></div></div></div>`);
+}
+function plShotListOk(){
+  const py = getPy(), o = datos();
+  const lista = leerShotList(o.texto);
+  if(!lista.length){ toast('No hay renglones para cargar'); return; }
+  const piezaId = o.piezaId || null, num = !o.destino ? null : parseInt(o.destino, 10);
+  let k = sigNumeroPlano(py, piezaId);
+  const p = planDe(py);
+  lista.forEach(x => { const it = nuevoItemPlan({...x, tipo:'plano', numero: x.numero || String(k), piezaId, set:(o.set || '').trim()});
+    const nn = parseInt(it.numero, 10); if(isFinite(nn)) k = Math.max(k, nn + 1); else k++;
+    p.items.push(it); meterEnJornada(py, it, num); });
+  cerrar(); toast(`${lista.length} plano${lista.length == 1 ? '' : 's'} cargado${lista.length == 1 ? '' : 's'}`); RP();
 }
 
 /* ===========================  ACCIONES  =================================== */
@@ -8795,7 +10288,9 @@ function autoAgrupar(){
   toast(`Agrupado en ${j} jornada${j==1?'':'s'}`); R();
 }
 function sincronizarJornadas(d){
-  const max = d.escenas.reduce((m,e)=>Math.max(m, e.jornada||0), 0);
+  /* jornadasMin: las que existen por el plan de rodaje aunque no tengan
+     escenas (un spot se planifica por planos, sin guion desglosado) */
+  const max = Math.max(d.jornadasMin || 0, d.escenas.reduce((m,e)=>Math.max(m, e.jornada||0), 0));
   d.jornadas = Array.from({length:max},(_,i)=>d.jornadas[i] || nuevaJornada({numero:i+1}));
   d.jornadas.forEach((j,i)=>{ j.numero=i+1; normalizarJornada(j); });
 }

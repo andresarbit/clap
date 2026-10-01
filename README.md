@@ -376,6 +376,62 @@ prepro y de rodaje es una sola; alquileres y compras quedan afuera.
 El CBU se comparte entre todos cuando la base tiene la columna: correr una vez
 `backend/catalogo-cbu.sql`.
 
+### Plan de rodaje
+
+Solapa **Plan de rodaje**, entre Desglose y Callsheet: el dia hora por hora,
+como lo arma un asistente de direccion. Cada jornada es una lista ordenada de
+**planos**, **escenas** y **eventos** (desayuno, armado, ensayo, maquillaje,
+traslado, almuerzo, break, packshot, wrap). Las horas no se escriben: salen en
+cascada desde la citacion con la duracion de cada cosa, y mover un plano
+recalcula el dia entero.
+
+- **Segun el formato.** Publicidad, videoclip, institucional y contenido se
+  planifican por **planos** (los del storyboard). Cine y serie, por **escenas**
+  del desglose con sus octavos: repartirlas en jornadas se hace en *Todas las
+  jornadas* (el auto-agrupar de siempre), y la escena movida en el plan se mueve
+  tambien en el desglose. Una escena tildada en el parte es una escena filmada
+  en el plan, y al reves.
+- **Storyboard y lista de planos.** *Cargar storyboard* toma imagenes o un PDF;
+  el PDF se corta en cuadros segun la grilla (1, 2, 4, 6, 9 o 12 por pagina) y
+  los cuadros vacios se saltean. *Pegar lista de planos* entiende un renglon
+  por plano ("3A PP Ana sonrie, steadicam, 50mm, hora dorada"). Lo cargado va a
+  una jornada o al **banco** (planos sin jornada) para repartir despues,
+  arrastrando o con →.
+- **Duraciones.** El plano, por como se mueve la camara (fijo 15 min, dolly 25,
+  grua 35, camera car 45…); la escena, por paginas (jornada util / paginas por
+  jornada). Se suma solo un **cambio de emplazamiento** cuando la camara cambia
+  de lugar y un **traslado** cuando cambia la locacion (el set se escribe
+  "Locacion - set": "Casa - Cocina" a "Casa - Living" es cambio de set, a
+  "Plaza - Banco" es traslado). Todo se corrige plano por plano y en *Ajustes*.
+- **Acomodar por emplazamiento** junta los planos del mismo set y emplazamiento,
+  de lo mas abierto a lo mas cerrado, y deja para el final los de hora dorada,
+  azul y noche. Los eventos no se mueven.
+- **Hora fija.** El almuerzo (y cualquier plano o evento) puede tener hora fija:
+  se ubica solo en el lugar del dia que le toca, y si se llega tarde se avisa.
+- **El sol.** Con la fecha y el lugar (ciudades de Argentina y Uruguay, u otras
+  coordenadas) calcula salida, puesta, hora dorada (+6° a −4°) y azul (−4° a
+  −6°), con el algoritmo de NOAA. Se ven en una franja del dia y en la lista.
+  Un plano de hora dorada fuera de su ventana se puede **anclar** con un boton.
+- **Avisos de AD**: exterior de dia despues de la puesta; plano de hora dorada o
+  azul fuera de la ventana; almuerzo mas de 6 h despues de la citacion o falta
+  de almuerzo; muchas horas seguidas despues de comer; horas extra sobre la
+  jornada (y cuanto se recupera cortando los planos **de seguridad**); huecos
+  largos sin nada que hacer; descanso entre jornadas menor al minimo; cena si se
+  pasa de las 21 h y desayuno con citacion antes de las 7 (CCT 235/75).
+- **Elenco del dia**: a que hora entra cada actor a su primer plano y la
+  citacion sugerida (maquillaje y vestuario antes); *Pasar las citaciones al
+  callsheet*. **Elenco por jornada** es el Day Out of Days con los codigos de
+  siempre (SW, W, WF, SWF, H).
+- **En el set**: cada plano se marca filmado o se cayo; *Mover lo no filmado*
+  pasa lo pendiente a otra jornada o al banco.
+- **Callsheet**: la comida y el wrap estimado salen del plan, la hoja lleva el
+  **Orden del dia** (con la miniatura del storyboard) y el elenco y las
+  locaciones de los planos. Un spot sin guion desglosado ya tiene callsheet.
+
+El plan vive con el resto del desglose en el navegador (como las escenas): no
+se comparte por la base todavia. Los cuadros del storyboard se guardan chicos
+(320 px) para no llenar el navegador.
+
 ### El modulo de plata
 
 Cinco sub-vistas en **Gastos**:
@@ -894,6 +950,8 @@ de `productoraId`, así que el schema ya es multi-tenant.
 1. **Presupuestador** ✅
 2. **Desglose de guion** ✅ — parser, elementos por departamento, plan de rodaje,
    puente al presupuesto.
+   **Plan de rodaje** ✅ — por planos o escenas, horarios en cascada, sol, avisos,
+   storyboard, Day Out of Days.
 3. **Callsheet** ✅ — jornada por jornada, con impresion a A4.
 4. **Rodaje** ✅ — citaciones, parte del dia y horas extra.
 5. **Seguros** — generar el alta (nómina para el broker) desde el crew ya cargado;
@@ -918,6 +976,7 @@ node test/run.js test/parser.js     # parser de guion contra test/guion-ejemplo.
 node test/run.js test/desglose.js   # desglose, jornadas y puente al presupuesto
 node test/run.js test/importar.js  # PDF, DOCX, RTF, FDX y .doc contra test/muestras/
 node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
+node test/run.js test/plan-rodaje.js # plan de rodaje: sol, cascada, avisos, storyboard, cine
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
 node test/run.js test/contactos.js # lista de contactos y su circuito con catalogo y callsheet

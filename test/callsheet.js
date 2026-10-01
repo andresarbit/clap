@@ -6,7 +6,7 @@ const pr = getPr(), py = getPy(), v = getV();
 
 /* sin guion todavía */
 DB.ui.tab = 'callsheet';
-ok('sin guion pide cargar el guion', /solapa <b>Desglose<\/b>/.test(vistaCallsheet(pr, py, v)));
+ok('sin guion ni jornadas manda al plan o al desglose', /setTab\('plan'\)/.test(vistaCallsheet(pr, py, v)) && /Ir al desglose/.test(vistaCallsheet(pr, py, v)));
 
 guionEjemplo();
 ok('con guion pero sin jornadas manda al plan', /Auto-agrupar/.test(vistaCallsheet(pr, py, v)));
