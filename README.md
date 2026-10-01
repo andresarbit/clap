@@ -476,6 +476,14 @@ rental elegido es uno de esos, su precio entra solo, y *Completar precios
 vacios con…* llena lo que falta con una lista o con el mas barato publicado.
 Lo que no publican queda vacio: se carga con la cotizacion.
 
+**Importar el pedido del gaffer.** En la solapa hay una caja para soltar el
+pedido como venga (Excel, Word, PDF, texto o pegado de WhatsApp). Se lee la
+cantidad ("2 x", "x2", "(2)"), las jornadas ("J2", "J1 a J3") y el equipo con
+la jerga del set (ceferino, araña, palio, globo chino, huevera, Kino 4x4,
+18.000 W = 18K); en una planilla se usan las columnas Cantidad y Equipo. Antes
+de sumar se muestra lo entendido para corregir; lo que no se reconoce queda
+para elegirlo a mano.
+
 ### El modulo de plata
 
 Cinco sub-vistas en **Gastos**:
@@ -1022,6 +1030,7 @@ node test/run.js test/importar.js  # PDF, DOCX, RTF, FDX y .doc contra test/mues
 node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
 node test/run.js test/plan-rodaje.js # plan de rodaje: sol, cascada, avisos, storyboard, guion tecnico, arrastre, cine
 node test/run.js test/pedido-luces.js # pedido de luces: equipos, jornadas, potencia, totales, rental
+node test/run.js test/pedido-luces-importar.js # interpretar el pedido del gaffer (texto, Excel, Word)
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
 node test/run.js test/contactos.js # lista de contactos y su circuito con catalogo y callsheet

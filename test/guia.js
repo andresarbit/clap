@@ -73,9 +73,9 @@ console.log('\n--- 4. LA SOLAPA ---');
 const barra = header(getPr(), getPy(), getV());
 ok('está en la barra', /setTab\('guia'\)/.test(barra),
   (barra.match(/setTab\('(\w+)'\)/g) || []).join(' · '));
-ok('va segunda, después de Resumen',
-  barra.indexOf("setTab('guia')") > barra.indexOf("setTab('resumen')") &&
-  barra.indexOf("setTab('guia')") < barra.indexOf("setTab('presu')"));
+/* pedido de Andrés (oct. 2026): el instructivo al fondo del menú */
+ok('va última, al fondo del menú',
+  (barra.match(/setTab\('(\w+)'\)/g) || []).pop() === "setTab('guia')");
 ok('la solapa la muestra', (() => { setTab('guia'); return /Cómo se usa CLAP/.test(vistaGuia()); })());
 errs = [];
 ['resumen', 'guia', 'presu', 'desglose', 'callsheet', 'rodaje', 'gastos', 'equipo', 'catalogo', 'config']

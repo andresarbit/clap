@@ -764,6 +764,12 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
 .pl-dood td.pl-t{color:var(--ac);font-weight:700}
 /* ---------- pedido de luces ---------- */
 .lz-cab{border-bottom:1px solid var(--line)}
+.lz-imp{border-bottom:1px solid var(--line)}
+.lz-imp .dropz{padding:14px 16px;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.lz-imp .dropz a{color:var(--ac)}
+.lz-imptab select{padding:4px 22px 4px 6px;font-size:12px}
+.lz-imptab input[type=number],.lz-imptab input[type=text]{border:1px solid var(--line);background:var(--bg3);border-radius:5px;padding:4px 6px}
+.lz-imptab tr.lz-sin td{background:rgba(224,145,62,.08)}
 .lz-tab{table-layout:fixed;width:100%}
 .lz-tab input{border:1px solid var(--line);background:var(--bg3);border-radius:5px}
 .lz-tab td{vertical-align:middle}
@@ -4706,7 +4712,7 @@ function chipIdentidad(pr){
 
 /* ---------- header ---------- */
 function header(pr,py,v){
-  const TABS=[['resumen','Resumen'],['guia','Instructivo'],['presu','Presupuesto'],['desglose','Desglose'],['plan','Plan de rodaje'],['luces','Pedido de luces'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['personal','Alta y liquidación'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras']];
+  const TABS=[['resumen','Resumen'],['presu','Presupuesto'],['desglose','Desglose'],['plan','Plan de rodaje'],['luces','Pedido de luces'],['callsheet','Callsheet'],['rodaje','Rodaje'],['gastos','Gastos'],['personal','Alta y liquidación'],['equipo','Equipo'],['catalogo','Catálogo'],['config','Productoras'],['guia','Instructivo']];
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -9859,6 +9865,7 @@ function vistaLuces(pr, py, v){
       <div style="flex:1"></div>
       ${P.items.length ? `<button class="btn sm dgr" onclick="lzVaciar()">Vaciar</button>` : ''}
     </div>
+    ${lzCajaImportarHTML()}
     ${P.items.length ? CATEGORIAS_LUZ.filter(c => porCat[c.k]).map(c => `<div class="csblock"><h4>${esc(c.l)}</h4>
       <div class="scrollx"><table class="tbl cst lz-tab">
         <thead><tr><th>Equipo</th><th style="width:62px">Cant.</th><th style="width:30%">Jornadas</th><th style="width:70px" class="num">Consumo</th>
@@ -10066,6 +10073,323 @@ function lzOtroEquipo(){
   cerrar(); R();
 }
 /* render() del cerrar: la tabla de atrás se pinta con lo sumado */
+
+
+/* ---------- importar un pedido escrito ----------
+   El gaffer manda el pedido como puede: una planilla con Cantidad y Equipo,
+   un Word, un mensaje copiado de WhatsApp. Cada renglón se lee así: la
+   cantidad ("2 x", "x2", "(2)", "- 2"), las jornadas ("J2", "solo día 2") y
+   el equipo, reconocido por cómo se lo nombra en el set (ceferino, araña,
+   palio, globo chino, huevera, "Kino 4x4", "18.000 W" = 18K…). Lo que no se
+   reconoce no se descarta: se muestra para elegirlo a mano.               */
+function normPedido(s){
+  return norm(s).replace(/[’´`]/g, "'").replace(/×/g, 'x').replace(/(\d)\s*,\s*(\d)/g, '$1.$2')
+    /* "18.000 W", "18000w", "18 kw" → 18k; "1.200 W" → 1.2k; "575 w" → 575 */
+    .replace(/\b(\d{1,2})\.000\s*(w|watts?)\b/g, '$1k').replace(/\b(\d{1,2})000\s*(w|watts?)\b/g, '$1k')
+    .replace(/\b(\d)\.(\d)00\s*(w|watts?)\b/g, '$1.$2k').replace(/\b(\d)(\d)00\s*(w|watts?)\b/g, (m, a, b) => b === '0' ? a + 'k' : a + '.' + b + 'k')
+    .replace(/\b(\d+(?:\.\d)?)\s*kw\b/g, '$1k').replace(/\b(\d+(?:\.\d)?)\s+k\b/g, '$1k')
+    .replace(/\b(\d{3})\s*(w|watts?)\b/g, '$1')
+    .replace(/\s+/g, ' ').trim();
+}
+/* Equipo de un texto ya normalizado. Primero lo que más se confunde: lo
+   eléctrico ("dimmer 2k" no es un fresnel 2K), los consumibles y el grip. */
+function equipoDeTexto(t){
+  const E = nombre => EQUIPOS_LUZ.find(e => e.nombre === nombre) || null;
+  const has = re => re.test(t);
+  /* consumibles */
+  if(has(/\bcto\b/)) return E('Gelatina CTO (pliego)');
+  if(has(/\bctb\b/)) return E('Gelatina CTB (pliego)');
+  if(has(/\bnd\b/) && !has(/\b(par|fresnel|led|hmi)\b/)) return E('Gelatina ND (pliego)');
+  if(has(/\b(216|250|251)\b|difusion (gel|en pliego|rollo)/)) return E('Difusión 216 / 250 (pliego)');
+  if(has(/cinefoil|black ?wrap/)) return E('Cinefoil (rollo)');
+  if(has(/gaffer tape|cinta|\btape\b/)) return E('Cinta gaffer (rollo)');
+  if(has(/pinzas? de madera|c-?47|broches/)) return E('Pinzas de madera (bolsa)');
+  /* servicios */
+  if(has(/camion.*grip/)) return E('Camión de grip con chofer');
+  if(has(/camion|\btruck\b/)) return E('Camión de luces con chofer');
+  if(has(/tecnico|electricista del rental|operador/)) return E('Técnico / eléctrico del rental');
+  if(has(/carga y descarga/)) return E('Carga y descarga');
+  if(has(/\bseguro\b/)) return E('Seguro del equipo');
+  /* eléctrico */
+  if(has(/\beu ?20|honda.*\b2 ?kva/)) return E('Generador Honda EU20is (2 kVA)');
+  if(has(/\beu ?30|honda.*\b3 ?kva/)) return E('Generador Honda EU30is (3 kVA)');
+  if(has(/\beu ?(65|70)|honda.*\b(6\.5|7) ?kva/)) return E('Generador Honda EU65is (6,5 kVA)');
+  const kva = t.match(/\b(\d{2,3}) ?kva\b/);
+  if(kva || has(/generador|grupo electrogeno|\bplanta\b/)){
+    const v = kva ? +kva[1] : 0;
+    const gens = EQUIPOS_LUZ.filter(e => e.kva >= 20);
+    if(!v) return E('Generador 66 kVA');
+    return gens.reduce((a, b) => Math.abs(b.kva - v) < Math.abs(a.kva - v) ? b : a);
+  }
+  if(has(/distribuidor|distro|tablero.*trifas|trifasico/)) return E('Distribuidor trifásico');
+  if(has(/tablero/)) return E('Tablero monofásico');
+  if(has(/dimmer|dimer|variac/)) return E(has(/\b5k\b|\b5\b/) ? 'Dimmer 5K' : 'Dimmer 2K');
+  if(has(/crmx|dmx inalambric|inalambric/)) return E('Transmisor inalámbrico DMX (CRMX)');
+  if(has(/consola|\bdmx\b/)) return E('Consola DMX y cableado');
+  if(has(/linea|cable de fuerza|\b35 ?mm|cable vr|\bvr\b/)) return E('Cable de fuerza (tramo)');
+  if(has(/alargue|prolongac|zapatilla|chicote|extension/)) return E('Prolongaciones y zapatillas (juego)');
+  /* grip: soportes y agarres */
+  if(has(/magic arm|brazos? magic|dedos? magic/)) return E('Magic arm');
+  if(has(/c ?-?stand|ceferino|arana|century/)) return E('C-stand con brazo');
+  if(has(/high ?roller|roller/)) return E('High roller');
+  if(has(/\bcombo/)) return E('Trípode combo');
+  if(has(/super ?clamp|maf+er|cocodrilo|pelicano|lock ?all|grampa|sargento/)) return E('Super clamp / mafer');
+  if(has(/saco|bolsas? de arena|sand ?bag|\bpesas?\b/)) return E('Saco de arena');
+  if(has(/apple ?box|cajon|practicable/)) return E('Juego de apple box');
+  /* movimiento */
+  if(has(/(via|riel)e?s? .*curv|curvas?/) && has(/via|riel/)) return E('Rieles curvos (tramo)');
+  if(has(/\bvias?\b|rieles?|\btrack\b/)) return E('Rieles rectos (tramo)');
+  if(has(/slider|dana dolly/)) return E('Slider');
+  if(has(/dolly|carro de travelling|\bcarro\b/)) return E('Dolly con rieles');
+  if(has(/pluma|\bjib\b/)) return E('Pluma / jib');
+  /* fluorescentes, antes que los marcos (un "Kino 4x4" no es un tamiz) */
+  if(has(/kino|kinoflo|fluo|tubos? fluo|pampa/)){
+    if(has(/\b2 ?x ?4\b|2 (tubos|bancos) (de )?4|2 bank 4/)) return E('Kino Flo 2 tubos 4\'');
+    if(has(/\b4 ?x ?2\b|4 (tubos|bancos) (de )?2|4 bank 2|cort[oa]s?|\b60 ?cm/)) return E('Kino Flo 4 tubos 2\'');
+    return E('Kino Flo 4 tubos 4\'');
+  }
+  /* control de luz */
+  if(has(/butterfly/)) return E('Butterfly 12x12 armado');
+  if(has(/floppy/)) return E('Floppy 4x4');
+  if(has(/cutter/)) return E('Cutter 10x42');
+  if(has(/survival/)) return E('Survival kit Matthews');
+  if(has(/kit (de )?banderas|banderas? \(?kit|juego de banderas/)) return E('Kit de banderas');
+  if(has(/bandera|flag/)){
+    if(has(/18 ?x ?24|45 ?x ?60|60 ?x ?45|40 ?x ?60|60 ?x ?40/)) return E('Bandera 18x24');
+    return E('Bandera 24x36');
+  }
+  if(has(/20 ?x ?20/)) return E('Marco 20x20 con telas');
+  if(has(/12 ?x ?12/)) return E('Marco 12x12 con telas');
+  if(has(/8 ?x ?8/)) return E('Marco 8x8 con telas');
+  if(has(/(tamiz|marco|palio|bastidor|frame|estructura).*6 ?x ?6|6 ?x ?6 .*(tamiz|marco|palio|tela)/)) return E('Marco 6x6 con telas');
+  if(has(/(tamiz|marco|palio|bastidor|frame|estructura).*4 ?x ?4/)) return E('Tamizador 4x4 con telas');
+  if(has(/difusor/)) return E('Difusor 4x4');
+  if(has(/ultra ?bounce/)) return E('Tela ultrabounce');
+  if(has(/grid ?cloth/)) return E('Tela grid cloth');
+  if(has(/duvetyne|tela negra|molton|negro solid/)) return E('Tela negra (duvetyne)');
+  if(has(/\bsilk\b|tela difus|tela blanca/)) return E('Tela silk / difusora');
+  if(has(/telgopor|rebotador|reflector de tel/)) return E('Rebotador de telgopor');
+  if(has(/espejo/)) return E('Espejo');
+  if(has(/chimera|softbox|snap ?bag|octa ?box/)) return E('Chimera / softbox');
+  if(has(/egg ?crate|grilla|huevera|snap ?grid/)) return E('Grilla (egg crate)');
+  /* HMI */
+  if(has(/arri ?max/)) return E('Arrimax 18/12');
+  if(has(/\bm ?90\b/)) return E('Arri M90');
+  if(has(/\bm ?40\b/)) return E('Arri M40');
+  if(has(/\bm ?18\b/)) return E('Arri M18');
+  if(has(/\bm ?8\b/) && !has(/\bmm\b/)) return E('Arri M8');
+  if(has(/joker.*1600|1600.*joker/)) return E('Joker 1600');
+  if(has(/joker.*400|400.*joker|joker ?bug ?400/)) return E('Joker 400');
+  if(has(/joker/)) return E('Joker 800');
+  if(has(/pocket/)) return E('HMI Pocket Par 400');
+  if(has(/space ?light|spacelight/)) return E('Space light 6K');
+  const esPar = has(/\bpar\b/);
+  if(has(/\b18k\b/)) return E('HMI 18K Fresnel');
+  if(has(/\b12k\b/)) return E(esPar ? 'HMI 12K Par' : 'HMI 12K Fresnel');
+  if(has(/\b6k\b/)) return E(esPar ? 'HMI 6K Par' : 'HMI 6K Fresnel');
+  if(has(/\b4k\b/)) return E(esPar ? 'HMI 4K Par' : 'HMI 4K Fresnel');
+  if(has(/\b2\.5k\b/)) return E(esPar ? 'HMI 2.5K Par' : 'HMI 2.5K Fresnel');
+  if(has(/\b1\.2k\b/) || (has(/\b1200\b/) && has(/hmi|par/))) return E('HMI 1.2K Par');
+  if(has(/\b575\b/)) return E('HMI 575 Par');
+  /* LED */
+  if(has(/\bs ?360/)) return E('Arri SkyPanel S360-C');
+  if(has(/\bs ?120/)) return E('Arri SkyPanel S120-C');
+  if(has(/\bs ?60\b|\bs60-?c|sky ?panel ?60/)) return E('Arri SkyPanel S60-C');
+  if(has(/\bs ?30\b|\bs30-?c/)) return E('Arri SkyPanel S30-C');
+  if(has(/sky ?panel/)) return E('Arri SkyPanel S60-C');
+  if(has(/1200 ?d|1200d|aputure 1200|ls ?1200/)) return E('Aputure LS 1200d Pro');
+  if(has(/600 ?c\b|600c/)) return E('Aputure LS 600c Pro');
+  if(has(/600 ?d\b|600d|aputure 600|ls ?600/)) return E('Aputure LS 600d Pro');
+  if(has(/300 ?d\b|300d|ls ?300|aputure 300/)) return E('Aputure LS 300d II');
+  if(has(/\bnova\b/)) return E('Aputure Nova P300c');
+  if(has(/vortex ?24/)) return E('Creamsource Vortex24');
+  if(has(/vortex/)) return E('Creamsource Vortex8');
+  if(has(/titan|helios/)){
+    const kit = has(/\bkit\b|\bset\b|valija|maleta|case/);
+    if(has(/helios/)) return E(kit ? 'Astera Helios (kit 8 tubos)' : 'Astera Helios Tube');
+    if(kit) return E(has(/\b4\b/) && !has(/\b8\b/) ? 'Astera Titan (kit 4 tubos)' : 'Astera Titan (kit 8 tubos)');
+    return E('Astera Titan Tube');
+  }
+  if(has(/litemat.*\b4\b/)) return E('LiteMat Plus 4');
+  if(has(/litemat/)) return E('LiteMat Plus 2');
+  if(has(/evoke/)) return E('Nanlux Evoke 1200');
+  if(has(/forza ?500/)) return E('Nanlite Forza 500');
+  if(has(/forza ?300/)) return E('Nanlite Forza 300');
+  if(has(/forza ?60/)) return E('Nanlite Forza 60');
+  if(has(/gemini.*2 ?x ?1/)) return E('Litepanels Gemini 2x1');
+  if(has(/gemini/)) return E('Litepanels Gemini 1x1');
+  if(has(/panel led|led 1 ?x ?1|1 ?x ?1 led/)) return E('Panel LED 1x1 bicolor');
+  /* prácticos */
+  if(has(/globo chino|bola china|chinese|lantern|farol chino/)) return E(has(/\b90\b/) ? 'Chinese lantern 90 cm' : 'Chinese lantern 60 cm');
+  if(has(/practic/)) return E('Lámparas prácticas dimerizables');
+  /* tungsteno */
+  if(has(/maxi ?brut/)) return E('Maxi Brute 9 lámparas');
+  if(has(/mini ?brut/)) return E(has(/\b4\b|x ?4/) ? 'Mini Brute 4 lámparas' : 'Mini Brute 6 lámparas');
+  if(has(/redhead|red head/)) return E('Redhead 800');
+  if(has(/par ?64/)) return E('Par 64');
+  if(has(/dedo/)) return E('Kit Dedolight (3 unidades)');
+  const abierta = has(/abiert|open ?face|blonde/);
+  if(has(/\b20k\b/)) return E('Fresnel 20K');
+  if(has(/\b10k\b/)) return E('Fresnel 10K');
+  if(has(/\b5k\b/)) return E('Fresnel 5K');
+  if(has(/\b2k\b/)) return E(abierta ? 'Blonde 2K (abierta)' : 'Fresnel 2K');
+  if(has(/\b1k\b/)) return E(abierta ? 'Abierta 1K' : 'Fresnel 1K');
+  if(has(/\b650\b/)) return E('Fresnel 650');
+  if(has(/\b300\b/) && has(/fresnel|tungst|\bpinza\b/)) return E('Fresnel 300');
+  return null;
+}
+/* Cantidad y jornadas de un renglón; devuelve también el texto sin ellas. */
+function cantidadDeTexto(t){
+  let cant = null, resto = t;
+  const pruebas = [
+    /^x ?(\d{1,3})\s+/, /^(\d{1,2})\s*(?:x|u\.?|un\.?|unid\.?|unidades|uds?\.?|-|:)?\s+(?=[a-z0-9])/,
+    /\s(?:x|-|:)\s*(\d{1,3})\s*(?:u\.?|un\.?|unid\.?|unidades)?\.?$/, /\((\d{1,3})\)\s*\.?$/, /\bcant(?:idad)?\.?:?\s*(\d{1,3})/];
+  for(const re of pruebas){ const m = resto.match(re); if(m){ cant = +m[1]; resto = resto.replace(m[0], ' ').trim(); break; } }
+  /* jornadas: "J1", "jornada 2", "dia 1 y 3", "J1 a J3" */
+  let jornadas = null;
+  const rango = resto.match(/\b(?:j|jornadas?|dias?) ?(\d{1,2}) ?(?:a|al|-) ?(?:j|jornada|dia)? ?(\d{1,2})\b/);
+  if(rango){ jornadas = []; for(let i = +rango[1]; i <= +rango[2] && i - rango[1] < 40; i++) jornadas.push(i); }
+  else {
+    const js = [...resto.matchAll(/\b(?:j|jornadas?|dias?) ?(\d{1,2})((?:\s*(?:,|y|e)\s*\d{1,2})*)/g)];
+    if(js.length){ jornadas = []; js.forEach(m => { jornadas.push(+m[1]); (m[2].match(/\d{1,2}/g) || []).forEach(x => jornadas.push(+x)); }); }
+  }
+  return {cant, jornadas: jornadas && jornadas.length ? [...new Set(jornadas)].sort((a,b) => a-b) : null, resto};
+}
+/* Un renglón que no es pedido: títulos, fechas, totales, saludos. */
+const RENGLON_DE_RELLENO = /^(pedido|lista|proyecto|productora|fecha|total|subtotal|cliente|hola|gracias|saludos|equipo de luces|luces|grip|electrico|consumibles|hmi|led|tungsteno|fluorescentes?)\b.{0,30}$/;
+
+function interpretarPedidoTexto(lineas){
+  const out = [];
+  lineas.forEach(orig => {
+    const crudo = String(orig || '').trim(); if(crudo.length < 2) return;
+    const t = normPedido(crudo.replace(/^[\s•·*\-–—>]+/, ''));
+    const {cant, jornadas, resto} = cantidadDeTexto(t);
+    const e = equipoDeTexto(resto) || equipoDeTexto(t);
+    if(!e && (cant == null || RENGLON_DE_RELLENO.test(t))) return;   /* título o comentario */
+    out.push({texto: crudo, k: e ? e.k : null, cant: cant ?? 1, jornadas, incluir: !!e});
+  });
+  return out;
+}
+/* Una planilla: si tiene columnas de cantidad y equipo se usan; si no, cada
+   fila es un renglón de texto. */
+function interpretarPedidoFilas(filas){
+  const N = s => norm(s).trim();
+  let enc = -1, cCant = -1, cEq = -1, cJ = -1, cNota = -1;
+  for(let i = 0; i < Math.min(filas.length, 20) && enc < 0; i++){
+    const f = filas[i] || [];
+    const iCant = f.findIndex(c => /^(cant|cant\.|cantidad|qty|unid|unidades|u|n°|#)$/.test(N(c || '')));
+    const iEq = f.findIndex(c => /(equipo|descrip|item|artefacto|detalle|material|elemento|^luz|^luces)/.test(N(c || '')));
+    if(iEq >= 0){ enc = i; cCant = iCant; cEq = iEq;
+      cJ = f.findIndex(c => /(jornada|dias|fecha)/.test(N(c || '')));
+      cNota = f.findIndex(c => /(obs|nota|coment)/.test(N(c || ''))); }
+  }
+  if(enc < 0) return interpretarPedidoTexto(filas.map(f => (f || []).filter(Boolean).join(' ')));
+  const out = [];
+  filas.slice(enc + 1).forEach(f => {
+    f ||= []; const eq = String(f[cEq] || '').trim(); if(!eq) return;
+    const extra = [cJ >= 0 ? f[cJ] : '', cNota >= 0 ? f[cNota] : ''].filter(Boolean).join(' ');
+    const r = interpretarPedidoTexto([`${cCant >= 0 && n(f[cCant]) > 0 ? n(f[cCant]) + ' x ' : ''}${eq} ${extra}`])[0];
+    if(r){ r.texto = [cCant >= 0 ? f[cCant] : '', eq, extra].filter(Boolean).join(' · '); out.push(r); }
+  });
+  return out;
+}
+async function interpretarArchivoPedido(file){
+  if(/\.(xlsx|xlsm)$/i.test(file.name)){
+    const hojas = await xlsxHojas(new Uint8Array(await file.arrayBuffer()));
+    return hojas.flatMap(h => interpretarPedidoFilas(h.filas));
+  }
+  if(/\.(csv|tsv)$/i.test(file.name)) return interpretarPedidoFilas(filasDeTexto(await file.text()));
+  const txt = await archivoATexto(file);
+  return /\t/.test(txt) ? interpretarPedidoFilas(filasDeTexto(txt)) : interpretarPedidoTexto(txt.split(/\n/));
+}
+
+/* ---------- la caja y la revisión ---------- */
+let _lzImp = null;
+function lzCajaImportarHTML(){
+  return `<div class="pad noprint lz-imp">
+    <div id="lzdrop" class="dropz" ondragover="event.preventDefault();this.classList.add('sobre')"
+      ondragleave="this.classList.remove('sobre')" ondrop="lzSoltarPedido(event)"
+      onclick="document.getElementById('lzfile').click()">
+      <b>Soltá acá el pedido del gaffer</b>
+      <span>Excel, Word, PDF o texto: CLAP lo lee, te muestra lo que entendió y lo suma · o
+        <a href="#" onclick="event.stopPropagation();event.preventDefault();lzPegarPedido()">pegalo como texto</a></span>
+    </div>
+    <input type="file" id="lzfile" accept=".xlsx,.xlsm,.xls,.csv,.tsv,.txt,.docx,.doc,.rtf,.pdf" multiple style="display:none"
+      onchange="lzSoltarPedido(this)">
+  </div>`;
+}
+async function lzSoltarPedido(ev){
+  const files = ev.dataTransfer ? [...ev.dataTransfer.files] : [...(ev.files || [])];
+  if(ev.preventDefault) ev.preventDefault();
+  const z = document.getElementById('lzdrop'); if(z) z.classList.remove('sobre');
+  if(!files.length) return;
+  const filas = [], errores = [];
+  for(const f of files){
+    try{ filas.push(...await interpretarArchivoPedido(f)); }
+    catch(e){ errores.push(`${f.name}: ${e.message}`); }
+  }
+  if(ev.value !== undefined) ev.value = '';
+  if(errores.length) toast(errores.join(' · '));
+  if(!filas.length){ if(!errores.length) toast('No encontré renglones de pedido en el archivo'); return; }
+  lzRevisarImportado(filas, files.map(f => f.name).join(', '));
+}
+function lzPegarPedido(){
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+    <h3>Pegar el pedido</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:8px">Como lo mandó el gaffer: un equipo por renglón, con la cantidad
+        adelante o atrás ("2 x SkyPanel S60", "Ceferinos x10", "1 18K solo J2"). También se puede pegar un pedazo de planilla.</div>
+      <textarea name="texto" rows="12" placeholder="2 SkyPanel S60&#10;1 HMI 18K (solo J2)&#10;Kino 4x4 x2&#10;10 ceferinos&#10;6 banderas 60x90&#10;Generador 66 kva"></textarea>
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="lzPegarPedidoOk()">Interpretar</button></div></div></div>`);
+}
+function lzPegarPedidoOk(){
+  const txt = datos().texto || '';
+  const filas = /\t/.test(txt) ? interpretarPedidoFilas(filasDeTexto(txt)) : interpretarPedidoTexto(txt.split(/\n/));
+  if(!filas.length){ toast('No encontré renglones de pedido'); return; }
+  lzRevisarImportado(filas, 'texto pegado');
+}
+function lzRevisarImportado(filas, origen){
+  _lzImp = filas;
+  const js = jornadasDeLuces(getPy());
+  const ops = `<option value="">— no es un equipo / no sumar —</option>` + CATEGORIAS_LUZ.map(c =>
+    `<optgroup label="${esc(c.l)}">${EQUIPOS_LUZ.filter(e => e.c === c.k).map(e => `<option value="${e.k}">${esc(e.nombre)}</option>`).join('')}</optgroup>`).join('');
+  const reconocidos = filas.filter(f => f.k).length;
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:780px">
+    <h3>Lo que entendí del pedido</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">De ${esc(origen)}: ${filas.length} renglón${filas.length == 1 ? '' : 'es'},
+        ${reconocidos} reconocido${reconocidos == 1 ? '' : 's'}${filas.length - reconocidos ? ` y <b style="color:var(--warn)">${filas.length - reconocidos} para elegir a mano</b>` : ''}.
+        Revisá, corregí lo que haga falta y sumalo. Si un equipo ya está en el pedido, se suma la cantidad.</div>
+      <div class="scrollx"><table class="tbl cst lz-imptab">
+        <thead><tr><th style="width:28px"></th><th>Decía</th><th style="width:38%">Equipo</th><th style="width:64px">Cant.</th><th style="width:110px">Jornadas</th></tr></thead>
+        <tbody>${filas.map((f, i) => `<tr class="${f.k ? '' : 'lz-sin'}">
+          <td><input type="checkbox" ${f.incluir ? 'checked' : ''} style="width:auto" onchange="_lzImp[${i}].incluir=this.checked"></td>
+          <td class="muted" style="font-size:11.5px">${esc(f.texto)}</td>
+          <td><select onchange="_lzImp[${i}].k=this.value||null;_lzImp[${i}].incluir=!!this.value;this.closest('tr').querySelector('input[type=checkbox]').checked=!!this.value;this.closest('tr').classList.toggle('lz-sin',!this.value)">
+            ${ops.replace(`value="${f.k}"`, `value="${f.k}" selected`)}</select></td>
+          <td><input type="number" min="0" step="1" value="${f.cant}" class="lz-num" onchange="_lzImp[${i}].cant=Math.max(0,n(this.value))"></td>
+          <td><input type="text" value="${f.jornadas ? f.jornadas.map(x => 'J' + x).join(' ') : ''}" placeholder="todas"
+            onchange="_lzImp[${i}].jornadas=(this.value.match(/\\d+/g)||[]).map(Number).filter(x=>${JSON.stringify(js)}.includes(x));if(!_lzImp[${i}].jornadas.length)_lzImp[${i}].jornadas=null"></td>
+        </tr>`).join('')}</tbody></table></div>
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
+      <button class="btn pri" onclick="lzSumarImportado()">Sumar al pedido</button></div></div></div>`);
+}
+function lzSumarImportado(){
+  const py = getPy(), js = jornadasDeLuces(py);
+  let k = 0;
+  const P = pedidoDe(py);
+  (_lzImp || []).filter(f => f.incluir && f.k && n(f.cant) > 0).forEach(f => {
+    const antes = P.items.find(x => x.k === f.k);
+    const it = lzSumar(py, f.k, n(f.cant));
+    const sel = (f.jornadas || []).filter(x => js.includes(x));
+    /* nuevo y para algunas jornadas: sólo esas; ya estaba para algunas: se
+       suman; ya estaba para todas: sigue para todas */
+    if(sel.length && sel.length < js.length && (!antes || antes.jornadas))
+      it.jornadas = [...new Set([...(antes && antes.jornadas || []), ...sel])].sort((a,b) => a-b);
+    k++;
+  });
+  _lzImp = null; cerrar();
+  toast(`${k} renglón${k == 1 ? '' : 'es'} sumado${k == 1 ? '' : 's'} al pedido`); R();
+}
 
 /* ---------- mandarlo, pasarlo al presupuesto, bajarlo ---------- */
 function textoPedidoLuces(pr, py){
