@@ -255,7 +255,7 @@ const antes = d.jornadas.length;
 const enLa2 = p.items.filter(x => x.jornada === 2 && x.tipo === 'plano');
 plQuitarJornada();
 ok('quitar la última jornada', d.jornadas.length === antes - 1);
-ok('sus planos vuelven al banco', enLa2.every(x => x.jornada === null));
+ok('sus planos pasan al día anterior (la 1), no al banco', enLa2.length > 0 && enLa2.every(x => x.jornada === 1), enLa2.map(x => x.jornada).join());
 ok('y sus eventos se van', !p.items.some(x => x.jornada === 2));
 
 console.log('\n--- 13. SIN EMPLAZAMIENTOS CARGADOS Y HUECOS ---');

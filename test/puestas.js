@@ -58,7 +58,7 @@ py.desglose.jornadas = [nuevaJornada({ numero: 1, fecha: '2026-10-08' })];
 banco.forEach(x => meterEnJornada(py, x, 1));
 DB.ui.jornada = 1; render();
 ok('la jornada ofrece subir la planta (opcional)', /Planta de cámara/.test(app.innerHTML) && /Subir planta/.test(app.innerHTML));
-ok('el día ofrece proponer puestas y acomodar', /plProponerPuestas\(1\)/.test(app.innerHTML) && /Acomodar por puesta/.test(app.innerHTML));
+ok('el día ofrece un solo "Armar el día" (puestas y orden juntos)', /plArmarDia\(1\)/.test(app.innerHTML) && !/Acomodar por puesta/.test(app.innerHTML));
 p.plantas = [{ id: 'pt1', jornada: 1, nombre: 'Planta cocina', img: 'data:image/jpeg;base64,AAAA' }];
 render();
 ok('subida, se ve en la jornada y sale impresa', /alt="Planta Planta cocina"/.test(app.innerHTML) && !/pl-plantas noprint/.test(app.innerHTML));

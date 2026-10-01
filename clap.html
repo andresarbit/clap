@@ -806,6 +806,9 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
 .pl-selbar select{width:auto;font-size:12.5px;padding:4px 26px 4px 8px}
 .pl-seltip{font-size:11px;flex-basis:100%}
 .pl-selesp{height:120px}
+.pl-marco{position:fixed;z-index:250;pointer-events:none;border:1px solid #1f5fa8;background:rgba(31,95,168,.08);border-radius:3px}
+.pl-marcado{outline:2px dashed #1f5fa8;outline-offset:-2px}
+body.pl-marcando,body.pl-marcando *{user-select:none;cursor:crosshair!important}
 .pl-ghostn{position:absolute;top:-10px;right:-10px;background:#171717;color:#fff;font-size:11px;font-weight:600;border-radius:999px;padding:3px 8px}
 .pl-agrupar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 10px;font-size:12.5px}
 .pl-agrupar label{display:flex;gap:6px;align-items:center}
@@ -9220,11 +9223,11 @@ function plDiaHTML(pr, py, v){
       <button class="btn sm" onclick="plStoryboard()" title="Imágenes, un PDF, o el guion técnico en Excel: cada cuadro o renglón es un plano">Cargar storyboard o guion técnico</button>
       <button class="btn sm" onclick="plShotList()" title="Pegá la lista de planos del director, uno por renglón">Pegar lista de planos</button>
       <button class="btn sm" onclick="plSelTodo(${num})" title="Marca todo el día para moverlo o borrarlo de una vez">Seleccionar todo</button>
-      <button class="btn sm" onclick="plProponerPuestas(${num})" title="Lee cada plano y le propone una puesta: mismo fondo y mismo tiro (de frente, contraplano, cenital) van juntos. No pisa lo que ya cargaste">Proponer puestas</button>
-      <button class="btn sm" onclick="plAcomodar()" title="Junta los planos del mismo set y puesta, de lo abierto a lo cerrado, y deja para el final los de hora dorada y noche">Acomodar por puesta</button>
+      <button class="btn sm pri" onclick="plArmarDia(${num})" title="Propone puestas, ordena por puesta (de lo abierto a lo cerrado), pone el almuerzo en un cambio de puesta, cita al elenco y, si no entra en las horas, pasa puestas enteras a la jornada siguiente. Se puede deshacer">Armar el día</button>
       <div style="flex:1"></div>
       ${D.items && D.filmados < D.items && d.jornadas.length ? `<button class="btn sm" onclick="plPendientes()"
         title="Lo que quedó pendiente o se cayó pasa a otra jornada">Mover lo no filmado…</button>` : ''}
+      <button class="btn sm dgr" onclick="plQuitarJornada(${num})" title="Lo que tiene pasa al día anterior">Quitar esta jornada</button>
     </div>
     ${piezas.length > 1 ? `<div class="pl-piezas noprint"><span class="muted">Mostrar</span>
       <button class="chipb ${!filtro?'on':''}" onclick="DB.ui.plPieza=null;R()">Todo</button>
@@ -9280,10 +9283,10 @@ function plImplicitaHTML(f){
 function plFilaHTML(py, f, mal){
   const it = f.it, id = it.id;
   const d = getD();
-  const mover = `<select class="pl-mover" onchange="plMover('${id}', this.value)" title="Pasar a otra jornada">
-      <option value="">→</option>
-      ${d.jornadas.map(j => j.numero === it.jornada ? '' : `<option value="${j.numero}">J${j.numero}</option>`).join('')}
-      ${it.tipo !== 'evento' ? '<option value="banco">Banco</option>' : ''}</select>`;
+  const mover = `<select class="pl-mover" onchange="plMover('${id}', this.value)" title="Está en la jornada ${it.jornada}: elegí otra o el banco" aria-label="Jornada">
+      <option value="" selected>J${it.jornada}</option>
+      ${d.jornadas.map(j => j.numero === it.jornada ? '' : `<option value="${j.numero}">→ J${j.numero}${j.fecha ? ' · ' + esc(fechaCorta(j.fecha)) : ''}</option>`).join('')}
+      ${it.tipo !== 'evento' ? '<option value="banco">→ Banco</option>' : ''}</select>`;
   const acciones = `<div class="pl-acc noprint">
       <button class="btn sm sube" onclick="plSubir('${id}',-1)" title="Antes">↑</button>
       <button class="btn sm sube" onclick="plSubir('${id}',1)" title="Después">↓</button>
@@ -9372,7 +9375,8 @@ function plBancoHTML(py){
       <button class="btn sm" onclick="plEditar(null,'plano',true)">+ Plano</button></h3>
     ${banco.length > 1 ? `<div class="pl-agrupar"><label class="muted">Agrupar por
         <select onchange="plAgrupar(this.value)">${CRITERIOS_AGRUPAR.map(c => `<option value="${c.k}" ${(DB.ui.plAgrupar || '') === c.k ? 'selected' : ''}>${esc(c.l)}</option>`).join('')}</select></label>
-      <button class="btn sm" onclick="plProponerPuestas(null)" title="Lee cada plano y le propone una puesta: mismo fondo y mismo tiro van juntos. No pisa lo que ya cargaste">Proponer puestas</button>
+      <button class="btn sm pri" onclick="plArmarRodaje()" title="Reparte el banco en jornadas: junta fondos y puestas, ordena cada día, pone el almuerzo, cita al elenco y crea las jornadas que hagan falta. Se puede deshacer">Armar el rodaje</button>
+      <button class="btn sm" onclick="plProponerPuestas(null)" title="Sólo les pone puesta a los planos del banco, sin repartirlos">Sólo proponer puestas</button>
       <button class="btn sm" onclick="plSelTodo(null)">Seleccionar todo</button>
       ${iaActiva() ? `<button class="btn sm" onclick="plLeerCuadrosIA()" title="La IA mira cada cuadro: fondo, tiro, personajes, tamaño, interior o exterior">Leer los cuadros con IA</button>` : ''}</div>` : ''}
     ${banco.length ? `${gruposDePlanos(banco, DB.ui.plAgrupar || '').map(g => `${g.titulo ? `<h5 class="pl-grupo"><label><input type="checkbox" class="noprint"
@@ -9428,7 +9432,7 @@ function plTodasHTML(py){
       <tbody>${filas.join('') || '<tr><td colspan="10" class="empty">Sin jornadas</td></tr>'}</tbody></table></div>
     <div class="pad noprint" style="display:flex;gap:6px;flex-wrap:wrap">
       <button class="btn sm" onclick="plJornadaNueva()">+ Jornada</button>
-      ${d.jornadas.length ? `<button class="btn sm dgr" onclick="plQuitarJornada()">Quitar la última jornada</button>` : ''}</div>
+      ${d.jornadas.length ? `<button class="btn sm dgr" onclick="plQuitarJornada()" title="Lo que tiene pasa a la anterior">Quitar la última jornada</button>` : ''}</div>
   </div>
   ${d.escenas.length ? `<div class="card"><h3>Repartir escenas en jornadas</h3>
     <div class="muted" style="font-size:12px;margin:-4px 0 10px">El orden dentro de cada jornada y los horarios se arman en <b>Día por día</b>.</div>
@@ -9471,30 +9475,10 @@ function plLugar(k){
   RP();
 }
 function plJornadaNueva(){
-  const py = getPy(), d = getD();
-  d.jornadasMin = d.jornadas.length + 1;
-  sincronizarJornadas(d);
-  const j = d.jornadas[d.jornadas.length - 1];
-  const ant = d.jornadas[d.jornadas.length - 2];
-  if(ant && ant.fecha && !j.fecha){ const f = new Date(ant.fecha + 'T12:00:00'); f.setDate(f.getDate() + 1);
-    j.fecha = f.toISOString().slice(0, 10); }
-  if(ant){ j.citacion = ant.citacion; }
-  asegurarEventosBase(py);
+  const py = getPy();
+  const j = nuevaJornadaPlan(py);
   DB.ui.jornada = j.numero; DB.ui.subPlan = 'dia';
   toast(`Jornada ${j.numero} creada`); RP();
-}
-function plQuitarJornada(){
-  const py = getPy(), d = getD(), p = planDe(py);
-  const j = d.jornadas[d.jornadas.length - 1]; if(!j) return;
-  if(d.escenas.some(e => e.jornada === j.numero)){ toast(`La jornada ${j.numero} tiene escenas: sacalas antes.`); return; }
-  const planos = p.items.filter(x => x.jornada === j.numero && x.tipo === 'plano');
-  if(!confirm(`¿Quitar la jornada ${j.numero}?${planos.length ? ` Sus ${planos.length} planos vuelven al banco.` : ''}`)) return;
-  planos.forEach(x => meterEnJornada(py, x, null));
-  p.items = p.items.filter(x => x.jornada !== j.numero);
-  d.jornadasMin = d.jornadas.length - 1;
-  d.jornadas = d.jornadas.filter(x => x !== j);
-  if(DB.ui.jornada === j.numero) DB.ui.jornada = d.jornadas.length ? d.jornadas[d.jornadas.length - 1].numero : null;
-  R();
 }
 function plSubir(id, dir){
   const py = getPy(), it = plItem(id); if(!it || it.jornada == null) return;
@@ -10310,6 +10294,7 @@ function plInstalarArrastre(){
   if(typeof document === 'undefined' || typeof document.addEventListener !== 'function' || plInstalarArrastre.hecho) return;
   plInstalarArrastre.hecho = true;
   document.addEventListener('pointerdown', plDragInicio);
+  document.addEventListener('pointerdown', plMarcoInicio);
   document.addEventListener('click', ev => { if(_plSinClick){ ev.stopPropagation(); ev.preventDefault(); _plSinClick = false; } }, true);
 }
 function plDragInicio(ev){
@@ -10540,6 +10525,304 @@ function plSelBarraHTML(py){
     <button class="btn sm" onclick="plSelNada()">Quitar selección</button>
     <span class="muted pl-seltip">Arrastrá uno de los marcados y se mueve todo el bloque · Shift marca un rango</span>
   </div>`;
+}
+
+/* ==========================  ARMAR EL DÍA  ===============================
+   "Proponer puestas" y "Acomodar por puesta" eran dos mitades de lo mismo:
+   la primera decide qué planos comparten puesta, la segunda ordena el día
+   con eso. Separados obligaban a saber el orden de los botones. Ahora es UN
+   paso, que además hace lo que un AD hace después a mano:
+     1. propone la puesta de los planos que no la tienen,
+     2. ordena por puesta, de lo abierto a lo cerrado, con lo de hora dorada,
+        azul y noche al final,
+     3. pone el almuerzo en un cambio de puesta (no en el medio de una), entre
+        3 y 6 horas después de la citación (el máximo se cambia en Ajustes),
+     4. cita a cada actor según su primer plano (menos maquillaje y
+        vestuario) y a maquillaje/vestuario con el primer actor,
+     5. si el día se pasa de horas, manda puestas enteras a la jornada
+        siguiente —y la crea si no está—, y arma esa también.
+   No toca lo filmado, ni las citaciones que se escribieron a mano. Se puede
+   deshacer de un toque.                                                     */
+const ANCLADO = it => ['dorada','azul','noche'].includes(it.luz) || aMin(it.fijo) != null;
+function claveGrupo(py, it){
+  return it.tipo === 'escena' ? 'e|' + setDeItem(py, it)
+    : 'p|' + lugarBase(it.set) + '|' + norm(it.set || '') + '|' + (it.emplazamiento || it.id);
+}
+const filmablesDe = (py, num) => planDe(py).items.filter(x => x.jornada === num && x.tipo !== 'evento').sort((a, b) => a.orden - b.orden);
+function gruposDelDia(py, num){
+  const out = [];
+  filmablesDe(py, num).filter(x => x.estado !== 'filmado').forEach(it => {
+    const k = claveGrupo(py, it), g = out[out.length - 1];
+    if(g && g.k === k) g.items.push(it); else out.push({k, items:[it]});
+  });
+  return out;
+}
+/* una jornada más, al final, con su fecha (el día siguiente) y sus eventos */
+function nuevaJornadaPlan(py){
+  const d = py.desglose || (py.desglose = nuevoDesglose());
+  d.jornadasMin = d.jornadas.length + 1;
+  sincronizarJornadas(d);
+  const j = d.jornadas[d.jornadas.length - 1], ant = d.jornadas[d.jornadas.length - 2];
+  if(ant && ant.fecha && !j.fecha){ const f = new Date(ant.fecha + 'T12:00:00'); f.setDate(f.getDate() + 1);
+    j.fecha = f.toISOString().slice(0, 10); }
+  if(ant) j.citacion = ant.citacion;
+  asegurarEventosBase(py);
+  return j;
+}
+/* El almuerzo, en el mejor corte: dentro de la ventana (3 h a máximo desde la
+   citación), en un cambio de puesta si se puede, cerca de las 5 h. */
+function ubicarAlmuerzo(py, num){
+  const p = planDe(py), hasta = (n(p.horasHastaComida) || 6) * 60;
+  const films = filmablesDe(py, num);
+  if(!films.length) return null;
+  let alm = p.items.find(x => x.jornada === num && x.tipo === 'evento' && x.clase === 'almuerzo');
+  if(!alm){
+    const D0 = calcularDia(py, num);
+    if(D0.fin - D0.inicio <= hasta) return null;
+    alm = nuevoItemPlan({tipo:'evento', clase:'almuerzo', jornada:num}); p.items.push(alm);
+  }
+  alm.fijo = '';
+  reordenar(py, num);
+  let mejor = null;
+  const probar = (orden, cambia) => {
+    alm.orden = orden;
+    const D = calcularDia(py, num), f = D.filas.find(r => r.it === alm); if(!f) return;
+    const desde = f.inicio - D.inicio;
+    const puntos = (desde <= hasta && desde >= 180 ? 0 : 1e6 + Math.abs(desde - hasta)) + (cambia ? 0 : 5000) + Math.abs(desde - 300);
+    if(!mejor || puntos < mejor.puntos) mejor = {puntos, orden, inicio: f.inicio};
+  };
+  for(let i = 1; i < films.length; i++) probar(films[i].orden - 0.5, claveGrupo(py, films[i - 1]) !== claveGrupo(py, films[i]));
+  /* un día corto: se filma todo y después se come */
+  probar(films[films.length - 1].orden + 0.5, true);
+  if(!mejor) return alm;
+  alm.orden = mejor.orden;
+  reordenar(py, num);
+  alm.fijo = aHora(Math.round(mejor.inicio / 5) * 5);
+  return alm;
+}
+/* Citaciones que salen del plan. Las que se escribieron a mano no se tocan. */
+function citarDia(py, num){
+  const d = py.desglose, j = d && d.jornadas.find(x => x.numero === num);
+  if(!j) return 0;
+  j.citaciones ||= {};
+  let k = 0;
+  const poner = (clave, datos) => { const c = j.citaciones[clave];
+    if(c && c.citacion && !c.auto) return; j.citaciones[clave] = {...(c || {}), ...datos, auto:true}; k++; };
+  const E = elencoDelDia(py, num);
+  E.forEach(x => poner('p:' + x.nombre, {citacion: aHora(x.citacion), maquillaje: aHora(x.citacion), set: aHora(x.primera)}));
+  if(E.length){
+    const primero = Math.min(...E.map(x => x.citacion));
+    try{
+      const C = armarCallsheet(py, getV(), num);
+      (C.crew || []).forEach(c => { if(/maquill|peinad|vestuar/i.test(`${c.depto || ''} ${c.funcion || ''}`))
+        poner(c.clave, {citacion: aHora(primero)}); });
+    }catch(e){ /* sin presupuesto no hay equipo técnico que citar */ }
+  }
+  return k;
+}
+function armarDia(py, num, rep){
+  rep ||= {jornadas: new Set(), pasados: 0, creadas: 0, citados: 0, profundidad: 0};
+  rep.jornadas.add(num);
+  const p = planDe(py);
+  proponerPuestas(filmablesDe(py, num).filter(x => x.tipo === 'plano' && x.estado !== 'filmado'));
+  acomodarPorEmplazamiento(py, num);
+  ubicarAlmuerzo(py, num);
+  ubicarFijos(py, num);
+  /* lo que no entra en la jornada pasa a la siguiente, por puestas enteras:
+     primero las que no dependen de una luz (la hora dorada es de este día) */
+  let movidos = 0;
+  for(let v = 0; v < 80; v++){
+    const D = calcularDia(py, num);
+    if(!(D.extra > 0)) break;
+    const grupos = gruposDelDia(py, num);
+    let mover = null;
+    if(grupos.length > 1){
+      const candidatos = grupos.slice(1);
+      mover = ([...candidatos].reverse().find(g => !g.items.some(ANCLADO)) || candidatos[candidatos.length - 1]).items;
+    } else if(grupos.length === 1 && grupos[0].items.length > 1){
+      mover = [grupos[0].items[grupos[0].items.length - 1]];
+    } else break;
+    const d = py.desglose;
+    if(!d.jornadas.some(x => x.numero === num + 1)){ nuevaJornadaPlan(py); rep.creadas++; }
+    mover.forEach(it => { if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); if(e) e.jornada = num + 1; }
+      meterEnJornada(py, it, num + 1); });
+    movidos += mover.length;
+    ubicarAlmuerzo(py, num);
+  }
+  rep.pasados += movidos;
+  rep.citados += citarDia(py, num);
+  volcarHorarios(py, num);
+  if(movidos && rep.profundidad < 60){ rep.profundidad++; armarDia(py, num + 1, rep); }
+  return rep;
+}
+/* El banco entero, repartido en jornadas: se juntan los fondos y las puestas,
+   se llena la primera jornada libre y lo que no entra va pasando. */
+function armarRodaje(py){
+  const p = planDe(py), d = py.desglose || (py.desglose = nuevoDesglose());
+  const banco = p.items.filter(x => x.jornada == null && x.tipo === 'plano').sort((a, b) => a.orden - b.orden);
+  if(!banco.length) return null;
+  proponerPuestas(banco);
+  if(!d.jornadas.length) nuevaJornadaPlan(py);
+  asegurarEventosBase(py);
+  const libre = d.jornadas.find(j => !filmablesDe(py, j.numero).some(x => x.estado !== 'filmado'));
+  const destino = (libre || d.jornadas[d.jornadas.length - 1]).numero;
+  /* por fondo y por puesta, en el orden en que aparecen; de lo abierto a lo cerrado */
+  const primeraSet = {}, primeraPuesta = {};
+  banco.forEach((x, i) => { const s = lugarBase(x.set) + '|' + norm(x.set || ''); if(!(s in primeraSet)) primeraSet[s] = i;
+    const k = s + '|' + x.emplazamiento; if(!(k in primeraPuesta)) primeraPuesta[k] = i; });
+  const ordenados = [...banco].sort((a, b) => {
+    const sa = lugarBase(a.set) + '|' + norm(a.set || ''), sb = lugarBase(b.set) + '|' + norm(b.set || '');
+    return (primeraSet[sa] - primeraSet[sb]) || (primeraPuesta[sa + '|' + a.emplazamiento] - primeraPuesta[sb + '|' + b.emplazamiento])
+      || (RANGO_TAMANO(a.tamano) - RANGO_TAMANO(b.tamano)); });
+  ordenados.forEach(it => meterEnJornada(py, it, destino));
+  return armarDia(py, destino);
+}
+
+/* ---------- deshacer ---------- */
+let _plAntes = null;
+function plFoto(py){
+  const p = planDe(py), d = py.desglose || nuevoDesglose();
+  _plAntes = {pyId: py.id, items: JSON.stringify(p.items), jornadas: JSON.stringify(d.jornadas),
+    escenas: d.escenas.map(e => [e.id, e.jornada]), jornadasMin: d.jornadasMin, jornada: DB.ui.jornada};
+}
+function plDeshacer(){
+  const py = getPy(); if(!_plAntes || !py || _plAntes.pyId !== py.id){ toast('No hay nada para deshacer'); return; }
+  const p = planDe(py), d = py.desglose, A = _plAntes;
+  p.items = JSON.parse(A.items); d.jornadas = JSON.parse(A.jornadas); d.jornadasMin = A.jornadasMin;
+  const j = Object.fromEntries(A.escenas); d.escenas.forEach(e => { if(e.id in j) e.jornada = j[e.id]; });
+  DB.ui.jornada = A.jornada; _plAntes = null; _plSel.clear();
+  cerrar(); toast('Volvió como estaba'); R();
+}
+function plResumenArmado(py, rep, titulo){
+  const nums = [...rep.jornadas].sort((a, b) => a - b), d = py.desglose;
+  const filas = nums.map(num => { const D = calcularDia(py, num), j = d.jornadas.find(x => x.numero === num) || {};
+    const mal = D.avisos.filter(a => a.nivel === 'mal').length;
+    return `<tr><td><b>J${num}</b>${j.fecha ? ' · ' + esc(fechaCorta(j.fecha)) : ''}</td><td class="num">${D.items}</td>
+      <td class="num">${aHora(D.inicio)}</td><td class="num">${D.comida ? aHora(D.comida.inicio) : '—'}</td><td class="num">${aHora(D.fin)}</td>
+      <td class="num ${D.extra ? 'pl-rojo' : 'muted'}">${D.extra ? durTexto(D.extra) : '—'}</td>
+      <td class="num ${mal ? 'pl-rojo' : 'muted'}">${mal || '—'}</td></tr>`; }).join('');
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:640px">
+    <h3>${esc(titulo)}</h3><div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
+        Por puesta, de lo abierto a lo cerrado; el almuerzo en un cambio de puesta; ${rep.citados} citacion${rep.citados == 1 ? '' : 'es'} del elenco y de maquillaje/vestuario pasadas al callsheet.
+        ${rep.pasados ? `<b>${rep.pasados} ${rep.pasados == 1 ? 'pasó' : 'pasaron'} a la jornada siguiente</b> porque no entraba${rep.pasados == 1 ? '' : 'n'} en las horas` : 'Todo entra en las horas'}${rep.creadas ? `, y se ${rep.creadas == 1 ? 'creó 1 jornada' : `crearon ${rep.creadas} jornadas`}` : ''}.
+        Es una propuesta: corregí lo que haga falta arrastrando.</div>
+      <div class="scrollx"><table class="tbl cst"><thead><tr><th>Jornada</th><th class="num">Planos</th><th class="num">Citación</th>
+        <th class="num">Almuerzo</th><th class="num">Wrap</th><th class="num">Extras</th><th class="num">Avisos</th></tr></thead>
+        <tbody>${filas}</tbody></table></div>
+    </div><div class="mfoot"><button class="btn" onclick="plDeshacer()">Deshacer</button><div style="flex:1"></div>
+      <button class="btn pri" onclick="cerrar()">Listo</button></div></div></div>`);
+}
+function plArmarDia(num){
+  const py = getPy(); if(num == null) return;
+  if(!filmablesDe(py, num).length){ toast('La jornada no tiene planos'); return; }
+  plFoto(py);
+  const rep = armarDia(py, num);
+  DB.ui.jornada = num;
+  plResumenArmado(py, rep, `Jornada ${num} armada`);
+}
+function plArmarRodaje(){
+  const py = getPy();
+  plFoto(py);
+  const rep = armarRodaje(py);
+  if(!rep){ toast('El banco está vacío'); return; }
+  DB.ui.jornada = Math.min(...rep.jornadas); DB.ui.subPlan = 'dia';
+  plResumenArmado(py, rep, 'Rodaje armado');
+}
+
+/* ---------- quitar una jornada ----------
+   Cualquiera, no sólo la última. Lo que tenía pasa al día anterior que
+   queda (si era la primera, a la que pasa a ser primera) y las siguientes se
+   renumeran.                                                               */
+function quitarJornada(py, num){
+  const d = py.desglose, p = planDe(py);
+  const idx = d.jornadas.findIndex(j => j.numero === num); if(idx < 0) return null;
+  const quedan = d.jornadas.length - 1;
+  const dest = !quedan ? null : num > 1 ? num - 1 : num + 1;
+  const llevar = p.items.filter(x => x.jornada === num && x.tipo !== 'evento').sort((a, b) => a.orden - b.orden);
+  d.escenas.forEach(e => { if(e.jornada === num) e.jornada = dest; });
+  llevar.forEach(it => meterEnJornada(py, it, dest));
+  p.items = p.items.filter(x => x.jornada !== num);
+  d.jornadas.splice(idx, 1);
+  p.items.forEach(x => { if(x.jornada != null && x.jornada > num) x.jornada--; });
+  d.escenas.forEach(e => { if(e.jornada && e.jornada > num) e.jornada--; });
+  d.jornadasMin = d.jornadas.length;
+  sincronizarJornadas(d);
+  return {dest: dest == null ? null : dest > num ? dest - 1 : dest, llevados: llevar.length};
+}
+function plQuitarJornada(num){
+  const py = getPy(), d = getD();
+  if(num == null) num = d.jornadas.length ? d.jornadas[d.jornadas.length - 1].numero : null;
+  if(num == null) return;
+  const n0 = planDe(py).items.filter(x => x.jornada === num && x.tipo !== 'evento').length;
+  const j = d.jornadas.find(x => x.numero === num);
+  const conParte = j && j.parte && Object.keys(j.parte.fichadas || {}).length;
+  const destTxt = d.jornadas.length === 1 ? 'al banco' : num > 1 ? `a la jornada ${num - 1}` : 'a la jornada que pasa a ser la 1';
+  if(!confirm(`¿Quitar la jornada ${num}?${n0 ? ` Sus ${n0} ${planPorEscenas(py) ? 'escenas' : 'planos'} pasan ${destTxt}.` : ''}${num < d.jornadas.length ? ' Las siguientes se renumeran.' : ''}${conParte ? ' Se pierde el parte de ese día.' : ''}`)) return;
+  plFoto(py);
+  const r = quitarJornada(py, num);
+  DB.ui.jornada = r && r.dest != null ? r.dest : (d.jornadas.length ? d.jornadas[0].numero : null);
+  toast(`Jornada ${num} quitada${r && r.llevados ? ` · ${r.llevados} pasaron ${r.dest ? 'a la jornada ' + r.dest : 'al banco'}` : ''}`);
+  RP();
+}
+
+/* ---------- seleccionar arrastrando, con el mouse ----------
+   Como en el escritorio de la compu: se aprieta en un lugar vacío y se
+   arrastra un rectángulo; queda marcado lo que toca (con Shift o Ctrl se
+   suma a lo que ya estaba). Apretando sobre una casilla y arrastrando por
+   los renglones, se van marcando (o desmarcando) de corrido. En el celular
+   no: ahí el dedo hace scroll y se marca con la casilla.                   */
+let _plMarco = null;
+function plMarcoInicio(ev){
+  if((ev.pointerType && ev.pointerType !== 'mouse') || ev.button !== 0 || DB.ui.tab !== 'plan') return;
+  const t = ev.target; if(!t || !t.closest || !t.closest('#vista')) return;
+  if(t.closest('.pl-selcb')){
+    const el = t.closest('[data-pl]'); if(!el) return;
+    _plMarco = {modo:'pintar', marcar: !_plSel.has(el.dataset.pl), vistos: new Set([el.dataset.pl]), x0: ev.clientX, y0: ev.clientY};
+  } else {
+    if(t.closest('[data-pl],input,select,button,textarea,a,label,summary,.pl-chip,.pl-selbar,.mod,.pl-franja,img')) return;
+    _plMarco = {modo:'marco', x0: ev.clientX, y0: ev.clientY, sumar: ev.shiftKey || ev.ctrlKey || ev.metaKey, dentro: []};
+    ev.preventDefault();
+  }
+  document.addEventListener('pointermove', plMarcoMover, {passive:false});
+  document.addEventListener('pointerup', plMarcoFin);
+  document.addEventListener('pointercancel', plMarcoFin);
+}
+function plMarcoMover(ev){
+  const M = _plMarco; if(!M) return;
+  if(!M.movio){
+    if(Math.hypot(ev.clientX - M.x0, ev.clientY - M.y0) < 6) return;
+    M.movio = true; document.body.classList.add('pl-marcando');
+    try{ window.getSelection().removeAllRanges(); }catch(e){}
+    if(M.modo === 'marco'){ M.div = document.createElement('div'); M.div.className = 'pl-marco'; document.body.appendChild(M.div); }
+  }
+  ev.preventDefault();
+  if(M.modo === 'pintar'){
+    const bajo = document.elementFromPoint(ev.clientX, ev.clientY), el = bajo && bajo.closest && bajo.closest('[data-pl]');
+    if(el) M.vistos.add(el.dataset.pl);
+    M.vistos.forEach(id => { const e = document.querySelector(`[data-pl="${id}"]`); if(!e) return;
+      e.classList.toggle('pl-marcado', M.marcar); const cb = e.querySelector('.pl-selcb'); if(cb) cb.checked = M.marcar; });
+    return;
+  }
+  const x1 = Math.min(M.x0, ev.clientX), x2 = Math.max(M.x0, ev.clientX), y1 = Math.min(M.y0, ev.clientY), y2 = Math.max(M.y0, ev.clientY);
+  Object.assign(M.div.style, {left: x1 + 'px', top: y1 + 'px', width: (x2 - x1) + 'px', height: (y2 - y1) + 'px'});
+  M.dentro = [];
+  document.querySelectorAll('#vista [data-pl]').forEach(e => { const r = e.getBoundingClientRect();
+    const toca = r.right > x1 && r.left < x2 && r.bottom > y1 && r.top < y2;
+    e.classList.toggle('pl-marcado', toca); if(toca) M.dentro.push(e.dataset.pl); });
+}
+function plMarcoFin(){
+  const M = _plMarco; _plMarco = null;
+  document.removeEventListener('pointermove', plMarcoMover);
+  document.removeEventListener('pointerup', plMarcoFin);
+  document.removeEventListener('pointercancel', plMarcoFin);
+  document.body.classList.remove('pl-marcando');
+  if(M && M.div) M.div.remove();
+  if(!M || !M.movio) return;
+  _plSinClick = true; setTimeout(() => { _plSinClick = false; }, 50);
+  if(M.modo === 'pintar') M.vistos.forEach(id => M.marcar ? _plSel.add(id) : _plSel.delete(id));
+  else { if(!M.sumar) _plSel.clear(); M.dentro.forEach(id => _plSel.add(id)); }
+  R();
 }
 
 /* ---------- lista de planos pegada ---------- */

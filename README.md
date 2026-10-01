@@ -535,10 +535,24 @@ Del storyboard sale una lista en el orden del spot; se filma por **puesta**:
 lo que comparte fondo y hacia dónde mira la cámara (el **tiro**) se hace
 junto, porque cada cambio es mover luces y grip.
 
-- **Proponer puestas** (en el banco y en cada jornada): lee cada plano y le
-  pone una letra por fondo y tiro. Lo de frente y la subjetiva van juntos; el
-  contraplano y el cenital, aparte. No pisa lo que el AD ya cargó. Después,
-  **Acomodar por puesta** ordena el día de lo abierto a lo cerrado.
+- **Armar el día** (en cada jornada) hace de una vez lo que antes eran dos
+  botones (proponer puestas y acomodar, que eran dos mitades de lo mismo) y
+  lo que el AD hacía después a mano: propone la puesta de lo que no la tiene
+  (una letra por fondo y tiro; frente y subjetiva juntos, contraplano y
+  cenital aparte), ordena por puesta de lo abierto a lo cerrado con la hora
+  dorada/azul/noche al final, pone el almuerzo en un cambio de puesta entre
+  3 y 6 h de la citación (en un día corto, después del último plano), cita a
+  cada actor por su primer plano y a maquillaje/vestuario con el primero, y
+  si el día se pasa de horas manda puestas enteras a la jornada siguiente
+  (la crea si no está) y la arma también. No toca lo filmado ni las
+  citaciones escritas a mano. Muestra cómo quedó cada día y se puede
+  **deshacer**.
+- **Armar el rodaje** (en el banco): reparte todo el banco en jornadas con la
+  misma lógica.
+- **Quitar esta jornada**: cualquiera, no sólo la última. Lo que tenía pasa
+  al día anterior que queda y las siguientes se renumeran.
+- El desplegable de cada renglón dice en qué jornada está ("J1") y lleva a
+  otra o al banco.
 - **Agrupar por** puesta, tiro, personaje o fondo, para mirar el banco como
   lo piensa un AD. Agrupar por personaje usa el elenco o, si no está, los
   nombres de la descripción, sin tocar el elenco.
@@ -548,9 +562,12 @@ junto, porque cada cambio es mover luces y grip.
   subjetiva, cenital).
 - **Seleccionar varios**: casilla en cada cuadro del banco y en cada renglón
   de la jornada; Shift marca un rango y el título de cada grupo marca el grupo
-  entero. Con lo marcado: mover a una jornada o al banco, ponerles puesta o
-  borrar de una vez. Arrastrar uno de los marcados mueve el bloque entero, en
-  el mismo orden. Prueba: `test/seleccion.js`.
+  entero. Con el mouse también se marca **arrastrando**: un rectángulo desde
+  un lugar vacío (Shift o Ctrl suma), o apretando sobre una casilla y
+  pasando por las demás. En el celular, con la casilla. Con lo marcado:
+  mover a una jornada o al banco, ponerles puesta o borrar de una vez.
+  Arrastrar uno de los marcados mueve el bloque entero, en el mismo orden.
+  Prueba: `test/seleccion.js`.
 
 Sin IA se lee el texto de cada cuadro. Con la IA prendida aparece **Leer los
 cuadros con IA**: mira la imagen y completa lo vacío (fondo, tiro,
@@ -1189,6 +1206,7 @@ node test/run.js test/pedido-luces-importar.js # interpretar el pedido del gaffe
 node test/run.js test/rentales.js  # mail por rental, leer respuestas OK/NO, reparto y precios guardados
 node test/run.js test/puestas.js   # storyboard por puesta/tiro/personaje/fondo, planta, IA simulada
 node test/run.js test/seleccion.js # marcar varios: mover el bloque, ponerles puesta, borrar
+node test/run.js test/armar.js     # armar dia y rodaje: horas, almuerzo, citaciones, jornadas nuevas, deshacer, quitar jornada
 node test/run.js test/funcion-ia.js # la funcion del servidor: sesion, productora, sin clave, tope
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO
