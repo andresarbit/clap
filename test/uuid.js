@@ -32,7 +32,11 @@ function envejecer() {
       const v = x[k];
       if (typeof v === 'string' && mapa.has(v)) x[k] = mapa.get(v);
       else reesc(v);
-      if (mapa.has(k)) { x[mapa.get(k)] = x[k]; delete x[k]; }
+      /* las claves con prefijo ('l:<línea>', 'p:<persona>') también: si no se
+         envejecen, el test no ve si la migración se las olvida */
+      const m = /^([a-z]{1,4}):(.+)$/.exec(k);
+      const k2 = mapa.has(k) ? mapa.get(k) : (m && mapa.has(m[2]) ? m[1] + ':' + mapa.get(m[2]) : null);
+      if (k2) { x[k2] = x[k]; delete x[k]; }
     }
   })(DB);
   return mapa.size;
@@ -66,6 +70,17 @@ const J0 = PY0.desglose.jornadas[0];
 J0.parte ||= nuevoParte();
 J0.parte.fichadas[per.id] = { entrada: '07:00', salida: '19:00' };
 J0.parte.citados[per.id] = '07:00';
+/* así las guarda la app de verdad: con prefijo. 'l:' + id de la línea en el
+   parte, las citaciones y los contactos; 'p:' + id de la persona en la
+   liquidación. 'p:Ana' es un personaje (un nombre, no un id): no se toca. */
+J0.parte.fichadas['l:' + linea.id] = { entrada: '06:30', salida: '20:00' };
+J0.parte.citados['l:' + linea.id] = '06:30';
+J0.citaciones ||= {};
+J0.citaciones['l:' + linea.id] = { citacion: '06:30', locacion: 'Estudio' };
+J0.parte.fichadas['p:Ana'] = { entrada: '09:00', salida: '15:00' };
+PY0.contactos.porLinea['l:' + linea.id] = { nombre: 'Roberto Díaz', tel: '11 5555-2' };
+PY0.liquidacion ||= {};
+PY0.liquidacion['p:' + per.id] = { estado: 'pagado', ajuste: 1500 };
 if (PY0.comprobantes.length) PY0.comprobantes[0].lineaId = linea.id;
 if (!PY0.desglose.escenas.length)
   PY0.desglose.escenas.push(nuevaEscena({ numero: 1, encabezado: 'INT. CASA - DIA' }));
@@ -106,13 +121,36 @@ const colgadas = [];
 ok('ningún campo *Id apunta al vacío', colgadas.length === 0, colgadas.slice(0, 4).join(' ') || 'ninguno');
 
 console.log('\n--- 5. LAS CLAVES DE OBJETO, QUE ES LO QUE SE OLVIDA ---');
-ok('contactos.porLinea se reindexó', Object.keys(PY.contactos.porLinea)[0] === ln.id,
+ok('contactos.porLinea se reindexó', !!PY.contactos.porLinea[ln.id],
   Object.keys(PY.contactos.porLinea)[0]);
 ok('y conservó el contenido', PY.contactos.porLinea[ln.id].nombre === 'Roberto Díaz');
 const parte = PY.desglose.jornadas[0].parte;
 ok('las fichadas se reindexaron', !!parte.fichadas[P.id], Object.keys(parte.fichadas).join(','));
 ok('con su horario intacto', parte.fichadas[P.id].entrada === '07:00');
 ok('los citados también', parte.citados[P.id] === '07:00');
+/* las claves con prefijo, que son las que usa la app de verdad */
+ok('fichadas "l:" + línea se reindexaron', parte.fichadas['l:' + ln.id]?.entrada === '06:30',
+  Object.keys(parte.fichadas).join(','));
+ok('citados "l:" + línea también', parte.citados['l:' + ln.id] === '06:30');
+const cit = PY.desglose.jornadas[0].citaciones;
+ok('las citaciones "l:" + línea también', cit['l:' + ln.id]?.locacion === 'Estudio', Object.keys(cit).join(','));
+ok('contactos.porLinea "l:" + línea también', PY.contactos.porLinea['l:' + ln.id]?.tel === '11 5555-2',
+  Object.keys(PY.contactos.porLinea).join(','));
+ok('la liquidación "p:" + persona también', PY.liquidacion['p:' + P.id]?.ajuste === 1500,
+  Object.keys(PY.liquidacion).join(','));
+ok('el personaje "p:Ana" quedó como estaba', parte.fichadas['p:Ana']?.entrada === '09:00');
+/* ninguna clave con prefijo quedó apuntando a un id que ya no existe */
+const huerfanas = [];
+(function rev(x, ruta) {
+  if (Array.isArray(x)) return x.forEach((v, i) => rev(v, ruta + '[' + i + ']'));
+  if (!x || typeof x !== 'object') return;
+  for (const [k, v] of Object.entries(x)) {
+    if (/^[a-z]{1,4}:x\d+_/.test(k)) huerfanas.push(ruta + '.' + k);
+    rev(v, ruta + '.' + k);
+  }
+})(DB.productoras, 'productoras');
+ok('ninguna clave con prefijo quedó con un id viejo', huerfanas.length === 0, huerfanas.slice(0, 3).join(' ') || 'ninguna');
+ok('y la que ve el rodaje es la de la línea nueva', !horasDeLinea(PY, '05', ln, PY.desglose.jornadas[0], nuevaConfigRodaje()).sinDatos);
 
 console.log('\n--- 6. LA UI SIGUE APUNTANDO A ALGO QUE EXISTE ---');
 ok('productora seleccionada existe', !!getPr() && DB.ui.productoraId === PR.id);

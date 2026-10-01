@@ -2843,8 +2843,39 @@ function lapso(desde, hasta){
   return b>=a ? b-a : (b+24*60)-a;
 }
 
-/* Horas de una persona en una jornada, con su costo de hora extra.           */
-function horasDe(clave, j, cfg, valorJornada, moneda){
+/* Cuánto de la jornada ya viene pagado adentro del valor de la línea.
+   Una línea que salió del convenio con jornada de 12 h ya trae 4 extras
+   cobradas: su hora NO es valor/12 sino la de 8 h (j8/8), y la hora 13 sigue
+   el reparto desde la 5ª extra (con 50/100/200/300 cae en el tramo del 100%,
+   no en el del 50%). El valor de 8 h se despeja del valor de la línea con la
+   misma escala con que se armó: valor = j8 + costoHE(H-8, j8/8).
+   Cualquier otra línea: la hora es valor/H y no hay nada incluido.         */
+function baseHoraDe(cfg, valorJornada, linea){
+  const H = horasJornadaDe(cfg), v = n(valorJornada);
+  if(!(linea && linea.valorOrigen === 'sica'))
+    return {valorHora: v ? v / H : 0, incluidas: 0};
+  /* fuera del rodaje el convenio paga la de 8 h: no trae extras adentro */
+  const incluidas = esJornada8(linea) ? 0 : Math.max(0, H - 8);
+  const factor = repartirHE(incluidas, escalaDe(cfg)).reduce((s,t)=> s + t.horas * (1 + t.recargo/100), 0);
+  return {valorHora: v ? v / (8 + factor) : 0, incluidas};
+}
+/* El reparto de las extras empezando después de las que ya están pagas. */
+function repartirHEDesde(horasExtra, tramos, yaIncluidas){
+  let saltar = Math.max(0, n(yaIncluidas));
+  if(!saltar) return repartirHE(horasExtra, tramos);
+  const out = [];
+  repartirHE(saltar + Math.max(0, n(horasExtra)), tramos).forEach(t => {
+    const h = t.horas - Math.min(saltar, t.horas);
+    saltar = Math.max(0, saltar - t.horas);
+    if(h > 0) out.push({horas:h, recargo:t.recargo});
+  });
+  return out;
+}
+
+/* Horas de una persona en una jornada, con su costo de hora extra.
+   `linea` (opcional) es la línea del presupuesto: hace falta para saber si
+   el valor salió del convenio y ya trae extras adentro.                     */
+function horasDe(clave, j, cfg, valorJornada, moneda, linea){
   const f = (j.parte?.fichadas||{})[clave] || {};
   const brutos = lapso(f.entrada, f.salida);
   if(brutos==null) return {sinDatos:true, entrada:f.entrada||'', salida:f.salida||''};
@@ -2854,10 +2885,11 @@ function horasDe(clave, j, cfg, valorJornada, moneda){
     if(c!=null && c>0 && c<240) comida = c;
   }
   const netos = Math.max(0, brutos - comida);
-  const base = cfg.horasJornada*60;
+  /* la misma jornada que usan el plan y el convenio: nunca menos de 8 h */
+  const base = horasJornadaDe(cfg)*60;
   const extra = Math.max(0, netos - base);
-  const valorHora = valorJornada ? valorJornada / Math.max(1,cfg.horasJornada) : 0;
-  const reparto = repartirHE(extra/60, escalaDe(cfg));
+  const {valorHora, incluidas} = baseHoraDe(cfg, valorJornada, linea);
+  const reparto = repartirHEDesde(extra/60, escalaDe(cfg), incluidas);
   const costoHE = reparto.reduce((sm,t)=> sm + t.horas * valorHora * (1 + t.recargo/100), 0);
   return {sinDatos:false, entrada:f.entrada, salida:f.salida, nota:f.nota||'',
     brutos, comida, netos, extra, valorHora, costoHE, reparto,
@@ -2875,7 +2907,7 @@ function gentePorJornada(py, v, num){
     const l = linea(c.clave.slice(2));
     return {clave:c.clave, grupo:c.depto, rol:c.funcion, nombre:c.nombre,
       tel:c.tel, email:c.email, tipo:'tecnico',
-      valorJornada: l ? n(l.valorUnit) : 0, moneda: l ? l.moneda : 'ARS'};
+      valorJornada: l ? n(l.valorUnit) : 0, moneda: l ? l.moneda : 'ARS', linea: l};
   });
 
   /* al elenco se le busca su línea en el rubro 09 por el nombre del personaje */
@@ -2887,7 +2919,7 @@ function gentePorJornada(py, v, num){
     return {clave:p.clave, grupo:'Elenco', rol:p.personaje,
       nombre: pe?pe.nombre:(g.nombre||''), tel: pe?pe.tel:(g.tel||''), email: pe?pe.email:(g.email||''),
       tipo:'elenco', escenas:p.escenas,
-      valorJornada: l ? n(l.valorUnit) : 0, moneda: l ? l.moneda : 'ARS'};
+      valorJornada: l ? n(l.valorUnit) : 0, moneda: l ? l.moneda : 'ARS', linea: l};
   });
   /* los extras se citan y se fichan por grupo */
   let extras = [];
@@ -4566,7 +4598,17 @@ function migrarIdsAUuid(){
   if(!mapa.size) return 0;
 
   /* 2. reemplazar cada aparición, tanto en valores como en claves */
-  const nuevo = v => mapa.get(v) || v;
+  /* Las claves casi nunca son el id pelado: van con prefijo. 'l:<línea>' en
+     las fichadas, los citados y las citaciones de cada jornada y en
+     contactos.porLinea; 'x:<contacto>' para los contactos sueltos;
+     'p:<persona>' en la liquidación. Se reescribe la parte de después de los
+     dos puntos, y sólo si es EXACTAMENTE un id viejo: 'p:Ana' (el personaje)
+     o 'x:extras' quedan como están. */
+  const claveNueva = k => {
+    if(mapa.has(k)) return mapa.get(k);
+    const m = /^([a-z]{1,4}):(.+)$/.exec(k);
+    return m && mapa.has(m[2]) ? m[1] + ':' + mapa.get(m[2]) : null;
+  };
   (function reescribir(x){
     if(Array.isArray(x)) return x.forEach(reescribir);
     if(!x || typeof x !== 'object') return;
@@ -4574,9 +4616,8 @@ function migrarIdsAUuid(){
       const v = x[k];
       if(typeof v === 'string' && mapa.has(v)) x[k] = mapa.get(v);
       else reescribir(v);
-      /* las claves también: contactos.porLinea y las fichadas del parte
-         están indexadas por id */
-      if(mapa.has(k)){ x[nuevo(k)] = x[k]; delete x[k]; }
+      const k2 = claveNueva(k);
+      if(k2){ x[k2] = x[k]; delete x[k]; }
     }
   })(DB);
 
@@ -6600,7 +6641,7 @@ function vistaResumen(pr,py,v){
         ${d.jornadas.length
           ? `<div class="resd">${d.jornadas.length} jornada${d.jornadas.length==1?'':'s'} planificada${d.jornadas.length==1?'':'s'}</div>
              <div class="resd ${HE.totalExtra?'':'muted'}">Horas extra acumuladas: <b>${fmtHoras(HE.totalExtra)}</b>${HE.totalARS?' · '+fmt(HE.totalARS):''}</div>
-             <div class="resd muted">Jornada base ${cfg.horasJornada} h · extras ${esc(escalaTexto(cfg))}</div>`
+             <div class="resd muted">Jornada base ${horasJornadaDe(cfg)} h · extras ${esc(escalaTexto(cfg))}</div>`
           : `<div class="resd muted">Sin plan de rodaje</div>`}
         <button class="btn sm" onclick="setTab('rodaje')" style="margin-top:6px">Ir al rodaje</button>
       </div>
@@ -8117,7 +8158,7 @@ function parteHTML(pr,py,j,C,gente,cfg){
             return `<tr class="csdep"><td colspan="7">${esc(gr.k || 'Equipo')}
               ${quedan ? `<button class="btn sm noprint" style="float:right" onclick="rdLiberarGrupo('${esc(String(gr.k).replace(/'/g, "\\'"))}')">Liberar a ${quedan == gr.gente.length ? 'todo' : 'los ' + quedan + ' que quedan de'} ${esc(gr.k || 'Equipo')}</button>` : ''}</td></tr>` +
             gr.gente.map(g => {
-          const h = horasDe(g.clave, j, cfg, g.valorJornada, g.moneda), f = p.fichadas[g.clave] || {}, c = j.citaciones[g.clave] || {}, est = estadoFichada(f);
+          const h = horasDe(g.clave, j, cfg, g.valorJornada, g.moneda, g.linea), f = p.fichadas[g.clave] || {}, c = j.citaciones[g.clave] || {}, est = estadoFichada(f);
           return `<tr><td><span class="crol">${esc(g.rol)}</span></td>
             <td class="${g.nombre?'':'muted'}">${esc(g.nombre||'—')}</td>
             <td><div class="rd-hora"><input type="text" value="${esc(h.entrada||'')}" placeholder="${esc(c.citacion||j.citacion||'')}"
@@ -8145,7 +8186,7 @@ function parteHTML(pr,py,j,C,gente,cfg){
 
 /* --- horas y extras ------------------------------------------------------ */
 function horasHTML(pr,py,v,j,gente,cfg){
-  const filas = gente.map(g=>({...g, h:horasDe(g.clave, j, cfg, g.valorJornada, g.moneda)}))
+  const filas = gente.map(g=>({...g, h:horasDe(g.clave, j, cfg, g.valorJornada, g.moneda, g.linea)}))
     .filter(x=>!x.h.sinDatos);
   const conHE = filas.filter(x=>x.h.extra>0);
   const totalHE = conHE.reduce((s,x)=>s+x.h.extra,0);
@@ -8156,7 +8197,7 @@ function horasHTML(pr,py,v,j,gente,cfg){
   return `<div class="cs">
     <div class="cshead">
       <div><div class="csttl">Horas y extras · Jornada ${j.numero}</div>
-        <div class="cssub">Jornada base ${cfg.horasJornada} h · extra ${esc(escalaTexto(cfg))}
+        <div class="cssub">Jornada base ${horasJornadaDe(cfg)} h · extra ${esc(escalaTexto(cfg))}
           ${cfg.descontarComida?'· se descuenta la comida':'· la comida no se descuenta'}</div></div>
       <div style="text-align:right"><div class="csj">${fmtHoras(totalHE)}<span> extras</span></div>
         <div class="cssub">${conHE.length} de ${filas.length} pasaron la jornada</div></div>
@@ -8219,7 +8260,7 @@ function horasProyecto(py, v, cfg){
     const {gente} = gentePorJornada(py, v, jj.numero);
     let extra=0, costoARS=0, fichados=0;
     gente.forEach(g=>{
-      const h = horasDe(g.clave, jj, cfg, g.valorJornada, g.moneda);
+      const h = horasDe(g.clave, jj, cfg, g.valorJornada, g.moneda, g.linea);
       if(h.sinDatos) return;
       fichados++; extra += h.extra;
       if(g.moneda==='ARS') costoARS += h.costoHE;
@@ -15039,10 +15080,10 @@ function rdProveedoresHTML(py, v, j, cfg){
 /* Las horas de una línea en una jornada. El elenco ficha con el nombre del
    personaje ('p:Ana'), no con su línea: se lo busca así. */
 function horasDeLinea(py, rb, l, jj, cfg){
-  const h = horasDe('l:' + l.id, jj, cfg, n(l.valorUnit), l.moneda);
+  const h = horasDe('l:' + l.id, jj, cfg, n(l.valorUnit), l.moneda, l);
   if(!h.sinDatos || rb !== '09') return h;
   const k = Object.keys((jj.parte && jj.parte.fichadas) || {}).find(x => x.startsWith('p:') && norm(x.slice(2)) === norm(l.concepto));
-  return k ? horasDe(k, jj, cfg, n(l.valorUnit), l.moneda) : h;
+  return k ? horasDe(k, jj, cfg, n(l.valorUnit), l.moneda, l) : h;
 }
 function liquidarProveedor(py, v, x){
   const cfg = py.configRodaje || nuevaConfigRodaje(), l = x.l;

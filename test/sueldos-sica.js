@@ -213,5 +213,71 @@ ok('el presupuesto del ejemplo da lo mismo', calcular(getV()).total === totalAnt
 ok('ninguna línea vieja se marcó como del convenio',
   getV().rubros.every(r => r.lineas.every(x => x.valorOrigen !== 'sica')));
 
+console.log('\n--- 13. LAS EXTRAS DE UNA LINEA DEL CONVENIO CON JORNADA LARGA ---');
+/* Una línea del SICA con jornada de 12 h ya trae 4 extras adentro. La hora
+   que se paga es la de 8 h (j8/8), no valor/12, y el reparto sigue desde la
+   5ª extra: con 50/100/200/300 la hora 13 no puede caer en el 50%.        */
+const casiIgual = (a, b) => Math.abs(a - b) < 1;
+const jornadaDe = salida => { const jj = nuevaJornada({numero: 1, fecha: '2026-10-08'});
+  jj.parte = nuevoParte(); jj.parte.fichadas['l:z'] = {entrada: '07:00', salida}; return jj; };
+const lineaSica = cfg => ({id: 'z', concepto: 'Director de Fotografía', moneda: 'ARS', unidad: 'jornada',
+  valorOrigen: 'sica', valorUnit: valorJornadaSICA(df, cfg)});
+const sinComida = o => ({...nuevaConfigRodaje(o), descontarComida: false});
+const vh8 = df.j8 / 8;
+
+const esc12 = sinComida({horasJornada: 12, tramosHE: TRAMOS_HE_ESCALADO.map(t => ({...t}))});
+const lE = lineaSica(esc12);
+let hx = horasDe('l:z', jornadaDe('20:00'), esc12, lE.valorUnit, 'ARS', lE);
+ok('13 h con jornada de 12: 1 h de extra', hx.extra === 60, fmtHoras(hx.extra));
+ok('la hora es la de 8 h del convenio (j8/8), no valor/12', casiIgual(hx.valorHora, vh8),
+  fmt(hx.valorHora) + ' vs ' + fmt(vh8) + ' (antes ' + fmt(lE.valorUnit / 12) + ')');
+ok('LA HORA 13 ES LA 5ª EXTRA: no cae en el 50%', hx.reparto.length === 1 && hx.reparto[0].recargo !== 50, hx.detalleHE);
+ok('cae en el tramo que sigue a las 4 ya pagas (200%)', hx.reparto[0].recargo === 200, hx.detalleHE);
+ok('y cuesta j8/8 × 3', casiIgual(hx.costoHE, vh8 * 3), fmt(hx.costoHE));
+hx = horasDe('l:z', jornadaDe('22:00'), esc12, lE.valorUnit, 'ARS', lE);
+ok('15 h: 2 h al 200% y 1 al 300%', hx.detalleHE === '2:00 al 200% + 1:00 al 300%', hx.detalleHE);
+ok('el valor de la línea + las extras = 8 h + 7 extras escalonadas',
+  Math.abs(lE.valorUnit + hx.costoHE - (df.j8 + costoHEDe(7, vh8, TRAMOS_HE_ESCALADO))) < 2,
+  fmt(lE.valorUnit + hx.costoHE));
+
+/* jornada de 10 h: trae 2 extras al 50%, la hora 11 ya es del tramo del 100% */
+const esc10 = sinComida({horasJornada: 10, tramosHE: TRAMOS_HE_ESCALADO.map(t => ({...t}))});
+const l10 = lineaSica(esc10);
+hx = horasDe('l:z', jornadaDe('18:00'), esc10, l10.valorUnit, 'ARS', l10);
+ok('10 h + 1: la hora 11 cae en el tramo del 100%', hx.extra === 60 && hx.reparto[0].recargo === 100, hx.detalleHE);
+ok('y la hora sigue siendo j8/8', casiIgual(hx.valorHora, vh8), fmt(hx.valorHora));
+
+/* con el 50% plano de siempre el recargo no cambia, pero la hora sí */
+const pl12 = sinComida({horasJornada: 12});
+const lP = lineaSica(pl12);
+hx = horasDe('l:z', jornadaDe('20:00'), pl12, lP.valorUnit, 'ARS', lP);
+ok('50% plano: la hora 13 al 50%', hx.detalleHE === '1:00 al 50%', hx.detalleHE);
+ok('y a j8/8 × 1,5 (antes j12/12 × 1,5, un 17% de más)', casiIgual(hx.costoHE, vh8 * 1.5),
+  fmt(hx.costoHE) + ' vs antes ' + fmt(lP.valorUnit / 12 * 1.5));
+
+/* lo que no es del convenio sigue como siempre: valor / jornada */
+const lMano = {...lineaSica(esc12), valorOrigen: 'manual', valorUnit: 1200000};
+hx = horasDe('l:z', jornadaDe('20:00'), esc12, lMano.valorUnit, 'ARS', lMano);
+ok('una línea a mano: la hora es valor/12', hx.valorHora === 100000, fmt(hx.valorHora));
+ok('y la hora 13 es su 1ª extra (50%)', hx.reparto[0].recargo === 50, hx.detalleHE);
+hx = horasDe('l:z', jornadaDe('20:00'), esc12, 1200000, 'ARS');
+ok('sin línea, igual que antes', hx.valorHora === 100000 && hx.reparto[0].recargo === 50, hx.detalleHE);
+
+/* preproducción: el convenio paga la de 8 h, no trae extras adentro */
+const lPre = {...lineaSica(esc12), etapa: 'prepro', valorUnit: df.j8};
+hx = horasDe('l:z', jornadaDe('20:00'), esc12, lPre.valorUnit, 'ARS', lPre);
+ok('una línea de prepro del convenio: la hora es j8/8', casiIgual(hx.valorHora, vh8), fmt(hx.valorHora));
+
+/* jornada cargada de menos de 8 h: las extras cuentan desde las 8, como el plan */
+const cfg6 = sinComida({horasJornada: 6});
+hx = horasDe('l:z', jornadaDe('16:00'), cfg6, 800000, 'ARS');
+ok('jornada de 6 h: 9 h dan 1 h de extra, no 3', hx.extra === 60, fmtHoras(hx.extra));
+ok('y la hora es valor/8', hx.valorHora === 100000, fmt(hx.valorHora));
+
+/* lo mismo por el camino de la liquidación */
+const pyL = getPy(), jL = jornadaDe('20:00');
+hx = horasDeLinea(pyL, '04', lE, jL, esc12);
+ok('horasDeLinea le pasa la línea: hora 13 al 200%', hx.reparto[0] && hx.reparto[0].recargo === 200, hx.detalleHE);
+
 console.log('\n' + (fallos ? '>>> ' + fallos + ' FALLAS' : '>>> TODO OK'));
 process.exitCode = fallos ? 1 : 0;
