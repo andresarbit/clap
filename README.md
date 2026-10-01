@@ -973,6 +973,17 @@ invitarlo al equipo (Organization → Team) o configurar un SMTP propio
 Si la sesion se cayo porque la base estuvo pausada, se renueva sola al abrir:
 no hace falta volver a escribir la contraseña.
 
+### Diseno: Tiras en el aire
+
+Desde oct. 2026 la app es clara (fondo #fafaf9), con letra Schibsted Grotesk
+(Google Fonts) y lineas finas en vez de cajas. Cada rubro del presupuesto es una
+tira de color pastel redondeada (el color dice de que rubro es); el negro es el
+acento: boton principal, solapa activa (subrayada), totales. Los numeros grandes
+van en baldosas pastel; los documentos (callsheet, plan, pedido de luces) son
+una hoja blanca. Los colores de departamentos, avisos y chips se pasaron a
+versiones oscuras del mismo tono para leerse sobre claro (contraste AA en todas
+las solapas). La impresion no cambia: papel blanco, texto negro.
+
 ### Redibujar sin perder el lugar, y accesibilidad
 
 La app se redibuja entera despues de cada cambio. Desde oct. 2026, si seguis en
