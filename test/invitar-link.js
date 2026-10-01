@@ -189,6 +189,8 @@ const navegadorNuevo = () => { DB = dbVacia(); sembrar(); _miFicha=null; _miProd
   await subirProyectosDe(getPr());
   ok('EL PROYECTO SUBIO A LA BASE', TB.proyecto.some(p => p.nombre === 'Spot Verano'),
     TB.proyecto.map(p=>p.nombre).join(' · '));
+  ok('sube con archivado = false, no vacío (la base no acepta vacío)',
+    TB.proyecto.find(p => p.nombre === 'Spot Verano').archivado === false);
 
   /* --- 1b. el boton se ve en TODAS las solapas ---------------------------
      Estaba metido adentro de la cabecera del Presupuesto, y la app abre en

@@ -4251,6 +4251,8 @@ async function sbSubirProyecto(py, productoraId){
   PY_CAMPOS.forEach(([s,l]) => { if(s==='nombre') return;
     const v = py[l]; f[s] = (v === '' || v === undefined) ? null : v; });
   if(f.jornadas != null) f.jornadas = Math.round(n(f.jornadas)) || 1;
+  /* en la base es sí o no, nunca vacío: un proyecto que nunca se archivó va como false */
+  f.archivado = !!py.archivado;
   const r = await sbFetch('/rest/v1/proyecto', {method:'POST',
     headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
     body: JSON.stringify(f)});
