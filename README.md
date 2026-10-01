@@ -582,6 +582,35 @@ cuadros con IA**: mira la imagen y completa lo vacío (fondo, tiro,
 personajes, tamaño, INT/EXT, luz, puesta), con la planta si la hay. Prueba:
 `test/puestas.js`.
 
+### Citaciones que salen del plan
+
+Aprendido de los shooting schedules de una producción grande (5 días, la
+misma estructura cada día). Al armar el día, y cada vez que el plan cambia,
+CLAP escribe las citaciones en el callsheet y en Rodaje (lo escrito a mano
+no se pisa; **Recalcular citaciones** sí lo hace):
+
+- **Por departamento**, contra el crew call: locaciones −75, producción,
+  catering y asistentes de dirección −60, efectos −30, el resto con el crew
+  call, post +15; maquillaje y vestuario con el primer actor. Editable en
+  Ajustes del plan. El departamento sale de la función de cada línea.
+- **Cada actor**: citación (su tiempo de maquillaje antes de su primer
+  plano, aunque eso sea antes del crew call: pre-call), a vestuario, listo,
+  en set, cuándo se libera, **desde cuándo entra en horas extra** y dónde se
+  lo cita (la locación de su primer plano).
+- **Extras por grupo** ("5 peatones" en el plano): se citan 1 h antes, salen
+  en el callsheet y se fichan en Rodaje.
+- **Punto de encuentro y viaje**: cada uno sabe a qué hora sale.
+- La cabecera del día: pre-call, crew call, salida, listo para filmar,
+  almuerzo o cena (según la hora), wrap de cámara y wrap total.
+- **Escala de la producción** (chica / mediana / grande): multiplica el
+  tiempo de cada plano (×1, ×1,5, ×2) y ajusta cambio de puesta y traslado.
+  Cada pasada de VFX suma 5 min.
+- Cada plano tiene **Extras**, **Cámara B** y **VFX / SFX**.
+- El callsheet ya no cita como gente a los alquileres ni a la prepro, y
+  "ANA" y "Ana" son la misma persona.
+
+Prueba: `test/citaciones.js`.
+
 ### La IA (opcional, paga, apagada)
 
 La clave de la IA no puede ir en la página, que es pública. Vive como secreto
@@ -1215,6 +1244,7 @@ node test/run.js test/rentales.js  # mail por rental, leer respuestas OK/NO, rep
 node test/run.js test/puestas.js   # storyboard por puesta/tiro/personaje/fondo, planta, IA simulada
 node test/run.js test/seleccion.js # marcar varios: mover el bloque, ponerles puesta, borrar
 node test/run.js test/armar.js     # armar dia y rodaje: horas, almuerzo, citaciones, jornadas nuevas, deshacer, quitar jornada
+node test/run.js test/citaciones.js # citacion por departamento, actor, extras, punto de encuentro, escala
 node test/run.js test/funcion-ia.js # la funcion del servidor: sesion, productora, sin clave, tope
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO

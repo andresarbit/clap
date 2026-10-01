@@ -806,6 +806,10 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
 .pl-selbar select{width:auto;font-size:12.5px;padding:4px 26px 4px 8px}
 .pl-seltip{font-size:11px;flex-basis:100%}
 .pl-selesp{height:120px}
+.pl-citdia,.cs-horarios{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--tx2)}
+.pl-citdia b,.cs-horarios b{color:var(--tx);font-variant-numeric:tabular-nums}
+.pl-vfx{background:#eef3fb;color:#1f5fa8}
+.pl-deptos .f>span{text-transform:none;letter-spacing:0;font-size:11.5px}
 .pl-selmaestra{display:inline-flex;gap:7px;align-items:center;font-size:12.5px;font-weight:600;cursor:pointer;margin-right:6px}
 .pl-selmaestra input{width:17px;height:17px;margin:0;accent-color:#171717;cursor:pointer}
 .pl-listacab{padding:8px 12px 6px 42px;border-bottom:1px solid var(--line)}
@@ -2856,7 +2860,12 @@ function gentePorJornada(py, v, num){
       tipo:'elenco', escenas:p.escenas,
       valorJornada: l ? n(l.valorUnit) : 0, moneda: l ? l.moneda : 'ARS'};
   });
-  return {gente:[...elenco, ...crew], callsheet:C};
+  /* los extras se citan y se fichan por grupo */
+  let extras = [];
+  try{ if(planDe(py).items.some(x => x.jornada === num && x.tipo === 'plano' && x.extras))
+    extras = extrasDelDia(py, num).map(x => ({clave:'x:' + norm(x.nombre), grupo:'Extras', rol:`${x.nombre} (×${x.cant})`,
+      nombre:'', tel:'', email:'', tipo:'extras', valorJornada:0, moneda:'ARS'})); }catch(e){}
+  return {gente:[...elenco, ...extras, ...crew], callsheet:C};
 }
 
 /* Texto de la citación que se le manda a cada uno.                           */
@@ -2872,8 +2881,11 @@ function textoCitacion(pr, py, j, C, p, cfg){
   L.push(`Jornada ${j.numero}${j.fecha ? ' · ' + j.fecha + ' (' + diaSemana(j.fecha) + ')' : ''}`);
   L.push('');
   L.push(`${p.rol}${p.nombre ? ': ' + p.nombre : ''}`);
-  L.push(`Citación: ${hora || 'a confirmar'}`);
-  if(cit.maquillaje) L.push(`Maquillaje: ${cit.maquillaje}`);
+  if(cit.salida && j.encuentro) L.push(`Salida de ${j.encuentro}: ${cit.salida}`);
+  L.push(`Citación: ${hora || 'a confirmar'}${cit.lugar ? ' en ' + cit.lugar : ''}`);
+  if(cit.maquillaje && cit.maquillaje !== hora) L.push(`Maquillaje: ${cit.maquillaje}`);
+  if(cit.vestuario) L.push(`A vestuario: ${cit.vestuario}`);
+  if(cit.listo)     L.push(`Listo: ${cit.listo}`);
   if(cit.set)        L.push(`En set: ${cit.set}`);
   L.push('');
   if(locs.length) L.push('Locación: ' + locs.join(' | '));
@@ -2989,10 +3001,12 @@ function armarCallsheet(py, v, numJornada){
      figuran en los planos del plan de rodaje (en publicidad no hay escenas) */
   const planos = ((py.plan && py.plan.items) || []).filter(x => x.jornada === numJornada && x.tipo === 'plano');
   const delPlano = x => String(x.elenco || '').split(/[,;\n]/).map(s => s.trim()).filter(Boolean);
-  const elenco = [...new Set([...escenas.flatMap(e=>e.personajes), ...planos.flatMap(delPlano)])].sort().map(p=>({
+  /* sin duplicar "ANA" y "Ana": vale la primera forma en que aparece */
+  const unicos = []; [...escenas.flatMap(e=>e.personajes), ...planos.flatMap(delPlano)].forEach(p => { if(!unicos.some(x => norm(x) === norm(p))) unicos.push(p); });
+  const elenco = unicos.sort().map(p=>({
     clave:'p:'+p, personaje:p,
-    escenas: [...escenas.filter(e=>e.personajes.includes(p)).map(e=>e.numero),
-              ...planos.filter(x => delPlano(x).includes(p)).map(x => 'P' + (x.numero || ''))],
+    escenas: [...escenas.filter(e=>e.personajes.some(x => norm(x) === norm(p))).map(e=>e.numero),
+              ...planos.filter(x => delPlano(x).some(y => norm(y) === norm(p))).map(x => 'P' + (x.numero || ''))],
     persona: DB.catalogo.personas.find(x=>norm(x.nombre)===norm(p) || norm(x.funcion)===norm(p)) || null,
   }));
 
@@ -3002,6 +3016,8 @@ function armarCallsheet(py, v, numJornada){
   if(v) v.rubros.filter(r=>RUBROS_CREW.includes(r.codigo)).forEach(r=>{
     r.lineas.forEach(l=>{
       if(!l.concepto.trim()) return;
+      /* gente del rodaje: no prepro/post ni alquileres o compras */
+      if(l.etapa || NO_ES_PERSONA.test(l.concepto)) return;
       const pe = l.refId ? DB.catalogo.personas.find(x=>x.id===l.refId) : null;
       const g = man['l:'+l.id] || {};
       crew.push({clave:'l:'+l.id, rubro:r.codigo, depto:r.nombre, funcion:l.concepto,
@@ -7898,6 +7914,7 @@ function vistaRodaje(pr,py,v){
 
   const num = d.jornadas.some(x=>x.numero===DB.ui.jornada) ? DB.ui.jornada : d.jornadas[0].numero;
   DB.ui.jornada = num;
+  volcarHorarios(py, num);          /* las citaciones del plan, al día */
   const j = normalizarJornada(d.jornadas.find(x=>x.numero===num));
   j.parte ||= nuevoParte();
   py.configRodaje ||= nuevaConfigRodaje();
@@ -8292,17 +8309,34 @@ function hojaCitacionHTML(pr,py,v){
         </tr>`).join('')||'<tr><td colspan="7" class="empty">Esta jornada no tiene escenas asignadas</td></tr>'}</tbody>
       </table></div>`) : ''}
 
+      ${orden ? (() => { const Hd = horariosDelDia(py, num); return `<div class="pad cs-horarios">
+        ${Hd.precall != null ? `<span><b>${aHora(Hd.precall)}</b> pre-call maquillaje</span>` : ''}
+        ${Hd.salida != null ? `<span><b>${aHora(Hd.salida)}</b> salida${Hd.encuentro ? ' de ' + esc(Hd.encuentro) : ''}</span>` : ''}
+        <span><b>${esc(j.citacion || '—')}</b> crew call</span>
+        ${Hd.listo != null ? `<span><b>${aHora(Hd.listo)}</b> listo para filmar</span>` : ''}
+        ${Hd.agencia != null ? `<span><b>${aHora(Hd.agencia)}</b> agencia y cliente</span>` : ''}
+        ${Hd.wrapCamara != null ? `<span><b>${aHora(Hd.wrapCamara)}</b> wrap de cámara</span>` : ''}
+        <span><b>${aHora(Hd.wrapTotal)}</b> wrap total</span></div>`; })() : ''}
       ${C.elenco.length?bloqueCS('Elenco', `<div class="scrollx"><table class="tbl cst">
         <thead><tr><th>Personaje</th><th>Intérprete</th><th style="width:78px">Citación</th>
-          <th style="width:84px">Maquillaje</th><th style="width:74px">En set</th><th>Escenas</th></tr></thead>
+          <th style="width:84px">Maquillaje</th><th style="width:74px">En set</th><th class="num">Vestuario · listo</th><th class="num" title="Desde esta hora cobra horas extra">Extras desde</th><th>Escenas</th></tr></thead>
         <tbody>${C.elenco.map(p=>{
           const c = j.citaciones[p.clave]||{};
           return `<tr><td><b>${esc(p.personaje)}</b></td>
             <td class="muted">${esc(p.persona?p.persona.nombre:'')}</td>
             ${['citacion','maquillaje','set'].map(k=>`<td><input type="text" value="${esc(c[k]||'')}"
               placeholder="—" onchange="upCitacion('${p.clave}','${k}',this.value)"></td>`).join('')}
-            <td class="muted">${esc(p.escenas.join(', '))}</td></tr>`;}).join('')}
+            <td class="num muted">${esc([c.vestuario, c.listo].filter(Boolean).join(' · ') || '—')}</td>
+            <td class="num muted">${esc(c.extras || '—')}</td>
+            <td class="muted">${esc(p.escenas.join(', '))}${c.lugar ? ' · ' + esc(c.lugar) : ''}</td></tr>`;}).join('')}
         </tbody></table></div>`):''}
+      ${(() => { let X = []; try{ X = extrasDelDia(py, num); }catch(e){}
+        return X.length ? bloqueCS('Extras', `<div class="scrollx"><table class="tbl cst"><thead><tr><th>Grupo</th><th class="num">Cant.</th>
+          <th style="width:78px">Citación</th><th class="num">En set</th><th class="num">Libera</th><th>Planos</th></tr></thead><tbody>
+          ${X.map(x => { const c = j.citaciones['x:' + norm(x.nombre)] || {}; return `<tr><td><b>${esc(x.nombre)}</b></td><td class="num">${x.cant}</td>
+            <td><input type="text" value="${esc(c.citacion || '')}" placeholder="${aHora(x.citacion)}" onchange="upCitacion('x:${esc(norm(x.nombre))}','citacion',this.value)"></td>
+            <td class="num muted">${aHora(x.primera)}</td><td class="num muted">${aHora(x.ultima)}</td><td class="muted">${esc(x.items.filter(Boolean).join(', '))}</td></tr>`; }).join('')}
+          </tbody></table></div>`) : ''; })()}
 
       ${C.crew.length?bloqueCS('Equipo técnico', (()=>{
         const porDepto={}; C.crew.forEach(c=>(porDepto[c.depto] ||= []).push(c));
@@ -8367,7 +8401,7 @@ function plOrdenHTML(py, num){
         <td colspan="5" style="font-style:italic">${esc(f.texto)} · ${durTexto(f.dur)}</td></tr>`;
       const it = f.it;
       if(it.tipo === 'evento') return `<tr class="csdep"><td class="num">${aHora(f.inicio)}</td><td></td>
-        <td colspan="5"><b>${esc(it.desc || PLAN_EVENTO(it.clase).l)}</b> · ${durTexto(f.dur)}</td></tr>`;
+        <td colspan="5"><b>${esc(nombreEvento(it, f.inicio))}</b> · ${durTexto(f.dur)}</td></tr>`;
       if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId) || {};
         return `<tr><td class="num">${aHora(f.inicio)}</td><td><b class="enum">${esc(e.numero || '')}</b></td>
           <td><span class="eie ${e.intExt==='INT'?'int':'ext'}">${esc(e.intExt || '')}</span> ${esc(e.momento || '')} · ${octavosATexto(n(e.octavos))} pg</td>
@@ -8488,6 +8522,7 @@ function nuevoItemPlan(o={}){
     escenaId:o.escenaId || null, set:o.set || '', emplazamiento:o.emplazamiento || '',
     tamano:o.tamano || '', movimiento:o.movimiento || '', lente:o.lente || '', tiro:o.tiro || '',
     intExt:o.intExt || '', luz:o.luz || '', elenco:o.elenco || '', elementos:o.elementos || '',
+    extras:o.extras || '', camB:o.camB || '', vfx:o.vfx || '',
     img:o.img || '', tomaBuena:o.tomaBuena || '', prioridad:o.prioridad || ''};
 }
 function planDe(py){
@@ -8563,7 +8598,8 @@ function duracionItem(py, it){
     const e = escenaDe(py, it.escenaId);
     return Math.round(((e ? n(e.octavos) : 8) / 8) * minPorPagina(py));
   }
-  return MIN_POR_MOVIMIENTO[it.movimiento] || MIN_PLANO;
+  /* la escala de la producción y las pasadas de VFX (5 min cada una) */
+  return Math.round((MIN_POR_MOVIMIENTO[it.movimiento] || MIN_PLANO) * escalaDePlan(py).factor) + vfxDe(it).length * 5;
 }
 /* Set de un ítem de filmación y el lugar físico al que pertenece. "CASA DE
    ANA - COCINA" y "CASA DE ANA - LIVING" son la misma locación: pasar de una
@@ -9044,8 +9080,10 @@ function elencoDelDia(py, num, D){
       out[k].ultima = Math.max(out[k].ultima, f.fin);
       out[k].items.push(f.it.tipo === 'escena' ? (escenaDe(py, f.it.escenaId)?.numero || '') : (f.it.numero || ''));
     }); });
+  /* si su primer plano no deja tiempo, el actor llega antes que el equipo
+     (pre-call de maquillaje y vestuario), como en las producciones grandes */
   return Object.values(out).sort((a,b) => a.primera - b.primera).map(x => ({...x,
-    citacion: Math.max(D.inicio, x.primera - ant)}));
+    citacion: x.primera - ant}));
 }
 
 /* ---------- Day out of days ----------
@@ -9128,6 +9166,8 @@ function volcarHorarios(py, num){
   if(D.comida) j.comida = aHora(D.comida.inicio);
   j.wrap = aHora(D.fin);
   if(D.sol && (!j.amanecer || j.solAuto)){ j.amanecer = aHora(D.sol.amanecer); j.atardecer = aHora(D.sol.atardecer); j.solAuto = true; }
+  /* las citaciones salen del plan: si el plan cambia, cambian (salvo las escritas a mano) */
+  try{ citarDia(py, num); }catch(e){ console.warn('citaciones', e); }
 }
 
 function plChipsJornadas(py, num){
@@ -9199,20 +9239,26 @@ function plDiaHTML(pr, py, v){
         <div class="cssub">${esc(py.nombre)} · ${esc(pr.nombre)}${j.fecha ? ' · ' + esc(diaSemana(j.fecha)) + ' ' + esc(j.fecha.split('-').reverse().join('/')) : ''}</div></div>
       <div class="pl-cabdatos noprint">
         ${F('Fecha','fecha',j.fecha,'date')}
-        ${F('Citación','citacion',j.citacion,'time')}
+        ${F('Crew call','citacion',j.citacion,'time')}
+        ${F('Punto de encuentro','encuentro',j.encuentro,'text','placeholder="Opcional: si se viaja juntos"')}
+        ${F('Viaje (min)','viaje',j.viaje,'number','min="0" step="5" placeholder="0"')}
         <label class="f"><span>Lugar (para el sol)</span><select onchange="plLugar(this.value)">
           ${LUGARES_SOL.map(x => `<option value="${x.k}" ${x.k===L.k?'selected':''}>${esc(x.l)}</option>`).join('')}
           <option value="otro" ${L.k==='otro'?'selected':''}>Otro (coordenadas)…</option></select></label>
       </div>
     </div>
     <div class="cshoras pl-horas">
-      <div><b>${esc(j.citacion || '—')}</b><span>Citación</span></div>
-      <div><b>${D.primera != null ? aHora(D.primera) : '—'}</b><span>Primer ${planPorEscenas(py) ? 'escena' : 'plano'}</span></div>
-      <div><b>${D.comida ? aHora(D.comida.inicio) : '—'}</b><span>Almuerzo</span></div>
-      <div><b class="${D.extra ? 'pl-rojo' : ''}">${D.items ? aHora(D.fin) : '—'}</b><span>Wrap estimado</span></div>
+      ${(() => { const Hd = horariosDelDia(py, num, D); return `
+      ${Hd.precall != null ? `<div><b>${aHora(Hd.precall)}</b><span>Pre-call maquillaje</span></div>` : ''}
+      <div><b>${esc(j.citacion || '—')}</b><span>Crew call</span></div>
+      ${Hd.salida != null ? `<div><b>${aHora(Hd.salida)}</b><span>Salida${Hd.encuentro ? ' de ' + esc(Hd.encuentro) : ''}</span></div>` : ''}
+      <div><b>${Hd.listo != null ? aHora(Hd.listo) : '—'}</b><span>Listo para filmar</span></div>
+      <div><b>${D.comida ? aHora(D.comida.inicio) : '—'}</b><span>${esc(nombreComida(D))}</span></div>
+      <div><b>${Hd.wrapCamara != null ? aHora(Hd.wrapCamara) : '—'}</b><span>Wrap de cámara</span></div>
+      <div><b class="${D.extra ? 'pl-rojo' : ''}">${D.items ? aHora(D.fin) : '—'}</b><span>Wrap total</span></div>`; })()}
       <div><b class="${D.extra ? 'pl-rojo' : ''}">${D.items ? horas : '—'}</b><span>${D.extra ? `${durTexto(D.extra)} de extras` : `de ${horasJornadaDe(cfg)} h de jornada`}</span></div>
       <div><b>${D.filmados}/${D.items}</b><span>${planPorEscenas(py) ? 'Escenas' : 'Planos'} filmados</span></div>
-      <div><b>${D.emplazamientos || '—'}</b><span>Emplazamientos</span></div>
+      <div><b>${D.emplazamientos || '—'}</b><span>Puestas</span></div>
       <div><b>${D.sol ? aHora(D.sol.amanecer) + ' / ' + aHora(D.sol.atardecer) : (j.fecha ? '—' : 'poné la fecha')}</b><span>Sale / se pone el sol</span></div>
     </div>
     ${plFranjaHTML(py, D)}
@@ -9310,7 +9356,7 @@ function plFilaHTML(py, f, mal){
     const ev = PLAN_EVENTO(it.clase);
     return `<div class="pl-fila pl-ev ${it.clase} ${mal ? 'mal' : ''}" ${drag}>
       <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
-      <div class="pl-main pl-consel">${plSelCasilla(id, it.desc || ev.l)}<div><div class="pl-tit">${esc(it.desc || ev.l)}${it.desc && it.desc !== ev.l ? `<span class="muted"> · ${esc(ev.l)}</span>` : ''}</div>
+      <div class="pl-main pl-consel">${plSelCasilla(id, it.desc || ev.l)}<div><div class="pl-tit">${esc(nombreEvento(it, f.inicio))}${it.desc && it.desc !== ev.l ? `<span class="muted"> · ${esc(ev.l)}</span>` : ''}</div>
         <div class="pl-meta">${it.fijo ? `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>` : ''}${f.tarde > TOLERANCIA_FIJO ? `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>` : ''}${it.notas ? `<span>${esc(it.notas)}</span>` : ''}</div></div></div>
       ${dur}<span></span>${acciones}</div>`;
   }
@@ -9337,6 +9383,9 @@ function plFilaHTML(py, f, mal){
     it.lente && `<span>${esc(it.lente)}</span>`, it.intExt && `<span class="eie ${it.intExt==='INT'?'int':'ext'}">${esc(it.intExt)}</span>`,
     it.luz && `<span class="pl-luzt ${it.luz}">${esc(LUZ(it.luz).l)}</span>`,
     it.elenco && `<span>👤 ${esc(it.elenco)}</span>`,
+    it.extras && `<span>👥 ${esc(it.extras)}</span>`,
+    it.camB && `<span>Cám. B: ${esc(it.camB)}</span>`,
+    ...vfxDe(it).map(x => `<span class="pl-tag pl-vfx">${esc(x)}</span>`),
     it.piezaId && piezasDe(py).length > 1 && `<span class="pl-tag">${esc(nombrePieza(py, it.piezaId))}</span>`,
     it.tomaBuena && `<span>Toma buena: ${esc(it.tomaBuena)}</span>`,
     it.fijo && `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>`, f.tarde > TOLERANCIA_FIJO && `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>`,
@@ -9352,21 +9401,37 @@ function plFilaHTML(py, f, mal){
 
 /* El elenco del día con la hora a la que se lo necesita. */
 function plElencoDiaHTML(py, num, D){
-  const E = elencoDelDia(py, num, D);
-  if(!E.length) return '';
+  const E = elencoDelDia(py, num, D), X = extrasDelDia(py, num, D), H = horariosDelDia(py, num, D);
   const j = D.j, p = planDe(py);
-  return `<div class="csblock"><h4>Elenco del día
+  let C = null; try{ C = armarCallsheet(py, getV(), num); }catch(e){}
+  const cit = clave => j.citaciones[clave] || {};
+  const claveActor = nombre => { const e = C && C.elenco.find(x => norm(x.personaje) === norm(nombre)); return e ? e.clave : 'p:' + nombre; };
+  const porDepto = {};
+  (C ? C.crew : []).forEach(c => { const dp = deptoCitacion(c); const k = dp ? dp.l : 'Otros';
+    const h = cit(c.clave).citacion || j.citacion; (porDepto[k] ||= new Set()).add(h); });
+  const fila = (nombre, c, extra) => `<tr><td><b>${esc(nombre)}</b>${extra ? ` <span class="muted">${esc(extra)}</span>` : ''}</td>
+    <td class="num">${esc(c.citacion || '—')}</td>${H.viaje ? `<td class="num">${esc(c.salida || '—')}</td>` : ''}<td class="num">${esc(c.vestuario || '—')}</td>
+    <td class="num">${esc(c.listo || '—')}</td><td class="num">${esc(c.set || '—')}</td><td class="num">${esc(c.libera || '—')}</td>
+    <td class="num">${esc(c.extras || '—')}</td><td class="muted">${esc(c.lugar || '')}</td></tr>`;
+  if(!E.length && !X.length && !Object.keys(porDepto).length) return '';
+  return `<div class="csblock"><h4>Citaciones del día
       <button class="btn sm noprint" style="float:right;margin-top:-3px" onclick="plCitarElenco()"
-        title="Escribe estas horas en la citación de cada actor del callsheet">Pasar las citaciones al callsheet</button></h4>
-    <div class="scrollx"><table class="tbl cst">
-      <thead><tr><th>Personaje / actor</th><th style="width:96px">Citación sugerida</th><th style="width:86px">En set</th>
-        <th style="width:86px">Libera</th><th>En</th><th style="width:90px">Citación cargada</th></tr></thead>
-      <tbody>${E.map(x => { const c = (j.citaciones['p:' + x.nombre] || {}).citacion || '';
-        return `<tr><td><b>${esc(x.nombre)}</b></td><td class="num">${aHora(x.citacion)}</td><td class="num">${aHora(x.primera)}</td>
-          <td class="num">${aHora(x.ultima)}</td><td class="muted">${esc(x.items.filter(Boolean).join(', '))}</td>
-          <td class="num ${c && c !== aHora(x.citacion) ? 'pl-rojo' : 'muted'}">${esc(c || '—')}</td></tr>`; }).join('')}
-      </tbody></table></div>
-    <div class="pad muted" style="font-size:11px">La sugerida es ${durTexto(n(p.minMaquillaje))} antes de su primer plano, por maquillaje y vestuario (se cambia en Ajustes).</div></div>`;
+        title="Vuelve a calcular todas las citaciones con el plan, también las que se escribieron a mano">Recalcular citaciones</button></h4>
+    <div class="pad pl-citdia">
+      ${H.precall != null ? `<span><b>${aHora(H.precall)}</b> pre-call maquillaje</span>` : ''}
+      ${H.salida != null ? `<span><b>${aHora(H.salida)}</b> salida${H.encuentro ? ' de ' + esc(H.encuentro) : ''} (${H.viaje} min de viaje)</span>` : ''}
+      <span><b>${esc(j.citacion || '—')}</b> crew call</span>
+      ${Object.entries(porDepto).map(([k, hs]) => [k, [...hs].sort()]).sort((a, b) => (aMin(a[1][0]) ?? 0) - (aMin(b[1][0]) ?? 0))
+        .map(([k, hs]) => `<span><b>${hs.join(' / ')}</b> ${esc(k)}</span>`).join('')}
+      ${H.agencia != null ? `<span><b>${aHora(H.agencia)}</b> agencia y cliente</span>` : ''}
+    </div>
+    ${E.length || X.length ? `<div class="scrollx"><table class="tbl cst">
+      <thead><tr><th>Elenco y extras</th><th class="num">Citación</th>${H.viaje ? '<th class="num">Salida</th>' : ''}<th class="num">A vestuario</th><th class="num">Listo</th>
+        <th class="num">En set</th><th class="num">Libera</th><th class="num" title="Desde esta hora cobra horas extra">Extras desde</th><th>Dónde</th></tr></thead>
+      <tbody>${E.map(x => fila(x.nombre, cit(claveActor(x.nombre)))).join('')}
+        ${X.map(x => fila(x.nombre, cit('x:' + norm(x.nombre)), `extras ×${x.cant}`)).join('')}</tbody></table></div>` : ''}
+    <div class="pad muted" style="font-size:11px">El elenco se cita ${durTexto(n(p.minMaquillaje))} antes de su primer plano y los extras ${durTexto(n(p.minExtras ?? 60))} antes;
+      cada departamento según Ajustes. Se pasa solo al callsheet y a Rodaje; lo que se escribe a mano allá no se pisa.</div></div>`;
 }
 
 function plBancoHTML(py){
@@ -9580,12 +9645,13 @@ function plPendientesOk(){
   cerrar(); toast(`${lista.length} pasado${lista.length == 1 ? '' : 's'} ${dest ? 'a la jornada ' + dest : 'al banco'}`);
   if(dest) DB.ui.jornada = dest; RP();
 }
+/* "Recalcular": vuelve a poner lo que propone el plan, también en las que
+   se habían escrito a mano. */
 function plCitarElenco(){
   const py = getPy(), num = DB.ui.jornada, j = jornadaActiva();
-  const E = elencoDelDia(py, num);
-  E.forEach(x => { const c = (j.citaciones['p:' + x.nombre] ||= {});
-    c.citacion = aHora(x.citacion); c.maquillaje = aHora(x.citacion); c.set = aHora(x.primera); });
-  toast(`${E.length} citacion${E.length == 1 ? '' : 'es'} pasada${E.length == 1 ? '' : 's'} al callsheet`); R();
+  Object.values(j.citaciones || {}).forEach(c => { if(c && typeof c === 'object') c.auto = true; });
+  const k = citarDia(py, num);
+  toast(`${k} citacion${k == 1 ? '' : 'es'} pasada${k == 1 ? '' : 's'} al callsheet y a Rodaje`); R();
 }
 
 /* ---------- arrastrar y soltar ---------- */
@@ -9648,6 +9714,9 @@ function plEditar(id, tipo, alBanco){
       ${sel('Luz','luz',it.luz,LUCES.map(x => ({v:x.k, l:x.l})))}
       ${campo('Duración (min)','duracion',it.duracion ?? '','number','min="1" step="5" placeholder="' + (MIN_POR_MOVIMIENTO[it.movimiento] || MIN_PLANO) + ' (según movimiento)"')}
       ${campo('Elenco','elenco',it.elenco,'text','placeholder="Ana, Nene (separados por coma)"')}
+      ${campo('Extras','extras',it.extras,'text','placeholder="5 peatones, 10 técnicos"')}
+      ${campo('Cámara B','camB',it.camB,'text','placeholder="Alexa en slider, Komodo crash cam…"')}
+      ${campo('VFX / SFX','vfx',it.vfx,'text','list="pl-vfx" placeholder="Clean plate, HDR, bolas y carta…"')}
       ${campo('Elementos','elementos',it.elementos,'text','placeholder="Producto, auto, lluvia…"')}
       ${piezas.length ? sel(unidadDe(py),'piezaId',it.piezaId || '',[{v:'',l:'Todas / compartido'}, ...piezas.map(x => ({v:x.id, l:nombrePieza(py, x.id)}))]) : ''}
       ${d.escenas.length ? sel('Escena','escenaId',it.escenaId || '',[{v:'',l:'—'}, ...d.escenas.map(e => ({v:e.id, l:'Esc ' + e.numero + ' · ' + e.locacion}))]) : ''}
@@ -9659,6 +9728,7 @@ function plEditar(id, tipo, alBanco){
     <label class="f"><span>Cuadro del storyboard</span><input type="file" accept="image/*" id="pl-img"></label>
     ${it.img ? `<div style="display:flex;gap:10px;align-items:center;margin-top:6px"><img src="${it.img}" style="max-width:160px;border-radius:6px">
       <label style="display:flex;gap:6px;align-items:center;font-size:12px"><input type="checkbox" name="sinImg" value="1" style="width:auto"> Quitar la imagen</label></div>` : ''}
+    <datalist id="pl-vfx">${VFX_SUGERIDOS.map(x => `<option value="${esc(x)}">`).join('')}</datalist>
     <datalist id="pl-sets">${[...new Set(planDe(py).items.map(x => x.set).filter(Boolean))].map(s => `<option value="${esc(s)}">`).join('')}</datalist>`;
   }
   _plEditando = {id, it};
@@ -9673,7 +9743,7 @@ async function plGuardar(){
   const py = getPy(), o = datos(), E = _plEditando; if(!E) return;
   const it = E.it;
   if(o.sinImg === undefined){ const c = document.querySelector('.mod [name=sinImg]'); o.sinImg = c && c.checked ? '1' : ''; }
-  ['numero','desc','set','emplazamiento','tiro','tamano','movimiento','lente','intExt','luz','elenco','elementos','tomaBuena','notas','clase','fijo','prioridad']
+  ['numero','desc','set','emplazamiento','tiro','tamano','movimiento','lente','intExt','luz','elenco','elementos','extras','camB','vfx','tomaBuena','notas','clase','fijo','prioridad']
     .forEach(k => { if(o[k] !== undefined) it[k] = String(o[k]).trim(); });
   if(o.duracion !== undefined) it.duracion = n(o.duracion) > 0 ? n(o.duracion) : null;
   if(o.piezaId !== undefined) it.piezaId = o.piezaId || null;
@@ -9705,6 +9775,10 @@ function plAjustes(){
     <h3>Ajustes del plan</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">Con esto se calculan los horarios. Son del proyecto:
         un spot en estudio y una película en exteriores no se planifican con los mismos tiempos.</div>
+      ${sel('Escala de la producción','escala',p.escala || 'chica',Object.entries(ESCALAS).map(([k, x]) => ({v:k, l:x.l})),
+        `onchange="const e=ESCALAS[this.value];const m=document.querySelector('.mod [name=minCambio]'),t=document.querySelector('.mod [name=minTraslado]');if(e&&m){m.value=e.cambio;t.value=e.traslado}"`)}
+      <div class="muted" style="font-size:11.5px;line-height:1.5;margin:4px 0 12px">Cambia cuánto lleva cada plano (×1, ×1,5, ×2), el cambio de puesta y el traslado.
+        En una producción grande un plano lleva 30 a 60 min, no 15.</div>
       <div class="grid2">
         ${sel('Lugar (para el sol)','lugar',p.lugar,[...LUGARES_SOL.map(x => ({v:x.k, l:x.l})), {v:'otro', l:'Otro (coordenadas)'}])}
         ${campo('Huso horario (UTC)','tz',p.tz,'number','step="0.5"')}
@@ -9714,7 +9788,12 @@ function plAjustes(){
         ${campo('Traslado de locación (min)','minTraslado',p.minTraslado,'number','min="0" step="5"')}
         ${campo('Máximo sin comer (h)','horasHastaComida',p.horasHastaComida,'number','min="1" step="0.5"')}
         ${campo('Maquillaje y vestuario del elenco (min)','minMaquillaje',p.minMaquillaje,'number','min="0" step="15"')}
+        ${campo('Extras: citación antes de su primer plano (min)','minExtras',p.minExtras ?? 60,'number','min="0" step="15"')}
       </div>
+      <div style="margin:16px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Citación por departamento</div>
+      <div class="muted" style="font-size:11.5px;line-height:1.5;margin-bottom:8px">Minutos antes (−) o después (+) del crew call.
+        "elenco" = llega con el primer actor (maquillaje, vestuario).</div>
+      <div class="grid2 pl-deptos">${DEPTOS_CITACION.map(dp => campo(dp.l, 'dep_' + dp.k, minutosDepto(getPy(), dp.k), 'text', 'placeholder="0"')).join('')}</div>
       <div class="muted" style="font-size:11.5px;line-height:1.55;margin-top:10px">Las horas de la jornada y el descanso mínimo entre jornadas son las de
         <b>Rodaje → Condiciones</b>.</div>
     </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
@@ -9724,7 +9803,11 @@ function plAjustesOk(){
   const p = planDe(getPy()), o = datos();
   p.lugar = o.lugar; p.tz = n(o.tz) || -3;
   p.lat = o.lat === '' ? null : n(o.lat); p.lon = o.lon === '' ? null : n(o.lon);
-  ['minCambio','minTraslado','horasHastaComida','minMaquillaje'].forEach(k => p[k] = Math.max(0, n(o[k])));
+  ['minCambio','minTraslado','horasHastaComida','minMaquillaje','minExtras'].forEach(k => p[k] = Math.max(0, n(o[k])));
+  if(o.escala) p.escala = o.escala;
+  p.deptos ||= {};
+  DEPTOS_CITACION.forEach(dp => { const v = String(o['dep_' + dp.k] ?? '').trim();
+    p.deptos[dp.k] = /elenco|actor/i.test(v) ? 'elenco' : v === '' ? dp.min : n(v); });
   getD().jornadas.forEach(j => { if(j.solAuto) j.amanecer = ''; });
   cerrar(); RP();
 }
@@ -10623,24 +10706,134 @@ function ubicarAlmuerzo(py, num){
   alm.fijo = aHora(Math.round(mejor.inicio / 5) * 5);
   return alm;
 }
-/* Citaciones que salen del plan. Las que se escribieron a mano no se tocan. */
+/* ======================  CITACIONES QUE SALEN DEL PLAN  ===================
+   Lo que se aprendió de los shooting schedules de una producción grande
+   (5 días, misma estructura todos los días):
+     - cada DEPARTAMENTO tiene su citación, escalonada contra el crew call:
+       locaciones primero, después producción, catering y asistentes de
+       dirección, efectos, vestuario, y el resto con el crew call;
+       maquillaje y vestuario llegan con el primer actor;
+     - cada ACTOR tiene cuatro horas: citación, a vestuario, listo y desde
+       cuándo entra en horas extra; y el lugar donde se lo cita;
+     - los EXTRAS se citan por grupo;
+     - si hay PUNTO DE ENCUENTRO, a cada uno se le dice a qué hora sale.
+   Todo se calcula del plan y se escribe en el callsheet y en Rodaje; lo que
+   se escribió a mano no se pisa.                                           */
+const DEPTOS_CITACION = [
+  {k:'locaciones', l:'Locaciones',            re:/locaci|location|scout/,                                         min:-75},
+  {k:'produccion', l:'Producción',            re:/produc|runner|coordinad|asistente de prod|meritori[oa] de prod/,  min:-60},
+  {k:'catering',   l:'Catering',              re:/catering|cocin|craft/,                                          min:-60},
+  {k:'ads',        l:'Asistentes de dirección', re:/asistente de direc|1(er|ro)? ?ad\b|2(do)? ?ad\b|continuista|script|meritori[oa] de direc/, min:-60},
+  {k:'maquillaje', l:'Maquillaje y peinado',  re:/maquill|peinad|make ?up|\bhair\b/,                              min:'elenco'},
+  {k:'vestuario',  l:'Vestuario',             re:/vestuar|wardrobe|sastr|vestidor/,                               min:'elenco'},
+  {k:'sfx',        l:'Efectos especiales',    re:/efectos especiales|\bsfx\b|pirotec/,                            min:-30},
+  {k:'arte',       l:'Arte',                  re:/arte|ambientad|utiler|escenograf|carpinter|pintor/,             min:0},
+  {k:'camara',     l:'Cámara',                re:/c[aá]mara|foquista|video ?assist|\bdit\b|\bdata\b|steadicam|operador/, min:0},
+  {k:'electrica',  l:'Eléctrica y grip',      re:/el[eé]ctric|gaffer|iluminad|best ?boy|grip|maquinist/,          min:0},
+  {k:'sonido',     l:'Sonido',                re:/sonid|microfon|boom/,                                           min:0},
+  {k:'direccion',  l:'Dirección y fotografía', re:/director|realizador|fotograf|\bdf\b|\bdop\b/,                   min:0},
+  {k:'post',       l:'Post / VFX',            re:/\bpost\b|postproduc|vfx|supervisor de efectos/,                 min:15},
+];
+function deptoCitacion(c){
+  const f = norm(c.funcion || ''), r = norm(c.depto || '');
+  return DEPTOS_CITACION.find(d => d.re.test(f)) || DEPTOS_CITACION.find(d => d.re.test(r)) || null;
+}
+/* los minutos del proyecto (Ajustes del plan) o los de siempre */
+function minutosDepto(py, k){
+  const o = (planDe(py).deptos || {})[k];
+  if(o !== undefined && o !== null && o !== '') return o;
+  return (DEPTOS_CITACION.find(d => d.k === k) || {min:0}).min;
+}
+/* La escala de la producción cambia cuánto lleva cada cosa. Calibrado con
+   un spot chico (15 min un plano fijo, 20 un cambio de puesta) y con un
+   rodaje grande (30-60 min un plano, 40 un cambio, traslados de 1 h+). */
+const ESCALAS = {
+  chica:   {l:'Chica (spot chico, poca gente)',     factor:1,   cambio:20, traslado:45},
+  mediana: {l:'Mediana',                            factor:1.5, cambio:30, traslado:60},
+  grande:  {l:'Grande (2 cámaras, grúa, VFX)',      factor:2,   cambio:40, traslado:75},
+};
+const escalaDePlan = py => ESCALAS[planDe(py).escala] || ESCALAS.chica;
+/* lo que se ve con VFX: cada pasada suma tiempo de cámara */
+const VFX_SUGERIDOS = ['Clean plate','HDR','Bolas y carta','LIDAR','Marcadores','Con y sin efecto'];
+const vfxDe = it => String(it.vfx || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean);
+/* Extras: "5 peatones, 10 técnicos" → grupos con su cantidad */
+function extrasDePlano(it){
+  return String(it.extras || '').split(/[,;\n]/).map(x => x.trim()).filter(Boolean).map(t => {
+    const m = t.match(/(\d{1,4})/); const cant = m ? +m[1] : 1;
+    const nombre = t.replace(/\(?\s*x?\s*\d{1,4}\s*\)?/i, ' ').replace(/^extras?\s*/i, '').replace(/\s+/g, ' ').trim() || 'Extras';
+    return {nombre: nombre.charAt(0).toUpperCase() + nombre.slice(1), cant};
+  });
+}
+/* el lugar físico de un ítem: "Casa - Cocina" → "Casa" */
+function lugarDeItem(py, it){
+  if(!it) return '';
+  if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); return e ? e.locacion || '' : ''; }
+  return String(it.set || '').split(/\s[-–—/]\s/)[0].trim();
+}
+function extrasDelDia(py, num, D){
+  D ||= calcularDia(py, num);
+  const out = {};
+  D.filas.forEach(f => { if(!f.it || f.it.tipo !== 'plano') return;
+    extrasDePlano(f.it).forEach(g => { const k = norm(g.nombre);
+      if(!out[k]) out[k] = {nombre: g.nombre, cant: g.cant, primera: f.inicio, ultima: f.fin, lugar: lugarDeItem(py, f.it), items: []};
+      out[k].cant = Math.max(out[k].cant, g.cant); out[k].ultima = Math.max(out[k].ultima, f.fin); out[k].items.push(f.it.numero || ''); }); });
+  const ant = n(planDe(py).minExtras) || 60;
+  return Object.values(out).sort((a, b) => a.primera - b.primera).map(x => ({...x, citacion: Math.max(D.inicio, x.primera - ant)}));
+}
+/* Las horas del día que no están en la lista: crew call, listo para filmar,
+   wrap de cámara, pre-call de maquillaje, agencia y cliente, salida. */
+function horariosDelDia(py, num, D){
+  D ||= calcularDia(py, num);
+  const filmar = D.filas.filter(f => f.it && f.it.tipo !== 'evento');
+  const E = elencoDelDia(py, num, D);
+  const crewCall = D.inicio;
+  const precall = E.length ? Math.min(...E.map(x => x.citacion)) : null;
+  const viaje = n(D.j.viaje) || 0;
+  return {crewCall, listo: filmar.length ? filmar[0].inicio : null, wrapCamara: filmar.length ? filmar[filmar.length - 1].fin : null,
+    wrapTotal: D.fin, precall: precall != null && precall < crewCall ? precall : null,
+    agencia: filmar.length ? filmar[0].inicio - 15 : null,
+    salida: viaje ? crewCall - viaje : null, encuentro: D.j.encuentro || '', viaje};
+}
+/* comidas y citación con el nombre que les toca por la hora */
+function nombreEvento(it, inicio){
+  if(it.desc) return it.desc;
+  if(it.clase === 'almuerzo') return inicio != null && inicio >= 18 * 60 ? 'Cena' : inicio != null && inicio < 10 * 60 + 30 ? 'Comida' : 'Almuerzo';
+  if(it.clase === 'desayuno') return inicio != null && inicio >= 11 * 60 ? 'Citación y refrigerio' : 'Citación y desayuno';
+  return PLAN_EVENTO(it.clase).l;
+}
+const nombreComida = D => D.comida ? nombreEvento(D.comida.it, D.comida.inicio) : 'Almuerzo';
+
+/* Escribe las citaciones del día. Devuelve cuántas tocó. */
 function citarDia(py, num){
   const d = py.desglose, j = d && d.jornadas.find(x => x.numero === num);
   if(!j) return 0;
   j.citaciones ||= {};
+  const cfg = py.configRodaje || nuevaConfigRodaje();
+  const D = calcularDia(py, num);
+  const H = horariosDelDia(py, num, D);
+  const comida = D.comida ? D.comida.dur : 60;
+  const extrasDesde = cit => cit + horasJornadaDe(cfg) * 60 + (cfg.descontarComida !== false ? comida : 0);
+  const salida = cit => H.viaje ? aHora(cit - H.viaje) : '';
+  let C = null; try{ C = armarCallsheet(py, getV(), num); }catch(e){}
+  const claveActor = nombre => { const e = C && C.elenco.find(x => norm(x.personaje) === norm(nombre)); return e ? e.clave : 'p:' + nombre; };
   let k = 0;
   const poner = (clave, datos) => { const c = j.citaciones[clave];
     if(c && c.citacion && !c.auto) return; j.citaciones[clave] = {...(c || {}), ...datos, auto:true}; k++; };
-  const E = elencoDelDia(py, num);
-  E.forEach(x => poner('p:' + x.nombre, {citacion: aHora(x.citacion), maquillaje: aHora(x.citacion), set: aHora(x.primera)}));
-  if(E.length){
-    const primero = Math.min(...E.map(x => x.citacion));
-    try{
-      const C = armarCallsheet(py, getV(), num);
-      (C.crew || []).forEach(c => { if(/maquill|peinad|vestuar/i.test(`${c.depto || ''} ${c.funcion || ''}`))
-        poner(c.clave, {citacion: aHora(primero)}); });
-    }catch(e){ /* sin presupuesto no hay equipo técnico que citar */ }
-  }
+  const primerItem = nombre => (D.filas.find(f => f.it && elencoDeItem(py, f.it).some(x => norm(x) === norm(nombre))) || {}).it;
+  const E = elencoDelDia(py, num, D);
+  E.forEach(x => poner(claveActor(x.nombre), {citacion: aHora(x.citacion), maquillaje: aHora(x.citacion),
+    vestuario: aHora(x.citacion + 15), listo: aHora(Math.max(x.citacion + 30, x.primera - 15)), set: aHora(x.primera),
+    libera: aHora(x.ultima), extras: aHora(extrasDesde(x.citacion)), lugar: lugarDeItem(py, primerItem(x.nombre)), salida: salida(x.citacion)}));
+  extrasDelDia(py, num, D).forEach(x => poner('x:' + norm(x.nombre), {citacion: aHora(x.citacion), vestuario: aHora(x.citacion + 15),
+    listo: aHora(Math.max(x.citacion + 30, x.primera - 15)), set: aHora(x.primera), libera: aHora(x.ultima),
+    extras: aHora(extrasDesde(x.citacion)), lugar: x.lugar, salida: salida(x.citacion), grupo: x.nombre, cant: x.cant}));
+  const lugarDia = lugarDeItem(py, (D.filas.find(f => f.it && f.it.tipo !== 'evento') || {}).it);
+  if(C) C.crew.forEach(c => {
+    const dep = deptoCitacion(c), m = dep ? minutosDepto(py, dep.k) : 0;
+    const cit = m === 'elenco' ? (H.precall != null ? Math.min(H.crewCall, H.precall - 15) : (E.length ? Math.min(H.crewCall, Math.min(...E.map(x => x.citacion)) - 15) : H.crewCall))
+      : H.crewCall + n(m);
+    poner(c.clave, {citacion: aHora(cit), depto: dep ? dep.l : '', extras: aHora(extrasDesde(cit)), lugar: lugarDia, salida: salida(cit)});
+  });
   return k;
 }
 function armarDia(py, num, rep){
@@ -14830,7 +15023,10 @@ function upDireccion(loc, campo, val){
 }
 function upCitacion(clave, campo, val){
   const j = jornadaActiva();
-  j.citaciones[clave] ||= {}; j.citaciones[clave][campo]=val; R();
+  j.citaciones[clave] ||= {}; j.citaciones[clave][campo]=val;
+  /* escrita a mano: el plan ya no la toca (salvo "Recalcular citaciones") */
+  j.citaciones[clave].auto = false;
+  R();
 }
 function upEscNota(eid, val){ getD().escenas.find(x=>x.id===eid).notas=val; R(); }
 
