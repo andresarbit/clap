@@ -154,7 +154,13 @@ ok('lo que Babylon no publica queda sin precio (no se inventa)', s12.precio === 
 lzCompletarPrecios('min');
 ok('"el más barato publicado" completa el 12K con el de Camauer', s12.precio === 450000);
 ok('y no pisa los que ya tenían precio', m40.precio === 240000);
-ok('la referencia se ve en el renglón', /Babylon \$ 240\.000 · Camauer \$ 210\.000/.test(textoRef(EQUIPO_LUZ('arri-m40'))), textoRef(EQUIPO_LUZ('arri-m40')));
+ok('la referencia se ve en el renglón (de cuánto a cuánto)', textoRef(EQUIPO_LUZ('arri-m40')) === '$ 210.000 a $ 240.000 (2 rentals)', textoRef(EQUIPO_LUZ('arri-m40')));
+ok('y el detalle por rental, del más barato al más caro', textoRefLargo(EQUIPO_LUZ('arri-m40')) === 'Camauer $ 210.000 · Estudios Babylon $ 240.000', textoRefLargo(EQUIPO_LUZ('arri-m40')));
+ok('el Evoke 1200 tiene los cinco rentals que lo publican (Ala Norte publica su lupa, no la luz)', Object.keys(PRECIOS_REF_LUZ['Nanlux Evoke 1200']).sort().join() === 'bab,cam,enc,raw,seg');
+ok('todos los precios de los otros rentals son de equipos que existen', Object.values(MAS_PRECIOS_LUZ).every(m => Object.keys(m).every(nom => EQUIPOS_LUZ.some(e => e.nombre === nom))));
+ok('cada rental con precios tiene su fuente citada', RENTALS_LUCES.filter(r => r.precios).every(r => FUENTES_PRECIO_LUZ[r.precios] && FUENTES_PRECIO_LUZ[r.precios].url));
+ok('Ala Norte (verificado en su web): M18 y S60 a 180.000', PRECIOS_REF_LUZ['Arri M18'].aln === 180000 && PRECIOS_REF_LUZ['Arri SkyPanel S60-C'].aln === 180000);
+ok('siete fuentes argentinas con su URL', Object.keys(FUENTES_PRECIO_LUZ).length === 7 && Object.values(FUENTES_PRECIO_LUZ).every(f => /^https:/.test(f.url)), Object.keys(FUENTES_PRECIO_LUZ).join());
 DB.ui.tab = 'luces'; render();
 ok('la pantalla cita las fuentes', /babylon-rental-lista-precios\.pdf/.test(app.innerHTML) && /alquilerdecamaras/.test(app.innerHTML));
 ok('generador sugerido usa los tamaños que se alquilan', generadorPara(4000) === 6.5 && generadorPara(30000) === 66 && generadorPara(60000) === 110, [generadorPara(4000), generadorPara(30000), generadorPara(60000)].join(','));

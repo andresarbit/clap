@@ -9598,18 +9598,27 @@ const RENTALS_LUCES = [
   {nombre:'Alfavision', web:'alfavisionsrl.wixsite.com/sitioweb', zona:'Domingo de Acassuso 4753, Munro', rubros:'cámara, lentes, luces, grip',
    tel:'011 4762-4473', email:'servicios@alfavisionsrl.com.ar'},
   {nombre:'AJAF Cinema', web:'ajafcinema.com', zona:'F. F. de Amador 3945, Munro', rubros:'cámara, luces, grip, generadores, estudio', tel:'11 5060-2761'},
-  {nombre:'Ala Norte Cine Digital', web:'alanortecinedigital.com', zona:'V. S. de Liniers 1565, Vicente López', rubros:'cámara, luces, grip, generadores, estudio (precios en su web)',
-   tel:'11 4718-0732', email:'info@alanortecinedigital.com'},
+  {nombre:'Ala Norte Cine Digital', web:'alanortecinedigital.com', zona:'V. S. de Liniers 1565, Vicente López', rubros:'cámara, luces, grip, generadores, estudio',
+   tel:'11 4718-0732', email:'info@alanortecinedigital.com', precios:'aln'},
   {nombre:'Cámaras y Luces', web:'camarasyluces.com', zona:'Morlote 856, CABA', rubros:'cámara, luces, grip, generadores, camiones, estudios', tel:'11 5263-7772'},
   {nombre:'Sullair Argentina', web:'sullairargentina.com', zona:'CABA', rubros:'grupos electrógenos de 20 a 2.250 kVA, torres de iluminación',
    tel:'11 5941-4444', email:'contacto@sullair.com.ar'},
-  {nombre:'Estudio Alasur', web:'estudioalasur.com.ar', zona:'Buenos Aires', rubros:'cámara, luces, grip, generadores'},
-  {nombre:'RawCine', web:'rawcine.com.ar', zona:'Buenos Aires', rubros:'cámara, lentes, iluminación'},
-  {nombre:'Seguí Rodando', web:'seguirodando.com', zona:'CABA', rubros:'cámara, iluminación, sonido, grip'},
-  {nombre:'Rowing Rental', web:'rowingrental.com', zona:'Buenos Aires', rubros:'luces LED y HMI'},
-  {nombre:'Audium', web:'audium.com.ar', zona:'Saavedra, CABA', rubros:'iluminación, sonido'},
-  {nombre:'Tutuca Rental', web:'tutucarental.com', zona:'Buenos Aires', rubros:'cámara, luces, sonido'},
-  {nombre:'Algo Así Rental', web:'algoasirental.com', zona:'Buenos Aires', rubros:'cámara, lentes, luces, sonido'},
+  {nombre:'Seguí Rodando', web:'seguirodando.com', zona:'Acevedo 786, CABA', rubros:'luces, grip, cámara, sonido',
+   tel:'11 6504-2826', email:'info@rentalseguirodando.com', precios:'seg'},
+  {nombre:'Enchulame la Cámara', web:'enchulame-la-camara.booqableshop.com', zona:'CABA (también Rosario)', rubros:'luces (incluye HMI), grip, cámara, sonido, estudio',
+   tel:'11 4935-5113', precios:'enc'},
+  {nombre:'CEA Producciones', web:'ceaproducciones.com.ar', zona:'Paraguay 2808, CABA', rubros:'luces, grip, eléctrico, dolly y vías, cámara, sonido',
+   tel:'11 5051-3279', email:'info@ceaproducciones.com.ar', precios:'cea'},
+  {nombre:'RawCine', web:'rawcine.com.ar', zona:'Manuela Pedraza 4418, Villa Urquiza', rubros:'luces, grip, cámara, lentes, sonido',
+   tel:'11 2404-2618', email:'presupuestos@rawcine.com.ar', precios:'raw'},
+  {nombre:'Rowing Rental', web:'rowingrental.com', zona:'José A. Cabrera 5849, CABA', rubros:'cámara, lentes, luces LED y HMI, grip',
+   tel:'11 3020-1772', email:'info@rowingrental.com'},
+  {nombre:'Toro Iluminación', web:'toroiluminacion.com', zona:'Mataderos y Palermo, CABA', rubros:'luces LED, HMI y fresnel, grip'},
+  {nombre:'Filet de Merluza', web:'filetdemerluza.com', zona:'Av. San Juan 4056, Boedo', rubros:'cámara, lentes, luces, grip, sonido',
+   tel:'11 5715-3968', email:'info@filetdemerluza.com.ar'},
+  {nombre:'La Torre Films', web:'latorrefilms.com.ar', zona:'Buenos Aires', rubros:'luces LED, fresnel, minibrut, grip y tamices', tel:'11 6820-7054'},
+  {nombre:'Tutuca Rental', web:'tutucarental.com', zona:'Humboldt 1625, CABA', rubros:'cámara, luces, grip, sonido', tel:'11 7062-5674'},
+  {nombre:'Estudio Alasur', web:'estudioalasur.com.ar', zona:'Buenos Aires', rubros:'estudio, cámara, luces, grip, generadores'},
 ];
 
 /* Precios publicados, en pesos por jornada, para tener una referencia antes
@@ -9622,6 +9631,16 @@ const FUENTES_PRECIO_LUZ = {
         nota:'lista oficial; jornada de hasta 24 h; sin IVA ni seguro; +25% domingos y feriados'},
   cam: {rental:'Camauer', fecha:'30/09/2026', url:'https://www.alquilerdecamaras.com.ar/rentals/camauer/',
         nota:'publicado en alquilerdecamaras.com.ar, por día'},
+  seg: {rental:'Seguí Rodando', fecha:'30/09/2026', url:'https://seguirodando.com/equipos',
+        nota:'jornada de 24 h (10 a 10), sin IVA'},
+  enc: {rental:'Enchulame la Cámara', fecha:'30/09/2026', url:'https://enchulame-la-camara.booqableshop.com/',
+        nota:'sucursal CABA, por día; las luces incluyen trípode y alargue'},
+  cea: {rental:'CEA Producciones', fecha:'30/09/2026', url:'https://ceaproducciones.com.ar/',
+        nota:'jornada de 24 h, precio general (tiene precio alumno más bajo)'},
+  raw: {rental:'RawCine', fecha:'30/09/2026', url:'https://www.rawcine.com.ar',
+        nota:'por jornada, en pesos'},
+  aln: {rental:'Ala Norte Cine Digital', fecha:'30/09/2026', url:'https://www.alanortecinedigital.com/equipos',
+        nota:'por día, publicado en miles redondeados'},
 };
 const PRECIOS_REF_LUZ = {
   'HMI 12K Par':{cam:450000}, 'HMI 6K Par':{cam:245000}, 'Arri M40':{bab:240000, cam:210000}, 'Arri M18':{bab:176000, cam:155000},
@@ -9649,6 +9668,28 @@ const PRECIOS_REF_LUZ = {
   'Generador 110 kVA':{bab:400000}, 'Tablero monofásico':{cam:45000}, 'Distribuidor trifásico':{bab:32000, cam:45000},
   'Cable de fuerza (tramo)':{bab:16000}, 'Dimmer 2K':{bab:19200}, 'Dimmer 5K':{bab:25600, cam:12000}, 'Consola DMX y cableado':{bab:80000},
 };
+/* Los otros rentals que publican precio por jornada, sólo donde el equipo
+   es claramente el mismo (un HMI "Filmgear" no es un "Arri M18", y un
+   tamiz sin telas no es un tamiz con telas). */
+const MAS_PRECIOS_LUZ = {
+  seg: {'Par 64':5000, 'Litepanels Gemini 1x1':65000, 'Litepanels Gemini 2x1':85000, 'Astera Titan (kit 8 tubos)':230000,
+        'Astera Titan (kit 4 tubos)':130000, 'Astera Helios (kit 8 tubos)':170000, 'Nanlux Evoke 1200':115000,
+        'Nanlite Forza 500':40000, 'Nanlite Forza 60':22000, 'Aputure LS 1200d Pro':150000, 'Trípode combo':5000,
+        'Trípode baby':5000, 'C-stand con brazo':3800, 'Floppy 4x4':9000, 'Bandera 24x36':4900, 'Bandera 18x24':4200},
+  enc: {'HMI 1.2K Par':79990, 'HMI 2.5K Par':99990, 'Fresnel 1K':18990, 'Fresnel 2K':29990, 'Mini Brute 4 lámparas':15990,
+        'Kit Dedolight (3 unidades)':48990, 'Nanlite Forza 60':22990, 'Nanlux Evoke 1200':209999, 'Tamizador 4x4 con telas':18990,
+        'Bandera 24x36':3990, 'Bandera 18x24':3990},
+  cea: {'Fresnel 2K':23500, 'Fresnel 1K':16000, 'Fresnel 650':16000, 'Fresnel 300':14500, 'Blonde 2K (abierta)':13000,
+        'Tamizador 4x4 con telas':65000, 'Distribuidor trifásico':26000, 'Rieles rectos (tramo)':10000},
+  aln: {'Arri M18':180000, 'Arri SkyPanel S60-C':180000, 'Fresnel 2K':13000, 'Fresnel 1K':10000, 'Fresnel 650':10000,
+        'Fresnel 300':8000, 'Kino Flo 4 tubos 4\'':28000, 'Kino Flo 4 tubos 2\'':26000, 'Kit Dedolight (3 unidades)':53000,
+        'Saco de arena':2000, 'Trípode combo':6000, 'Trípode baby':6000, 'Bandera 24x36':3000, 'Magic arm':4000,
+        'Super clamp / mafer':4000, 'Dolly con rieles':81000, 'Generador Honda EU20is (2 kVA)':61000,
+        'Generador Honda EU30is (3 kVA)':84000, 'Tablero monofásico':29000, 'Distribuidor trifásico':86000},
+  raw: {'Arri SkyPanel S60-C':180000, 'Nanlux Evoke 1200':175000, 'Nanlite Forza 60':36000, 'Trípode combo':7000,
+        'Trípode baby':5000, 'C-stand con brazo':4000},
+};
+Object.entries(MAS_PRECIOS_LUZ).forEach(([f, m]) => Object.entries(m).forEach(([nom, v]) => { (PRECIOS_REF_LUZ[nom] ||= {})[f] = v; }));
 const refDe = e => (e && PRECIOS_REF_LUZ[e.nombre]) || null;
 /* El rental del pedido, si es uno de los que publican precios. */
 function fuenteDelRental(P){
@@ -9656,9 +9697,16 @@ function fuenteDelRental(P){
   const r = p && RENTALS_LUCES.find(x => nomRental(x.nombre) === nomRental(p.nombre));
   return r && r.precios || null;
 }
+/* Corto para el renglón (de cuánto a cuánto); largo para el detalle. */
 function textoRef(e){
   const r = refDe(e); if(!r) return '';
-  return Object.entries(r).map(([k, v]) => `${FUENTES_PRECIO_LUZ[k].rental.replace('Estudios ', '')} ${fmt(v, 'ARS')}`).join(' · ');
+  const vs = Object.values(r), lo = Math.min(...vs), hi = Math.max(...vs);
+  return vs.length === 1 ? `${FUENTES_PRECIO_LUZ[Object.keys(r)[0]].rental.replace('Estudios ', '')} ${fmt(lo, 'ARS')}`
+    : `${fmt(lo, 'ARS')} a ${fmt(hi, 'ARS')} (${vs.length} rentals)`;
+}
+function textoRefLargo(e){
+  const r = refDe(e); if(!r) return '';
+  return Object.entries(r).sort((a, b) => a[1] - b[1]).map(([k, v]) => `${FUENTES_PRECIO_LUZ[k].rental} ${fmt(v, 'ARS')}`).join(' · ');
 }
 
 /* Pedidos base para no arrancar de cero: se suman y después se ajustan. */
@@ -9769,7 +9817,7 @@ function vistaLuces(pr, py, v){
       <td class="num muted">${it.w ? (n(it.w) * n(it.cant) >= 1000 ? (n(it.w) * n(it.cant) / 1000).toFixed(1).replace('.0','') + ' kW' : n(it.w) * n(it.cant) + ' W') : '—'}</td>
       <td><input type="number" min="0" step="any" value="${n(it.precio) || ''}" placeholder="—" class="lz-precio"
         onchange="lzUp('${it.id}','precio',this.value)" title="Precio por ${it.u === 'unidad' ? 'unidad' : 'jornada'}">
-        ${textoRef(EQUIPO_LUZ(it.k)) ? `<span class="lz-ref" title="Precios publicados por jornada (sin IVA)">${esc(textoRef(EQUIPO_LUZ(it.k)))}</span>` : ''}</td>
+        ${textoRef(EQUIPO_LUZ(it.k)) ? `<span class="lz-ref" title="${esc(textoRefLargo(EQUIPO_LUZ(it.k)))}">${esc(textoRef(EQUIPO_LUZ(it.k)))}</span>` : ''}</td>
       <td class="num">${n(it.precio) ? fmtM(costoItemLuz(py, it)) : '<span class="muted">—</span>'}</td>
       <td class="noprint lz-acc"><button class="btn sm" onclick="lzEditar('${it.id}')" title="Editar">✎</button>
         <button class="btn sm dgr" onclick="lzBorrar('${it.id}')" title="Quitar">×</button></td></tr>`;
@@ -10003,7 +10051,7 @@ function lzListaHTML(){
     return `<button type="button" class="ppfila${ya ? ' ya' : ''}" onclick="lzSumarDesdeBuscador('${e.k}')">
       <span class="ppnom"><b>${esc(e.nombre)}</b>
         <span class="ppfun">${esc(CAT_LUZ(e.c).l)}${e.w ? ' · ' + (e.w >= 1000 ? e.w / 1000 + ' kW' : e.w + ' W') : ''}</span>
-        ${textoRef(e) ? `<span class="ppnota">Publicado: ${esc(textoRef(e))}</span>` : ''}</span>
+        ${textoRef(e) ? `<span class="ppnota">Publicado: ${esc(textoRefLargo(e))}</span>` : ''}</span>
       <span class="pptar">${ya ? '× ' + ya.cant + ' en el pedido' : '+ sumar'}</span></button>`; }).join('');
 }
 function lzFiltro(k, v){ if(!_lz) return; _lz[k] = v; const el = document.getElementById('lzlista'); if(el) el.innerHTML = lzListaHTML(); }

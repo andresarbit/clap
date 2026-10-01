@@ -466,10 +466,12 @@ base** (chico, mediano, grande) para no arrancar de cero.
 - *Mandar al rental* arma el texto por categoria (con las fechas y lo que va
   solo algunos dias) para WhatsApp o mail; *Bajar planilla* da el .csv.
 
-Precios de referencia: solo dos fuentes argentinas publican listas completas
-de luces y grip, y estan cargadas con su fuente: la lista oficial de Babylon
-(octubre 2026, por jornada de hasta 24 h, sin IVA ni seguro) y la de Camauer
-en alquilerdecamaras.com.ar (30/09/2026). Se ven debajo de cada precio; si el
+Precios de referencia: siete rentals argentinos publican precio por jornada y
+estan cargados con su fuente (Babylon, Camauer, Segui Rodando, Enchulame, CEA,
+RawCine y Ala Norte), solo donde el equipo es claramente el mismo. Las dos
+listas mas completas son la oficial de Babylon (octubre 2026, por jornada de
+hasta 24 h, sin IVA ni seguro) y la de Camauer en alquilerdecamaras.com.ar
+(30/09/2026). Se ven debajo de cada precio (de cuanto a cuanto); si el
 rental elegido es uno de esos, su precio entra solo, y *Completar precios
 vacios con…* llena lo que falta con una lista o con el mas barato publicado.
 Lo que no publican queda vacio: se carga con la cotizacion.
