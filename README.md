@@ -609,6 +609,14 @@ no se pisa; **Recalcular citaciones** sí lo hace):
 - El callsheet ya no cita como gente a los alquileres ni a la prepro, y
   "ANA" y "Ana" son la misma persona.
 
+**Planilla para mandar** (sub-solapa del plan): la hoja de cada jornada para
+imprimir o pasar a PDF, como un shooting schedule. Arriba, departamentos,
+elenco y extras con sus horas, horarios del día, sol y locaciones
+numeradas (Loc 1, Loc 2…). Abajo, una fila por puesta con todos sus planos,
+un solo bloque de tiempo y los cuadros uno al lado del otro; técnica de la
+cámara A y B, VFX/SFX, elenco, extras y observaciones; los cortes como
+franjas de color.
+
 Prueba: `test/citaciones.js`.
 
 ### La IA (opcional, paga, apagada)

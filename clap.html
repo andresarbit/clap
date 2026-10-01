@@ -806,6 +806,31 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
 .pl-selbar select{width:auto;font-size:12.5px;padding:4px 26px 4px 8px}
 .pl-seltip{font-size:11px;flex-basis:100%}
 .pl-selesp{height:120px}
+/* la planilla para mandar */
+.pll{padding-bottom:6px}
+.pll-cab{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:16px 18px 10px;border-bottom:1px solid #171717}
+.pll-dia{font-size:17px;font-weight:600}.pll-dia span{font-weight:500;color:var(--tx2)}
+.pll-top{display:flex;flex-wrap:wrap;gap:12px;padding:12px 18px;align-items:flex-start}
+.pll-t{border-collapse:collapse;font-size:11.5px;min-width:180px}
+.pll-t th{background:#171717;color:#fff;font-weight:600;padding:4px 8px;text-align:left}
+.pll-t td{border-bottom:1px solid var(--line);padding:3px 8px}
+.pll-t td.num,.pll-plan td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.pll-h td:first-child{color:var(--tx2)}.pll-fuerte td{font-weight:700;color:#171717!important;background:#f0f0ee}
+.pll-sol{display:flex;flex-direction:column;gap:4px;font-size:11.5px;min-width:160px}
+.pll-am,.pll-pm{display:flex;justify-content:space-between;padding:3px 8px;border-radius:6px}
+.pll-am{background:#fbeeb0}.pll-pm{background:#d6e6fb}
+.pll-loc{margin-top:4px}
+.pll-plan{width:100%;border-collapse:collapse;font-size:11.5px}
+.pll-plan th{background:#171717;color:#fff;font-weight:600;padding:5px 6px;text-align:left}
+.pll-plan td{border-bottom:1px solid var(--line);padding:5px 6px;vertical-align:top}
+.pll-p td{background:#fff}
+.pll-nums{font-weight:700}
+.pll-cuadros{white-space:nowrap}.pll-cuadros img{height:58px;width:auto;margin:0 3px 3px 0;border-radius:3px;border:1px solid var(--line);vertical-align:top}
+.pll-set{font-weight:600}
+.pll-ev td{font-weight:600;text-align:left}
+.pll-ev td[colspan]{text-align:center}
+.pll-comida td{background:#d8f0d4}.pll-armado td,.pll-wrap td{background:#d6e6fb}.pll-traslado td{background:#f9c9c3}.pll-libre td{background:#f0f0ee;color:var(--tx2);font-weight:500}
+@media print{.pll-plan,.pll-t{font-size:9.5px}.pll-cuadros img{height:46px}.pll-ev td,.pll-am,.pll-pm,.pll-t th,.pll-plan th{-webkit-print-color-adjust:exact;print-color-adjust:exact}.pll-p{break-inside:avoid}}
 .pl-citdia,.cs-horarios{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--tx2)}
 .pl-citdia b,.cs-horarios b{color:var(--tx);font-variant-numeric:tabular-nums}
 .pl-vfx{background:#eef3fb;color:#1f5fa8}
@@ -9115,7 +9140,7 @@ function vistaPlan(pr, py, v){
   const d = getD(), p = sincronizarPlan(py);
   asegurarEventosBase(py);
   plInstalarArrastre();
-  const S = [['dia','Día por día'],['jornadas','Todas las jornadas']];
+  const S = [['dia','Día por día'],['planilla','Planilla para mandar'],['jornadas','Todas las jornadas']];
   if(d.escenas.length || p.items.some(x => x.tipo === 'plano' && x.elenco)) S.push(['elenco','Elenco por jornada']);
   const sub = S.some(s => s[0] === DB.ui.subPlan) ? DB.ui.subPlan : 'dia';
   const tabs = `<div class="noprint pl-subs">
@@ -9125,10 +9150,120 @@ function vistaPlan(pr, py, v){
     <button class="btn sm" onclick="window.print()">Imprimir / PDF</button>
   </div>`;
   if(sub === 'jornadas') return tabs + plTodasHTML(py);
+  if(sub === 'planilla') return tabs + plPlanillaHTML(pr, py);
   if(sub === 'elenco') return tabs + plElencoHTML(py);
   return tabs + plDiaHTML(pr, py, v);
 }
 function setSubPlan(k){ DB.ui.subPlan = k; R(); }
+
+/* ==========================  LA PLANILLA DEL DÍA  ========================
+   El "shooting schedule" que se manda: una hoja por jornada, para imprimir o
+   pasar a PDF. Arriba, de un vistazo, las citaciones por departamento, el
+   elenco y los extras con sus cuatro horas, los horarios del día, el sol y
+   las locaciones numeradas. Abajo, el día por PUESTA: una fila por puesta
+   con todos sus planos (12 · 08 · 10), un solo bloque de tiempo y los
+   cuadros uno al lado del otro; los cortes (desayuno, armado, comida,
+   traslado, wrap) como franjas de color.                                   */
+function filasPlanilla(py, D){
+  const out = [];
+  D.filas.forEach(f => {
+    if(!f.it){
+      if(f.implicita === 'libre' && f.dur < 10) return;
+      out.push({tipo: f.implicita === 'traslado' ? 'traslado' : f.implicita === 'libre' ? 'libre' : 'armado',
+        inicio: f.inicio, fin: f.fin, texto: f.implicita === 'cambio' ? 'Cambio de puesta' : f.texto});
+      return;
+    }
+    const it = f.it;
+    if(it.tipo === 'evento'){
+      const t = it.clase === 'almuerzo' || it.clase === 'desayuno' || it.clase === 'break' ? 'comida'
+        : it.clase === 'traslado' ? 'traslado' : it.clase === 'wrap' ? 'wrap' : 'armado';
+      out.push({tipo: t, inicio: f.inicio, fin: f.fin, texto: nombreEvento(it, f.inicio)});
+      return;
+    }
+    const k = claveGrupo(py, it), ult = out[out.length - 1];
+    if(ult && ult.tipo === 'puesta' && ult.k === k){ ult.its.push(it); ult.fin = f.fin; }
+    else out.push({tipo: 'puesta', k, its: [it], inicio: f.inicio, fin: f.fin});
+  });
+  return out;
+}
+function plPlanillaHTML(pr, py){
+  const d = getD(), num = jornadaDelPlan();
+  if(num == null) return `<div class="card"><div class="empty">Todavía no hay jornadas.</div></div>`;
+  volcarHorarios(py, num);
+  const D = calcularDia(py, num), j = D.j, H = horariosDelDia(py, num, D);
+  const cfg = py.configRodaje || nuevaConfigRodaje();
+  const cit = clave => j.citaciones[clave] || {};
+  let C = null; try{ C = armarCallsheet(py, getV(), num); }catch(e){}
+  /* locaciones numeradas en el orden en que aparecen */
+  const lugares = [];
+  D.filas.forEach(f => { if(f.it && f.it.tipo !== 'evento'){ const l = lugarDeItem(py, f.it); if(l && !lugares.includes(l)) lugares.push(l); } });
+  const loc = l => { const i = lugares.indexOf(l); return i < 0 ? '' : 'Loc ' + (i + 1); };
+  /* departamentos con su hora, del más temprano al más tarde */
+  const deptos = {};
+  (C ? C.crew : []).forEach(c => { const x = cit(c.clave); const dp = x.depto || (deptoCitacion(c) || {}).l || 'Otros';
+    const h = x.citacion || j.citacion; if(!deptos[dp] || aMin(h) < aMin(deptos[dp])) deptos[dp] = h; });
+  const deptosL = Object.entries(deptos).sort((a, b) => (aMin(a[1]) ?? 0) - (aMin(b[1]) ?? 0));
+  const E = elencoDelDia(py, num, D), X = extrasDelDia(py, num, D);
+  const claveActor = nombre => { const e = C && C.elenco.find(x => norm(x.personaje) === norm(nombre)); return e ? e.clave : 'p:' + nombre; };
+  const talento = [...E.map(x => ({nombre: x.nombre, rol: '', c: cit(claveActor(x.nombre))})),
+    ...X.map(x => ({nombre: `Extras (×${x.cant})`, rol: x.nombre, c: cit('x:' + norm(x.nombre))}))];
+  const fecha = j.fecha ? `${diaSemana(j.fecha)} ${j.fecha.split('-').reverse().join('/')}` : '';
+  const filas = filasPlanilla(py, D);
+  const hh = (a, b) => `${aHora(a)} – ${aHora(b)}`;
+  const dur = (a, b) => { const m = Math.round(b - a); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`; };
+  const union = (its, f) => [...new Set(its.flatMap(f).filter(Boolean))];
+  return `${plChipsJornadas(py, num)}
+  <div class="cs pll">
+    <div class="pll-cab">
+      <div><div class="csttl">Planilla de rodaje</div>
+        <div class="cssub">${esc(pr.nombre)} · ${esc(py.nombre)}</div></div>
+      <div class="pll-dia">Jornada ${num} de ${d.jornadas.length}${fecha ? ` · <span>${esc(fecha)}</span>` : ''}</div>
+    </div>
+    <div class="pll-top">
+      ${deptosL.length ? `<table class="pll-t"><thead><tr><th>Departamento</th><th>Citación</th><th>Dónde</th></tr></thead><tbody>
+        ${deptosL.map(([k, h]) => `<tr><td>${esc(k)}</td><td class="num">${esc(h)}</td><td>${esc(loc(lugares[0]) || '')}</td></tr>`).join('')}
+        ${H.agencia != null ? `<tr><td>Agencia y cliente</td><td class="num">${aHora(H.agencia)}</td><td>${esc(loc(lugares[0]) || '')}</td></tr>` : ''}
+      </tbody></table>` : ''}
+      ${talento.length ? `<table class="pll-t"><thead><tr><th>Elenco</th><th>Citación</th><th>Dónde</th><th>A vest.</th><th>Listo</th><th title="Desde esta hora cobra horas extra">Extras desde</th></tr></thead><tbody>
+        ${talento.map(t => `<tr><td><b>${esc(t.nombre)}</b>${t.rol ? ` <span class="muted">${esc(t.rol)}</span>` : ''}</td><td class="num">${esc(t.c.citacion || '—')}</td>
+          <td>${esc(loc(t.c.lugar) || '')}</td><td class="num">${esc(t.c.vestuario || '')}</td><td class="num">${esc(t.c.listo || '')}</td><td class="num">${esc(t.c.extras || '')}</td></tr>`).join('')}
+      </tbody></table>` : ''}
+      <table class="pll-t pll-h"><tbody>
+        ${H.precall != null ? `<tr><td>Pre-call maquillaje</td><td class="num">${aHora(H.precall)}</td></tr>` : ''}
+        ${H.salida != null ? `<tr><td>Salida${H.encuentro ? ' de ' + esc(H.encuentro) : ''}</td><td class="num">${aHora(H.salida)}</td></tr>` : ''}
+        <tr class="pll-fuerte"><td>Crew call</td><td class="num">${esc(j.citacion || '—')}</td></tr>
+        <tr><td>Listo para filmar</td><td class="num">${H.listo != null ? aHora(H.listo) : '—'}</td></tr>
+        <tr><td>${esc(nombreComida(D))}</td><td class="num">${D.comida ? aHora(D.comida.inicio) : '—'}</td></tr>
+        <tr><td>Wrap de cámara</td><td class="num">${H.wrapCamara != null ? aHora(H.wrapCamara) : '—'}</td></tr>
+        <tr class="pll-fuerte"><td>Wrap total</td><td class="num">${aHora(D.fin)}</td></tr>
+        <tr><td>Horas extra</td><td class="num">${D.extra ? durTexto(D.extra) : '—'}</td></tr>
+      </tbody></table>
+      <div class="pll-sol">
+        ${D.sol ? `<div class="pll-am"><span>Amanecer</span><b>${aHora(D.sol.amanecer)}</b></div><div class="pll-pm"><span>Atardecer</span><b>${aHora(D.sol.atardecer)}</b></div>` : ''}
+        ${lugares.map((l, i) => `<div class="pll-loc"><b>Loc ${i + 1}:</b> ${esc(l)}${(j.direcciones[l] || {}).direccion ? ` <span class="muted">${esc(j.direcciones[l].direccion)}</span>` : ''}</div>`).join('')}
+      </div>
+    </div>
+    <table class="pll-plan"><thead><tr><th>Hora</th><th>Dur.</th><th>#</th><th>Cuadros</th><th>Descripción</th><th>VFX / SFX</th><th>Elenco</th><th>Extras</th><th>Obs.</th></tr></thead>
+      <tbody>${filas.map(f => f.tipo !== 'puesta'
+        ? `<tr class="pll-ev pll-${f.tipo}"><td class="num">${hh(f.inicio, f.fin)}</td><td class="num">${dur(f.inicio, f.fin)}</td><td colspan="7">${esc(f.texto)}</td></tr>`
+        : (() => { const its = f.its, a = its[0];
+          const tecnica = union(its, x => [[x.movimiento, x.lente, TAM_CORTO[x.tamano] || x.tamano].filter(Boolean).join(' · ')]);
+          return `<tr class="pll-p"><td class="num">${hh(f.inicio, f.fin)}</td><td class="num">${dur(f.inicio, f.fin)}</td>
+            <td class="num pll-nums">${its.map(x => esc(x.numero || '—')).join('<br>')}</td>
+            <td class="pll-cuadros">${its.map(x => x.img ? `<img src="${x.img}" alt="Plano ${esc(x.numero || '')}">` : '').join('')}</td>
+            <td>${a.set ? `<div class="pll-set">${esc(a.set)}${a.emplazamiento ? ' · puesta ' + esc(a.emplazamiento) : ''}${a.tiro ? ' · ' + esc(TIRO(a.tiro).l.toLowerCase()) : ''}</div>` : ''}
+              ${tecnica.length ? `<div><b>A:</b> ${esc(tecnica.join(' / '))}</div>` : ''}
+              ${union(its, x => [x.camB]).map(b => `<div><b>B:</b> ${esc(b)}</div>`).join('')}
+              ${its.map(x => x.desc ? `<div>${esc(x.desc)}</div>` : '').join('')}</td>
+            <td>${union(its, vfxDe).map(esc).join('<br>')}</td>
+            <td>${union(its, x => elencoDeItem(py, x)).map(esc).join('<br>')}</td>
+            <td>${union(its, x => extrasDePlano(x).map(g => `${g.nombre} (×${g.cant})`)).map(esc).join('<br>')}</td>
+            <td class="muted">${union(its, x => [x.notas, x.elementos]).map(esc).join('<br>')}</td></tr>`; })()).join('')}
+      </tbody></table>
+    <div class="csfoot">${esc(pr.nombre)} · ${esc(py.nombre)} · Planilla de la jornada ${num} · jornada de ${horasJornadaDe(cfg)} h · generado con CLAP</div>
+  </div>`;
+}
+
 
 /* Una jornada que el plan ve por primera vez arranca con desayuno, armado,
    almuerzo y wrap. Se hace una sola vez: si después se borran, no vuelven. */

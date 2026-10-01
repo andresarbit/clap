@@ -113,4 +113,17 @@ volcarHorarios(py, 1);
 const claveAna = C2.elenco.find(e => norm(e.personaje) === 'ana').clave;
 ok('y la citación cae en su renglón', !!(j1.citaciones[claveAna] || {}).citacion);
 
+console.log('\n--- 10. LA PLANILLA PARA MANDAR ---');
+DB.ui.tab = 'plan'; DB.ui.subPlan = 'planilla'; DB.ui.jornada = 1; render();
+const hp = app.innerHTML;
+ok('está la sub-solapa "Planilla para mandar"', /Planilla de rodaje/.test(hp) && /Jornada 1 de/.test(hp));
+ok('arriba: departamentos, elenco y horarios', /<th>Departamento<\/th>/.test(hp) && /<th>Elenco<\/th>/.test(hp) && /Crew call/.test(hp) && /Wrap total/.test(hp));
+ok('las locaciones numeradas', /<b>Loc 1:<\/b> Arenas Studios/.test(hp) && /<b>Loc 2:<\/b> Puerto Madero/.test(hp));
+const F = filasPlanilla(py, calcularDia(py, 1));
+const puestas = F.filter(f => f.tipo === 'puesta');
+ok('una fila por puesta, con todos sus planos', puestas.some(f => f.its.length >= 2), puestas.map(f => f.its.map(x => x.numero).join('·')).join(' | '));
+ok('los cortes como franjas (comida, armado, traslado, wrap)', F.some(f => f.tipo === 'comida') && F.some(f => f.tipo === 'wrap') && F.some(f => f.tipo === 'traslado'));
+ok('la cámara B y los VFX van en la fila de su puesta', /<b>B:<\/b> Alexa en slider/.test(hp) && /Clean plate/.test(hp));
+DB.ui.subPlan = 'dia';
+
 console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');
