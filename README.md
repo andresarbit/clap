@@ -619,6 +619,32 @@ franjas de color.
 
 Prueba: `test/citaciones.js`.
 
+### En el set: llegadas, liberaciones y lo que se paga
+
+El plan escribe las citaciones; en **Rodaje → Parte del día** los
+asistentes de producción cierran el día:
+
+- **Llegó** y **Liberar** ponen la hora del reloj (redondeada a 5 min). La
+  salida propone la hora en que el plan libera a cada uno.
+- **Liberar a todo un departamento** (o al elenco, o a los extras) y
+  **Liberar a todos los que quedan**: los que no tienen entrada entran a su
+  citación.
+- Cada uno muestra su estado: sin llegar, en set, liberado a tal hora.
+- **Locaciones, equipos y transporte** que se cobran por jornada: cuándo
+  llegaron o se retiraron, cuándo se fueron o se devolvieron, y las horas
+  contratadas (por defecto, las de la jornada). Lo que pasa del contrato se
+  paga al valor hora de su jornada.
+
+Eso llega a **Alta y liquidación**:
+- las horas extra de cada uno, también las del **elenco** (que fichaba con
+  el nombre del personaje y no llegaban);
+- las **jornadas trabajadas** contra las presupuestadas: una de más se suma
+  sola; si faltan, se avisa pero no se descuenta (puede faltar un parte);
+- una tabla de **Proveedores del rodaje** con jornadas usadas, jornadas y
+  horas de más, y su planilla para administración.
+
+Prueba: `test/liberar.js`.
+
 ### La IA (opcional, paga, apagada)
 
 La clave de la IA no puede ir en la página, que es pública. Vive como secreto
@@ -1253,6 +1279,7 @@ node test/run.js test/puestas.js   # storyboard por puesta/tiro/personaje/fondo,
 node test/run.js test/seleccion.js # marcar varios: mover el bloque, ponerles puesta, borrar
 node test/run.js test/armar.js     # armar dia y rodaje: horas, almuerzo, citaciones, jornadas nuevas, deshacer, quitar jornada
 node test/run.js test/citaciones.js # citacion por departamento, actor, extras, punto de encuentro, escala
+node test/run.js test/liberar.js   # llego/liberar, por departamento, proveedores, jornadas reales en la liquidacion
 node test/run.js test/funcion-ia.js # la funcion del servidor: sesion, productora, sin clave, tope
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO

@@ -806,6 +806,9 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
 .pl-selbar select{width:auto;font-size:12.5px;padding:4px 26px 4px 8px}
 .pl-seltip{font-size:11px;flex-basis:100%}
 .pl-selesp{height:120px}
+.rd-hora{display:flex;gap:4px;align-items:center}.rd-hora input{min-width:56px}
+.rd-est{font-size:11px;font-weight:600;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.rd-est.falta{background:#f0f0ee;color:var(--tx2)}.rd-est.set{background:#fbeeb0;color:#6d5300}.rd-est.libre{background:#d8f0d4;color:#1f5f1a}
 /* la planilla para mandar */
 .pll{padding-bottom:6px}
 .pll-cab{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;padding:16px 18px 10px;border-bottom:1px solid #171717}
@@ -6953,22 +6956,31 @@ function comprobanteLiq(g){
 
 function liquidarPersona(py, v, g){
   const cfg = py.configRodaje || nuevaConfigRodaje();
-  let base = 0, he = 0, jornadas = 0, heHoras = 0;
-  g.lineas.forEach(({l}) => {
+  let base = 0, he = 0, jornadas = 0, heHoras = 0, presRodaje = 0, valorDia = 0;
+  const trabajadas = new Set();
+  g.lineas.forEach(({rb, l}) => {
     base += totalLinea(l, v);
     if(l.unidad === 'jornada') jornadas += n(l.cantidad) * n(l.dias);
     if(l.etapa) return;                      /* las extras son del rodaje */
+    if(l.unidad === 'jornada'){ presRodaje += n(l.dias); valorDia ||= conv(n(l.valorUnit), l.moneda || 'ARS', v.monedaBase, n(v.tc)); }
     (py.desglose?.jornadas || []).forEach(jj => {
-      const h = horasDe('l:' + l.id, jj, cfg, n(l.valorUnit), l.moneda);
+      const h = horasDeLinea(py, rb && rb.codigo || rb, l, jj, cfg);
       if(h.sinDatos) return;
+      trabajadas.add(jj.numero);
       heHoras += h.extra / 60;
       he += conv(h.costoHE, l.moneda || 'ARS', v.monedaBase, n(v.tc));
     });
   });
+  /* jornadas de rodaje de verdad: las de más se pagan solas; las de menos se
+     avisan (puede ser que falte cargar un parte), no se descuentan */
+  const trab = trabajadas.size;
+  const deMas = presRodaje && trab > presRodaje ? trab - presRodaje : 0;
+  const montoDias = deMas * valorDia;
   const L = liqDe(py)[g.clave] || {};
   const ajuste = n(L.ajuste);
   return {base, he, heHoras, ajuste, notaAjuste: L.notaAjuste || '', jornadas,
-    total: base + he + ajuste, estado: L.estado || 'borrador', historial: L.historial || [],
+    trabajadas: trab, presRodaje, deMas, montoDias, faltan: trab && trab < presRodaje ? presRodaje - trab : 0,
+    total: base + montoDias + he + ajuste, estado: L.estado || 'borrador', historial: L.historial || [],
     comprobante: comprobanteLiq(g)};
 }
 
@@ -6984,7 +6996,7 @@ function vistaPersonal(pr, py, v){
   const G = genteDelProyecto(py, v);
   if(!G.length) return tabs + `<div class="card"><div class="empty">Todavía no hay equipo en el presupuesto.<br>
     <span class="muted" style="font-size:12px">Cargá las líneas del equipo técnico y el elenco, y traé a cada uno del catálogo.</span></div></div>`;
-  return tabs + (sub === 'liquidacion' ? liquidacionHTML(pr, py, v, G) : altaHTML(pr, py, v, G));
+  return tabs + (sub === 'liquidacion' ? liquidacionHTML(pr, py, v, G) + liquidacionProveedoresHTML(py, v) : altaHTML(pr, py, v, G));
 }
 
 function altaHTML(pr, py, v, G){
@@ -7113,7 +7125,7 @@ function liquidacionHTML(pr, py, v, G){
         <button class="btn sm" onclick="DB.ui.subPersonal='alta';R()">Pedírselos</button></div>` : ''}
     </div>
     <div class="scrollx"><table class="tbl">
-      <thead><tr><th>Persona</th><th style="text-align:right">Presupuesto</th><th style="text-align:right">Horas extra</th>
+      <thead><tr><th>Persona</th><th style="text-align:right">Presupuesto</th><th style="text-align:right" title="Jornadas de rodaje fichadas en el parte">Jornadas</th><th style="text-align:right">Horas extra</th>
         <th style="text-align:right;width:120px">Ajuste</th><th style="text-align:right">Total</th><th>Cómo se paga</th><th>Estado</th><th></th></tr></thead>
       <tbody>${filas.map(({g, L}) => {
         const sig = LIQ_SIGUE[L.estado];
@@ -7122,6 +7134,9 @@ function liquidacionHTML(pr, py, v, G){
           <td>${g.nombre ? `<b>${esc(g.nombre)}</b>` : '<span class="muted">— nadie todavía —</span>'}
             <span class="muted" style="display:block;font-size:11px">${esc(g.funciones.join(' / '))}${L.jornadas ? ` · ${L.jornadas} jornada${L.jornadas == 1 ? '' : 's'}` : ''}</span></td>
           <td class="num" style="text-align:right">${fmt(L.base, mb)}</td>
+          <td class="num" style="text-align:right">${L.trabajadas ? `${L.trabajadas} de ${L.presRodaje || '—'}` : '<span class="muted">—</span>'}
+            ${L.montoDias ? `<span style="display:block;font-size:10.5px;color:var(--warn)">+ ${fmt(L.montoDias, mb)} (${L.deMas} de más)</span>` : ''}
+            ${L.faltan ? `<span style="display:block;font-size:10.5px" class="muted" title="Puede faltar cargar un parte: no se descuenta">${L.faltan} sin parte</span>` : ''}</td>
           <td class="num" style="text-align:right">${L.he ? `${fmt(L.he, mb)}<span class="muted" style="display:block;font-size:10px">${fmtC(Math.round(L.heHoras * 10) / 10)} h</span>` : '<span class="muted">—</span>'}</td>
           <td style="text-align:right">${L.estado === 'pagado' ? fmt(L.ajuste, mb)
             : `<input type="number" step="any" value="${L.ajuste || ''}" placeholder="0" title="Adelantos en negativo; una jornada de más, en positivo"
@@ -7138,7 +7153,8 @@ function liquidacionHTML(pr, py, v, G){
       }).join('')}</tbody></table></div>
     <div class="pad muted" style="font-size:11.5px;line-height:1.6">
       <b>Presupuesto</b> es lo de sus líneas en la versión ${esc(v.nombre)} (preproducción y rodaje juntos).
-      <b>Horas extra</b> salen de los partes del día (Rodaje → Parte del día).
+      <b>Jornadas</b> y <b>horas extra</b> salen de los partes del día (Rodaje → Parte del día): una jornada de más se suma sola;
+      si faltan, se avisa pero no se descuenta (puede faltar cargar un parte).
       El <b>ajuste</b> es para lo que no está en ningún lado: un adelanto (en negativo) o una jornada de más.
       Producción revisa, el Productor Ejecutivo aprueba y Administración marca pagado: cada paso queda firmado.
     </div></div>`;
@@ -7178,11 +7194,11 @@ function bajarLiquidacion(){
   const py = getPy(), v = getV();
   const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
   const L = [['Nombre','CUIL/CUIT','DNI','Alias','CBU','Banco','Función','Cómo se paga',
-    'Presupuesto','Horas extra','Ajuste','Motivo del ajuste','Total ' + v.monedaBase,'Estado','Pagado el'].map(q).join(',')];
+    'Presupuesto','Jornadas trabajadas','Jornadas de más','Horas extra','Ajuste','Motivo del ajuste','Total ' + v.monedaBase,'Estado','Pagado el'].map(q).join(',')];
   genteDelProyecto(py, v).forEach(g => {
     const R2 = liquidarPersona(py, v, g), p = g.persona || {}, x = liqDe(py)[g.clave] || {};
     L.push([g.nombre, p.cuit, p.dni, p.alias, p.cbu, p.banco, g.funciones.join(' / '), R2.comprobante,
-      Math.round(R2.base), Math.round(R2.he), Math.round(R2.ajuste), R2.notaAjuste, Math.round(R2.total),
+      Math.round(R2.base), R2.trabajadas || '', Math.round(R2.montoDias), Math.round(R2.he), Math.round(R2.ajuste), R2.notaAjuste, Math.round(R2.total),
       (LIQ_ESTADOS.find(e => e.k === R2.estado) || {}).l, x.pagadoEl || ''].map(q).join(','));
   });
   bajar(`${py.nombre}-liquidacion.csv`, '﻿' + L.join('\n'), 'text/csv;charset=utf-8');
@@ -8069,22 +8085,33 @@ function parteHTML(pr,py,j,C,gente,cfg){
       <div class="pad noprint" style="padding-bottom:0;display:flex;gap:7px;flex-wrap:wrap">
         <button class="btn sm" onclick="ficharTodos('entrada')">Entrada = citación de cada uno</button>
         <button class="btn sm" onclick="ficharTodos('salida')">Salida = wrap</button>
+        <button class="btn sm pri" onclick="rdLiberarGrupo('*')" title="Los que todavía no tienen salida, a esta hora">Liberar a todos los que quedan</button>
       </div>
-      <div class="scrollx"><table class="tbl cst">
-        <thead><tr><th style="width:28%">Rol</th><th>Nombre</th><th style="width:76px">Entrada</th>
-          <th style="width:76px">Salida</th><th style="width:66px">Horas</th><th>Nota</th></tr></thead>
-        <tbody>${gente.map(g=>{
-          const h = horasDe(g.clave, j, cfg, g.valorJornada, g.moneda);
+      <div class="muted noprint" style="font-size:11.5px;padding:6px 16px 0">"Ahora" pone la hora del reloj. Liberá de a uno, por departamento o a todos:
+        con eso salen las horas reales y las extras de cada uno, que van a la liquidación.</div>
+      <div class="scrollx"><table class="tbl cst rd-fich">
+        <thead><tr><th style="width:24%">Rol</th><th>Nombre</th><th style="width:118px">Entrada</th>
+          <th style="width:118px">Salida</th><th style="width:84px">Estado</th><th style="width:60px">Horas</th><th>Nota</th></tr></thead>
+        <tbody>${(() => { const grupos = []; gente.forEach(g => { let x = grupos.find(y => y.k === g.grupo); if(!x){ x = {k: g.grupo, gente: []}; grupos.push(x); } x.gente.push(g); });
+          return grupos.map(gr => { const quedan = gr.gente.filter(g => !(p.fichadas[g.clave] || {}).salida).length;
+            return `<tr class="csdep"><td colspan="7">${esc(gr.k || 'Equipo')}
+              ${quedan ? `<button class="btn sm noprint" style="float:right" onclick="rdLiberarGrupo('${esc(String(gr.k).replace(/'/g, "\\'"))}')">Liberar a ${quedan == gr.gente.length ? 'todo' : 'los ' + quedan + ' que quedan de'} ${esc(gr.k || 'Equipo')}</button>` : ''}</td></tr>` +
+            gr.gente.map(g => {
+          const h = horasDe(g.clave, j, cfg, g.valorJornada, g.moneda), f = p.fichadas[g.clave] || {}, c = j.citaciones[g.clave] || {}, est = estadoFichada(f);
           return `<tr><td><span class="crol">${esc(g.rol)}</span></td>
             <td class="${g.nombre?'':'muted'}">${esc(g.nombre||'—')}</td>
-            <td><input type="text" value="${esc(h.entrada||'')}" placeholder="${esc((j.citaciones[g.clave]||{}).citacion||j.citacion||'')}"
-              onchange="upFichada('${g.clave}','entrada',this.value)"></td>
-            <td><input type="text" value="${esc(h.salida||'')}" placeholder="${esc(p.wrap||'')}"
-              onchange="upFichada('${g.clave}','salida',this.value)"></td>
+            <td><div class="rd-hora"><input type="text" value="${esc(h.entrada||'')}" placeholder="${esc(c.citacion||j.citacion||'')}"
+              onchange="upFichada('${g.clave}','entrada',this.value)" aria-label="Entrada de ${esc(g.rol)}">
+              ${f.entrada ? '' : `<button class="btn sm noprint" onclick="rdFichar('${g.clave}','entrada')" title="Llegó ahora">Llegó</button>`}</div></td>
+            <td><div class="rd-hora"><input type="text" value="${esc(h.salida||'')}" placeholder="${esc(c.libera||p.wrap||'')}"
+              onchange="upFichada('${g.clave}','salida',this.value)" aria-label="Salida de ${esc(g.rol)}">
+              ${f.entrada && !f.salida ? `<button class="btn sm pri noprint" onclick="rdFichar('${g.clave}','salida')" title="Liberarlo ahora">Liberar</button>` : ''}</div></td>
+            <td><span class="rd-est ${est.k}">${esc(est.l)}</span></td>
             <td class="num ${h.extra>0?'conhe':''}">${h.sinDatos?'—':fmtHoras(h.netos)}</td>
-            <td><input type="text" value="${esc((p.fichadas[g.clave]||{}).nota||'')}" placeholder="—"
-              onchange="upFichada('${g.clave}','nota',this.value)"></td></tr>`;}).join('')}
+            <td><input type="text" value="${esc(f.nota||'')}" placeholder="—"
+              onchange="upFichada('${g.clave}','nota',this.value)" aria-label="Nota de ${esc(g.rol)}"></td></tr>`;}).join(''); }).join(''); })()}
         </tbody></table></div></div>
+    ${rdProveedoresHTML(py, getV(), j, cfg)}
     <div class="csblock"><h4>Incidencias del día</h4>
       <div class="pad grid2">
         ${F('Clima real','climaReal',p.climaReal,'text')}
@@ -8141,6 +8168,12 @@ function horasHTML(pr,py,v,j,gente,cfg){
           No está en el presupuesto: es desvío. Con ${cfg.horasJornada} h de jornada base
           y escala ${esc(escalaTexto(cfg))}.</div></div>`:''}
     </div>
+    ${(() => { const P = proveedoresDelRodaje(py, v).map(x => ({x, h: horasProveedor(x.clave, j, cfg, n(x.l.valorUnit))})).filter(y => !y.h.sinDatos);
+      return P.length ? `<div class="csblock"><h4>Locaciones, equipos y transporte</h4><div class="scrollx"><table class="tbl cst">
+        <thead><tr><th>Qué</th><th style="width:60px">Llegó</th><th style="width:60px">Se fue</th><th style="width:62px">Horas</th><th style="width:70px">Contrato</th><th style="width:62px">De más</th><th style="width:96px">Costo</th></tr></thead>
+        <tbody>${P.map(({x, h}) => `<tr class="${h.extra > 0 ? 'conhe' : ''}"><td>${esc(x.concepto)}</td><td class="num muted">${esc(h.entrada)}</td><td class="num muted">${esc(h.salida)}</td>
+          <td class="num">${fmtHoras(h.brutos)}</td><td class="num muted">${h.contrato} h</td><td class="num"><b>${h.extra ? fmtHoras(h.extra) : '—'}</b></td>
+          <td class="num"><b>${h.costoHE ? fmt(h.costoHE, x.l.moneda || 'ARS') : '—'}</b></td></tr>`).join('')}</tbody></table></div></div>` : ''; })()}
     ${proy.jornadas.length>1 ? `<div class="csblock"><h4>Acumulado del proyecto</h4>
       <div class="scrollx"><table class="tbl cst">
         <thead><tr><th>Jornada</th><th style="width:80px">Fichados</th><th style="width:80px">Extras</th>
@@ -14907,6 +14940,127 @@ function ficharTodos(campo){
   });
   toast(n0 ? `${n0} ${campo}s cargadas` : (campo==='salida'&&!j.parte.wrap ? 'Cargá primero el wrap' : 'Ya estaban cargadas'));
   R();
+}
+/* ==================  EN EL SET: LLEGADAS Y LIBERACIONES  ==================
+   Los asistentes de producción van cerrando el día: anotan cuándo llegó cada
+   uno y cuándo lo liberan, de a uno, por departamento o a todos los que
+   quedan. Con eso salen las horas reales y las extras, que van a la
+   liquidación. Lo mismo para las locaciones, los equipos y el transporte
+   que se cobran por jornada: cuándo llegaron (o se retiraron) y cuándo se
+   fueron (o se devolvieron); si pasan de las horas contratadas, es un
+   extra a pagar.                                                          */
+const ahoraHHMM = () => { const d = new Date(); return aHora(Math.round((d.getHours() * 60 + d.getMinutes()) / 5) * 5); };
+function rdFichar(clave, campo, hora){
+  const j = jornadaParte(); j.parte.fichadas[clave] ||= {};
+  j.parte.fichadas[clave][campo] = hora || ahoraHHMM();
+  toast(`${campo === 'entrada' ? 'Llegó' : 'Liberado'} a las ${j.parte.fichadas[clave][campo]}`); R();
+}
+/* liberar a un grupo (un departamento, el elenco, los extras) o a todos los
+   que quedan: los que no tienen entrada entran a su citación */
+function rdLiberarGrupo(grupo, hora){
+  const py = getPy(), v = getV(), j = jornadaParte();
+  const {gente} = gentePorJornada(py, v, j.numero);
+  const h = hora || ahoraHHMM(); let k = 0;
+  gente.filter(g => grupo === '*' || g.grupo === grupo).forEach(g => {
+    const f = (j.parte.fichadas[g.clave] ||= {});
+    if(f.salida) return;
+    if(!f.entrada) f.entrada = (j.citaciones[g.clave] || {}).citacion || j.citacion;
+    f.salida = h; k++;
+  });
+  toast(k ? `${k} liberado${k == 1 ? '' : 's'} a las ${h}` : 'Ya estaban todos liberados'); R();
+}
+const estadoFichada = f => !f || !f.entrada ? {k:'falta', l:'sin llegar'} : !f.salida ? {k:'set', l:'en set'} : {k:'libre', l:'liberado ' + f.salida};
+
+/* --- locaciones, equipos y transporte del rodaje --- */
+function proveedoresDelRodaje(py, v){
+  if(!v) return [];
+  return v.rubros.filter(r => ['10','11','12'].includes(r.codigo)).flatMap(r => r.lineas
+    .filter(l => String(l.concepto || '').trim() && !l.etapa && l.unidad === 'jornada')
+    .map(l => ({clave:'l:' + l.id, rubro:r.codigo, depto:r.nombre, concepto:l.concepto, l})));
+}
+/* Las extras de un proveedor son las horas que pasan de lo contratado, al
+   valor hora de su jornada (sin recargo: el recargo es de la gente). */
+function horasProveedor(clave, j, cfg, valorJornada){
+  const f = ((j.parte && j.parte.fichadas) || {})[clave] || {};
+  const brutos = lapso(f.entrada, f.salida);
+  const contrato = n(f.contrato) || horasJornadaDe(cfg);
+  if(brutos == null) return {sinDatos:true, entrada:f.entrada || '', salida:f.salida || '', contrato};
+  const extra = Math.max(0, brutos - contrato * 60);
+  const valorHora = valorJornada ? valorJornada / contrato : 0;
+  return {sinDatos:false, entrada:f.entrada, salida:f.salida, contrato, brutos, extra, valorHora, costoHE: extra / 60 * valorHora};
+}
+function rdContrato(clave, val){ const j = jornadaParte(); (j.parte.fichadas[clave] ||= {}).contrato = n(val) || ''; R(); }
+function rdProveedoresHTML(py, v, j, cfg){
+  const P = proveedoresDelRodaje(py, v);
+  if(!P.length) return '';
+  const fch = j.parte.fichadas;
+  return `<div class="csblock"><h4>Locaciones, equipos y transporte</h4>
+    <div class="pad muted noprint" style="font-size:11.5px;padding-bottom:0">Lo que se cobra por jornada: cuándo llegó o se retiró, cuándo se fue o se devolvió.
+      Si pasa de las horas contratadas, la diferencia se paga como extra (en Alta y liquidación → Proveedores).</div>
+    <div class="scrollx"><table class="tbl cst">
+      <thead><tr><th>Qué</th><th style="width:96px">Llegó / retiro</th><th style="width:96px">Se fue / devolución</th>
+        <th style="width:70px" title="Horas contratadas por jornada">Contrato</th><th style="width:62px">Horas</th><th style="width:62px">Extras</th></tr></thead>
+      <tbody>${P.map(x => { const h = horasProveedor(x.clave, j, cfg, n(x.l.valorUnit)), f = fch[x.clave] || {};
+        return `<tr class="${h.extra > 0 ? 'conhe' : ''}"><td>${esc(x.concepto)}<span class="muted" style="display:block;font-size:10.5px">${esc(x.depto)}</span></td>
+          <td><div class="rd-hora"><input type="text" value="${esc(f.entrada || '')}" placeholder="—" onchange="upFichada('${x.clave}','entrada',this.value)" aria-label="Llegó ${esc(x.concepto)}">
+            ${f.entrada ? '' : `<button class="btn sm noprint" onclick="rdFichar('${x.clave}','entrada')">Ahora</button>`}</div></td>
+          <td><div class="rd-hora"><input type="text" value="${esc(f.salida || '')}" placeholder="—" onchange="upFichada('${x.clave}','salida',this.value)" aria-label="Se fue ${esc(x.concepto)}">
+            ${f.entrada && !f.salida ? `<button class="btn sm noprint" onclick="rdFichar('${x.clave}','salida')">Ahora</button>` : ''}</div></td>
+          <td><input type="number" min="1" step="1" value="${esc(f.contrato || '')}" placeholder="${h.contrato}" onchange="rdContrato('${x.clave}', this.value)" aria-label="Horas contratadas"></td>
+          <td class="num">${h.sinDatos ? '—' : fmtHoras(h.brutos)}</td><td class="num">${h.extra ? `<b>${fmtHoras(h.extra)}</b>` : '—'}</td></tr>`; }).join('')}
+      </tbody></table></div></div>`;
+}
+
+/* --- la liquidación con lo que pasó de verdad --- */
+/* Las horas de una línea en una jornada. El elenco ficha con el nombre del
+   personaje ('p:Ana'), no con su línea: se lo busca así. */
+function horasDeLinea(py, rb, l, jj, cfg){
+  const h = horasDe('l:' + l.id, jj, cfg, n(l.valorUnit), l.moneda);
+  if(!h.sinDatos || rb !== '09') return h;
+  const k = Object.keys((jj.parte && jj.parte.fichadas) || {}).find(x => x.startsWith('p:') && norm(x.slice(2)) === norm(l.concepto));
+  return k ? horasDe(k, jj, cfg, n(l.valorUnit), l.moneda) : h;
+}
+function liquidarProveedor(py, v, x){
+  const cfg = py.configRodaje || nuevaConfigRodaje(), l = x.l;
+  let usadas = 0, he = 0, heHoras = 0;
+  (py.desglose?.jornadas || []).forEach(jj => {
+    const h = horasProveedor(x.clave, jj, cfg, n(l.valorUnit));
+    if(h.sinDatos) return;
+    usadas++; heHoras += h.extra / 60;
+    he += conv(h.costoHE, l.moneda || 'ARS', v.monedaBase, n(v.tc));
+  });
+  const pres = n(l.dias) || 0, base = totalLinea(l, v);
+  const deMas = pres && usadas > pres ? usadas - pres : 0;
+  const montoDias = deMas * conv(n(l.valorUnit) * Math.max(1, n(l.cantidad)), l.moneda || 'ARS', v.monedaBase, n(v.tc));
+  return {base, usadas, pres, deMas, montoDias, he, heHoras, total: base + montoDias + he};
+}
+function liquidacionProveedoresHTML(py, v){
+  const P = proveedoresDelRodaje(py, v);
+  if(!P.length) return '';
+  const filas = P.map(x => ({x, L: liquidarProveedor(py, v, x)}));
+  const mb = v.monedaBase, extra = filas.reduce((s, f) => s + f.L.montoDias + f.L.he, 0);
+  return `<div class="card"><h3>Proveedores del rodaje
+      <span class="spacer"></span><button class="btn sm" onclick="bajarLiquidacionProveedores()">⬇ Para administración</button></h3>
+    <div class="pad muted" style="font-size:11.5px;line-height:1.6;border-bottom:1px solid var(--line)">Locaciones, equipos y transporte que se cobran por jornada.
+      Las <b>jornadas usadas</b> y las <b>horas de más</b> salen de lo que se anotó en Rodaje → Parte del día.
+      ${extra ? `Fuera de presupuesto: <b>${fmt(extra, mb)}</b>.` : 'Por ahora, nada fuera de presupuesto.'}</div>
+    <div class="scrollx"><table class="tbl"><thead><tr><th>Qué</th><th style="text-align:right">Presupuesto</th><th style="text-align:right">Jornadas</th>
+      <th style="text-align:right">Jornadas de más</th><th style="text-align:right">Horas de más</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody>${filas.map(({x, L}) => `<tr><td><b>${esc(x.concepto)}</b><span class="muted" style="display:block;font-size:11px">${esc(x.depto)}</span></td>
+        <td class="num" style="text-align:right">${fmt(L.base, mb)}</td>
+        <td class="num" style="text-align:right">${L.usadas ? `${L.usadas} de ${L.pres}` : `<span class="muted">${L.pres} presup.</span>`}</td>
+        <td class="num" style="text-align:right">${L.montoDias ? `${fmt(L.montoDias, mb)}<span class="muted" style="display:block;font-size:10px">${L.deMas} día${L.deMas == 1 ? '' : 's'}</span>` : '—'}</td>
+        <td class="num" style="text-align:right">${L.he ? `${fmt(L.he, mb)}<span class="muted" style="display:block;font-size:10px">${fmtC(Math.round(L.heHoras * 10) / 10)} h</span>` : '—'}</td>
+        <td class="num" style="text-align:right;font-weight:700">${fmt(L.total, mb)}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+function bajarLiquidacionProveedores(){
+  const py = getPy(), v = getV();
+  const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+  const L = [['Qué','Rubro','Presupuesto','Jornadas presupuestadas','Jornadas usadas','Jornadas de más','Horas de más','Extra por horas','Total ' + v.monedaBase].map(q).join(',')];
+  proveedoresDelRodaje(py, v).forEach(x => { const R2 = liquidarProveedor(py, v, x);
+    L.push([x.concepto, x.depto, Math.round(R2.base), R2.pres, R2.usadas, Math.round(R2.montoDias), Math.round(R2.heHoras * 10) / 10, Math.round(R2.he), Math.round(R2.total)].map(q).join(',')); });
+  bajar(`${py.nombre}-proveedores-rodaje.csv`, '﻿' + L.join('\n'), 'text/csv;charset=utf-8');
+  toast('Proveedores descargados');
 }
 function marcarCitado(clave, val){
   const j = jornadaParte();
