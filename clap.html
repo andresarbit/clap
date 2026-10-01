@@ -325,6 +325,19 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .dropz b{font-size:14px}
 .dgdrop{display:flex;flex-direction:column;gap:4px;cursor:pointer}
 .dgmini{padding:0 16px 8px}
+/* importar un presupuesto: la revisión */
+.ipres{display:flex;gap:18px;flex-wrap:wrap}
+.ipres>div{display:flex;flex-direction:column}
+.ipres b{font:700 18px var(--mono)} .ipres span{font-size:11px;color:var(--tx3)}
+.iprub{margin-top:12px}
+.iprub h4{font-size:12px;margin-bottom:4px;display:flex;gap:6px;align-items:center}
+.ipfila{display:grid;grid-template-columns:22px minmax(0,1fr) auto 110px 190px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.ipfila.off{opacity:.45}
+.ipfila .ipc small{display:block;font-size:10.5px;color:var(--tx3)}
+.ipfila .ipn{font:11px var(--mono);color:var(--tx3);white-space:nowrap}
+.ipfila .ipt{text-align:right;font-family:var(--mono)}
+.ipfila select{padding:4px 22px 4px 6px;font-size:11.5px}
+@media (max-width:760px){ .ipfila{grid-template-columns:22px minmax(0,1fr) auto;} .ipfila .ipn{display:none} .ipfila select{grid-column:2 / -1} }
 .dgmini .dgdrop{padding:9px 14px;flex-direction:row;gap:10px;align-items:baseline;flex-wrap:wrap;border-width:1px}
 .dgmini .dgdrop b{font-size:12.5px}
 .dropz span{font-size:11.5px;color:var(--tx3)}
@@ -1955,6 +1968,7 @@ function tarjetaVacia(py){
       de gente y los días de preproducción de cada escala, con los sueldos del convenio ya cargados.
       Los precios de proveedores van en cero con una referencia en la nota.</div>
     <button class="btn pri" onclick="elegirPlantilla()">Elegir plantilla${del.length?` de ${esc(TIPO(py.tipo).l.toLowerCase())}`:''}</button>
+    <button class="btn" onclick="importarPresupuesto()">Importar un presupuesto en Excel</button>
   </div></div>`;
 }
 function elegirPlantilla(){
@@ -4956,7 +4970,8 @@ function vistaPresupuesto(pr,py,v){
       return v.rubros.map(r=>rubroHTML(r,v,filtro,sel,RL)).join(''); })()}
   ${cli?'':`<div class="pad noprint" style="padding:0 0 10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" onclick="addRubro()">+ Agregar rubro</button>
-      <button class="btn" onclick="elegirPlantilla()" title="Suma las líneas de una plantilla que todavía no estén">+ Líneas de una plantilla</button></div>`}
+      <button class="btn" onclick="elegirPlantilla()" title="Suma las líneas de una plantilla que todavía no estén">+ Líneas de una plantilla</button>
+      <button class="btn" onclick="importarPresupuesto()" title="Un AICP o cualquier planilla de presupuesto: .xls, .xlsx, .ods">⬆ Importar un Excel</button></div>`}
   ${panelTotales(v,R,sel?nombrePieza(py,sel):'')}
   ${sel ? '' : panelCondiciones(py, v, cli)}
   ${!cli && !sel && piezas.length ? panelPorPieza(py,v) : ''}
@@ -10931,6 +10946,364 @@ function lzCopiar(){
   const ok = () => { toast('Pedido copiado'); lzCampo('estado', 'enviado'); };
   if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok, () => prompt('Copiá el pedido:', txt));
   else { prompt('Copiá el pedido:', txt); ok(); }
+}
+
+
+/* ---------- importar un presupuesto en Excel ----------
+   Los presupuestos que circulan son planillas AICP o parecidas, cada una a su
+   manera: una tabla con RUBRO | CARGO | # | DÍAS | COSTO | TOTAL, o el AICP
+   completo con el resumen arriba y cinco tablas una al lado de la otra. No se
+   depende de una fila de títulos: en cada fila se busca un concepto seguido
+   de números, y en los números la cuenta que cierra (cantidad × días × valor
+   = total). Los subtotales, el resumen y las capas (fee, IVA, impuestos) no
+   se importan: esas las calcula CLAP. Cada línea va a su rubro por el puesto
+   ("Jefe de Producción" → Equipo de Producción) o por la sección donde está
+   ("Movilidad" → Transporte).                                              */
+function numeroDeCelda(v){
+  if(typeof v === 'number') return isFinite(v) ? v : null;
+  let s = String(v ?? '').trim().replace(/^\$\s*|^US\$\s*|^U\$S\s*/i, '').replace(/\s/g, '');
+  if(!/^-?[\d.,]+$/.test(s) || !/\d/.test(s)) return null;
+  /* "1.234,50" (de acá) o "1,234.50" (de afuera) o "48433.69" */
+  const ultP = s.lastIndexOf('.'), ultC = s.lastIndexOf(',');
+  if(ultP >= 0 && ultC >= 0) s = ultC > ultP ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
+  else if(ultC >= 0) s = /,\d{3}$/.test(s) && !/,\d{1,2}$/.test(s) && (s.match(/,/g) || []).length >= 1 && s.length > 4 ? s.replace(/,/g, '') : s.replace(',', '.');
+  else if((s.match(/\./g) || []).length > 1) s = s.replace(/\./g, '');
+  /* "2.500": un punto suelto con tres cifras es de miles */
+  else if(/^-?\d{1,3}\.\d{3}$/.test(s)) s = s.replace('.', '');
+  const n = parseFloat(s);
+  return isFinite(n) ? n : null;
+}
+const esTextoDeConcepto = v => {
+  if(typeof v !== 'string') return false;
+  const s = v.trim();
+  return s.length >= 3 && s.length <= 90 && /[a-záéíóúñ]{2}/i.test(s) && numeroDeCelda(s) == null;
+};
+/* Lo que no es una línea: totales, capas que calcula CLAP, encabezados. */
+const NO_ES_LINEA = /(^|[^a-z])(sub-?\s?total(es)?|totals?|totales|resumen|summary|i\.?v\.?a\.?($|[^a-z])|fee($|[^a-z])|mark ?-?up|final cost|^agency|^taxes|exchange rate|tipo de cambio|honorarios (de la )?productora|contingencia|imprevistos|retenci[oó]n|bonificaci[oó]n|gastos administrativos|ingresos brutos|iibb|diferencia|estimado|estimated|actual($|[^a-z])|real($|[^a-z])|cargas? soc|precio de venta|impuesto|ganancias|margen|comisi[oó]n de agencia|cantidad|cant\.?$|d[ií]as$|costo$|valor$|precio$|jornadas?$)/i;
+const ROTULO = /:\s*$/;
+/* "x day", "por jornada", "global": la unidad en su propia columna. No es el
+   concepto ni corta la línea. */
+const ES_UNIDAD = /^(no\.?|n[°º]|#|x ?(day|days|unit|units|week|hour|person|d[ií]a|d[ií]as|unidad|semana|hora|persona)|(por )?(d[ií]a|jornada|unidad|semana|hora|mes)|global|gl\.?|un\.?|u\.?|flat|allow\.?|allowance)$/i;
+/* Los renglones de la carátula AICP: subtotales por categoría y capas. Sólo
+   se descartan cuando no tienen cuenta (un número suelto): una línea real
+   que se llame "Equipos" con 1 × 2 × 35.000 sí entra. */
+const RESUMEN_AICP = /(pre-?produc\S*.{0,20}(cierre|desarme|wrap)|equipo t[eé]cnico en filmaci|trabajo del equipo|shooting crew|gastos de talento|costo talentos|talent cost|costos de edici|edici[oó]n y post|editorial|locaci[oó]n y movilidad|gastos de localizaciones|location and travel|utiler[ií]a,? vestuario|props,? wardrobe|estudio y construcci|costos de estudio|construction|costos de equipamiento|^equipos$|equipment cost|material virgen|film stock|miscel[aá]neos|^varios$|final cost|contingency|exchange rate|^agency|^taxes|administrative|ing\.? ?brut|producci[oó]n ejecutiva|executive|sindicato|^hs\.? ?ex)/i;
+
+/* Rubro de CLAP por palabras del concepto. El orden importa y es el de un
+   productor: primero los puestos (un "Asist. cámara" es Fotografía, no un
+   alquiler de cámara), después lo que se alquila o se compra. Incluye el
+   inglés de los AICP y las abreviaturas de las planillas. */
+const PALABRAS_RUBRO = [
+  ['04', /(fotograf|foquista|cameraman|camera op|\bdop\b|d\.o\.p|asist\S*\.? ?(de )?c[aá]mara|ayud\S*\.? ?(de )?c[aá]mara|\b2d?[oº]\.? ?(de )?c[aá]mara|1st ac|2nd ac|focus pull|video ?asist|video assist op|\bdit\b|op\.? ?hd|t[eé]cnico hd|operador hd|steadicam op)/],
+  ['05', /(el[eé]ctric|\belect\b|gaff?er|best boy|maquinista|key grip|grip (asist|assist)|\bgrips?\b(?! rental| package| truck)|generadorista|op\.? (de )?generador|operador (de )?generador)/],
+  ['02', /(director(?! de (fotograf|arte|producci|casting|locaci))|direcci[oó]n|\b1st ad\b|\b2nd ad\b|\bad\b|script|continuista|realizador)/],
+  ['07', /(vestu|wardrobe|maquill|make ?-?up|peinad|\bhair\b|stylist|estilista|costum|caracteriz|sastre)/],
+  ['06', /(\barte\b|\bart\b(?! trucks?)|art director|utiler|\bprops?\b|ambientaci|escenograf|construcci|decorado|set dress|carpinter|pintor|mock ?-?up)/],
+  ['09', /(actor|actriz|protagonista|call ?back|elenco|modelo|\bextras?\b|casting|talent|locutor|locuci[oó]n|voice ?over|\bvoz\b|derechos|figurante|\bdobles?\b|chaperon|ni[nñ][oa]s?\b|bailar|union|aporte a actores)/],
+  ['11', /((cami[oó]n|truck)\S*.{0,30}(luces|lighting|grip|c[aá]mara|camera)|(luces|lighting|grip|c[aá]mara|camera).{0,30}(cami[oó]n|truck))/],
+  ['12', /(movilidad|transporte|cami[oó]n|truck|camioneta|\bvans?\b|combi|remis|taxi|traslado|pasaje|a[eé]reo|flight|hotel|hospedaje|per ?diem|vi[aá]tico|nafta|\bgas\b|combustible|peaje|tolls|parking|kilometraje|chofer|driver|motorhome|camar[ií]n|flete|\bautos?\b|\bbus(es)?\b|vehic|deliver|scouting van)/],
+  ['13', /(catering|\bmeals?\b|comida|almuerzo|desayuno|merienda|\bcena\b|refrigerio|vianda|craft service)/],
+  ['16', /(seguridad|security|m[eé]dico|\bmedic|ambulancia|enfermer|polic[ií]a|bomber|higiene)/],
+  ['10', /(locaci[oó]n|location|permis|permit|scout|\bestudio\b|\bstudio\b|galer[ií]a|limpieza|guardia|ba[nñ]os? qu[ií]micos?)/],
+  ['15', /(seguro|insurance|legal|escriban|abogad)/],
+  ['14', /(backstage|making ?of|edici[oó]n|editor|\bedit\b|\bpost\b|postpro|color|vfx|efectos digitales|animaci|finalizaci|mezcla|\bmix\b|copias|subtitul|motion|gr[aá]fica|\b3d\b|on ?line|off ?line|telecine|transfer|davinci|laboratorio|material virgen|film stock|m[uú]sica|music|voice over until)/],
+  ['08', /(sonido|sonidista|\bsound\b|microfonista|\bboom op|playback)/],
+  ['17', /(bancari|administrativ|contador|oficina|\boffice\b|mensajer|messenger|fotocopi|tel[eé]fono|celular|cellular|\bfax\b|petty cash|caja chica|courier)/],
+  ['01', /(shooting ?board|story ?board|casting facilit|preproducci|desarrollo|gui[oó]n)/],
+  ['11', /(alquiler|rental|\bequipos?\b|equipment|paquete|package|c[aá]mara|camera|lentes|\blens|[oó]pticas|ultraprime|red one|alexa|luces|lighting|\bled\b|panel|gels?\b|iluminaci|dolly|gr[uú]a|crane|monitor|\bkit\b|drone|\bdron\b|steadicam|handies|walkie|generador)/],
+  ['03', /(producci[oó]n|productor|producer|\bprod\b|runner|coordinador|asistente|ayudante|assist)/],
+];
+function rubroDeConcepto(concepto){
+  const t = norm(concepto);
+  /* primero el puesto, contra las funciones conocidas (las del convenio y
+     las del catálogo). Una sigla suelta (ART, AD) en un concepto largo no
+     alcanza: "Art Trucks" no es la ART. */
+  let f = typeof detectarFuncion === 'function' ? detectarFuncion(concepto) : null;
+  if(f && normCargo(f).length <= 4 && t.length > 12) f = null;
+  if(f){
+    for(const [cod, lista] of Object.entries(FUNCIONES)) if(lista.some(x => normCargo(x) === normCargo(f))) return cod;
+    const c = (SICA.cargos || []).find(x => normCargo(x.c) === normCargo(f)); if(c) return c.r;
+    const a = (ALIAS_SICA || []).find(x => normCargo(x[0]) === normCargo(f));
+    if(a){ const c2 = SICA.cargos.find(x => x.c === a[2]); if(c2) return c2.r; }
+  }
+  for(const [cod, re] of PALABRAS_RUBRO) if(re.test(t)) return cod;
+  return null;
+}
+/* Una línea de números: ¿cuál es la cantidad, cuáles los días, cuál el valor
+   y cuál el total? Se busca la cuenta que cierra. */
+function leerNumerosLinea(nums){
+  const cerca = (a, b) => b !== 0 && Math.abs(a - b) <= Math.max(1, Math.abs(b) * 0.01);
+  const L = nums.length;
+  for(let i = 0; i < L; i++) for(let j = i + 1; j < L; j++) for(let k = j + 1; k < L; k++)
+    for(let t = k + 1; t < L; t++){
+      const [a, b, c, d] = [nums[i], nums[j], nums[k], nums[t]];
+      if(a > 0 && b > 0 && c > 0 && a <= 500 && b <= 400 && cerca(a * b * c, d)) return {cantidad:a, dias:b, valor:c, total:d};
+    }
+  for(let i = 0; i < L; i++) for(let j = i + 1; j < L; j++) for(let t = j + 1; t < L; t++){
+    const [a, b, d] = [nums[i], nums[j], nums[t]];
+    if(a > 0 && b > 0 && (a <= 400 || b <= 400) && cerca(a * b, d)){
+      const chico = Math.min(a, b), grande = Math.max(a, b);
+      return {cantidad:1, dias:chico, valor:grande, total:d};
+    }
+  }
+  /* sin cuenta: el número más grande distinto de cero es el total */
+  const pos = nums.filter(x => x > 0);
+  if(!pos.length) return {cantidad:1, dias:1, valor:0, total:0};
+  const tot = Math.max(...pos);
+  return {cantidad:1, dias:1, valor:tot, total:tot, sinCuenta:true};
+}
+function lineasDePresupuesto(hojas){
+  const todas = lineasDeHojas(hojas);
+  /* con varias hojas, la carátula (casi todo números sueltos, sin cuentas)
+     repite lo que está en las otras: se deja afuera */
+  const porHoja = {};
+  todas.forEach(l => (porHoja[l.hoja] ||= []).push(l));
+  const hojasConLineas = Object.keys(porHoja);
+  if(hojasConLineas.length < 2) return todas;
+  const primera = hojasConLineas[0];
+  const caratulas = hojasConLineas.filter(h => porHoja[h].filter(l => l.dudosa).length >= porHoja[h].length * 0.8 &&
+    (/main|resum|summary|car[aá]tula|cover|top ?sheet|portada/i.test(h) || (h === primera && porHoja[h].length <= 15)) &&
+    hojasConLineas.some(o => o !== h && porHoja[o].some(l => !l.dudosa)));
+  return todas.filter(l => !caratulas.includes(l.hoja));
+}
+/* Los títulos de columna, cuando los hay. Dos pisos: los grupos (ESTIMADO,
+   ACTUAL, dólares) y las columnas (Cant., Días, Costo, Total). Se recuerdan
+   hasta que aparece otra fila de títulos en esas columnas. */
+const ROL_COLUMNA = [
+  ['cant',  /^(#|n[°ºo]\.?|no\.?|nro\.?|cant\.?|cantidad|qty|unid(ades)?\.?|u\.?|c\/u)$/],
+  ['dias',  /^(d[ií]as?|day|days|jorn(\.|adas?)?|semanas?|sem\.?)$/],
+  ['valor', /^(costo|cost|rate|valor|va|precio|unit(ario)?|valor unit\S*|tarifa|base|honorario)$/],
+  ['real',  /^(real|actual|total ?\/ ?real|gastado|ejecutado|actual dollars)$/],
+  ['total', /^(estimad\S*|estimate\S*|total(es)?|total s\/ ?iva|subtotal|importe|monto|presupuest\S*|presup\.?)$/],
+];
+const rolColumna = t => { const s = norm(String(t || '')).replace(/[:.]+$/, '').trim(); const r = ROL_COLUMNA.find(([k, re]) => re.test(s)); return r ? r[0] : null; };
+const GRUPO = t => { const s = norm(String(t || '')).trim();
+  return /^(estimad|estimate|presupuest)/.test(s) ? 'est' : /^(actual|real|gastado)/.test(s) ? 'real' : /(dollar|u\$d|u\$s|usd)/.test(s) ? 'usd' : null; };
+function lineasDeHojas(hojas){
+  const out = [];
+  hojas.forEach(h => {
+    let seccion = '';
+    const roles = {}, grupos = {};   /* columna → rol / grupo */
+    const grupoDe = c => { let g = null, mejor = -1; for(const k in grupos){ const kc = +k; if(kc <= c && kc > mejor){ mejor = kc; g = grupos[k]; } } return g; };
+    (h.filas || []).forEach((fila, r) => {
+      fila = fila || [];
+      const cols = [];
+      for(let c = 0; c < fila.length; c++){ const v = fila[c]; if(v == null || String(v).trim() === '') continue; cols.push({c, v}); }
+      if(!cols.length) return;
+      /* ¿fila de grupos? (ESTIMADO | ACTUAL | U$D) */
+      const gs = cols.filter(x => typeof x.v === 'string' && GRUPO(x.v));
+      if(gs.length >= 2){ const min = Math.min(...gs.map(x => x.c)), max = Math.max(...gs.map(x => x.c));
+        for(const k in grupos) if(+k >= min && +k <= max + 6) delete grupos[k];
+        gs.forEach(x => { grupos[x.c] = GRUPO(x.v); }); }
+      /* ¿fila de títulos de columna? */
+      const rs = cols.filter(x => typeof x.v === 'string' && rolColumna(x.v));
+      if(rs.length >= 2 && rs.some(x => ['total', 'valor', 'dias', 'cant'].includes(rolColumna(x.v)))){
+        const min = Math.min(...rs.map(x => x.c)), max = Math.max(...rs.map(x => x.c));
+        for(const k in roles) if(+k >= min && +k <= max) delete roles[k];
+        rs.forEach(x => { roles[x.c] = rolColumna(x.v); });
+        if(gs.length < 2) rs.forEach(x => { const g = GRUPO(x.v); if(g) grupos[x.c] = g; });
+        return;
+      }
+      const hayNumeros = cols.some(x => numeroDeCelda(x.v) != null);
+      const textos = cols.filter(x => esTextoDeConcepto(x.v));
+      /* título de sección: sólo texto, sin números */
+      if(!hayNumeros && textos.length && textos.length <= 2){ const t = String(textos[0].v).trim();
+        if(t.length <= 70 && !/:\s*\S/.test(t) && !ROTULO.test(t)) seccion = t; return; }
+      /* cada concepto se queda con los números que tiene a la derecha hasta
+         el próximo texto (así se leen tablas puestas una al lado de la otra) */
+      cols.forEach((x, i) => {
+        if(!esTextoDeConcepto(x.v) || ES_UNIDAD.test(String(x.v).trim())) return;
+        const concepto = String(x.v).replace(/\s+/g, ' ').trim();
+        const nums = [], celdas = [];
+        let cortado = false;
+        for(let k = i + 1; k < cols.length; k++){
+          const y = cols[k];
+          if(y.c - x.c > 16) break;
+          const n0 = numeroDeCelda(y.v);
+          if(n0 != null){ nums.push(n0); celdas.push({c: y.c, n: n0, rol: roles[y.c] || null, grupo: grupoDe(y.c)}); continue; }
+          if(ES_UNIDAD.test(String(y.v).trim())) continue;
+          if(esTextoDeConcepto(y.v)){ if(NO_ES_LINEA.test(String(y.v))) cortado = true; break; }
+        }
+        if(!nums.length || cortado) return;
+        if(NO_ES_LINEA.test(concepto)) return;
+        /* con títulos: se suman los totales estimados (pre-producción y
+           rodaje pueden estar en dos columnas); el real y los dólares no */
+        const vale = x => x.grupo !== 'real' && x.grupo !== 'usd';
+        const totales = celdas.filter(x => x.rol === 'total' && vale(x));
+        let L0;
+        if(totales.length){
+          const suma = totales.reduce((s, x) => s + x.n, 0);
+          const conMonto = totales.filter(x => x.n);
+          let cantidad = 1, dias = 1, valor = suma;
+          if(conMonto.length === 1){
+            /* cantidad, días y valor: los de su mismo tramo de columnas */
+            const t = conMonto[0], antes = totales.filter(x => x.c < t.c).map(x => x.c), desde = antes.length ? Math.max(...antes) : -1;
+            const tramo = celdas.filter(x => x.c > desde && x.c < t.c && vale(x));
+            const de = rol => (tramo.find(x => x.rol === rol) || {}).n;
+            const q = de('cant'), d = de('dias'), v = de('valor');
+            if(v && Math.abs((q || 1) * (d || 1) * v - t.n) <= Math.max(1, t.n * 0.01)){ cantidad = q || 1; dias = d || 1; valor = v; }
+            else if(v && d && Math.abs(d * v - t.n) <= Math.max(1, t.n * 0.01)){ dias = d; valor = v; }
+          }
+          L0 = {cantidad, dias, valor, total: suma};
+        } else L0 = leerNumerosLinea(nums);
+        /* "Días de rodaje: 2" no es una línea: un rótulo con un número chico */
+        if(RESUMEN_AICP.test(norm(concepto))) return;
+        if(L0.sinCuenta && (ROTULO.test(concepto) || L0.total < 100)) return;
+        /* la tabla de lo real, repetida al lado de la estimada */
+        if(/^(actual|real)\b/i.test(seccion)) return;
+        if(!(L0.total > 0)) return;
+        out.push({hoja: h.hoja, fila: r, concepto: concepto.replace(/:\s*$/, ''), seccion,
+          cantidad: L0.cantidad, dias: L0.dias, valor: Math.round(L0.valor * 100) / 100, total: Math.round(L0.total * 100) / 100,
+          dudosa: !!L0.sinCuenta, rubro: rubroDeConcepto(concepto) || rubroDeConcepto(seccion) || null});
+      });
+    });
+  });
+  return out;
+}
+/* El total que dice el propio archivo, para compararlo con lo leído. */
+function subtotalDelArchivo(hojas){
+  const cands = [];
+  hojas.forEach(h => (h.filas || []).forEach(fila => {
+    fila = fila || [];
+    fila.forEach((v, c) => {
+      if(typeof v !== 'string' || !/sub-?\s?total|total s\/ ?iva|total costos directos|direct costs|total producci/i.test(v)) return;
+      for(let k = c + 1; k < Math.min(fila.length, c + 12); k++){ const n0 = numeroDeCelda(fila[k]); if(n0 && n0 > 100){ cands.push({rot: v.trim(), n: n0}); break; } }
+    });
+  }));
+  /* el comparable es el costo directo (A a K, A-P), sin honorarios ni impuestos */
+  const prioridad = c => /direct|directos/i.test(c.rot) ? 0 : /a ?(to|a|-) ?p\b/i.test(c.rot) ? 1 : /a ?(to|a|-) ?k\b/i.test(c.rot) ? 3 : 2;
+  return cands.slice().sort((a, b) => prioridad(a) - prioridad(b));
+}
+
+/* ---------- leer cualquier planilla ----------
+   Los presupuestos de la casa son .xls viejos (el formato binario de Excel
+   97-2003), que el navegador no abre solo. SheetJS los lee —también .xlsx y
+   .ods— y se baja la primera vez que se usa, no antes. Si no hay internet,
+   un .xlsx se lee igual con el lector propio. */
+let _sheetjs = null;
+function cargarSheetJS(){
+  if(_sheetjs) return _sheetjs;
+  _sheetjs = new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => window.XLSX ? res(window.XLSX) : (_sheetjs = null, rej(new Error('No se pudo abrir el lector de planillas')));
+    s.onerror = () => { _sheetjs = null; rej(new Error('No se pudo bajar el lector de planillas (¿sin internet?)')); };
+    document.head.appendChild(s);
+  });
+  return _sheetjs;
+}
+async function hojasDePlanilla(file){
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  try{
+    const X = await cargarSheetJS();
+    const wb = X.read(bytes, {type:'array', cellDates:false});
+    return wb.SheetNames.map(n => ({hoja: n, filas: X.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:true, defval:null, blankrows:true})}));
+  }catch(e){
+    if(/\.(xlsx|xlsm)$/i.test(file.name)) return await xlsxHojas(bytes);
+    throw e;
+  }
+}
+
+/* ---------- importar un presupuesto: revisión ---------- */
+let _impP = null;
+function importarPresupuesto(){
+  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+    <h3>Importar un presupuesto en Excel</h3><div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">Sirve el AICP de siempre, el .xls viejo o cualquier
+        planilla con conceptos y montos. CLAP lee cada línea (cantidad, días, valor y total), la ubica en su rubro por el puesto o
+        la sección y te muestra todo antes de cargar nada. Los subtotales, el fee, el IVA y los impuestos no se importan: los
+        calcula CLAP.</div>
+      <div id="ipdrop" class="dropz dgdrop" ondragover="event.preventDefault();this.classList.add('sobre')"
+        ondragleave="this.classList.remove('sobre')" ondrop="leerPresupuestoArchivo(event)"
+        onclick="document.getElementById('ipfile').click()">
+        <b>Soltá el Excel acá</b><span>.xls, .xlsx, .ods o .csv</span></div>
+      <input type="file" id="ipfile" accept=".xls,.xlsx,.xlsm,.ods,.csv" style="display:none" onchange="leerPresupuestoArchivo(this)">
+      <div id="ipestado" class="muted" style="font-size:12px;margin-top:8px"></div>
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button></div></div></div>`);
+}
+async function leerPresupuestoArchivo(ev){
+  const files = ev.dataTransfer ? [...ev.dataTransfer.files] : [...(ev.files || [])];
+  if(ev.preventDefault) ev.preventDefault();
+  const est = document.getElementById('ipestado');
+  if(!files.length) return;
+  const f = files[0];
+  if(est) est.textContent = 'Leyendo ' + f.name + '…';
+  try{
+    const hojas = /\.csv$/i.test(f.name) ? [{hoja: f.name, filas: filasDeTexto(await f.text())}] : await hojasDePlanilla(f);
+    const lineas = lineasDePresupuesto(hojas);
+    if(!lineas.length){ if(est) est.textContent = 'No encontré líneas con montos en ' + f.name + '.'; return; }
+    const ref = subtotalDelArchivo(hojas)[0] || null;
+    revisarPresupuestoImportado(lineas, f.name, ref);
+  }catch(e){ if(est) est.textContent = e.message || 'No pude leer el archivo'; }
+}
+function revisarPresupuestoImportado(lineas, archivo, ref){
+  const v = getV();
+  _impP = {archivo, ref, lineas: lineas.map(l => ({...l, incluir: true, rubro: l.rubro || ''})), modo: v && v.rubros.some(r => r.lineas.length) ? 'sumar' : 'reemplazar',
+    moneda: v ? v.monedaBase : 'ARS'};
+  pintarRevisionPresupuesto();
+}
+function pintarRevisionPresupuesto(){
+  const I = _impP, v = getV(); if(!I) return;
+  const incl = I.lineas.filter(l => l.incluir);
+  const suma = incl.reduce((s, l) => s + l.total, 0);
+  const sinRubro = incl.filter(l => !l.rubro).length;
+  const ops = sel0 => `<option value="">— elegí —</option>` + RUBROS_BASE.map(r => `<option value="${r.codigo}" ${r.codigo === sel0 ? 'selected' : ''}>${r.codigo} · ${esc(r.nombre)}</option>`).join('');
+  const porRubro = {};
+  I.lineas.forEach((l, i) => (porRubro[l.rubro || ''] ||= []).push({l, i}));
+  const orden = Object.keys(porRubro).sort((a, b) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)));
+  const pct = I.ref ? Math.round(suma / I.ref.n * 100) : null;
+  abrir(`<div class="ov"><div class="mod" style="max-width:900px">
+    <h3>Lo que leí de «${esc(I.archivo)}»</h3><div class="mbody">
+      <div class="ipres">
+        <div><b>${incl.length}</b><span>líneas</span></div>
+        <div><b>${fmt(suma, I.moneda)}</b><span>total leído</span></div>
+        ${I.ref ? `<div><b class="${pct < 95 || pct > 105 ? 'pl-rojo' : ''}">${fmt(I.ref.n, I.moneda)}</b><span>${esc(I.ref.rot)} del archivo · ${pct}%</span></div>` : ''}
+        <div><b class="${sinRubro ? 'pl-rojo' : ''}">${sinRubro}</b><span>sin rubro</span></div>
+      </div>
+      <div class="muted" style="font-size:12px;line-height:1.55;margin:8px 0 10px">${I.ref ? (pct >= 95 && pct <= 105
+        ? 'El total leído coincide con el del archivo.'
+        : 'El total leído no coincide con el del archivo: revisá las líneas (puede haber una tabla repetida o una línea que no se leyó).') : 'El archivo no trae un subtotal para comparar.'}
+        Las líneas marcadas <i>estimada</i> no tenían una cuenta que cierre (cantidad × días × valor): se tomó el número más grande.</div>
+      <div class="grid2" style="margin-bottom:10px">
+        ${sel('Qué hacer','modo',I.modo,[{v:'sumar', l:'Sumar a lo que ya tiene el presupuesto'},{v:'reemplazar', l:'Reemplazar las líneas del presupuesto'}])}
+        ${sel('Moneda de los montos','moneda',I.moneda,[{v:'ARS', l:'Pesos'},{v:'USD', l:'Dólares'}])}
+      </div>
+      ${orden.map(cod => `<div class="iprub"><h4>${cod ? `<span class="rcode">${cod}</span> ${esc(RUBRO(cod).nombre || '')}` : '<span class="pl-rojo">Sin rubro: elegilo</span>'}</h4>
+        ${porRubro[cod].map(({l, i}) => `<div class="ipfila ${l.incluir ? '' : 'off'}">
+          <input type="checkbox" ${l.incluir ? 'checked' : ''} onchange="_impP.lineas[${i}].incluir=this.checked;this.closest('.ipfila').classList.toggle('off',!this.checked)" aria-label="Importar ${esc(l.concepto)}">
+          <span class="ipc">${esc(l.concepto)}${l.seccion ? `<small>${esc(l.seccion)}</small>` : ''}${l.dudosa ? '<small class="pl-rojo">estimada</small>' : ''}</span>
+          <span class="ipn">${l.cantidad} × ${l.dias} × ${fmt(l.valor, I.moneda)}</span>
+          <b class="ipt">${fmt(l.total, I.moneda)}</b>
+          <select onchange="_impP.lineas[${i}].rubro=this.value" aria-label="Rubro">${ops(l.rubro)}</select>
+        </div>`).join('')}</div>`).join('')}
+    </div><div class="mfoot"><button class="btn" onclick="_impP=null;cerrar()">Cancelar</button>
+      <button class="btn" onclick="_impP.modo=datos().modo;_impP.moneda=datos().moneda;pintarRevisionPresupuesto()" title="Reordena por rubro con lo que cambiaste">Reordenar</button>
+      <div style="flex:1"></div>
+      <button class="btn pri" onclick="confirmarImportarPresupuesto()">Cargar ${incl.length} líneas</button></div></div></div>`);
+}
+function confirmarImportarPresupuesto(){
+  const I = _impP, v = getV(), py = getPy(); if(!I || !v) return;
+  const o = datos(); I.modo = o.modo || I.modo; I.moneda = o.moneda || I.moneda;
+  const incl = I.lineas.filter(l => l.incluir);
+  const faltan = incl.filter(l => !l.rubro);
+  if(faltan.length){ toast(`Elegí el rubro de ${faltan.length} línea${faltan.length == 1 ? '' : 's'} (o destildalas)`); return; }
+  if(I.modo === 'reemplazar'){
+    if(v.rubros.some(r => r.lineas.length) && !confirm('Se borran las líneas que tiene este presupuesto y se cargan las del archivo. ¿Seguir?')) return;
+    v.rubros.forEach(r => { r.lineas = []; });
+  }
+  let k = 0;
+  incl.forEach(l => {
+    let rb = v.rubros.find(r => r.codigo === l.rubro);
+    if(!rb){ rb = {id: uid('rb'), ...RUBRO(l.rubro), lineas: [], abierto: true};
+      v.rubros.push(rb); v.rubros.sort((a, b) => a.codigo.localeCompare(b.codigo)); }
+    const cuadra = Math.abs(l.cantidad * l.dias * l.valor - l.total) <= Math.max(1, l.total * 0.01);
+    rb.lineas.push(nuevaLinea({concepto: l.concepto, cantidad: cuadra ? l.cantidad : 1, dias: cuadra ? l.dias : 1,
+      valorUnit: cuadra ? l.valor : l.total, moneda: I.moneda, valorOrigen: 'manual',
+      notas: `Importado de ${I.archivo}${l.seccion ? ' · ' + l.seccion : ''}`}));
+    rb.abierto = true; k++;
+  });
+  _impP = null; cerrar(); DB.ui.tab = 'presu';
+  toast(`${k} línea${k == 1 ? '' : 's'} cargada${k == 1 ? '' : 's'} desde el Excel`); R();
 }
 
 /* ===========================  ACCIONES  =================================== */

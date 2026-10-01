@@ -208,6 +208,26 @@ mano desde *Actions -> Escala SICA -> Run workflow*, o local con
 Si la fecha del rodaje cae despues de la ultima escala publicada, el presupuesto
 lo avisa en rojo.
 
+### Importar un presupuesto en Excel
+
+*⬆ Importar un Excel* (en el presupuesto, y en el presupuesto vacio) lee un
+AICP o cualquier planilla de presupuesto: .xls viejo, .xlsx, .ods o .csv. El
+lector de planillas (SheetJS) se baja la primera vez que se usa. No depende de
+una fila de titulos: en cada fila busca un concepto con numeros a la derecha
+(asi lee tablas puestas una al lado de la otra); si hay titulos de columna
+(Cant, Dias, Costo, Total) y de grupo (ESTIMADO, REAL, dolares) suma solo los
+totales estimados; si no, busca la cuenta que cierra (cantidad x dias x valor
+= total). Deja afuera la caratula (subtotales por categoria), las capas que
+calcula CLAP (fee, mark up, IVA, impuestos, cargas), la tabla de lo real y las
+tarifas de referencia que no se usan. Cada linea va a su rubro por el puesto o
+por palabras (castellano, ingles y abreviaturas de planilla).
+
+Antes de cargar muestra la revision: total leido contra el total del archivo
+(costos directos), lineas agrupadas por rubro con su rubro editable, lineas
+sin rubro arriba, y si se suman a lo que hay o reemplazan. Probado contra 48
+presupuestos reales de la casa (no van al repo): 27 de los 41 que traen su
+subtotal cierran a menos de 5%, y 8 mas a menos de 12%.
+
 ### Plantillas de presupuesto
 
 Arrancar un presupuesto de cero es copiar el ultimo parecido y borrar. Las
@@ -1065,6 +1085,7 @@ node test/run.js test/pruebas.js    # presupuesto: cálculo, capas, versionado
 node test/run.js test/parser.js     # parser de guion contra test/guion-ejemplo.txt
 node test/run.js test/desglose.js   # desglose, jornadas y puente al presupuesto
 node test/run.js test/desglose-material.js # guion tecnico y storyboard (con su texto) al desglose y al plan
+node test/run.js test/presupuesto-importar.js # leer un presupuesto en Excel (AICP) y cargarlo
 node test/run.js test/importar.js  # PDF, DOCX, RTF, FDX y .doc contra test/muestras/
 node test/run.js test/callsheet.js # callsheet, datos por jornada y migracion
 node test/run.js test/plan-rodaje.js # plan de rodaje: sol, cascada, avisos, storyboard, guion tecnico, arrastre, cine
