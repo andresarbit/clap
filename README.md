@@ -646,6 +646,41 @@ Eso llega a **Liquidación**:
 
 Prueba: `test/liberar.js`.
 
+### Lo que no se pierde entre solapas
+
+- **Citaciones que cambiaron**: al citar se guarda la hora que se mandó. Si
+  después el plan la mueve, la fila dice "cambió 07:30 → 08:00", aparece
+  **Re-citar a los que cambiaron** (el mensaje empieza avisando el cambio) y
+  el Resumen lo cuenta como pendiente. El Resumen mira la próxima jornada,
+  no una que ya pasó.
+- **Lo pagado queda pagado**: al aprobar y al pagar se guarda el monto. Si
+  después cambia un parte o una línea, la liquidación avisa ("se aprobó por",
+  "hoy daría") en vez de cambiar el número en silencio. Marcar pagado
+  pregunta con el nombre y el monto; si fue un error, **↶** lo vuelve a
+  aprobado y queda anotado.
+- **Quitar una jornada** renumera también los comprobantes, las cajas, las
+  plantas y las jornadas del pedido de luces (y se deshace junto con el plan).
+- **El callsheet** no pisa la comida, el wrap ni el sol escritos a mano;
+  borrados, vuelven a salir del plan.
+- **Luces → presupuesto** pregunta antes de reemplazar líneas con precio.
+- **El rol Equipo** entra a Gastos para cargar sus comprobantes aunque no vea
+  ningún presupuesto.
+- **El Resumen** avisa si el plan y el proyecto no tienen las mismas
+  jornadas, y la bandeja cuenta sólo lo que espera a quien mira.
+
+Y en el uso de todos los días:
+- Liberar a todos o a un departamento pregunta, y como llegó/liberado, se
+  puede **deshacer** desde el aviso. Mover o borrar en el plan, borrar una
+  línea del presupuesto o un contacto, también.
+- Los avisos duran lo que tarda leerlos y los errores quedan hasta cerrarlos.
+- Tocar afuera de una ventana (o Escape) pregunta si hay algo escrito sin
+  guardar.
+- Las horas se escriben rápido: "1930" es 19:30, "8.30" es 08:30.
+- En el teléfono los botones tienen 44 px, las casillas 24 y el iPhone no
+  agranda la pantalla al tocar un cuadro de texto.
+
+Prueba: `test/puentes.js`.
+
 ### La IA (opcional, paga, apagada)
 
 La clave de la IA no puede ir en la página, que es pública. Vive como secreto
@@ -1281,6 +1316,7 @@ node test/run.js test/seleccion.js # marcar varios: mover el bloque, ponerles pu
 node test/run.js test/armar.js     # armar dia y rodaje: horas, almuerzo, citaciones, jornadas nuevas, deshacer, quitar jornada
 node test/run.js test/citaciones.js # citacion por departamento, actor, extras, punto de encuentro, escala
 node test/run.js test/liberar.js   # llego/liberar, por departamento, proveedores, jornadas reales en la liquidacion
+node test/run.js test/puentes.js   # citaciones que cambiaron, lo pagado congelado, quitar jornada, callsheet a mano, horas
 node test/run.js test/funcion-ia.js # la funcion del servidor: sesion, productora, sin clave, tope
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO

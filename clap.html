@@ -81,9 +81,13 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 button:focus-visible,a:focus-visible,[role=button]:focus-visible,summary:focus-visible,.tab:focus-visible{
   outline:2px solid var(--ac);outline-offset:2px;border-radius:4px}
 @media (pointer:coarse){
-  /* con el dedo: botones chicos de al menos 36 px */
-  .btn.sm,.pl-acc .btn.sm,.lz-acc .btn.sm,.elmas{min-height:36px;min-width:36px}
+  /* con el dedo: todo lo que se toca, de al menos 44 px; las casillas, de 24 */
+  .btn,.btn.sm,.pl-acc .btn.sm,.lz-acc .btn.sm,.elmas{min-height:44px;min-width:44px}
+  .pl-acc{gap:8px}
+  input[type=checkbox],input[type=radio],.pl-selcb{width:24px!important;height:24px!important}
 }
+/* el iPhone agranda la pantalla si el cuadro de texto tiene letra de menos de 16 px */
+@media (max-width:860px){ input,select,textarea{font-size:16px!important} }
 @media (prefers-reduced-motion:reduce){
   .dropz,.barra i{transition:none}
 }
@@ -178,9 +182,12 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible,summary:focus-v
 .mod>h3 .spacer{flex:1}
 .mbody{padding:16px;overflow-y:auto;flex:1}
 .mfoot{padding:11px 16px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--bg4);
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:var(--bg4);
   border:1px solid var(--ac);color:var(--tx);padding:10px 18px;border-radius:22px;z-index:200;font-size:13px;
-  box-shadow:0 8px 30px rgba(0,0,0,.5)}
+  box-shadow:0 8px 30px rgba(0,0,0,.5);display:flex;gap:12px;align-items:center;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box}
+.toast.alto{bottom:calc(120px + env(safe-area-inset-bottom))}
+.toast-acc{background:none;border:1px solid currentColor;color:inherit;border-radius:999px;padding:5px 14px;font:inherit;font-weight:700;cursor:pointer;min-height:32px;white-space:nowrap}
+.toast-x{background:none;border:none;color:inherit;font-size:18px;line-height:1;cursor:pointer;padding:4px 6px;min-height:32px;opacity:.8}
 
 /* ---------- desglose de guion ---------- */
 .resu{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:1px;background:var(--line)}
@@ -803,7 +810,7 @@ body.pl-moviendo,body.pl-moviendo *{cursor:grabbing!important;user-select:none}
 .pl-fila.sel{background:#f0f0ee}
 .pl-grupo label{display:inline-flex;gap:7px;align-items:center;cursor:pointer}
 .pl-grupo input{width:16px;height:16px;accent-color:#171717;margin:0}
-.pl-selbar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:150;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+.pl-selbar{position:fixed;left:50%;bottom:calc(16px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:150;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
   background:#fff;border:1px solid #171717;border-radius:14px;padding:10px 14px;box-shadow:0 12px 40px rgba(0,0,0,.18);max-width:calc(100vw - 32px)}
 .pl-selbar select{width:auto;font-size:12.5px;padding:4px 26px 4px 8px}
 .pl-seltip{font-size:11px;flex-basis:100%}
@@ -1018,6 +1025,7 @@ tr.csdep td{background:#f3f3f1;color:#171717}
 .mod>h3{border-bottom:1px solid var(--line);color:#171717}
 .mfoot{border-top:1px solid var(--line);background:#fff}
 .toast{background:#171717;color:#fff;border:none;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.toast.err{background:#8a1c1c}
 .stick{background:var(--bg);border-top:1px solid #171717}
 .dropz{background:#fff;border-color:#9b9b99}
 .dropz:hover,.dropz.sobre{border-color:#171717;background:#f6f6f4}
@@ -2204,7 +2212,7 @@ function tarjetaVacia(py){
 }
 function elegirPlantilla(){
   const py = getPy(); if(!py) return;
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:760px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:760px">
     <h3>Líneas desde una plantilla</h3><div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
         Se agregan las líneas que el presupuesto todavía no tiene; las que ya están no se tocan.</div>
@@ -4974,10 +4982,28 @@ const $ = s => document.querySelector(s);
 const app = $('#app');
 let modal = null;
 
-function toast(msg){
+/* Un aviso abajo. Dura lo que tarda en leerse (4 s como mínimo); los errores
+   quedan hasta que se cierran. Con {accion, fn} trae un botón (Deshacer). */
+let _toastT = null, _toastFn = null;
+function toast(msg, o){
+  o = o || {};
   document.querySelectorAll('.toast').forEach(t=>t.remove());
-  const d=document.createElement('div'); d.className='toast'; d.textContent=msg;
-  document.body.appendChild(d); setTimeout(()=>d.remove(), 2200);
+  clearTimeout(_toastT);
+  const txt = String(msg ?? ''), error = o.error || /^No se pudo|^Error|no se pudo/.test(txt);
+  const d = document.createElement('div');
+  d.className = 'toast' + (error ? ' err' : '') + (document.querySelector('.pl-selbar') ? ' alto' : '');
+  d.role = error ? 'alert' : 'status';
+  _toastFn = o.fn || null;
+  d.innerHTML = `<span>${esc(txt)}</span>`
+    + (o.accion && o.fn ? `<button type="button" class="toast-acc" onclick="toastAccion()">${esc(o.accion)}</button>` : '')
+    + (error || o.accion ? `<button type="button" class="toast-x" aria-label="Cerrar el aviso" onclick="this.parentNode.remove()">×</button>` : '');
+  document.body.appendChild(d);
+  if(!error) _toastT = setTimeout(()=>d.remove(), o.ms || Math.max(4000, 60 * txt.length) + (o.accion ? 4000 : 0));
+}
+function toastAccion(){
+  const fn = _toastFn; _toastFn = null;
+  document.querySelectorAll('.toast').forEach(t=>t.remove());
+  if(fn) fn();
 }
 
 function render(){
@@ -5219,9 +5245,7 @@ if(typeof document !== 'undefined' && typeof document.addEventListener === 'func
     if((ev.key === 'Enter' || ev.key === ' ') && t && t.getAttribute && t.getAttribute('role') === 'button' &&
        !/^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/.test(t.tagName)){ ev.preventDefault(); t.click(); return; }
     if(ev.key === 'Escape' && modal && !_plDrag){
-      /* no cerrar si se está escribiendo en un cuadro de texto largo */
-      if(t && t.tagName === 'TEXTAREA' && t.value) return;
-      cerrar();
+      cerrarAfuera();
     }
   });
 }
@@ -5348,7 +5372,7 @@ function cuerpo(pr,py,v){
   /* Puede pasar que el proyecto tenga presupuestos y ninguno sea para vos: un
      técnico invitado no ve ni el Real ni el de Producción. Eso se dice, no se
      rompe la pantalla. */
-  if(!getV() && ['presu','resumen','gastos'].includes(DB.ui.tab)){
+  if(!getV() && ['presu','resumen'].includes(DB.ui.tab)){
     const hay = (py.versiones||[]).length;
     return `<div class="card"><div class="empty">
       ${hay ? `Este proyecto tiene ${hay} presupuesto${hay==1?'':'s'}, pero ninguno es para tu rol
@@ -6557,7 +6581,7 @@ function vistaResumen(pr,py,v){
 
   /* qué hay pendiente */
   const pend = [];
-  const mios = u ? cs.filter(c=>accionesDe(c,u).length) : [];
+  const mios = u ? cs.filter(c=>accionesDe(c,u).some(a=>a!=='rechazar')) : [];
   if(mios.length){
     const QUE = {revisar:'para revisar', aprobar:'para aprobar', pagar:'para pagar'};
     /* si esperan cosas distintas, se dice genérico */
@@ -6576,13 +6600,18 @@ function vistaResumen(pr,py,v){
   const sinRubro = cs.filter(c=>!c.rubro).length;
   if(sinRubro) pend.push({n:sinRubro, t:'comprobantes sin rubro', ir:"setTab('gastos');setSubGasto('todos')", urg:true});
   /* citaciones de la próxima jornada sin avisar */
-  const prox = d.jornadas.find(j=>{ normalizarJornada(j);
-    return Object.keys(j.parte.citados||{}).filter(k=>j.parte.citados[k]).length <
-           gentePorJornada(py,v,j.numero).gente.length; });
+  const yaPaso = j => /^\d{4}-\d\d-\d\d$/.test(j.fecha || '') && j.fecha < hoy();
+  const prox = d.jornadas.find(j=>{ normalizarJornada(j); if(yaPaso(j)) return false;
+    const g = gentePorJornada(py,v,j.numero).gente;
+    return citadosAlDia(j, g) < g.length; });
   if(prox){ const g = gentePorJornada(py,v,prox.numero).gente;
-    const falta = g.length - Object.keys(prox.parte.citados||{}).filter(k=>prox.parte.citados[k]).length;
-    if(falta) pend.push({n:falta, t:`sin citar para la jornada ${prox.numero}`,
+    const falta = g.length - citadosAlDia(prox, g);
+    const camb = g.filter(x => estadoCitado(prox, x.clave).k === 'cambio').length;
+    if(falta) pend.push({n:falta, t:`sin citar para la jornada ${prox.numero}${camb ? ` (${camb} con la hora vieja)` : ''}`, urg: !!camb,
       ir:`DB.ui.jornada=${prox.numero};setTab('rodaje');setSubRodaje('citaciones')`}); }
+  if(d.jornadas.length && n(py.jornadas) && d.jornadas.length !== n(py.jornadas))
+    pend.push({n:d.jornadas.length, t:`jornadas en el plan y ${n(py.jornadas)} en el proyecto: revisá los días del presupuesto`,
+      ir:"setTab('presu')", urg:true});
   const sinDatos = armarContactos(py, v).sinDatos;
   if(sinDatos) pend.push({n:sinDatos, t:'contactos sin teléfono ni mail',
     ir:"setTab('callsheet');setSubCall('contactos')"});
@@ -7041,9 +7070,16 @@ function liquidarPersona(py, v, g){
   const montoDias = deMas * valorDia;
   const L = liqDe(py)[g.clave] || {};
   const ajuste = n(L.ajuste);
+  /* lo pagado es lo que se pagó, aunque después cambie un parte; lo aprobado
+     avisa si el cálculo de hoy ya no da lo mismo */
+  const vivo = base + montoDias + he + ajuste, estado = L.estado || 'borrador';
+  const firmado = estado === 'pagado' && L.montoPagado != null ? n(L.montoPagado)
+                : estado === 'aprobado' && L.montoAprobado != null ? n(L.montoAprobado) : null;
   return {base, he, heHoras, ajuste, notaAjuste: L.notaAjuste || '', jornadas,
     trabajadas: trab, presRodaje, deMas, montoDias, faltan: trab && trab < presRodaje ? presRodaje - trab : 0,
-    total: base + montoDias + he + ajuste, estado: L.estado || 'borrador', historial: L.historial || [],
+    total: estado === 'pagado' && firmado != null ? firmado : vivo, vivo,
+    firmado, cambio: firmado != null && Math.abs(vivo - firmado) >= 1,
+    estado, historial: L.historial || [],
     comprobante: comprobanteLiq(g)};
 }
 
@@ -7136,7 +7172,7 @@ function pedirDatosTodos(){
   const pr = getPr(), py = getPy(), v = getV();
   const G = genteDelProyecto(py, v).filter(g => { const f = faltaDe(g); return !f.sinAsignar && (f.sinFicha || f.seguro.length || f.pago.length); });
   window._pedidos = G.map(g => ({clave: g.clave, nombre: g.nombre, wa: telWhatsapp(g.tel), texto: textoPedidoDatos(pr, py, g)}));
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:560px">
     <h3>Pedir datos por WhatsApp</h3>
     <div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
@@ -7206,12 +7242,14 @@ function liquidacionHTML(pr, py, v, G){
                 style="width:110px;text-align:right;font-family:var(--mono)" onchange="upLiq('${g.clave}','ajuste',this.value)">
                <input type="text" value="${esc(L.notaAjuste)}" placeholder="motivo" style="width:110px;margin-top:3px;font-size:11px"
                 onchange="upLiq('${g.clave}','notaAjuste',this.value)">`}</td>
-          <td class="num" style="text-align:right;font-weight:700">${fmt(L.total, mb)}</td>
+          <td class="num" style="text-align:right;font-weight:700">${fmt(L.total, mb)}
+            ${L.cambio ? `<span style="display:block;font-size:10.5px;font-weight:600;color:var(--warn)" title="Cambió un parte o una línea después de ${L.estado === 'pagado' ? 'pagar' : 'aprobar'}">${L.estado === 'pagado' ? `hoy daría ${fmt(L.vivo, mb)}` : `se aprobó por ${fmt(L.firmado, mb)}`}</span>` : ''}</td>
           <td style="font-size:11.5px">${esc(L.comprobante)}
             <span class="muted" style="display:block">${esc(p.alias || p.cbu || 'sin alias ni CBU')}</span></td>
-          <td><span class="chip ${L.estado === 'pagado' ? 'd-si' : L.estado === 'borrador' ? 'c-otr' : 'd-par'}">${esc((LIQ_ESTADOS.find(e => e.k === L.estado) || {}).l)}</span></td>
+          <td style="white-space:nowrap"><span class="chip ${L.estado === 'pagado' ? 'd-si' : L.estado === 'borrador' ? 'c-otr' : 'd-par'}">${esc((LIQ_ESTADOS.find(e => e.k === L.estado) || {}).l)}</span>
+            ${L.estado === 'pagado' && puedeLiq('pagar') ? `<button class="btn sm" onclick="volverLiq('${g.clave}')" title="Si se marcó pagado por error: vuelve a aprobada" aria-label="Volver a aprobada">↶</button>` : ''}</td>
           <td style="text-align:right;white-space:nowrap">${sig && puedeLiq(sig.puede)
-            ? `<button class="btn sm ${sig.a === 'pagado' ? 'pri' : ''}" onclick="avanzarLiq('${g.clave}')">${sig.l}</button>` : ''}</td>
+            ? `<button class="btn sm ${sig.a === 'pagado' ? 'pri' : ''}" onclick="avanzarLiq('${g.clave}',false,'${L.estado}')">${sig.l}</button>` : ''}</td>
         </tr>`;
       }).join('')}</tbody></table></div>
     <div class="pad muted" style="font-size:11.5px;line-height:1.6">
@@ -7234,22 +7272,39 @@ function upLiq(clave, campo, val){
   }
   R();
 }
-function avanzarLiq(clave, silencioso){
-  const L = liqDe(getPy()); L[clave] ||= {estado: 'borrador'};
+function avanzarLiq(clave, silencioso, desde){
+  const py = getPy(), v = getV(), L = liqDe(py); L[clave] ||= {estado: 'borrador'};
   const sig = LIQ_SIGUE[L[clave].estado || 'borrador']; if(!sig || !puedeLiq(sig.puede)) return false;
+  /* un doble click no saltea un paso: el botón dice desde qué paso se apretó */
+  if(desde && (L[clave].estado || 'borrador') !== desde) return false;
+  const g = v ? genteDelProyecto(py, v).find(x => x.clave === clave) : null;
+  const monto = g ? liquidarPersona(py, v, g).vivo : null;
+  if(sig.a === 'pagado' && !silencioso && !confirm(`¿Marcar pagado a ${g && g.nombre || 'esta persona'}${monto != null ? ' por ' + fmt(monto, v.monedaBase) : ''}? Queda firmado a tu nombre.`)) return false;
   L[clave].historial = [...(L[clave].historial || []), {de: L[clave].estado || 'borrador', a: sig.a,
-    quien: (getUsuario() || {}).nombre || '', cuando: new Date().toISOString()}];
+    quien: (getUsuario() || {}).nombre || '', cuando: new Date().toISOString(), monto}];
   L[clave].estado = sig.a;
-  if(sig.a === 'pagado') L[clave].pagadoEl = hoy();
+  if(sig.a === 'aprobado') L[clave].montoAprobado = monto;
+  if(sig.a === 'pagado'){ L[clave].pagadoEl = hoy(); L[clave].montoPagado = monto; }
   if(!silencioso) R();
   return true;
 }
+/* marcado como pagado por error: vuelve a aprobado, y queda anotado */
+function volverLiq(clave){
+  const L = liqDe(getPy()), x = L[clave];
+  if(!x || x.estado !== 'pagado' || !puedeLiq('pagar')) return;
+  if(!confirm('¿Volver esta liquidación a "aprobada"? Queda anotado en su historial.')) return;
+  x.historial = [...(x.historial || []), {de: 'pagado', a: 'aprobado', quien: (getUsuario() || {}).nombre || '',
+    cuando: new Date().toISOString(), por: 'se deshizo el pago'}];
+  x.estado = 'aprobado'; delete x.pagadoEl; delete x.montoPagado;
+  toast('Volvió a aprobada'); R();
+}
 function avanzarLiqTodos(desde){
   const py = getPy(), v = getV(); let k = 0;
-  genteDelProyecto(py, v).forEach(g => {
-    const est = (liqDe(py)[g.clave] || {}).estado || 'borrador';
-    if(est === desde && avanzarLiq(g.clave, true)) k++;
-  });
+  const van = genteDelProyecto(py, v).filter(g => ((liqDe(py)[g.clave] || {}).estado || 'borrador') === desde);
+  if(!van.length){ toast('No había ninguna en ese paso'); return; }
+  const suma = van.reduce((s, g) => s + liquidarPersona(py, v, g).vivo, 0);
+  if(!confirm(`¿${desde === 'borrador' ? 'Revisar' : 'Aprobar'} ${van.length} liquidaci${van.length == 1 ? 'ón' : 'ones'} por ${fmt(suma, v.monedaBase)} en total?`)) return;
+  van.forEach(g => { if(avanzarLiq(g.clave, true)) k++; });
   toast(k ? `${k} liquidacion${k == 1 ? '' : 'es'} ${desde === 'borrador' ? 'revisada' : 'aprobada'}${k == 1 ? '' : 's'}` : 'No había ninguna en ese paso');
   R();
 }
@@ -7278,7 +7333,10 @@ function vistaGastos(pr,py,v){
 
   const cs = getComprobantes();
   const R = resumenGastos(py, v);
-  const sub = DB.ui.subGasto || 'bandeja';
+  /* sin presupuesto a la vista (el rol Equipo) se cargan y siguen los
+     comprobantes; el tablero y las áreas, que comparan con el presupuesto, no */
+  let sub = DB.ui.subGasto || 'bandeja';
+  if(!v && (sub === 'areas' || sub === 'control')) sub = 'bandeja';
   const pend = cs.filter(c=>accionesDe(c,u).length);
   const mios = cs.filter(c=>c.cargadoPor===u.id);
   const abiertas = getCajas().filter(x=>x.estado==='abierta').length;
@@ -7286,7 +7344,7 @@ function vistaGastos(pr,py,v){
              ['todos',`Comprobantes · ${cs.length}`],
              ['oc',`Órdenes de compra${getOCs().length?' · '+getOCs().length:''}`],
              ['caja',`Caja chica${abiertas?' · '+abiertas:''}`],
-             ['areas','Áreas'],['control','Tablero']];
+             ...(v ? [['areas','Áreas'],['control','Tablero']] : [])];
   let lista = sub==='bandeja' ? (puede(u,'revisar') ? pend : mios) : cs;
   /* filtros: administración necesita ver "todas las facturas de arte" */
   const F = DB.ui.fGasto || {rubro:'', estado:'', q:'', area:''};
@@ -8044,24 +8102,26 @@ function vistaRodaje(pr,py,v){
 
 /* --- citaciones: mandarle a cada uno su hora ----------------------------- */
 function citacionesHTML(pr,py,j,C,gente,cfg){
-  const citados = Object.keys(j.parte.citados||{}).filter(k=>j.parte.citados[k]).length;
+  const citados = citadosAlDia(j, gente);
+  const cambiaron = gente.filter(p => estadoCitado(j, p.clave).k === 'cambio').length;
   const conTel = gente.filter(p=>telWhatsapp(p.tel)).length;
   const fila = p => {
     const cit = j.citaciones[p.clave]||{};
     const hora = cit.citacion || '';
     const wa = telWhatsapp(p.tel);
-    const listo = !!(j.parte.citados||{})[p.clave];
+    const est = estadoCitado(j, p.clave), listo = est.k === 'si';
     return `<tr class="${listo?'yacitado':''}">
       <td><span class="crol">${esc(p.rol)}</span>
         <span class="muted" style="display:block;font-size:10px">${esc(p.grupo)}</span></td>
       <td class="${p.nombre?'':'muted'}">${esc(p.nombre||'— sin asignar —')}</td>
-      <td><input type="text" value="${esc(hora)}" placeholder="${esc(j.citacion||'')}"
-        onchange="upCitacion('${p.clave}','citacion',this.value)"></td>
+      <td><input type="text" inputmode="numeric" value="${esc(hora)}" placeholder="${esc(j.citacion||'')}"
+        onchange="upCitacion('${p.clave}','citacion',this.value)" aria-label="Citación de ${esc(p.rol)}">
+        ${est.k === 'cambio' ? `<span class="chip sica-bajo" style="display:inline-block;margin-top:3px;font-size:10.5px" title="Se le mandó la citación de las ${esc(est.antes)}; ahora es a las ${esc(est.ahora)}. Hay que volver a avisarle">cambió ${esc(est.antes)} → ${esc(est.ahora)}</span>` : ''}</td>
       <td class="noprint" style="white-space:nowrap">
-        ${wa ? `<a class="btn sm wa" href="https://wa.me/${wa}?text=${encodeURIComponent(textoCitacion(pr,py,j,C,p,cfg))}"
+        ${wa ? `<a class="btn sm wa" href="https://wa.me/${wa}?text=${encodeURIComponent(textoCitacionAl(pr,py,j,C,p,cfg))}"
              target="_blank" rel="noopener" onclick="marcarCitado('${p.clave}')">WhatsApp</a>`
              : `<span class="muted" style="font-size:10.5px">sin teléfono</span>`}
-        ${p.email ? `<a class="btn sm" href="mailto:${esc(p.email)}?subject=${encodeURIComponent('Citación J'+j.numero+' · '+py.nombre)}&body=${encodeURIComponent(textoCitacion(pr,py,j,C,p,cfg))}"
+        ${p.email ? `<a class="btn sm" href="mailto:${esc(p.email)}?subject=${encodeURIComponent('Citación J'+j.numero+' · '+py.nombre)}&body=${encodeURIComponent(textoCitacionAl(pr,py,j,C,p,cfg))}"
              onclick="marcarCitado('${p.clave}')">Mail</a>` : ''}
         <button class="btn sm" onclick="copiarCitacion('${p.clave}')">Copiar</button>
       </td>
@@ -8081,7 +8141,8 @@ function citacionesHTML(pr,py,j,C,gente,cfg){
         <div class="cssub">avisados</div></div>
     </div>
     <div class="pad noprint" style="display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--line)">
-      <button class="btn sm pri" onclick="copiarTodasCitaciones()">Copiar todas las citaciones</button>
+      ${cambiaron ? `<button class="btn sm pri" onclick="copiarCambiadas()" title="El plan cambió después de citarlos: copia el mensaje con el cambio para esos ${cambiaron}">Re-citar a ${cambiaron == 1 ? 'el que cambió' : `los ${cambiaron} que cambiaron`}</button>` : ''}
+      <button class="btn sm ${cambiaron ? '' : 'pri'}" onclick="copiarTodasCitaciones()">Copiar todas las citaciones</button>
       <button class="btn sm" onclick="marcarTodos(true)">Marcar todos como citados</button>
       <button class="btn sm" onclick="marcarTodos(false)">Limpiar marcas</button>
       <div style="flex:1"></div>
@@ -8163,10 +8224,10 @@ function parteHTML(pr,py,j,C,gente,cfg){
           const h = horasDe(g.clave, j, cfg, g.valorJornada, g.moneda, g.linea), f = p.fichadas[g.clave] || {}, c = j.citaciones[g.clave] || {}, est = estadoFichada(f);
           return `<tr><td><span class="crol">${esc(g.rol)}</span></td>
             <td class="${g.nombre?'':'muted'}">${esc(g.nombre||'—')}</td>
-            <td><div class="rd-hora"><input type="text" value="${esc(h.entrada||'')}" placeholder="${esc(c.citacion||j.citacion||'')}"
+            <td><div class="rd-hora"><input type="text" inputmode="numeric" value="${esc(h.entrada||'')}" placeholder="${esc(c.citacion||j.citacion||'')}"
               onchange="upFichada('${g.clave}','entrada',this.value)" aria-label="Entrada de ${esc(g.rol)}">
               ${f.entrada ? '' : `<button class="btn sm noprint" onclick="rdFichar('${g.clave}','entrada')" title="Llegó ahora">Llegó</button>`}</div></td>
-            <td><div class="rd-hora"><input type="text" value="${esc(h.salida||'')}" placeholder="${esc(c.libera||p.wrap||'')}"
+            <td><div class="rd-hora"><input type="text" inputmode="numeric" value="${esc(h.salida||'')}" placeholder="${esc(c.libera||p.wrap||'')}"
               onchange="upFichada('${g.clave}','salida',this.value)" aria-label="Salida de ${esc(g.rol)}">
               ${f.entrada && !f.salida ? `<button class="btn sm pri noprint" onclick="rdFichar('${g.clave}','salida')" title="Liberarlo ahora">Liberar</button>` : ''}</div></td>
             <td><span class="rd-est ${est.k}">${esc(est.l)}</span></td>
@@ -8500,7 +8561,9 @@ function hojaCitacionHTML(pr,py,v){
         ${F('Wrap estimado','wrap',j.wrap,'time')}
         ${F('Sale el sol','amanecer',j.amanecer,'time')}
         ${F('Se pone el sol','atardecer',j.atardecer,'time')}
-      </div>`, 'noprint')}
+      </div>
+      ${planDe(py).items.some(x => x.jornada === j.numero && x.tipo !== 'evento') ? `<div class="pad muted" style="padding-top:0;font-size:11.5px">
+        La comida, el wrap y el sol salen del plan de rodaje. Si los escribís acá quedan como los pusiste; borralos para que vuelvan a salir del plan.</div>` : ''}`, 'noprint')}
 
       ${bloqueCS('Notas de producción', `<div class="pad">
         <textarea rows="3" placeholder="Avisos, restricciones de la locación, orden del día…"
@@ -9129,7 +9192,7 @@ function plBorrarPlanta(id){
 }
 function plVerPlanta(id){
   const x = (planDe(getPy()).plantas || []).find(y => y.id === id); if(!x) return;
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:1100px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:1100px">
     <h3>${esc(x.nombre || 'Planta')}</h3><div class="mbody" style="text-align:center"><img src="${x.img}" alt="Planta de cámara" style="max-width:100%;border-radius:8px"></div>
     <div class="mfoot"><button class="btn dgr" onclick="plBorrarPlanta('${x.id}')">Quitar</button><div style="flex:1"></div>
       <button class="btn pri" onclick="cerrar()">Cerrar</button></div></div></div>`);
@@ -9394,8 +9457,9 @@ function volcarHorarios(py, num){
   if(!j) return;
   if(!planDe(py).items.some(x => x.jornada === num && x.tipo !== 'evento')) return;
   const D = calcularDia(py, num);
-  if(D.comida) j.comida = aHora(D.comida.inicio);
-  j.wrap = aHora(D.fin);
+  const M = j.manual || {};
+  if(D.comida && !M.comida) j.comida = aHora(D.comida.inicio);
+  if(!M.wrap) j.wrap = aHora(D.fin);
   if(D.sol && (!j.amanecer || j.solAuto)){ j.amanecer = aHora(D.sol.amanecer); j.atardecer = aHora(D.sol.atardecer); j.solAuto = true; }
   /* las citaciones salen del plan: si el plan cambia, cambian (salvo las escritas a mano) */
   try{ citarDia(py, num); }catch(e){ console.warn('citaciones', e); }
@@ -9506,7 +9570,7 @@ function plDiaHTML(pr, py, v){
       <button class="btn sm" onclick="plShotList()" title="Pegá la lista de planos del director, uno por renglón">Pegar lista de planos</button>
       <button class="btn sm pri" onclick="plArmarRodaje()" title="Reparte de nuevo TODO lo que no se filmó (todas las jornadas y el banco), desde la jornada 1: junta fondos y puestas, ordena, pone almuerzos, cita al elenco y crea las jornadas que hagan falta. Se puede deshacer">Armar el rodaje</button>
       <button class="btn sm pri" onclick="plArmarDia(${num})" title="Propone puestas, ordena por puesta (de lo abierto a lo cerrado), pone el almuerzo en un cambio de puesta, cita al elenco y, si no entra en las horas, pasa puestas enteras a la jornada siguiente. Se puede deshacer">Armar el día</button>
-      ${hayDeshacer(py) ? `<button class="btn sm" onclick="plDeshacerBoton()" title="Vuelve a como estaba antes del último armado">↶ Deshacer el armado</button>` : ''}
+      ${hayDeshacer(py) ? `<button class="btn sm" onclick="plDeshacerBoton()" title="Vuelve a como estaba antes de ${esc(_plAntes.que)}">↶ Deshacer: ${esc(_plAntes.que)}</button>` : ''}
       <div style="flex:1"></div>
       ${D.items && D.filmados < D.items && d.jornadas.length ? `<button class="btn sm" onclick="plPendientes()"
         title="Lo que quedó pendiente o se cayó pasa a otra jornada">Mover lo no filmado…</button>` : ''}
@@ -9680,7 +9744,7 @@ function plBancoHTML(py){
         <select onchange="plAgrupar(this.value)">${CRITERIOS_AGRUPAR.map(c => `<option value="${c.k}" ${(DB.ui.plAgrupar || '') === c.k ? 'selected' : ''}>${esc(c.l)}</option>`).join('')}</select></label>
       <button class="btn sm pri" onclick="plArmarRodaje()" title="Reparte en jornadas todo lo que no se filmó (lo del banco y lo que ya estaba en jornadas): junta fondos y puestas, ordena cada día, pone el almuerzo, cita al elenco y crea las jornadas que hagan falta. Se puede deshacer">Armar el rodaje</button>
       <button class="btn sm" onclick="plProponerPuestas(null)" title="Sólo les pone puesta a los planos del banco, sin repartirlos">Sólo proponer puestas</button>
-      ${hayDeshacer(py) ? `<button class="btn sm" onclick="plDeshacerBoton()">↶ Deshacer el armado</button>` : ''}
+      ${hayDeshacer(py) ? `<button class="btn sm" onclick="plDeshacerBoton()" title="Vuelve a como estaba antes de ${esc(_plAntes.que)}">↶ Deshacer: ${esc(_plAntes.que)}</button>` : ''}
       ${iaActiva() ? `<button class="btn sm" onclick="plLeerCuadrosIA()" title="La IA mira cada cuadro: fondo, tiro, personajes, tamaño, interior o exterior">Leer los cuadros con IA</button>` : ''}</div>` : ''}
     ${banco.length ? `${gruposDePlanos(banco, DB.ui.plAgrupar || '').map(g => `${g.titulo ? `<h5 class="pl-grupo"><label><input type="checkbox" class="noprint"
         ${g.planos.every(x => _plSel.has(x.id)) ? 'checked' : ''} onchange="plSelGrupo(${esc(JSON.stringify(g.planos.map(x => x.id)))}, this.checked)"
@@ -9859,7 +9923,7 @@ function plAcomodar(){
 }
 function plPendientes(){
   const d = getD(), num = DB.ui.jornada;
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:420px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:420px">
     <h3>Lo que no se filmó en la jornada ${num}</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">Los planos o escenas pendientes y los que se cayeron
         pasan a otra jornada (al final, antes del wrap) o al banco. Lo filmado queda donde está.</div>
@@ -9963,7 +10027,7 @@ function plEditar(id, tipo, alBanco){
     <datalist id="pl-sets">${[...new Set(planDe(py).items.map(x => x.set).filter(Boolean))].map(s => `<option value="${esc(s)}">`).join('')}</datalist>`;
   }
   _plEditando = {id, it};
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:640px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:640px">
     <h3>${id ? 'Editar' : 'Nuevo'} ${it.tipo === 'evento' ? 'evento' : it.tipo === 'escena' ? 'escena en el plan' : 'plano'}</h3>
     <div class="mbody">${cuerpo}</div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
@@ -9996,13 +10060,14 @@ function plVerImagen(id){
   const it = plItem(id); if(!it || !it.img) return;
   abrir(`<div class="ov" onclick="cerrar()"><div class="mod" style="max-width:560px;text-align:center">
     <h3>Plano ${esc(it.numero || '')}</h3><div class="mbody"><img src="${it.img}" style="width:100%;border-radius:8px">
-    <div style="margin-top:8px">${esc(it.desc || '')}</div></div></div></div>`);
+    <div style="margin-top:8px">${esc(it.desc || '')}</div></div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div></div></div>`);
 }
 
 /* ---------- ajustes ---------- */
 function plAjustes(){
   const p = planDe(getPy());
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
     <h3>Ajustes del plan</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">Con esto se calculan los horarios. Son del proyecto:
         un spot en estudio y una película en exteriores no se planifican con los mismos tiempos.</div>
@@ -10050,7 +10115,7 @@ function plAjustesOk(){
    primera vez que se usa, no antes. */
 function plStoryboard(alBanco){
   const py = getPy(), d = getD(), piezas = piezasDe(py);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
     <h3>Cargar storyboard o guion técnico</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">De un storyboard (imágenes o PDF) cada cuadro se vuelve un plano,
         numerado en orden. De un guion técnico en Excel (.xlsx) o .csv, cada renglón es un plano: se reconocen las columnas
@@ -10727,7 +10792,8 @@ function plDragFin(){
 function plMoverA(id, num, antesDe){
   const py = getPy(), it = plItem(id); if(!it) return;
   if(num == null && it.tipo === 'evento') return;
-  if(antesDe === undefined){ moverItem(py, it, num); toast(num == null ? 'Al banco' : `Pasado a la jornada ${num}`); RP(); return; }
+  plFoto(py, 'mover');
+  if(antesDe === undefined){ moverItem(py, it, num); toast(num == null ? 'Al banco' : `Pasado a la jornada ${num}`, {accion:'Deshacer', fn: plDeshacer}); RP(); return; }
   const natural = aMin(it.fijo) != null ? plHoraSiSeMueve(py, id, num, antesDe) : null;
   if(it.tipo === 'escena'){ const e = escenaDe(py, it.escenaId); if(e && e.jornada !== num){ e.jornada = num; sincronizarJornadas(getD()); } }
   const otros = planDe(py).items.filter(x => x.jornada === num && x !== it);
@@ -10791,6 +10857,7 @@ function plSelMaestraClick(ids){
 /* mover un bloque: a otra jornada (al final, o antes de un renglón) o al banco */
 function plMoverVarios(ids, num, antesDe){
   const py = getPy(), p = planDe(py);
+  plFoto(py, 'mover');
   const its = ids.map(plItem).filter(Boolean).filter(it => !(num == null && it.tipo === 'evento'));
   if(!its.length){ toast('Los eventos no van al banco'); return 0; }
   const antes = new Set(its.map(it => it.jornada).filter(x => x != null));
@@ -10836,6 +10903,7 @@ function plSelBorrar(){
   const txt = [resto.length && `se borran ${resto.length} renglón${resto.length == 1 ? '' : 'es'}`,
     escenas.length && `${escenas.length} escena${escenas.length == 1 ? '' : 's'} vuelve${escenas.length == 1 ? '' : 'n'} a quedar sin jornada`].filter(Boolean).join(' y ');
   if(!confirm(`¿Seguro? ${txt.charAt(0).toUpperCase() + txt.slice(1)}.`)) return;
+  plFoto(py, 'borrar');
   escenas.forEach(it => moverItem(py, it, null));
   const fuera = new Set(resto);
   const dias = new Set(resto.map(x => x.jornada).filter(x => x != null));
@@ -11161,22 +11229,27 @@ function armarRodaje(py){
 
 /* ---------- deshacer ---------- */
 let _plAntes = null;
-function plFoto(py){
+function plFoto(py, que){
   const p = planDe(py), d = py.desglose || nuevoDesglose();
   _plAntes = {pyId: py.id, items: JSON.stringify(p.items), jornadas: JSON.stringify(d.jornadas),
-    escenas: d.escenas.map(e => [e.id, e.jornada]), jornadasMin: d.jornadasMin, jornada: DB.ui.jornada};
+    escenas: d.escenas.map(e => [e.id, e.jornada]), jornadasMin: d.jornadasMin, jornada: DB.ui.jornada, que: que || 'armar',
+    otros: [...(py.comprobantes || []), ...(py.cajas || []), ...(p.plantas || [])].map(x => [x, x.jornada]),
+    luces: ((py.pedidoLuces || {}).items || []).map(it => [it, it.jornadas])};
 }
 function plDeshacer(){
   const py = getPy(); if(!_plAntes || !py || _plAntes.pyId !== py.id){ toast('No hay nada para deshacer'); return; }
   const p = planDe(py), d = py.desglose, A = _plAntes;
   p.items = JSON.parse(A.items); d.jornadas = JSON.parse(A.jornadas); d.jornadasMin = A.jornadasMin;
   const j = Object.fromEntries(A.escenas); d.escenas.forEach(e => { if(e.id in j) e.jornada = j[e.id]; });
+  (A.otros || []).forEach(([x, num]) => { x.jornada = num; });
+  (A.luces || []).forEach(([it, js]) => { it.jornadas = js; });
   DB.ui.jornada = A.jornada; _plAntes = null; _plSel.clear();
   cerrar(); toast('Volvió como estaba'); R();
 }
 /* el botón de la barra: puede haber cambios hechos después del armado */
 function plDeshacerBoton(){
-  if(!confirm('Vuelve el plan a como estaba antes del último armado (o de quitar la jornada). Lo que cambiaste después se pierde. ¿Seguir?')) return;
+  if(!_plAntes) return;
+  if(/armar|quitar/.test(_plAntes.que) && !confirm(`Vuelve el plan a como estaba antes de ${_plAntes.que}. Lo que cambiaste después se pierde. ¿Seguir?`)) return;
   plDeshacer();
 }
 const hayDeshacer = py => !!(_plAntes && py && _plAntes.pyId === py.id);
@@ -11188,7 +11261,7 @@ function plResumenArmado(py, rep, titulo){
       <td class="num">${aHora(D.inicio)}</td><td class="num">${D.comida ? aHora(D.comida.inicio) : '—'}</td><td class="num">${aHora(D.fin)}</td>
       <td class="num ${D.extra ? 'pl-rojo' : 'muted'}">${D.extra ? durTexto(D.extra) : '—'}</td>
       <td class="num ${mal ? 'pl-rojo' : 'muted'}">${mal || '—'}</td></tr>`; }).join('');
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:640px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:640px">
     <h3>${esc(titulo)}</h3><div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:10px">
         Por puesta, de lo abierto a lo cerrado; el almuerzo en un cambio de puesta; ${rep.citados} citacion${rep.citados == 1 ? '' : 'es'} del elenco y de maquillaje/vestuario pasadas al callsheet.
@@ -11206,14 +11279,16 @@ function plResumenArmado(py, rep, titulo){
 function plArmarDia(num){
   const py = getPy(); if(num == null) return;
   if(!filmablesDe(py, num).length){ toast('La jornada no tiene planos'); return; }
-  plFoto(py);
+  plFoto(py, 'armar el día');
   const rep = armarDia(py, num);
   DB.ui.jornada = num;
   plResumenArmado(py, rep, `Jornada ${num} armada`);
 }
 function plArmarRodaje(){
   const py = getPy();
-  plFoto(py);
+  const nIt = planDe(py).items.filter(x => x.tipo !== 'evento' && x.estado !== 'filmado').length;
+  if(nIt && !confirm(`Reparte de nuevo los ${nIt} renglones que no se filmaron, desde la jornada 1, y crea las jornadas que hagan falta. Se puede deshacer. ¿Seguir?`)) return;
+  plFoto(py, 'armar el rodaje');
   const rep = armarRodaje(py);
   if(!rep){ _plAntes = null; toast('No hay planos sin filmar para armar'); return; }
   DB.ui.jornada = Math.min(...rep.jornadas); DB.ui.subPlan = 'dia';
@@ -11238,7 +11313,13 @@ function quitarJornada(py, num){
   d.escenas.forEach(e => { if(e.jornada && e.jornada > num) e.jornada--; });
   d.jornadasMin = d.jornadas.length;
   sincronizarJornadas(d);
-  return {dest: dest == null ? null : dest > num ? dest - 1 : dest, llevados: llevar.length};
+  /* lo que en otras solapas dice "J3" sigue siendo de ese día */
+  const destN = dest == null ? null : dest > num ? dest - 1 : dest;
+  const ren = x => x == null ? x : x === num ? destN : x > num ? x - 1 : x;
+  [...(py.comprobantes || []), ...(py.cajas || []), ...(p.plantas || [])].forEach(x => { if(x.jornada != null) x.jornada = ren(x.jornada); });
+  ((py.pedidoLuces || {}).items || []).forEach(it => { if(Array.isArray(it.jornadas))
+    it.jornadas = [...new Set(it.jornadas.map(ren).filter(x => x != null))].sort((a, b) => a - b); });
+  return {dest: destN, llevados: llevar.length};
 }
 function plQuitarJornada(num){
   const py = getPy(), d = getD();
@@ -11249,7 +11330,7 @@ function plQuitarJornada(num){
   const conParte = j && j.parte && Object.keys(j.parte.fichadas || {}).length;
   const destTxt = d.jornadas.length === 1 ? 'al banco' : num > 1 ? `a la jornada ${num - 1}` : 'a la jornada que pasa a ser la 1';
   if(!confirm(`¿Quitar la jornada ${num}?${n0 ? ` Sus ${n0} ${planPorEscenas(py) ? 'escenas' : 'planos'} pasan ${destTxt}.` : ''}${num < d.jornadas.length ? ' Las siguientes se renumeran.' : ''}${conParte ? ' Se pierde el parte de ese día.' : ''}`)) return;
-  plFoto(py);
+  plFoto(py, 'quitar la jornada');
   const r = quitarJornada(py, num);
   DB.ui.jornada = r && r.dest != null ? r.dest : (d.jornadas.length ? d.jornadas[0].numero : null);
   toast(`Jornada ${num} quitada${r && r.llevados ? ` · ${r.llevados} pasaron ${r.dest ? 'a la jornada ' + r.dest : 'al banco'}` : ''}`);
@@ -11336,7 +11417,7 @@ function plMarcoFin(){
 /* ---------- lista de planos pegada ---------- */
 function plShotList(alBanco){
   const py = getPy(), d = getD(), piezas = piezasDe(py);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:600px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:600px">
     <h3>Pegar la lista de planos</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:8px">Un plano por renglón, como la manda el director.
         Se reconoce el número, el tamaño (PG, PM, PP, PD…), el movimiento (travelling, steadicam, dron…), INT/EXT, la lente y la luz (hora dorada, noche).
@@ -11851,7 +11932,7 @@ function lzSumarRental(nombre){
 }
 function lzEditar(id){
   const P = pedidoDe(getPy()), it = P.items.find(x => x.id === id); if(!it) return;
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:480px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:480px">
     <h3>${esc(it.nombre)}</h3><div class="mbody"><div class="grid2">
       ${campo('Nombre','nombre',it.nombre)}
       ${sel('Categoría','c',it.c,CATEGORIAS_LUZ.map(c => ({v:c.k, l:c.l})))}
@@ -11874,7 +11955,7 @@ function lzGuardar(id){
 let _lz = null;
 function lzAgregar(){
   _lz = {q:'', c:''};
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod ppmod" style="max-width:620px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod ppmod" style="max-width:620px">
     <h3>Sumar equipos al pedido</h3>
     <div class="ppbusca">
       <input type="search" id="lzq" placeholder="Buscar: skypanel, 18K, joker, bandera, generador…" autocomplete="off" oninput="lzFiltro('q', this.value)">
@@ -12177,7 +12258,7 @@ async function lzSoltarPedido(ev){
   lzRevisarImportado(filas, files.map(f => f.name).join(', '));
 }
 function lzPegarPedido(){
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:560px">
     <h3>Pegar el pedido</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:8px">Como lo mandó el gaffer: un equipo por renglón, con la cantidad
         adelante o atrás ("2 x SkyPanel S60", "Ceferinos x10", "1 18K solo J2"). También se puede pegar un pedazo de planilla.</div>
@@ -12197,7 +12278,7 @@ function lzRevisarImportado(filas, origen){
   const ops = `<option value="">— no es un equipo / no sumar —</option>` + CATEGORIAS_LUZ.map(c =>
     `<optgroup label="${esc(c.l)}">${EQUIPOS_LUZ.filter(e => e.c === c.k).map(e => `<option value="${e.k}">${esc(e.nombre)}</option>`).join('')}</optgroup>`).join('');
   const reconocidos = filas.filter(f => f.k).length;
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:780px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:780px">
     <h3>Lo que entendí del pedido</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">De ${esc(origen)}: ${filas.length} renglón${filas.length == 1 ? '' : 'es'},
         ${reconocidos} reconocido${reconocidos == 1 ? '' : 's'}${filas.length - reconocidos ? ` y <b style="color:var(--warn)">${filas.length - reconocidos} para elegir a mano</b>` : ''}.
@@ -12256,7 +12337,7 @@ function lzEnviar(){
   const pr = getPr(), py = getPy(), P = pedidoDe(py);
   const r = (DB.catalogo.personas || []).find(x => x.id === P.rentalId);
   const txt = textoPedidoLuces(pr, py), wa = r ? telWhatsapp(r.tel) : '';
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:560px">
     <h3>Mandar el pedido${r ? ' a ' + esc(r.nombre) : ''}</h3><div class="mbody">
       <textarea rows="14" id="lztxt" style="font-family:var(--mono);font-size:12px">${esc(txt)}</textarea>
       ${r && !wa && !r.email ? `<div class="muted" style="font-size:11.5px;margin-top:6px">El rental no tiene teléfono ni mail en el catálogo: copialo y mandalo vos.</div>` : ''}
@@ -12288,6 +12369,8 @@ function lzAlPresupuesto(){
   let r11 = v.rubros.find(r => r.codigo === '11');
   if(!r11){ toast('El presupuesto no tiene el rubro 11'); return; }
   const cambios = [];
+  const pisa = Object.entries(lineas).filter(([c, t]) => t > 0 && r11.lineas.some(x => norm(x.concepto) === norm(c) && !x.piezaId && n(x.valorUnit)));
+  if(pisa.length && !confirm(`En el presupuesto ya hay ${pisa.map(([c]) => '"' + c + '"').join(', ')} con precio: se reemplaza por lo del pedido de luces. ¿Seguir?`)) return;
   Object.entries(lineas).forEach(([concepto, total]) => {
     if(!(total > 0)) return;
     let l = r11.lineas.find(x => norm(x.concepto) === norm(concepto) && !x.piezaId);
@@ -12297,7 +12380,7 @@ function lzAlPresupuesto(){
     l.notas = `Del pedido de luces${P.rental ? ' (' + P.rental + ')' : ''}, sin IVA`;
     cambios.push(`${concepto}: ${fmt(l.valorUnit, P.moneda)} × ${jornadas}`);
   });
-  toast('Al presupuesto · ' + cambios.join(' · ')); R();
+  toast('Al presupuesto · ' + cambios.join(' · '), {accion:'Ver el presupuesto', fn:()=>setTab('presu')}); R();
 }
 function lzCSV(){
   const py = getPy(), P = pedidoDe(py), js = jornadasDeLuces(py);
@@ -12597,7 +12680,7 @@ let _lzResp = null;
 function lzRespuesta(id){
   const r = rentalPorId(id);
   _lzResp = {id};
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:600px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:600px">
     <h3>Respuesta de ${esc(r ? r.nombre : 'el rental')}</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:8px">Pegá el mail que contestaron, tal cual (con lo citado y todo),
         o soltá el Word o PDF que mandaron. CLAP marca qué tienen, qué no y el precio, y te lo muestra para revisar.</div>
@@ -12634,7 +12717,7 @@ function lzRespuestaMostrar(txt, deIA){
   _lzResp = {id, items: L.items, total: L.total, texto: txt};
   const leidos = items.filter(it => L.items[it.id].estado !== '?').length;
   const r = rentalPorId(id);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:820px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:820px">
     <h3>Lo que contestó ${esc(r ? r.nombre : 'el rental')}</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">Entendí ${leidos} de ${items.length} renglones${items.length - leidos ? ` — <b style="color:var(--warn)">${items.length - leidos} sin respuesta clara</b>, elegilos a mano` : ''}.
         Los precios son por jornada (los consumibles, por unidad).${L.total ? ` Total que pusieron: <b>${fmt(L.total, P.moneda)}</b>.` : ''}</div>
@@ -13085,7 +13168,7 @@ async function hojasDePlanilla(file){
 /* ---------- importar un presupuesto: revisión ---------- */
 let _impP = null;
 function importarPresupuesto(){
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:560px">
     <h3>Importar un presupuesto en Excel</h3><div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">Sirve el AICP de siempre, el .xls viejo o cualquier
         planilla con conceptos y montos. CLAP lee cada línea (cantidad, días, valor y total), la ubica en su rubro por el puesto o
@@ -13219,7 +13302,9 @@ function piezaActual(){
 function addLinea(rid){
   getV().rubros.find(r=>r.id===rid).lineas.push(nuevaLinea({piezaId:piezaActual()})); R(); }
 function delLinea(rid,lid){ const r=getV().rubros.find(x=>x.id===rid);
-  r.lineas = r.lineas.filter(l=>l.id!==lid); R(); }
+  const i = r.lineas.findIndex(l=>l.id===lid); if(i < 0) return;
+  const [l] = r.lineas.splice(i, 1); R();
+  toast(`Borrada: ${l.concepto || 'la línea'}`, {accion:'Deshacer', fn:()=>{ r.lineas.splice(Math.min(i, r.lineas.length), 0, l); R(); }}); }
 function upLinea(rid,lid,campo,val){
   const l = getV().rubros.find(r=>r.id===rid).lineas.find(x=>x.id===lid);
   l[campo] = ['cantidad','dias','valorUnit'].includes(campo) ? n(val) : val;
@@ -13267,7 +13352,7 @@ function elegirCargoSICA(rid, lid){
   const porDep = {};
   E.cargos.forEach((c,i)=>(porDep[c.d] ||= []).push({...c, i}));
   _cargosPicker = E.cargos;
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:560px">
     <h3>Cargo del convenio · ${esc(l.concepto||'línea')}</h3>
     <div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.6;margin-bottom:10px">
@@ -13445,7 +13530,7 @@ function delRubro(id){ const v=getV(); const r=v.rubros.find(x=>x.id===id);
 function derivarProduccion(){
   const py = getPy(), v = getV(); if(!py || !v) return;
   if(!veTodo(getUsuario()) && getUsuario()){ toast('Esto lo hace Administración o el Productor Ejecutivo.'); return; }
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:560px">
     <h3>Generar el presupuesto de Producción</h3>
     <div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">
@@ -13524,8 +13609,32 @@ function duplicarVersion(){
   toast(`Creada ${copia.nombre} — la anterior queda intacta`); R(); }
 
 /* ---------- modales ---------- */
-function abrir(html){ modal = html; render(); }
-function cerrar(){ modal = null; render(); }
+let _abridor = null;
+function abrir(html){
+  /* para devolverle el foco al botón que la abrió */
+  const a = !modal && typeof document !== 'undefined' && document.activeElement;
+  if(a && a.getAttribute) _abridor = a.getAttribute('onclick');
+  modal = html; render(); }
+function cerrar(){
+  modal = null; render();
+  const a = _abridor; _abridor = null;
+  if(a) try{ const el = [...document.querySelectorAll('[onclick]')].find(e => e.getAttribute('onclick') === a); if(el) el.focus(); }catch(e){}
+}
+/* ¿hay algo escrito en la ventana que no se guardó? */
+function modalSucio(){
+  const m = typeof document !== 'undefined' && document.querySelector('.ov .mod');
+  if(!m || !m.querySelectorAll) return false;
+  return [...m.querySelectorAll('input,textarea,select')].some(e =>
+    e.type === 'checkbox' || e.type === 'radio' ? e.checked !== e.defaultChecked
+    : e.tagName === 'SELECT' ? e.selectedIndex !== Math.max(0, [...e.options].findIndex(o => o.defaultSelected))
+    : e.type !== 'file' && e.value !== e.defaultValue);
+}
+/* tocar afuera de la ventana (o Escape) cierra, pero pregunta si hay algo escrito */
+function cerrarAfuera(ev, el){
+  if(ev && el && ev.target !== el) return;
+  if(modalSucio() && !confirm('Hay cosas escritas que no se guardaron. ¿Cerrar igual?')) return;
+  cerrar();
+}
 function campo(l,name,val,tipo='text',extra=''){
   return `<label class="f"><span>${l}</span>
     <input type="${tipo}" name="${name}" value="${esc(val??'')}" ${extra}></label>`; }
@@ -13537,7 +13646,7 @@ function datos(){ const o={}; document.querySelectorAll('.puerta [name], .mod [n
 
 function editProductora(id){
   const p = id ? DB.productoras.find(x=>x.id===id) : nuevaProductora();
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>${id?'Editar':'Nueva'} productora</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre','nombre',p.nombre)}
@@ -13575,7 +13684,7 @@ function delProductora(id){ const p=DB.productoras.find(x=>x.id===id);
 
 function editProyecto(id){
   const pr = getPr(); const p = id ? pr.proyectos.find(x=>x.id===id) : nuevoProyecto();
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>${id?'Editar':'Nuevo'} proyecto — ${esc(pr.nombre)}</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre del proyecto','nombre',p.nombre)}
@@ -13659,7 +13768,7 @@ function delProyecto(id){ const pr=getPr(); const p=pr.proyectos.find(x=>x.id===
 
 function editVersion(){
   const v = getV();
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>Versión del presupuesto</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre','nombre',v.nombre)}
@@ -13702,7 +13811,7 @@ function saveVersion(){
 
 function editPersona(id){
   const p = id ? DB.catalogo.personas.find(x=>x.id===id) : nuevaPersona();
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>${id?'Editar':'Nueva'} ficha de catálogo</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre / Razón social','nombre',p.nombre)}
@@ -13783,7 +13892,7 @@ function pickFuncion(rid){
      cargar: la escala de la fecha del rodaje y la jornada del proyecto. Antes
      mostraba la escala de hoy y siempre 12 h, y no coincidía con la línea. */
   const py = getPy(), E = escalaDelProyecto(py), cfg = py && py.configRodaje, H = horasJornadaDe(cfg);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:460px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:460px">
     <h3>${esc(r.codigo)} · ${esc(r.nombre)}</h3>
     <div class="mbody" style="padding:8px">
       ${fs.length?fs.map(f=>{ const sc = cargoSICA(f, E);
@@ -13816,7 +13925,7 @@ function pickPersona(rid){
   const hayDelRubro = ps.some(p => p.rubro === r.codigo);
   _pp = {rid, q:'', tipo:'', rubro: hayDelRubro ? r.codigo : '', agregados: new Set()};
   const cuenta = {}; ps.forEach(p => cuenta[p.rubro] = (cuenta[p.rubro]||0) + 1);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod ppmod" style="max-width:620px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod ppmod" style="max-width:620px">
     <h3>Traer del catálogo → ${esc(r.nombre)}</h3>
     <div class="ppbusca">
       <input type="search" id="ppq" placeholder="Buscar por nombre, función o proyecto…" autocomplete="off"
@@ -13986,7 +14095,7 @@ function dividirEscena(id){
   const e = getD().escenas.find(x=>x.id===id);
   const ls = e.texto.split('\n');
   if(ls.filter(x=>x.trim()).length<2){ toast('Esta escena tiene una sola línea'); return; }
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>Dividir la escena ${esc(e.numero)}</h3>
     <div class="mbody" style="padding:8px">
       <div class="muted" style="font-size:12px;padding:4px 8px 10px">
@@ -14122,7 +14231,7 @@ function confirmarVariosGuiones(guiones, py){
     return {...g, escenas:es.length, i};
   });
   const conEscenas = filas.filter(f=>f.escenas);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:620px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:620px">
     <h3>Encontré ${guiones.length} guiones</h3>
     <div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">
@@ -14220,7 +14329,7 @@ FIN`);
 }
 function menuGuion(){
   const d=getD();
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:430px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:430px">
     <h3>Guion</h3><div class="mbody" style="display:flex;flex-direction:column;gap:7px">
       <div class="muted" style="font-size:11.5px;line-height:1.5;margin-bottom:4px">
         Importado el ${esc(d.importado||'—')} · ${d.escenas.length} escenas.</div>
@@ -14233,7 +14342,7 @@ function menuGuion(){
 }
 function verGuion(){
   const d=getD();
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>Guion</h3><div class="mbody">
       <div class="muted" style="font-size:11.5px;margin-bottom:8px">
         Si lo reemplazás se rehace el desglose y <b>se pierde lo que ajustaste a mano</b>.</div>
@@ -14286,7 +14395,7 @@ function delEl(eid, dep, val){
 }
 function pickDepto(eid){
   const e = getD().escenas.find(x=>x.id===eid);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:420px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:420px">
     <h3>Escena ${esc(e.numero)} — ¿a qué departamento?</h3>
     <div class="mbody" style="padding:8px;display:flex;flex-direction:column;gap:4px">
       <button class="btn" style="text-align:left;border-color:transparent;display:flex;gap:8px;align-items:center"
@@ -14365,7 +14474,7 @@ function setUsuario(id){
 function editUsuario(id){
   const pr = getPr(); pr.usuarios ||= [];
   const u = id ? pr.usuarios.find(x=>x.id===id) : nuevoUsuario();
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>${id?'Editar':'Nueva'} persona del equipo</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre','nombre',u.nombre)}
@@ -14444,7 +14553,7 @@ function editOC(id){
   const py = getPy(), v = getV();
   const o = id ? getOCs().find(x=>x.id===id)
               : nuevaOC({numero:proximoNumeroOC(py), moneda:v?v.monedaBase:'ARS'});
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>${id?'Editar orden de compra':'Nueva orden de compra'}</h3><div class="mbody">
       <div class="grid2">
         ${campo('Número','numero',o.numero)}
@@ -14516,7 +14625,7 @@ function editCaja(id){
                 : nuevaCaja({nombre:'Caja '+((py.cajas||[]).length+1), moneda:v?v.monedaBase:'ARS',
                              responsable:getUsuario()?.id||null});
   const jorn = (py.desglose?.jornadas)||[];
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:540px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:540px">
     <h3>${id?'Editar caja':'Abrir caja chica'}</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre','nombre',cj.nombre,'text','placeholder="Caja de arte, Caja jornada 2…"')}
@@ -14550,7 +14659,7 @@ function saveCaja(id){
 }
 function addAdelanto(id){
   const cj = getCajas().find(x=>x.id===id);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:440px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:440px">
     <h3>Adelanto a ${esc(cj.nombre)}</h3><div class="mbody"><div class="grid2">
       ${campo('Importe','importe',0,'number','step="any"')}
       ${sel('Cómo se entrega','circuito','efectivo',CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
@@ -14571,7 +14680,7 @@ function saveAdelanto(id){
 function rendirCaja(id){
   const py = getPy(), cj = getCajas().find(x=>x.id===id);
   const s = saldoCaja(py, cj);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
     <h3>Rendir ${esc(cj.nombre)}</h3><div class="mbody">
       <div class="cshoras" style="margin:-16px -16px 14px">
         <div><b>${fmt(s.entregado, cj.moneda)}</b><span>Entregado</span></div>
@@ -14623,7 +14732,7 @@ function cargarComprobante(id, cajaId){
   const jorn = (py.desglose?.jornadas)||[];
   const ocsAbiertas = getOCs().filter(o=>o.estado==='emitida' || o.id===c.ocId);
   const cajasAbiertas = getCajas().filter(x=>x.estado==='abierta' || x.id===c.cajaId);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>${id?'Editar comprobante':'Cargar comprobante'}
       <span class="spacer"></span>
       <span class="muted" style="font-size:11px;text-transform:none;letter-spacing:0">como ${esc(u.nombre)}</span></h3>
@@ -14778,7 +14887,7 @@ function verComprobante(id){
   const c = getComprobantes().find(x=>x.id===id);
   const u = getUsuario(); const acc = accionesDe(c,u);
   const e = EST(c.estado);
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>${esc(c.subrubro||c.concepto||'Comprobante')}
       <span class="spacer"></span>
       <span class="est" style="color:${e.c};border-color:${e.c}55;background:${e.c}18">${e.l}</span></h3>
@@ -14834,7 +14943,7 @@ function limpiarFCat(){ DB.ui.fCat = {q:'',rubro:'',tipo:'',desde:'',hasta:'',so
 let _candidatos = [];
 function menuCallsheets(){
   _candidatos = [];
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:820px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:820px">
     <h3>Armar el catálogo desde callsheets</h3>
     <div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">
@@ -15002,10 +15111,19 @@ function upParte(campo, val){
   j.parte[campo] = campo==='comidasServidas' ? n(val) : val;
   R();
 }
+/* "1930" → 19:30, "8.30" → 08:30, "8" → 08:00; lo que no parece una hora
+   queda como se escribió */
+function normHora(v){
+  const t = String(v ?? '').trim(), m = t.match(/^(\d{1,2})(?:[:.,hH ]?(\d{2}))?\s*(?:hs?\.?)?$/);
+  if(!m) return t;
+  const h = +m[1], mi = +(m[2] || 0);
+  return h > 23 || mi > 59 ? t : String(h).padStart(2, '0') + ':' + String(mi).padStart(2, '0');
+}
+const CAMPOS_HORA = /^(entrada|salida|citacion|maquillaje|vestuario|listo|set|libera)$/;
 function upFichada(clave, campo, val){
   const j = jornadaParte();
   j.parte.fichadas[clave] ||= {};
-  j.parte.fichadas[clave][campo] = val;
+  j.parte.fichadas[clave][campo] = CAMPOS_HORA.test(campo) ? normHora(val) : val;
   R();
 }
 function toggleFilmada(eid, on){
@@ -15040,22 +15158,32 @@ function ficharTodos(campo){
 const ahoraHHMM = () => { const d = new Date(); return aHora(Math.round((d.getHours() * 60 + d.getMinutes()) / 5) * 5); };
 function rdFichar(clave, campo, hora){
   const j = jornadaParte(); j.parte.fichadas[clave] ||= {};
+  const antes = j.parte.fichadas[clave][campo];
   j.parte.fichadas[clave][campo] = hora || ahoraHHMM();
-  toast(`${campo === 'entrada' ? 'Llegó' : 'Liberado'} a las ${j.parte.fichadas[clave][campo]}`); R();
+  toast(`${campo === 'entrada' ? 'Llegó' : 'Liberado'} a las ${j.parte.fichadas[clave][campo]}`,
+    {accion:'Deshacer', fn:()=>{ const f = j.parte.fichadas[clave] || {}; if(antes) f[campo] = antes; else delete f[campo]; R(); }});
+  R();
 }
 /* liberar a un grupo (un departamento, el elenco, los extras) o a todos los
    que quedan: los que no tienen entrada entran a su citación */
 function rdLiberarGrupo(grupo, hora){
   const py = getPy(), v = getV(), j = jornadaParte();
   const {gente} = gentePorJornada(py, v, j.numero);
-  const h = hora || ahoraHHMM(); let k = 0;
-  gente.filter(g => grupo === '*' || g.grupo === grupo).forEach(g => {
+  const h = hora || ahoraHHMM();
+  const quienes = gente.filter(g => (grupo === '*' || g.grupo === grupo) && !(j.parte.fichadas[g.clave] || {}).salida);
+  if(!quienes.length){ toast('Ya estaban todos liberados'); return; }
+  const k = quienes.length;
+  if(!hora && !confirm(grupo === '*'
+      ? `¿Liberar a ${k == 1 ? 'la persona que queda' : `las ${k} personas que quedan`} a las ${h}?`
+      : `¿Liberar a ${k} de ${grupo} a las ${h}?`)) return;
+  const antes = JSON.stringify(j.parte.fichadas);
+  quienes.forEach(g => {
     const f = (j.parte.fichadas[g.clave] ||= {});
-    if(f.salida) return;
     if(!f.entrada) f.entrada = (j.citaciones[g.clave] || {}).citacion || j.citacion;
-    f.salida = h; k++;
+    f.salida = h;
   });
-  toast(k ? `${k} liberado${k == 1 ? '' : 's'} a las ${h}` : 'Ya estaban todos liberados'); R();
+  toast(`${k} liberado${k == 1 ? '' : 's'} a las ${h}`, {accion:'Deshacer', fn:()=>{ j.parte.fichadas = JSON.parse(antes); toast('Volvió como estaba'); R(); }});
+  R();
 }
 const estadoFichada = f => !f || !f.entrada ? {k:'falta', l:'sin llegar'} : !f.salida ? {k:'set', l:'en set'} : {k:'libre', l:'liberado ' + f.salida};
 
@@ -15090,9 +15218,9 @@ function rdProveedoresHTML(py, v, j, cfg){
         <th style="width:70px" title="Horas contratadas por jornada">Contrato</th><th style="width:62px">Horas</th><th style="width:62px">Extras</th></tr></thead>
       <tbody>${P.map(x => { const h = horasProveedor(x.clave, j, cfg, n(x.l.valorUnit)), f = fch[x.clave] || {};
         return `<tr class="${h.extra > 0 ? 'conhe' : ''}"><td>${esc(x.concepto)}<span class="muted" style="display:block;font-size:10.5px">${esc(x.depto)}</span></td>
-          <td><div class="rd-hora"><input type="text" value="${esc(f.entrada || '')}" placeholder="—" onchange="upFichada('${x.clave}','entrada',this.value)" aria-label="Llegó ${esc(x.concepto)}">
+          <td><div class="rd-hora"><input type="text" inputmode="numeric" value="${esc(f.entrada || '')}" placeholder="—" onchange="upFichada('${x.clave}','entrada',this.value)" aria-label="Llegó ${esc(x.concepto)}">
             ${f.entrada ? '' : `<button class="btn sm noprint" onclick="rdFichar('${x.clave}','entrada')">Ahora</button>`}</div></td>
-          <td><div class="rd-hora"><input type="text" value="${esc(f.salida || '')}" placeholder="—" onchange="upFichada('${x.clave}','salida',this.value)" aria-label="Se fue ${esc(x.concepto)}">
+          <td><div class="rd-hora"><input type="text" inputmode="numeric" value="${esc(f.salida || '')}" placeholder="—" onchange="upFichada('${x.clave}','salida',this.value)" aria-label="Se fue ${esc(x.concepto)}">
             ${f.entrada && !f.salida ? `<button class="btn sm noprint" onclick="rdFichar('${x.clave}','salida')">Ahora</button>` : ''}</div></td>
           <td><input type="number" min="1" step="1" value="${esc(f.contrato || '')}" placeholder="${h.contrato}" onchange="rdContrato('${x.clave}', this.value)" aria-label="Horas contratadas"></td>
           <td class="num">${h.sinDatos ? '—' : fmtHoras(h.brutos)}</td><td class="num">${h.extra ? `<b>${fmtHoras(h.extra)}</b>` : '—'}</td></tr>`; }).join('')}
@@ -15150,10 +15278,22 @@ function bajarLiquidacionProveedores(){
   bajar(`${py.nombre}-proveedores-rodaje.csv`, '﻿' + L.join('\n'), 'text/csv;charset=utf-8');
   toast('Proveedores descargados');
 }
+/* Se guarda a qué hora se lo citó: si el plan cambia después, se ve quién
+   tiene la hora vieja (antes era sólo sí/no: true). */
+const horaCitada = (j, clave) => (j.citaciones[clave] || {}).citacion || j.citacion || '';
+function estadoCitado(j, clave){
+  const c = ((j.parte || {}).citados || {})[clave];
+  if(!c) return {k:'no'};
+  if(c === true || !c.hora) return {k:'si'};
+  const ahora = horaCitada(j, clave);
+  return c.hora === ahora ? {k:'si'} : {k:'cambio', antes:c.hora, ahora};
+}
+const citadosAlDia = (j, gente) => gente.filter(g => estadoCitado(j, g.clave).k === 'si').length;
 function marcarCitado(clave, val){
   const j = jornadaParte();
   j.parte.citados ||= {};
-  j.parte.citados[clave] = val===undefined ? true : !!val;
+  if(val === undefined || val) j.parte.citados[clave] = {hora: horaCitada(j, clave), cuando: new Date().toISOString()};
+  else delete j.parte.citados[clave];
   guardar();
   if(val!==undefined) R();
 }
@@ -15161,22 +15301,39 @@ function marcarTodos(val){
   const py=getPy(), j=jornadaParte();
   const {gente} = gentePorJornada(py, getV(), j.numero);
   j.parte.citados = {};
-  if(val) gente.forEach(g=>j.parte.citados[g.clave]=true);
+  if(val) gente.forEach(g=>j.parte.citados[g.clave]={hora: horaCitada(j, g.clave), cuando: new Date().toISOString()});
+  R();
+}
+/* el mensaje, avisando si es un cambio de horario */
+function textoCitacionAl(pr, py, j, C, p, cfg){
+  const e = estadoCitado(j, p.clave);
+  return (e.k === 'cambio' ? `⚠ CAMBIÓ TU CITACIÓN: antes ${e.antes}, ahora ${e.ahora}\n\n` : '') + textoCitacion(pr, py, j, C, p, cfg);
+}
+function copiarCambiadas(){
+  const pr=getPr(), py=getPy(), j=jornadaParte();
+  const {gente, callsheet:C} = gentePorJornada(py, getV(), j.numero);
+  const van = gente.filter(p => estadoCitado(j, p.clave).k === 'cambio'), cfg = cfgActual();
+  if(!van.length){ toast('Nadie tiene la hora vieja'); return; }
+  const txt = van.map(p=>textoCitacionAl(pr,py,j,C,p,cfg)).join('\n\n' + '─'.repeat(28) + '\n\n');
+  van.forEach(p => marcarCitado(p.clave));
+  alPortapapeles(txt, `${van.length} citacion${van.length == 1 ? '' : 'es'} con el cambio copiada${van.length == 1 ? '' : 's'}`);
   R();
 }
 function copiarCitacion(clave){
   const pr=getPr(), py=getPy(), j=jornadaParte();
   const {gente, callsheet:C} = gentePorJornada(py, getV(), j.numero);
   const p = gente.find(x=>x.clave===clave); if(!p) return;
-  alPortapapeles(textoCitacion(pr,py,j,C,p,cfgActual()), 'Citación copiada');
+  alPortapapeles(textoCitacionAl(pr,py,j,C,p,cfgActual()), 'Citación copiada');
   marcarCitado(clave);
 }
 function copiarTodasCitaciones(){
   const pr=getPr(), py=getPy(), j=jornadaParte();
   const {gente, callsheet:C} = gentePorJornada(py, getV(), j.numero);
   const cfg = cfgActual();
-  const txt = gente.map(p=>textoCitacion(pr,py,j,C,p,cfg)).join('\n\n' + '─'.repeat(28) + '\n\n');
+  const txt = gente.map(p=>textoCitacionAl(pr,py,j,C,p,cfg)).join('\n\n' + '─'.repeat(28) + '\n\n');
+  gente.forEach(p => marcarCitado(p.clave));
   alPortapapeles(txt, `${gente.length} citaciones copiadas`);
+  R();
 }
 function alPortapapeles(txt, msg){
   const ok = () => toast(msg);
@@ -15232,7 +15389,7 @@ function quitarTramo(i){
 
 function cfgRodaje(){
   const c = cfgActual();
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
     <h3>Condiciones de la jornada</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">
         Con esto se calculan las horas extra. Cambia según el convenio y el tipo de trabajo,
@@ -15346,7 +15503,9 @@ function addContacto(grupo){
   toast('Contacto agregado — cargale el nombre'); R();
 }
 function delContacto(id){
-  const C = getC(); C.extra = C.extra.filter(x=>x.id!==id); R();
+  const C = getC(), i = C.extra.findIndex(x=>x.id===id); if(i < 0) return;
+  const [x] = C.extra.splice(i, 1); R();
+  toast(`Borrado: ${x.nombre || x.rol || 'el contacto'}`, {accion:'Deshacer', fn:()=>{ C.extra.splice(Math.min(i, C.extra.length), 0, x); R(); }});
 }
 /* Guardar en el catálogo lo cargado a mano, para reusarlo en otros proyectos */
 function aCatalogo(clave){
@@ -15390,6 +15549,12 @@ function jornadaActiva(){
 }
 function upJornada(campo, val){
   const j = jornadaActiva();
+  /* comida, wrap y sol salen del plan; escritos a mano quedan como se escribieron
+     (borrados, vuelven a salir del plan) */
+  if(/^(comida|wrap|amanecer|atardecer)$/.test(campo)){
+    j.manual ||= {}; j.manual[campo] = !!val;
+    if(campo === 'amanecer' || campo === 'atardecer') j.solAuto = !val;
+  }
   if(campo.includes('.')){ const [a,b]=campo.split('.'); j[a] ||= {}; j[a][b]=val; }
   else j[campo]=val;
   R();
@@ -15400,7 +15565,7 @@ function upDireccion(loc, campo, val){
 }
 function upCitacion(clave, campo, val){
   const j = jornadaActiva();
-  j.citaciones[clave] ||= {}; j.citaciones[clave][campo]=val;
+  j.citaciones[clave] ||= {}; j.citaciones[clave][campo] = CAMPOS_HORA.test(campo) ? normHora(val) : val;
   /* escrita a mano: el plan ya no la toca (salvo "Recalcular citaciones") */
   j.citaciones[clave].auto = false;
   R();
@@ -15509,7 +15674,7 @@ function aPresupuesto(){
   const yaEstan = lineas.filter(l => l.ya).length;
   const porRubro={};
   lineas.forEach((l,i)=>{ (porRubro[l.rubro] ||= []).push({...l,i}); });
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>Enviar el desglose al presupuesto</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">
         Se crean <b>${lineas.length} líneas</b> en <b>${esc(v.nombre)}</b> con el concepto, la cantidad
@@ -15573,7 +15738,7 @@ function expDesgloseCSV(){
 /* ---------- conexión con el backend ---------- */
 function menuNube(){
   const cfg = sbConfigurado(), con = sbConectado();
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:560px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:560px">
     <h3>Conexión con Supabase
       <span class="spacer"></span>
       <span class="est" style="${con?'color:#1f6b3e;border-color:#3fb27f55;background:#3fb27f18'
@@ -15637,7 +15802,7 @@ function menuNube(){
    los datos y quién está esperando. Y se aprueba o se cambia el rol desde acá.
    Todo lo que se pueda resolver acá es SQL que nadie tiene que pegar.        */
 async function menuEquipoAccesos(){
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:720px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:720px">
     <h3>Quién entra</h3>
     <div class="mbody" id="equipocont"><div class="muted" style="font-size:12px">Buscando…</div></div>
     <div class="mfoot"><button class="btn" onclick="menuNube()">Volver</button>
@@ -15753,7 +15918,7 @@ function invitarAlProyecto(){
   if(!pr || !py){ toast('Elegí un proyecto primero.'); return; }
   const yo = getUsuario();
   const de = (yo && yo.nombre) || (sbConectado() ? SB.user.email : '') || 'Alguien';
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:600px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:600px">
     <h3>Invitar a "${esc(py.nombre)}"</h3>
     <div class="mbody">
       ${!sbConectado() ? `<div class="avisomodo turno-mal" style="margin-bottom:12px">
@@ -16237,7 +16402,7 @@ async function atenderVueltaDeMail(){
 
 /* Contraseña nueva: al volver del mail, o cuando alguien quiere cambiarla. */
 function pedirClaveNueva(desdeMail){
-  abrir(`<div class="ov"${desdeMail ? '' : ` onclick="if(event.target===this)cerrar()"`}><div class="mod" style="max-width:460px">
+  abrir(`<div class="ov"${desdeMail ? '' : ` onclick="cerrarAfuera(event,this)"`}><div class="mod" style="max-width:460px">
     <h3>${desdeMail ? 'Poné tu contraseña nueva' : 'Cambiar mi contraseña'}</h3>
     <div class="mbody">
       <div class="muted" style="font-size:12.5px;margin-bottom:10px">${esc((SB.user||{}).email || '')}</div>
@@ -16353,7 +16518,7 @@ async function pantallaAlta(){
 
 function formAlta(){
   const mail = SB.user ? SB.user.email : '';
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:520px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
     <h3>Crear mi productora</h3>
     <div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:14px">
@@ -16559,7 +16724,7 @@ async function editarMiFicha(){
     try{ _todasLasProductoras = await sbProductorasParaElegir() || []; }catch(e){}
   }
 
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:640px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:640px">
     <h3>Mis datos</h3>
     <div class="mbody">
       <div class="muted" style="font-size:12.5px;margin-bottom:12px;line-height:1.6">
@@ -16663,7 +16828,7 @@ async function guardarMiFicha(){
 
 /* ---------- aprobar a los que se dieron de alta ---------- */
 async function menuPendientes(){
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:640px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:640px">
     <h3>Altas esperando aprobación</h3>
     <div class="mbody" id="pendcont">
       <div class="muted" style="font-size:12px">Buscando…</div>
@@ -16726,7 +16891,7 @@ async function sbCorrerDiagnostico(){
 
 /* ---------- datos: export / import / csv / reset ---------- */
 function menuDatos(){
-  abrir(`<div class="ov" onclick="if(event.target===this)cerrar()"><div class="mod" style="max-width:430px">
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:430px">
     <h3>Datos</h3><div class="mbody" style="display:flex;flex-direction:column;gap:7px">
       <button class="btn pri" onclick="cerrar();menuNube()">☁ Conectar con Supabase</button>
       <button class="btn" onclick="expJSON()">⬇ Exportar todo (.json) — respaldo completo</button>

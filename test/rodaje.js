@@ -127,9 +127,9 @@ console.log('\n  teléfonos:');
 
 /* marcar como citado */
 marcarCitado(alguien.clave);
-ok('marca como citado', j.parte.citados[alguien.clave] === true);
+ok('marca como citado (con la hora que se le mandó)', !!j.parte.citados[alguien.clave] && !!j.parte.citados[alguien.clave].hora);
 marcarCitado(alguien.clave, false);
-ok('se puede desmarcar', j.parte.citados[alguien.clave] === false);
+ok('se puede desmarcar', !j.parte.citados[alguien.clave]);
 marcarTodos(true);
 ok('marcar todos', Object.values(j.parte.citados).filter(Boolean).length === gente.length,
   Object.values(j.parte.citados).filter(Boolean).length + ' de ' + gente.length);
