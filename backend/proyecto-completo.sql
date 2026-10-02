@@ -5,7 +5,7 @@
 --     Supabase  ->  SQL Editor  ->  New query
 -- y apretá RUN. Se puede correr varias veces. No borra nada.
 --
--- QUÉ RESUELVE
+-- QUÉ RESUELVE (además, al final: confirmar la citación con un toque)
 -- 1. Hasta ahora en la base estaba sólo la ficha de cada proyecto; el
 --    presupuesto, el plan, los partes, los gastos y la liquidación vivían en
 --    la compu de cada uno. Dos personas no podían trabajar sobre el mismo
@@ -203,6 +203,103 @@ end $$;
 revoke all on function crear_invitacion(uuid, rol_usuario) from public, anon;
 grant execute on function crear_invitacion(uuid, rol_usuario) to authenticated;
 
+-- ---------------------------------------------------------------------------
+-- 3. CONFIRMAR LA CITACIÓN CON UN TOQUE
+--
+-- Cada citación que se manda lleva un link personal. El que lo abre no
+-- necesita cuenta: ve su citación y toca "Confirmo" (o avisa que no puede).
+-- El link es una clave larga al azar; sin ella no se ve ni se confirma nada.
+-- La tabla no tiene políticas: sólo la tocan las cuatro funciones de abajo.
+-- ---------------------------------------------------------------------------
+create table if not exists citacion_link (
+  token           text primary key,
+  proyecto_id     uuid not null references proyecto(id) on delete cascade,
+  jornada         int  not null,
+  clave           text not null,
+  nombre          text, rol text, hora text, fecha text, texto text,
+  creado_el       timestamptz not null default now(),
+  confirmado_el   timestamptz,
+  confirma        boolean,
+  confirmada_hora text,
+  respuesta       text,
+  unique (proyecto_id, jornada, clave)
+);
+alter table citacion_link enable row level security;
+revoke all on citacion_link from anon, authenticated;
+
+-- Producción arma (o actualiza) los links de una jornada. Si cambió la hora,
+-- el link es el mismo y la confirmación vieja queda como de la hora vieja.
+create or replace function preparar_citaciones(p_proyecto uuid, p_jornada int, p_items jsonb)
+returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  it jsonb; v_tok text; out jsonb := '{}'::jsonb;
+begin
+  if not puedo_parte(p_proyecto, 'rodaje', true) then
+    raise exception 'Con tu rol no podés mandar citaciones en este proyecto.';
+  end if;
+  for it in select * from jsonb_array_elements(coalesce(p_items, '[]'::jsonb)) loop
+    insert into citacion_link (token, proyecto_id, jornada, clave, nombre, rol, hora, fecha, texto)
+    values (replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', ''),
+            p_proyecto, p_jornada, it->>'clave', left(it->>'nombre', 200), left(it->>'rol', 200),
+            left(it->>'hora', 20), left(it->>'fecha', 20), left(it->>'texto', 4000))
+    on conflict (proyecto_id, jornada, clave) do update
+      set nombre = excluded.nombre, rol = excluded.rol, hora = excluded.hora,
+          fecha = excluded.fecha, texto = excluded.texto
+    returning token into v_tok;
+    out := out || jsonb_build_object(it->>'clave', v_tok);
+  end loop;
+  return out;
+end $$;
+
+-- Quién confirmó, para la pantalla de citaciones.
+create or replace function estado_citaciones(p_proyecto uuid, p_jornada int)
+returns table(clave text, hora text, confirmado_el timestamptz, confirma boolean, confirmada_hora text, respuesta text)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not puedo_parte(p_proyecto, 'rodaje', false) then return; end if;
+  return query select c.clave, c.hora, c.confirmado_el, c.confirma, c.confirmada_hora, c.respuesta
+    from citacion_link c where c.proyecto_id = p_proyecto and c.jornada = p_jornada;
+end $$;
+
+-- Lo que ve el que abre el link (sin cuenta).
+create or replace function ver_citacion(p_token text)
+returns json
+language sql stable security definer set search_path = public as $$
+  select json_build_object('nombre', c.nombre, 'rol', c.rol, 'hora', c.hora, 'fecha', c.fecha,
+           'jornada', c.jornada, 'texto', c.texto, 'proyecto', p.nombre, 'productora', pr.nombre,
+           'confirmado_el', c.confirmado_el, 'confirma', c.confirma, 'confirmada_hora', c.confirmada_hora,
+           'respuesta', c.respuesta)
+    from citacion_link c join proyecto p on p.id = c.proyecto_id join productora pr on pr.id = p.productora_id
+   where c.token = p_token and length(p_token) >= 32
+$$;
+
+-- Confirmar (o avisar que no puede), sin cuenta.
+create or replace function confirmar_citacion(p_token text, p_confirma boolean default true, p_respuesta text default null)
+returns json
+language plpgsql security definer set search_path = public as $$
+declare r citacion_link%rowtype;
+begin
+  update citacion_link
+     set confirmado_el = now(), confirma = coalesce(p_confirma, true), confirmada_hora = hora,
+         respuesta = nullif(btrim(left(coalesce(p_respuesta, ''), 500)), '')
+   where token = p_token and length(p_token) >= 32
+  returning * into r;
+  if not found then
+    raise exception 'Ese link de citación ya no sirve. Pedile uno nuevo a producción.';
+  end if;
+  return json_build_object('ok', true, 'hora', r.hora, 'confirma', r.confirma);
+end $$;
+
+revoke all on function preparar_citaciones(uuid, int, jsonb) from public, anon;
+grant execute on function preparar_citaciones(uuid, int, jsonb) to authenticated;
+revoke all on function estado_citaciones(uuid, int) from public, anon;
+grant execute on function estado_citaciones(uuid, int) to authenticated;
+revoke all on function ver_citacion(text) from public;
+grant execute on function ver_citacion(text) to anon, authenticated;
+revoke all on function confirmar_citacion(text, boolean, text) from public;
+grant execute on function confirmar_citacion(text, boolean, text) to anon, authenticated;
+
 commit;
 
-select 'Listo: los proyectos se guardan completos y hay roles de asistente. Volvé a CLAP y tocá ☁ → Sincronizar todo.' as "Resultado";
+select 'Listo: los proyectos se guardan completos, hay roles de asistente, el fee es sólo de Administración y el PE, y las citaciones se confirman con un toque. Volvé a CLAP y tocá ☁ → Sincronizar todo.' as "Resultado";

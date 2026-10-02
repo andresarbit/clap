@@ -131,7 +131,11 @@ los proyectos suben, quien crea uno queda anotado en él, y Equipo sigue sin
 poder crear proyectos ni ver los ajenos. Probado contra un Postgres armado
 como esta base.
 
-### A2i. Correr proyecto-completo.sql — ⏳ FALTA (lo corrés vos)
+### A2i. Correr proyecto-completo.sql — ✅ corrido el 02/10 · ⏳ correrlo OTRA VEZ
+
+Después de correrlo se le sumó al final **la confirmación de citaciones con un
+toque** (tabla `citacion_link` y cuatro funciones). Hay que pegarlo y correrlo
+de nuevo: se puede correr las veces que haga falta, no borra nada.
 
 Hace dos cosas:
 

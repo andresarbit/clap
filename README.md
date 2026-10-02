@@ -758,6 +758,34 @@ sólo esos, avisando cuáles.
 
 Prueba: `test/roles.js`.
 
+### Confirmar la citación con un toque
+
+Con la web conectada, cada mensaje de citación (WhatsApp, mail o copiado)
+termina con un link personal. El que lo abre no necesita cuenta: ve su
+citación (jornada, fecha, hora y el texto completo) y toca **Confirmo, voy a
+las 07:00**, o **No puedo / tengo un problema** y escribe qué pasa.
+
+En *Rodaje → Citaciones* aparece la columna **Confirmó**: ✓ con la hora, *no
+puede* con su mensaje, o *confirmó 07:00* si después la hora cambió (hay que
+volver a citarlo). Arriba: cuántos confirmaron y cuántos no pueden; **↻
+Confirmaciones** trae lo último. El Resumen avisa a los que no pueden ir.
+
+El link es una clave larga al azar: sin ella no se ve ni se confirma nada, y
+quien la tiene sólo ve su citación. Si cambia la hora, el link es el mismo y
+muestra la nueva.
+
+### Adicionales
+
+Lo que se suma después de aprobado el presupuesto —un día más de edición, otra
+versión, otra pieza— se carga a mano en el presupuesto (**+ Adicional**): con
+cantidad, valor sin IVA y estado (*propuesto*, *aprobado por el cliente*, *no
+va*). El presupuesto no cambia; abajo aparecen los aprobados, su IVA y el
+**total con adicionales**, y van en la cotización. Son precio al cliente: los
+ven Administración y el PE.
+
+Prueba: `test/confirmar.js`. Lo que sigue para afinar el proyecto está en
+[docs/afinar-el-proyecto.md](docs/afinar-el-proyecto.md).
+
 ### La IA (opcional, paga, apagada)
 
 La clave de la IA no puede ir en la página, que es pública. Vive como secreto
@@ -1396,6 +1424,7 @@ node test/run.js test/citaciones.js # citacion por departamento, actor, extras, 
 node test/run.js test/liberar.js   # llego/liberar, por departamento, proveedores, jornadas reales en la liquidacion
 node test/run.js test/puentes.js   # citaciones que cambiaron, lo pagado congelado, quitar jornada, callsheet a mano, horas
 node test/run.js test/roles.js     # quien ve que, el plan contra el presupuesto, tareas, cheques, version de rodaje, partes
+node test/run.js test/confirmar.js # confirmar la citacion con un toque, adicionales
 node test/run.js test/funcion-ia.js # la funcion del servidor: sesion, productora, sin clave, tope
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO

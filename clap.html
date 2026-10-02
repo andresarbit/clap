@@ -1092,6 +1092,17 @@ tr.csdep td{background:#f3f3f1;color:#171717}
 .puerta-marca{text-align:center}
 .puerta-marca b{display:block;font-size:30px;font-weight:700;letter-spacing:.32em;margin-right:-.32em;color:#171717}
 .puerta-marca span{display:block;margin-top:6px;font-size:12.5px;color:var(--tx2)}
+.cit-caja{max-width:440px;display:flex;flex-direction:column;gap:12px}
+.cit-caja h1{margin:0;font-size:24px}
+.cit-sub{font-size:12.5px;color:var(--tx2)}
+.cit-hora{display:flex;justify-content:space-between;align-items:baseline;border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.cit-hora b{font:700 34px var(--mono)}
+.cit-texto{white-space:pre-wrap;font:12.5px/1.55 var(--mono);background:var(--bg3, #f4f4f2);border-radius:10px;padding:10px 12px;margin:0;max-height:240px;overflow:auto}
+.cit-bots{display:flex;flex-direction:column;gap:8px}
+.cit-bots .btn{min-height:48px;font-size:15px}
+.cit-ok{border-radius:12px;padding:12px 14px;background:#e5f3ea;color:#1f5e3a;font-size:15px}
+.cit-ok.no{background:#fdf3d8;color:#6b4a00}
+.cit-falta{color:#b42318;font-size:13px;margin:0}
 .puerta-caja{width:100%;max-width:380px;background:#fff;border:1px solid var(--line);border-radius:16px;
   padding:24px 22px;display:flex;flex-direction:column;gap:12px}
 .puerta-caja h1{margin:0 0 2px;font-size:18px;font-weight:600;line-height:1.3;color:#171717;text-wrap:balance}
@@ -4588,11 +4599,11 @@ const PARTES_PY = {
       ponerFees(py, {...(py._fees || {}), ...Object.fromEntries(Object.entries(antes).filter(([, f]) => f != null))}); },
     algo: conLineas},
   presupuesto_real: {
-    lee: py => ({versiones: (py.versiones || []).filter(ES_REAL),
+    lee: py => ({versiones: (py.versiones || []).filter(ES_REAL), adicionales: py.adicionales || [],
       fees: Object.fromEntries((py.versiones || []).filter(v => !ES_REAL(v)).map(v => [v.id, v.capas ? v.capas.fee ?? null : null]))}),
     pone: (py, d) => { py.versiones = [...(d.versiones || []), ...(py.versiones || []).filter(v => !ES_REAL(v))];
-      py._fees = d.fees || {}; ponerFees(py, py._fees); },
-    algo: d => conLineas(d) || Object.keys(d.fees || {}).length > 0},
+      py.adicionales = d.adicionales || []; py._fees = d.fees || {}; ponerFees(py, py._fees); },
+    algo: d => conLineas(d) || Object.keys(d.fees || {}).length > 0 || (d.adicionales || []).length > 0},
   gente: {
     lee: gentePublica,
     /* quien ve la plata tiene el presupuesto de verdad: la gente es para los demás */
@@ -5447,6 +5458,7 @@ function toastAccion(){
 }
 
 function render(){
+  if(_cit) return pintarAparte(pantallaCitacion());
   if(PUERTA){
     if(puertaCerrada()) return pintarAparte(pantallaPuerta());
     asegurarDueno();
@@ -6279,6 +6291,187 @@ function vistaPanel(pr, py){
   </div>`;
 }
 
+
+/* =====================  CONFIRMAR LA CITACIÓN CON UN TOQUE  ===============
+   Cada mensaje de citación lleva un link personal (?cit=…). El que lo abre no
+   necesita cuenta: ve su citación y toca "Confirmo", o avisa que no puede.
+   Producción ve en Citaciones quién confirmó, a qué hora, y quién tiene la
+   hora vieja. Las reglas están en la base (backend/proyecto-completo.sql). */
+let _cit = null;
+try{ const t = new URLSearchParams(location.search).get('cit'); if(t && /^[a-f0-9]{32,}$/i.test(t)) _cit = {token: t, estado: 'cargando'}; }catch(e){}
+function linkCitacion(tok){
+  let base = 'clap.html';
+  try{ base = location.origin + location.pathname; }catch(e){}
+  return `${base}?cit=${tok}` + (sbConfigurado() ? `&sb=${encodeURIComponent(SB.url)}&k=${encodeURIComponent(SB.anon)}` : '');
+}
+/* lo que contestó cada uno */
+function estadoConfirmacion(j, clave){
+  const c = (((j || {}).parte || {}).confirmados || {})[clave];
+  if(!c) return {k: 'no'};
+  if(c.confirma === false) return {k: 'nopuede', respuesta: c.respuesta || '', cuando: c.cuando};
+  if(c.hora && c.hora !== horaCitada(j, clave)) return {k: 'vieja', hora: c.hora, cuando: c.cuando};
+  return {k: 'si', hora: c.hora, cuando: c.cuando, respuesta: c.respuesta || ''};
+}
+const _citPrep = {};
+/* arma (o pone al día) los links de la jornada en la base, y trae quién confirmó */
+async function prepararLinksCitacion(py, j){
+  if(!sbConectado() || !py || !py.enServidor || !puedeParte('rodaje', true)) return;
+  const {gente, callsheet: C} = gentePorJornada(py, versionRodaje(py), j.numero), cfg = cfgActual();
+  const P = j.parte; P.links ||= {}; P.linksHora ||= {};
+  const falta = gente.filter(g => !P.links[g.clave] || P.linksHora[g.clave] !== horaCitada(j, g.clave));
+  if(!falta.length) return;
+  const items = falta.map(g => ({clave: g.clave, nombre: g.nombre || '', rol: g.rol || '', hora: horaCitada(j, g.clave),
+    fecha: j.fecha || '', texto: textoCitacion(getPr(), py, j, C, g, cfg)}));
+  const r = await sbFetch('/rest/v1/rpc/preparar_citaciones', {method: 'POST',
+    body: JSON.stringify({p_proyecto: py.id, p_jornada: j.numero, p_items: items})});
+  Object.entries(r || {}).forEach(([k, t]) => { P.links[k] = t; });
+  falta.forEach(g => { P.linksHora[g.clave] = horaCitada(j, g.clave); });
+  guardar(); render();
+}
+async function actualizarConfirmaciones(py, j, avisar){
+  if(!sbConectado() || !py || !py.enServidor) return;
+  const filas = await sbFetch('/rest/v1/rpc/estado_citaciones', {method: 'POST',
+    body: JSON.stringify({p_proyecto: py.id, p_jornada: j.numero})}) || [];
+  const conf = {};
+  filas.forEach(f => { if(f.confirmado_el) conf[f.clave] = {cuando: f.confirmado_el, hora: f.confirmada_hora, confirma: f.confirma !== false, respuesta: f.respuesta || ''}; });
+  if(canon(conf) !== canon(j.parte.confirmados || {})){ j.parte.confirmados = conf; guardar(); render(); }
+  if(avisar) toast(`${Object.values(conf).filter(x => x.confirma).length} confirmaron`);
+}
+/* al mirar las citaciones: links al día y confirmaciones frescas (cada 10 s como mucho) */
+function citacionesAlDia(py, j){
+  if(typeof sbConectado !== 'function' || !sbConectado() || !py || !py.enServidor) return;
+  const k = py.id + ':' + j.numero;
+  if(Date.now() - (_citPrep[k] || 0) < 10000) return;
+  _citPrep[k] = Date.now();
+  setTimeout(() => { prepararLinksCitacion(py, j).then(() => actualizarConfirmaciones(py, j))
+    .catch(e => { _citPrep.error = e.message; }); }, 0);
+}
+function refrescarConfirmaciones(){
+  const py = getPy(), j = jornadaParte(); _citPrep[py.id + ':' + j.numero] = 0;
+  prepararLinksCitacion(py, j).then(() => actualizarConfirmaciones(py, j, true)).catch(e => toast('No pude traer las confirmaciones: ' + e.message));
+}
+
+/* La pantalla del que abre el link: sin cuenta, sin nada más de CLAP. */
+async function cargarCitacionPublica(){
+  if(!_cit) return;
+  if(!sbConfigurado()){ _cit.estado = 'error'; _cit.error = 'El link está incompleto. Pedile a producción que te lo mande de nuevo.'; render(); return; }
+  try{
+    const d = await sbFetch('/rest/v1/rpc/ver_citacion', {method: 'POST', sinToken: true, body: JSON.stringify({p_token: _cit.token})});
+    if(!d){ _cit.estado = 'error'; _cit.error = 'Ese link de citación ya no sirve. Pedile uno nuevo a producción.'; }
+    else { _cit.estado = 'listo'; _cit.datos = d; }
+  }catch(e){ _cit.estado = 'error'; _cit.error = e.message; }
+  render();
+}
+async function confirmarCitacionPublica(confirma){
+  const el = document.getElementById('citresp'), resp = String((el && el.value) || '').trim();
+  if(confirma === false && !resp){ _cit.falta = true; render(); setTimeout(() => { const x = document.getElementById('citresp'); if(x) x.focus(); }, 0); return; }
+  _cit.enviando = true; render();
+  try{
+    await sbFetch('/rest/v1/rpc/confirmar_citacion', {method: 'POST', sinToken: true,
+      body: JSON.stringify({p_token: _cit.token, p_confirma: confirma !== false, p_respuesta: resp || null})});
+    Object.assign(_cit.datos, {confirmado_el: new Date().toISOString(), confirma: confirma !== false, confirmada_hora: _cit.datos.hora, respuesta: resp});
+    _cit.estado = 'hecho'; _cit.noPuede = false;
+  }catch(e){ _cit.errorEnvio = e.message; }
+  _cit.enviando = false; render();
+}
+function pantallaCitacion(){
+  const c = _cit, d = c.datos || {};
+  const caja = html => `<div class="puerta">${marcaPuerta()}<div class="puerta-caja cit-caja">${html}</div></div>`;
+  if(c.estado === 'cargando') return caja(`<p class="muted">Buscando tu citación…</p>`);
+  if(c.estado === 'error') return caja(`<h1>No encontré la citación</h1><p>${esc(c.error || '')}</p>`);
+  const fecha = /^\d{4}-\d\d-\d\d$/.test(d.fecha || '') ? `${diaSemana(d.fecha)} ${d.fecha.split('-').reverse().join('/')}` : (d.fecha || '');
+  const yaConfirmo = d.confirmado_el && d.confirma !== false && d.confirmada_hora === d.hora;
+  const vieja = d.confirmado_el && d.confirmada_hora && d.confirmada_hora !== d.hora;
+  const noPudo = d.confirmado_el && d.confirma === false;
+  return caja(`
+    <div class="cit-sub">${esc(d.productora || '')} · ${esc(d.proyecto || '')}</div>
+    <h1>${esc(d.nombre || d.rol || 'Tu citación')}</h1>
+    ${d.nombre && d.rol ? `<div class="cit-sub">${esc(d.rol)}</div>` : ''}
+    <div class="cit-hora"><span>Jornada ${esc(d.jornada)}${fecha ? ' · ' + esc(fecha) : ''}</span><b>${esc(d.hora || '—')}</b></div>
+    ${vieja ? `<div class="avisomodo turno-mal">Cambió tu horario: habías confirmado las ${esc(d.confirmada_hora)}. Ahora es a las <b>${esc(d.hora)}</b>.</div>` : ''}
+    ${d.texto ? `<pre class="cit-texto">${esc(d.texto)}</pre>` : ''}
+    ${c.estado === 'hecho' || yaConfirmo || noPudo ? `<div class="cit-ok ${d.confirma === false ? 'no' : ''}">
+        ${d.confirma === false ? `Le avisamos a producción que no podés${d.respuesta ? `: "${esc(d.respuesta)}"` : ''}.` : `Confirmado: te esperamos a las <b>${esc(d.confirmada_hora || d.hora)}</b>.`}</div>
+        <button class="btn" onclick="_cit.estado='listo';_cit.datos.confirmado_el=null;render()">Cambiar mi respuesta</button>`
+      : c.noPuede ? `<label class="f"><span>Contale a producción qué pasa</span>
+          <textarea id="citresp" rows="3" placeholder="Llego 30 minutos tarde / tengo otro rodaje / …">${esc(d.respuesta || '')}</textarea></label>
+          ${c.falta ? `<p class="cit-falta">Escribí qué pasa así producción sabe qué hacer.</p>` : ''}
+          <div class="cit-bots"><button class="btn" onclick="_cit.noPuede=false;render()">Volver</button>
+          <button class="btn pri" ${c.enviando ? 'disabled' : ''} onclick="confirmarCitacionPublica(false)">Mandar aviso</button></div>`
+      : `<div class="cit-bots"><button class="btn pri cit-si" ${c.enviando ? 'disabled' : ''} onclick="confirmarCitacionPublica(true)">Confirmo, voy a las ${esc(d.hora || '')}</button>
+          <button class="btn" onclick="_cit.noPuede=true;render()">No puedo / tengo un problema</button></div>`}
+    ${c.errorEnvio ? `<p class="cit-falta">${esc(c.errorEnvio)}</p>` : ''}`);
+}
+
+/* ===============================  ADICIONALES  ============================
+   Lo que se suma después de aprobado el presupuesto: un día más de edición,
+   otra versión, otra pieza. Se carga a mano y no toca el presupuesto. Es
+   precio al cliente, así que lo ven Administración y el PE.               */
+const adicionalesDe = py => (py.adicionales ||= []);
+const EST_ADIC = {propuesto: 'Propuesto', aprobado: 'Aprobado por el cliente', rechazado: 'No va'};
+function nuevoAdicional(o = {}){
+  return {id: uid('ad'), concepto: o.concepto || '', detalle: o.detalle || '', cantidad: o.cantidad ?? 1, valor: o.valor ?? 0,
+    moneda: o.moneda || 'ARS', estado: o.estado || 'propuesto', fecha: o.fecha || hoy()};
+}
+const montoAdicional = (a, v) => conv(n(a.cantidad) * n(a.valor), a.moneda || 'ARS', v.monedaBase, n(v.tc));
+function totalesAdicionales(py, v){
+  const apr = adicionalesDe(py).filter(a => a.estado === 'aprobado').reduce((s, a) => s + montoAdicional(a, v), 0);
+  const iva = apr * n(v.capas.iva) / 100;
+  return {apr, iva, total: calcular(v).total + apr + iva};
+}
+function panelAdicionales(py, v, cli){
+  if(!veMargen()) return '';
+  const A = adicionalesDe(py), lista = cli ? A.filter(a => a.estado !== 'rechazado') : A;
+  if(cli && !lista.length) return '';
+  const T = totalesAdicionales(py, v), mb = v.monedaBase;
+  return `<div class="card"><h3>Adicionales <span class="spacer"></span>
+      ${cli ? '' : `<button class="btn sm pri noprint" onclick="editAdicional()">+ Adicional</button>`}</h3>
+    ${cli ? '' : `<div class="pad muted" style="font-size:12px;border-bottom:1px solid var(--line)">Lo que se suma después de aprobado: días de edición, versiones, otra pieza. Se carga a mano; el presupuesto no cambia.</div>`}
+    ${lista.length ? `<div class="scrollx"><table class="tbl">
+      <thead><tr><th>Concepto</th><th style="text-align:right">Cant.</th><th style="text-align:right">Valor unit.</th><th style="text-align:right">Total</th><th>Estado</th>${cli ? '' : '<th></th>'}</tr></thead>
+      <tbody>${lista.map(a => `<tr>
+        <td><b>${esc(a.concepto)}</b>${a.detalle ? `<span class="muted" style="display:block;font-size:11.5px">${esc(a.detalle)}</span>` : ''}</td>
+        <td class="num" style="text-align:right">${fmtC(n(a.cantidad))}</td>
+        <td class="num" style="text-align:right">${fmt(n(a.valor), a.moneda || mb)}</td>
+        <td class="num" style="text-align:right;font-weight:600">${fmt(montoAdicional(a, v), mb)}</td>
+        <td>${cli ? esc(EST_ADIC[a.estado] || a.estado) : `<select class="chipsel chip ${a.estado === 'aprobado' ? 'd-si' : a.estado === 'rechazado' ? 'sica-bajo' : 'd-par'}" onchange="upAdicional('${a.id}','estado',this.value)" aria-label="Estado de ${esc(a.concepto)}">
+          ${Object.entries(EST_ADIC).map(([k, l]) => `<option value="${k}" ${a.estado === k ? 'selected' : ''}>${l}</option>`).join('')}</select>`}</td>
+        ${cli ? '' : `<td style="text-align:right;white-space:nowrap"><button class="btn sm" onclick="editAdicional('${a.id}')">Editar</button>
+          <button class="del" onclick="delAdicional('${a.id}')" title="Borrar" aria-label="Borrar ${esc(a.concepto)}">×</button></td>`}</tr>`).join('')}</tbody></table></div>
+    <div class="pad">
+      <div class="tot sub"><span>Adicionales aprobados, sin IVA</span><b>${fmt(T.apr, mb)}</b></div>
+      <div class="tot sub"><span>IVA ${n(v.capas.iva)}%</span><b>${fmt(T.iva, mb)}</b></div>
+      <div class="tot big"><span>TOTAL CON ADICIONALES ${mb}</span><b>${fmt(T.total, mb)}</b></div>
+    </div>` : `<div class="empty">Todavía no hay adicionales.</div>`}</div>`;
+}
+function editAdicional(id){
+  const a = id ? adicionalesDe(getPy()).find(x => x.id === id) : nuevoAdicional({moneda: (getV() || {}).monedaBase || 'ARS'});
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:480px">
+    <h3>${id ? 'Adicional' : 'Nuevo adicional'}</h3>
+    <div class="mbody">
+      ${campo('Concepto','concepto',a.concepto,'text','placeholder="Día de edición extra"')}
+      ${campo('Detalle','detalle',a.detalle,'text','placeholder="Pedido por la agencia el 12/10, versión de 15″"')}
+      <div class="grid2">${campo('Cantidad','cantidad',a.cantidad,'number','step="any" min="0"')}${campo('Valor unitario (sin IVA)','valor',a.valor,'number','step="any" min="0"')}</div>
+      <div class="grid2">${sel('Moneda','moneda',a.moneda,['ARS','USD'])}${sel('Estado','estado',a.estado,Object.entries(EST_ADIC).map(([v, l]) => ({v, l})))}</div>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="saveAdicional(${id ? `'${id}'` : 'null'})">${id ? 'Guardar' : 'Agregar'}</button></div></div></div>`);
+}
+function saveAdicional(id){
+  const d = datos(), py = getPy();
+  if(!String(d.concepto || '').trim()){ toast('Falta el concepto'); return; }
+  let a = id ? adicionalesDe(py).find(x => x.id === id) : null;
+  if(!a){ a = nuevoAdicional(); adicionalesDe(py).push(a); }
+  Object.assign(a, {concepto: d.concepto.trim(), detalle: d.detalle || '', cantidad: n(d.cantidad), valor: n(d.valor), moneda: d.moneda || 'ARS', estado: d.estado || 'propuesto'});
+  cerrar(); R();
+}
+function upAdicional(id, campo, val){ const a = adicionalesDe(getPy()).find(x => x.id === id); if(a){ a[campo] = val; R(); } }
+function delAdicional(id){
+  const py = getPy(), L = adicionalesDe(py), i = L.findIndex(x => x.id === id); if(i < 0) return;
+  const [a] = L.splice(i, 1); R();
+  toast(`Borrado: ${a.concepto}`, {accion: 'Deshacer', fn: () => { L.splice(Math.min(i, L.length), 0, a); R(); }});
+}
+
 /* ---------- vista presupuesto ---------- */
 function vistaPresupuesto(pr,py,v){
   const cli = DB.ui.vista==='cliente' && veMargen();
@@ -6300,6 +6493,7 @@ function vistaPresupuesto(pr,py,v){
       <button class="btn" onclick="elegirPlantilla()" title="Suma las líneas de una plantilla que todavía no estén">+ Líneas de una plantilla</button>
       <button class="btn" onclick="importarPresupuesto()" title="Un AICP o cualquier planilla de presupuesto: .xls, .xlsx, .ods">⬆ Importar un Excel</button></div>`}
   ${panelTotales(v,R,sel?nombrePieza(py,sel):'')}
+  ${sel ? '' : panelAdicionales(py, v, cli)}
   ${sel ? '' : panelCondiciones(py, v, cli)}
   ${!cli && !sel && piezas.length ? panelPorPieza(py,v) : ''}
   ${cli?'':panelColchon(py,v)}
@@ -7514,6 +7708,9 @@ function vistaResumen(pr,py,v){
   if(prox){ const g = gentePorJornada(py,v,prox.numero).gente;
     const falta = g.length - citadosAlDia(prox, g);
     const camb = g.filter(x => estadoCitado(prox, x.clave).k === 'cambio').length;
+    const noPueden = g.filter(x => estadoConfirmacion(prox, x.clave).k === 'nopuede').length;
+    if(noPueden) pend.push({n:noPueden, t:`avisaron que no pueden ir a la jornada ${prox.numero}`, urg:true,
+      ir:`DB.ui.jornada=${prox.numero};setTab('rodaje');setSubRodaje('citaciones')`});
     if(falta) pend.push({n:falta, t:`sin citar para la jornada ${prox.numero}${camb ? ` (${camb} con la hora vieja)` : ''}`, urg: !!camb,
       ir:`DB.ui.jornada=${prox.numero};setTab('rodaje');setSubRodaje('citaciones')`}); }
   if(d.jornadas.length && n(py.jornadas) && d.jornadas.length !== n(py.jornadas))
@@ -9048,6 +9245,15 @@ function vistaRodaje(pr,py,v){
 
 /* --- citaciones: mandarle a cada uno su hora ----------------------------- */
 function citacionesHTML(pr,py,j,C,gente,cfg){
+  citacionesAlDia(py, j);
+  const conLinks = Object.keys((j.parte || {}).links || {}).length > 0;
+  const confirmaron = gente.filter(p => estadoConfirmacion(j, p.clave).k === 'si').length;
+  const noPueden = gente.filter(p => estadoConfirmacion(j, p.clave).k === 'nopuede').length;
+  const conf = p => { const e = estadoConfirmacion(j, p.clave);
+    return e.k === 'si' ? `<span class="chip d-si" title="Confirmó${e.respuesta ? ': ' + esc(e.respuesta) : ''}">✓ ${esc(e.hora || '')}</span>${e.respuesta ? `<span class="muted" style="display:block;font-size:10.5px">${esc(e.respuesta)}</span>` : ''}`
+      : e.k === 'vieja' ? `<span class="chip sica-bajo" title="Confirmó las ${esc(e.hora)} y la citación cambió">confirmó ${esc(e.hora)}</span>`
+      : e.k === 'nopuede' ? `<span class="chip sica-bajo" title="${esc(e.respuesta)}">no puede</span><span style="display:block;font-size:10.5px;color:var(--bad)">${esc(e.respuesta)}</span>`
+      : `<span class="muted" style="font-size:11px">—</span>`; };
   const citados = citadosAlDia(j, gente);
   const cambiaron = gente.filter(p => estadoCitado(j, p.clave).k === 'cambio').length;
   const conTel = gente.filter(p=>telWhatsapp(p.tel)).length;
@@ -9074,6 +9280,7 @@ function citacionesHTML(pr,py,j,C,gente,cfg){
       <td class="noprint" style="text-align:center">
         <input type="checkbox" ${listo?'checked':''} style="width:auto"
           onchange="marcarCitado('${p.clave}', this.checked)" title="Ya lo cité"></td>
+      <td class="noprint">${conf(p)}</td>
     </tr>`;
   };
   const grupos = {};
@@ -9084,22 +9291,23 @@ function citacionesHTML(pr,py,j,C,gente,cfg){
         <div class="cssub">${esc(py.nombre)}${j.fecha?' · '+esc(j.fecha)+' ('+diaSemana(j.fecha)+')':''}
           · citación general ${esc(j.citacion||'—')}</div></div>
       <div style="text-align:right"><div class="csj">${citados}<span> de ${gente.length}</span></div>
-        <div class="cssub">avisados</div></div>
+        <div class="cssub">avisados${conLinks ? ` · <b>${confirmaron}</b> confirmaron${noPueden ? ` · <b style="color:var(--bad)">${noPueden} no pueden</b>` : ''}` : ''}</div></div>
     </div>
     <div class="pad noprint" style="display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--line)">
       ${cambiaron ? `<button class="btn sm pri" onclick="copiarCambiadas()" title="El plan cambió después de citarlos: copia el mensaje con el cambio para esos ${cambiaron}">Re-citar a ${cambiaron == 1 ? 'el que cambió' : `los ${cambiaron} que cambiaron`}</button>` : ''}
       <button class="btn sm ${cambiaron ? '' : 'pri'}" onclick="copiarTodasCitaciones()">Copiar todas las citaciones</button>
       <button class="btn sm" onclick="marcarTodos(true)">Marcar todos como citados</button>
       <button class="btn sm" onclick="marcarTodos(false)">Limpiar marcas</button>
+      ${conLinks ? `<button class="btn sm" onclick="refrescarConfirmaciones()" title="Trae quién confirmó recién">↻ Confirmaciones</button>` : ''}
       <div style="flex:1"></div>
       <span class="muted" style="font-size:11px;align-self:center">
-        ${conTel} de ${gente.length} tienen teléfono cargado · el mensaje se abre en tu WhatsApp o tu mail, lo mandás vos</span>
+        ${conTel} de ${gente.length} tienen teléfono cargado · el mensaje se abre en tu WhatsApp o tu mail, lo mandás vos${conLinks ? ' · cada mensaje lleva un link para confirmar con un toque' : sbConectado() ? '' : ' · con la web conectada, cada mensaje lleva un link para confirmar con un toque'}</span>
     </div>
     ${Object.entries(grupos).map(([g,ps])=>`<div class="csblock"><h4>${esc(g)}</h4>
       <div class="scrollx"><table class="tbl cst ctab">
         <thead><tr><th style="width:26%">Rol</th><th style="width:24%">Nombre</th>
           <th style="width:82px">Citación</th><th class="noprint">Avisar</th>
-          <th class="noprint" style="width:44px">Listo</th></tr></thead>
+          <th class="noprint" style="width:44px">Listo</th><th class="noprint" style="width:110px">Confirmó</th></tr></thead>
         <tbody>${ps.map(fila).join('')}</tbody></table></div></div>`).join('')}
   </div>`;
 }
@@ -16293,8 +16501,9 @@ function marcarTodos(val){
 }
 /* el mensaje, avisando si es un cambio de horario */
 function textoCitacionAl(pr, py, j, C, p, cfg){
-  const e = estadoCitado(j, p.clave);
-  return (e.k === 'cambio' ? `⚠ CAMBIÓ TU CITACIÓN: antes ${e.antes}, ahora ${e.ahora}\n\n` : '') + textoCitacion(pr, py, j, C, p, cfg);
+  const e = estadoCitado(j, p.clave), tok = ((j.parte || {}).links || {})[p.clave];
+  return (e.k === 'cambio' ? `⚠ CAMBIÓ TU CITACIÓN: antes ${e.antes}, ahora ${e.ahora}\n\n` : '') + textoCitacion(pr, py, j, C, p, cfg)
+    + (tok ? `\n\nConfirmá tu citación con un toque: ${linkCitacion(tok)}` : '');
 }
 function copiarCambiadas(){
   const pr=getPr(), py=getPy(), j=jornadaParte();
@@ -18004,6 +18213,7 @@ if(_fallaArranque){
   (async () => {
     try{
       /* volviendo del link de un mail (recuperar contraseña, confirmar alta) */
+      if(_cit){ await cargarCitacionPublica(); return; }
       if(await atenderVueltaDeMail()) return;
       /* sesión que se cayó (base pausada, sin señal) pero se puede renovar */
       if(sbConfigurado() && !SB.access && SB.refresh){
