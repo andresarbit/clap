@@ -750,7 +750,9 @@ input[type=checkbox]{width:17px;height:17px;accent-color:var(--ac);cursor:pointe
 .pl-fila.tira-intd{border-left-color:#d9d9d9}.pl-fila.tira-extd{border-left-color:#e6c84a}
 .pl-fila.tira-intn{border-left-color:#4f7fd6}.pl-fila.tira-extn{border-left-color:#3fa66b}
 .pl-asa{cursor:grab;color:var(--tx3);font-size:11px;letter-spacing:-2px;user-select:none;touch-action:none;padding:8px 0}
-.pl-fila[data-pl],.pl-carta[data-pl]{cursor:grab}
+.pl-carta[data-pl]{cursor:grab}
+.pl-fila[data-pl]{cursor:default}
+.pl-fila .pl-asa,.pl-fila .pl-h{cursor:grab}
 .pl-fila .pl-h{touch-action:none}
 .pl-fila input,.pl-fila select,.pl-fila button{cursor:auto}
 .pl-ghost{position:fixed;z-index:300;pointer-events:none;opacity:.88;margin:0;background:var(--bg3);border:1px solid var(--ac);
@@ -9584,7 +9586,7 @@ function plFilaHTML(py, f, mal){
   if(it.tipo === 'evento'){
     const ev = PLAN_EVENTO(it.clase);
     return `<div class="pl-fila pl-ev ${it.clase} ${mal ? 'mal' : ''}" ${drag}>
-      <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
+      <span class="pl-asa noprint" title="Agarralo de acá para moverlo (o de la hora). Arrastrando sobre el renglón se seleccionan varios">⋮⋮</span>${hora}
       <div class="pl-main pl-consel">${plSelCasilla(id, it.desc || ev.l)}<div><div class="pl-tit">${esc(nombreEvento(it, f.inicio))}${it.desc && it.desc !== ev.l ? `<span class="muted"> · ${esc(ev.l)}</span>` : ''}</div>
         <div class="pl-meta">${it.fijo ? `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>` : ''}${f.tarde > TOLERANCIA_FIJO ? `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>` : ''}${it.notas ? `<span>${esc(it.notas)}</span>` : ''}</div></div></div>
       ${dur}<span></span>${acciones}</div>`;
@@ -9596,7 +9598,7 @@ function plFilaHTML(py, f, mal){
     const noche = /NOCHE|NIGHT|MADRUGADA/.test(e.momento || '');
     const tira = (e.intExt === 'INT' ? 'int' : 'ext') + (noche ? 'n' : 'd');
     return `<div class="pl-fila pl-esc tira-${tira} ${it.estado} ${mal ? 'mal' : ''}" ${drag}>
-      <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
+      <span class="pl-asa noprint" title="Agarralo de acá para moverlo (o de la hora). Arrastrando sobre el renglón se seleccionan varios">⋮⋮</span>${hora}
       <div class="pl-main pl-consel">${plSelCasilla(id, 'la escena ' + (e.numero || ''))}<div><div class="pl-tit"><b class="pl-num">Esc ${esc(e.numero || '')}</b>
         <span class="eie ${e.intExt==='INT'?'int':'ext'}">${esc(e.intExt || '')}</span> ${esc(e.locacion || '')}
         <span class="emom ${/NOCHE|NIGHT|MADRUGADA/.test(e.momento||'')?'noche':''}">${esc(e.momento || '')}</span></div>
@@ -9620,7 +9622,7 @@ function plFilaHTML(py, f, mal){
     it.fijo && `<span class="pl-tag">hora fija ${esc(it.fijo)}</span>`, f.tarde > TOLERANCIA_FIJO && `<span class="pl-tag rojo">${durTexto(f.tarde)} tarde</span>`,
     it.prioridad === 'seguridad' && `<span class="pl-tag seg" title="Es lo primero que se corta si el día se atrasa">de seguridad</span>`].filter(Boolean).join('');
   return `<div class="pl-fila pl-plano ${it.estado} ${mal ? 'mal' : ''} ${_plSel.has(id) ? 'sel' : ''}" ${drag}>
-    <span class="pl-asa noprint" title="Arrastrá para cambiarle el horario">⋮⋮</span>${hora}
+    <span class="pl-asa noprint" title="Agarralo de acá para moverlo (o de la hora). Arrastrando sobre el renglón se seleccionan varios">⋮⋮</span>${hora}
     <div class="pl-main pl-conimg">${plSelCasilla(id, 'el plano ' + (it.numero || ''))}
       ${it.img ? `<img class="pl-img" src="${it.img}" alt="" onclick="plVerImagen('${id}')">` : `<span class="pl-img vacia">${esc(it.numero || '—')}</span>`}
       <div><div class="pl-tit"><b class="pl-num">${esc(it.numero || '—')}</b> ${esc(it.desc || '')}</div>
@@ -10622,6 +10624,9 @@ function plDragInicio(ev){
   if(!el || ev.target.closest('.pl-selcb')) return;
   const asa = ev.target.closest('.pl-asa, .pl-h');
   if(!asa && (ev.pointerType === 'touch' || ev.target.closest('input,select,button,textarea,a,label'))) return;
+  /* en la lista del día, apretar sobre el renglón y arrastrar SELECCIONA;
+     para mover se agarra de la manija ⋮⋮ o de la hora */
+  if(!asa && el.classList.contains('pl-fila') && (!ev.pointerType || ev.pointerType === 'mouse')) return;
   const grupo = _plSel.has(el.dataset.pl) && _plSel.size > 1 ? plSeleccion().map(x => x.id) : null;
   _plDrag = {id: el.dataset.pl, el, x0: ev.clientX, y0: ev.clientY, activo: false, grupo};
   document.addEventListener('pointermove', plDragMover, {passive: false});
@@ -11261,9 +11266,17 @@ let _plMarco = null;
 function plMarcoInicio(ev){
   if((ev.pointerType && ev.pointerType !== 'mouse') || ev.button !== 0 || DB.ui.tab !== 'plan') return;
   const t = ev.target; if(!t || !t.closest || !t.closest('#vista')) return;
+  const fila = t.closest('.pl-lista .pl-fila[data-pl]');
   if(t.closest('.pl-selcb')){
     const el = t.closest('[data-pl]'); if(!el) return;
     _plMarco = {modo:'pintar', marcar: !_plSel.has(el.dataset.pl), vistos: new Set([el.dataset.pl]), x0: ev.clientX, y0: ev.clientY};
+  } else if(fila && !t.closest('input,select,button,textarea,a,label,.pl-asa,.pl-h')){
+    /* como seleccionar texto: del renglón donde se apretó al renglón donde
+       está el mouse, todos los del medio */
+    const filas = [...document.querySelectorAll('.pl-lista .pl-fila[data-pl]')].map(x => x.dataset.pl);
+    _plMarco = {modo:'filas', filas, desde: filas.indexOf(fila.dataset.pl), dentro: [fila.dataset.pl],
+      x0: ev.clientX, y0: ev.clientY, sumar: ev.shiftKey || ev.ctrlKey || ev.metaKey};
+    ev.preventDefault();
   } else {
     if(t.closest('[data-pl],input,select,button,textarea,a,label,summary,.pl-chip,.pl-selbar,.mod,.pl-franja,img')) return;
     _plMarco = {modo:'marco', x0: ev.clientX, y0: ev.clientY, sumar: ev.shiftKey || ev.ctrlKey || ev.metaKey, dentro: []};
@@ -11282,6 +11295,15 @@ function plMarcoMover(ev){
     if(M.modo === 'marco'){ M.div = document.createElement('div'); M.div.className = 'pl-marco'; document.body.appendChild(M.div); }
   }
   ev.preventDefault();
+  if(M.modo === 'filas'){
+    const bajo = document.elementFromPoint(ev.clientX, ev.clientY), f = bajo && bajo.closest && bajo.closest('.pl-lista .pl-fila[data-pl]');
+    if(f){ const hasta = M.filas.indexOf(f.dataset.pl);
+      if(hasta >= 0) M.dentro = M.filas.slice(Math.min(M.desde, hasta), Math.max(M.desde, hasta) + 1); }
+    /* cerca de los bordes, la pantalla se corre sola */
+    if(ev.clientY < 70) window.scrollBy(0, -12); else if(ev.clientY > innerHeight - 70) window.scrollBy(0, 12);
+    document.querySelectorAll('.pl-lista .pl-fila[data-pl]').forEach(e => e.classList.toggle('pl-marcado', M.dentro.includes(e.dataset.pl)));
+    return;
+  }
   if(M.modo === 'pintar'){
     const bajo = document.elementFromPoint(ev.clientX, ev.clientY), el = bajo && bajo.closest && bajo.closest('[data-pl]');
     if(el) M.vistos.add(el.dataset.pl);
@@ -11307,6 +11329,7 @@ function plMarcoFin(){
   _plSinClick = true; setTimeout(() => { _plSinClick = false; }, 50);
   if(M.modo === 'pintar') M.vistos.forEach(id => M.marcar ? _plSel.add(id) : _plSel.delete(id));
   else { if(!M.sumar) _plSel.clear(); M.dentro.forEach(id => _plSel.add(id)); }
+  _plSelUlt = M.dentro && M.dentro.length ? M.dentro[M.dentro.length - 1] : _plSelUlt;
   R();
 }
 

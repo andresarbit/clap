@@ -570,9 +570,10 @@ junto, porque cada cambio es mover luces y grip.
   de la jornada; Shift marca un rango y el título de cada grupo marca el grupo
   entero, y el **cuadrado de arriba de todo** ("Todos" en el banco, "Todo el
   día" en la jornada) marca todo o, si hay algo marcado, desmarca. Con el
-  mouse también se marca **arrastrando**: un rectángulo desde
-  un lugar vacío (Shift o Ctrl suma), o apretando sobre una casilla y
-  pasando por las demás. En el celular, con la casilla. Con lo marcado:
+  mouse también se marca **arrastrando**: apretando sobre un renglón del
+  día y arrastrando se marcan todos los renglones por los que pasa (como
+  seleccionar texto; Shift o Ctrl suma); en el banco, un rectángulo desde
+  un lugar vacío. Para **mover**, se agarra de la manija ⋮⋮ o de la hora. En el celular, con la casilla. Con lo marcado:
   mover a una jornada o al banco, ponerles puesta o borrar de una vez.
   Arrastrar uno de los marcados mueve el bloque entero, en el mismo orden.
   Prueba: `test/seleccion.js`.
