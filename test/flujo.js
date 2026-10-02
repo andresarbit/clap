@@ -543,7 +543,7 @@ DB.ui.usuarioId = uEjec.id;
 const html = vistaResumen(pr, py, v);
 ok('muestra el proyecto', html.includes(esc(py.nombre)));
 ok('muestra el disponible', html.includes(fmt(P.disponible, 'ARS')));
-ok('lista pendientes reales', /Esperan algo/.test(html));
+ok('lista pendientes reales', /Esperan algo|Para aprobar y controlar/.test(html));
 ok('avisa de rubros pasados si los hay',
   P.filas.some(f => f.disponible < 0) === /pasados de presupuesto/.test(html));
 

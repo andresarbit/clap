@@ -124,7 +124,7 @@ ok('se baja para administración', !!bajado);
 console.log('\n--- 6. PERMISOS ---');
 const ue = pr.usuarios.find(u => u.rol === 'equipo');
 DB.ui.usuarioId = ue && ue.id;
-if(ue){ render(); ok('el equipo no ve la liquidación', /las ven Producción, el Productor Ejecutivo y Administración/.test(app.innerHTML)); }
+if(ue){ DB.ui.tab = 'personal'; DB.ui.subPersonal = 'liquidacion'; render(); ok('el equipo no ve la liquidación (va a su panel)', !/avanzarLiq/.test(app.innerHTML) && DB.ui.tab === 'resumen' && /Tus tareas/.test(app.innerHTML)); }
 const up = pr.usuarios.find(u => u.rol === 'produccion');
 if(up){ DB.ui.usuarioId = up.id;
   ok('producción puede revisar pero no pagar', puedeLiq('revisar') && !puedeLiq('pagar')); }

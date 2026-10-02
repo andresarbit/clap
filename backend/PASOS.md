@@ -131,6 +131,31 @@ los proyectos suben, quien crea uno queda anotado en él, y Equipo sigue sin
 poder crear proyectos ni ver los ajenos. Probado contra un Postgres armado
 como esta base.
 
+### A2i. Correr proyecto-completo.sql — ⏳ FALTA (lo corrés vos)
+
+Hace dos cosas:
+
+1. **El proyecto completo va a la base.** Hasta ahora en la base estaba sólo
+   la ficha de cada proyecto: el presupuesto, el plan, los partes, los gastos
+   y la liquidación vivían en la compu de cada uno, y dos personas no podían
+   trabajar sobre el mismo proyecto. Ahora cada proyecto se guarda por partes
+   y CLAP las sube y las baja solo (a los 3 segundos de cada cambio, y cada
+   25 segundos mira si alguien cambió algo). Si dos guardan a la vez, se
+   juntan los cambios: lo que tocó uno solo queda; si los dos tocaron lo
+   mismo, gana el último.
+2. **Los roles nuevos:** Asistente de dirección, Asistente de producción y
+   Asistente de arte. La base no les da el presupuesto ni la liquidación:
+   reciben el equipo sin montos.
+
+Pegá todo `backend/proyecto-completo.sql` en el SQL Editor y **Run**. Se
+puede correr dos veces. Después, en CLAP: **☁ → Sincronizar todo**, desde la
+compu que tiene el proyecto más completo (la primera que sincroniza manda; si
+otra compu tenía algo distinto, se guarda aparte, no se tira).
+
+Probado contra un Postgres armado como esta base: quién lee y escribe cada
+parte con cada rol (25 pruebas), y la app de verdad subiendo, juntando los
+cambios de dos personas y mandándole al asistente el equipo sin plata (17).
+
 ### La IA (opcional, paga) — APAGADA, no hace falta hacer nada
 
 CLAP funciona entero sin IA. Si un día se decide prenderla (lee respuestas de

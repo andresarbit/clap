@@ -681,6 +681,74 @@ Y en el uso de todos los días:
 
 Prueba: `test/puentes.js`.
 
+### Quién ve qué: el presupuesto manda
+
+El presupuesto es el ancla y lo ven **Administración**, el **Productor
+Ejecutivo** y el **jefe de producción**. Los demás entran a lo suyo y no ven
+ningún monto del presupuesto:
+
+| Rol | Solapas | Puede cambiar |
+|---|---|---|
+| Asistente de dirección | Desglose, Plan de rodaje, Callsheet | el desglose y el plan |
+| Asistente de producción | Pedido de luces, Altas y seguro (con el contrato de cada uno), Callsheet, Rodaje, Gastos | todo eso |
+| Asistente de arte | Callsheet, Gastos (sus comprobantes y cheques de garantía) | sus gastos |
+| Equipo / Departamento | Callsheet, Gastos (sus comprobantes) | sus gastos |
+
+- Cada uno entra a **Mi panel**: sus tareas, sus comprobantes, sus cheques y
+  accesos a lo suyo. Lo que sólo puede mirar aparece con los campos apagados.
+- El **Productor Ejecutivo** ve arriba de todo *Para aprobar y controlar*
+  (comprobantes, liquidaciones revisadas, cheques); **Administración**, *Para
+  pagar y controlar*.
+- En la base se cumple igual (`backend/proyecto-completo.sql`): a un asistente
+  le llega el equipo de la versión de rodaje **sin un peso**, nunca el
+  presupuesto ni la liquidación.
+
+**El plan no cambia el presupuesto.** Armar, mover, quitar jornadas o citar
+no tocan una coma del presupuesto (hay una prueba que lo controla). Lo que
+hace el plan es avisar, al jefe y al asistente de dirección, en *Plan de
+rodaje → Contra el presupuesto* (y en el Resumen):
+- **Se pasa**: más jornadas que las presupuestadas, un actor que trabaja más
+  días de los que se le pagan, más extras, una locación más días, días más
+  largos que la jornada sin horas extra presupuestadas.
+- **Falta**: un personaje, una locación, extras, cámara B o VFX que el plan
+  usa y el presupuesto no tiene; lo que pide el desglose (utilería, vestuario…).
+- **Sobra**: lo presupuestado que el plan no usa.
+Cada línea del elenco puede llevar su **personaje** ("Protagonista" →
+Franco), así se engancha con el plan y el callsheet.
+
+**Tareas.** Desde una línea del presupuesto (**＋ tarea**) o suelta, el jefe,
+el PE o Administración le encargan algo a alguien, con fecha. Le aparece en
+su panel; la confirma con **Listo ✓** (y una nota). La línea muestra a quién
+se le encargó y si está hecha; el Resumen avisa las vencidas.
+
+**Cheques de garantía.** El asistente los pide en *Gastos → Cheques de
+garantía*; el PE los aprueba, Administración los entrega y anota cuando
+vuelven. Los que no volvieron a tiempo se avisan.
+
+**La versión de rodaje.** El plan, el callsheet, el rodaje, las altas y la
+liquidación usan una sola versión del presupuesto, aunque arriba se mire otra
+para cotizar. Duplicar una versión no mueve el set; al cambiar la de rodaje,
+las citaciones y los partes pasan a las líneas equivalentes.
+
+**Una línea × 3 son tres personas**: tres citaciones, tres fichadas, y las
+horas extra de los tres en la liquidación.
+
+**La plata llega al tablero**: lo aprobado en la liquidación cuenta como
+comprometido y lo pagado como real y pagado (salvo las líneas que ya tienen
+su comprobante). Cada comprobante puede ir atado a su **línea del
+presupuesto** (así se llena *Actual* línea por línea) y el proveedor se elige
+del catálogo.
+
+**Links directos y el siguiente paso.** Cada pantalla tiene su link
+(`#/rodaje/citaciones/j2`); **🔗 Link** lo copia para mandar. El botón de
+atrás del navegador vuelve a la solapa anterior. Al pie de cada solapa,
+*← anterior* y *Siguiente →* en el orden de una producción.
+
+**Importar** ya no borra todo: trae los proyectos del archivo y reemplaza
+sólo esos, avisando cuáles.
+
+Prueba: `test/roles.js`.
+
 ### La IA (opcional, paga, apagada)
 
 La clave de la IA no puede ir en la página, que es pública. Vive como secreto
@@ -978,7 +1046,8 @@ Lo que tiene que ser de todos vive en la base, no en el navegador de cada uno:
 | Qué | Sube cuando | Baja cuando |
 |---|---|---|
 | **Productoras** | se crean o se editan | al entrar |
-| **Proyectos** | se guardan | al entrar |
+| **Proyectos** (la ficha) | se guardan | al entrar |
+| **El proyecto completo**, por partes | 3 s después de cada cambio | al entrar, al volver a la pestaña y cada 25 s |
 | **Catálogo** (personas, proveedores, equipos) | se guardan, y con ⟳ Sincronizar | al entrar |
 | **Usuarios y roles** | al darse de alta | al entrar |
 
@@ -1317,6 +1386,7 @@ node test/run.js test/armar.js     # armar dia y rodaje: horas, almuerzo, citaci
 node test/run.js test/citaciones.js # citacion por departamento, actor, extras, punto de encuentro, escala
 node test/run.js test/liberar.js   # llego/liberar, por departamento, proveedores, jornadas reales en la liquidacion
 node test/run.js test/puentes.js   # citaciones que cambiaron, lo pagado congelado, quitar jornada, callsheet a mano, horas
+node test/run.js test/roles.js     # quien ve que, el plan contra el presupuesto, tareas, cheques, version de rodaje, partes
 node test/run.js test/funcion-ia.js # la funcion del servidor: sesion, productora, sin clave, tope
 node test/run.js test/pegado.js    # flujo de pegado, cartel en vivo, encabezados de publicidad
 node test/run.js test/libre.js     # guiones SIN encabezados: prosa, planos, tabla VIDEO|AUDIO

@@ -6,7 +6,7 @@ const pr = getPr(), py = getPy(), v = getV();
 
 console.log('--- 1. LA SEMILLA TRAE DATOS ---');
 ok('la portada es la solapa por defecto', DB.ui.tab === 'resumen', DB.ui.tab);
-ok('trae equipo con los 4 roles', (pr.usuarios || []).length === 4,
+ok('trae equipo con los 7 roles', (pr.usuarios || []).length === 7,
   (pr.usuarios || []).map(u => u.nombre + '/' + u.rol).join(', '));
 ok('hay uno por cada rol', ROLES.every(r => pr.usuarios.some(u => u.rol === r.k)),
   ROLES.map(r => r.k).join(','));
@@ -50,7 +50,7 @@ console.log('  presupuestado ' + fmt(P.presu) + ' · comprometido ' + fmt(P.comp
 ok('muestra el nombre del proyecto', html.includes(esc(py.nombre)));
 ok('muestra las cinco cifras', ['Costo directo', 'Comprometido', 'Real cargado', 'Pagado', 'Disponible']
   .every(x => html.includes(x)));
-ok('tiene el bloque de pendientes', /Esperan algo/.test(html));
+ok('tiene el bloque de pendientes', /Esperan algo|Para aprobar y controlar/.test(html));
 ok('tiene el bloque del proyecto', /Guion y desglose/.test(html) && /Rodaje/.test(html) && /Equipo/.test(html));
 ok('la OC emitida se ve como comprometida', P.comp === 220000, fmt(P.comp) + ' (520.000 − 300.000 facturados)');
 
@@ -73,7 +73,7 @@ DB.ui.usuarioId = ejec.id;
 /* al pagar todo, el pendiente desaparece */
 py.comprobantes.forEach(c => { c.estado = 'pagado'; });
 ok('sin pendientes de comprobantes lo dice',
-  !/(para revisar|para aprobar|para pagar|esperándote)/.test(vistaResumen(pr, py, v)));
+  !/comprobantes? (para revisar|para aprobar|para pagar|esperándote)/.test(vistaResumen(pr, py, v)));
 /* y si un rubro se pasa, aparece la alerta */
 py.comprobantes[0].rubro = '02'; py.comprobantes[0].importe = 99000000;
 ok('alerta de rubro pasado de presupuesto', /pasados de presupuesto/.test(vistaResumen(pr, py, v)));

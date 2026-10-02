@@ -947,6 +947,21 @@ header{background:var(--bg);border-bottom:1px solid var(--line)}
 .pick label{color:var(--tx3)}
 .pick select{background-color:#fff}
 .tabs{gap:20px;padding:0 16px}
+.pl-av{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px}
+.pl-av-k{flex:none;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-radius:999px;padding:2px 8px;margin-top:1px}
+.pl-av-pasa .pl-av-k,.pl-av-falta .pl-av-k{background:#fde8e8;color:#8a1c1c}
+.pl-av-sobra .pl-av-k{background:#fdf3d8;color:#7a5600}
+.tarea{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.tarea.hecha{opacity:.75}.tarea.vencida{border-color:#c0392b}
+.tarea-est{flex:none;width:22px;text-align:center;font-weight:700;color:var(--ok)}
+.panel-accesos{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.panel-acc{display:flex;flex-direction:column;gap:3px;text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px;background:none;cursor:pointer;font:inherit;color:inherit}
+.panel-acc:hover{border-color:var(--tx2)}.panel-acc span{font-size:12px;color:var(--tx2)}
+.linkbtn{background:none;border:none;padding:0;font:inherit;color:var(--tx2);text-decoration:underline;cursor:pointer}
+.sigpaso{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-top:18px;padding-top:12px;border-top:1px solid var(--line)}
+.sigpaso .btn{max-width:100%}
+.nube-err{display:inline-block;margin-left:3px;color:#fff;background:#b42318;border-radius:999px;font-size:10px;font-weight:700;padding:0 5px;line-height:15px}
+.solo-mirar{font-size:12px;color:var(--tx2);background:var(--bg3, #f3f3f1);border:1px dashed var(--line2);border-radius:10px;padding:8px 12px;margin-bottom:10px}
 .tab-sep{flex:none;width:1px;align-self:center;height:16px;background:var(--line2);margin:0 -6px}
 .tab{padding:10px 0 9px;color:var(--tx2);border-bottom:none;font-weight:500;font-size:13.5px;border-radius:0}
 .tab:hover{color:var(--tx)}
@@ -1749,6 +1764,8 @@ const CONDICIONES = ['Responsable Inscripto','Monotributista','Exento','Consumid
 /* Fábricas de entidades ---------------------------------------------------- */
 function nuevaLinea(o={}){
   return {id:uid('ln'), concepto:o.concepto||'', refId:o.refId||null, refTipo:o.refTipo||null,
+    /* el personaje del guion, en las líneas del elenco que se llaman distinto */
+    personaje:o.personaje||'',
     area:o.area||'',
     cantidad:o.cantidad??1, dias:o.dias??1, unidad:o.unidad||'jornada',
     valorUnit:o.valorUnit??0, moneda:o.moneda||'ARS',
@@ -1897,6 +1914,8 @@ const veTodo = u => !!u && !u.pendiente && VE_TODO.includes(u.rol);
 function entraAlProyecto(py, u = getUsuario()){
   if(!py || !u) return false;
   if(veTodo(u)) return true;
+  /* conectado, quién entra lo dice la base: si me lo devolvió, me invitaron */
+  if(typeof sbConectado === 'function' && sbConectado() && typeof _proyectosServidor !== 'undefined' && _proyectosServidor.has(py.id)) return true;
   return (py.invitados||[]).includes(u.id);
 }
 /* Los proyectos que le tocan a alguien, que es lo que ve en el selector. */
@@ -2513,21 +2532,60 @@ const RUBROS_PROV = ['10','11','12','13','14','15'];
 const ROLES = [
   {k:'equipo',    l:'Equipo / Departamento', d:'Carga los comprobantes de su área',
    puede:['cargar']},
-  {k:'produccion',l:'Producción',            d:'Revisa que corresponda y que el precio sea el acordado',
-   puede:['cargar','revisar']},
+  /* los asistentes trabajan en lo suyo y no ven el presupuesto */
+  {k:'arte',      l:'Asistente de arte',     d:'Carga comprobantes y pide cheques de garantía',
+   puede:['cargar','cheque']},
+  {k:'asistprod', l:'Asistente de producción', d:'Carga comprobantes, seguros, contratos y equipos; hace las tareas que le asignan y cierra el día en el set',
+   puede:['cargar','cheque']},
+  {k:'asistdir',  l:'Asistente de dirección', d:'Arma el desglose y el plan de rodaje; ve el callsheet',
+   puede:[]},
+  {k:'produccion',l:'Jefe de producción',    d:'Ve todo: arma el presupuesto de producción, revisa comprobantes y asigna tareas',
+   puede:['cargar','revisar','tareas']},
   /* Ejecutivo y Administración manejan todo el circuito. En una productora
      chica es el PE el que decide y el que a veces paga, así que separarlos
      sólo agrega fricción. La diferencia entre los dos no es el poder: es de
      qué se ocupa cada uno. Quién hizo cada movimiento igual queda firmado en
      el historial del comprobante, que no se puede editar ni borrar.          */
-  {k:'ejecutivo', l:'Productor Ejecutivo',   d:'Maneja todo el circuito: revisa, aprueba y puede pagar',
-   puede:['cargar','revisar','aprobar','pagar','equipo']},
-  {k:'admin',     l:'Administración',        d:'Maneja todo el circuito y ejecuta los pagos',
-   puede:['cargar','revisar','aprobar','pagar','equipo']},
+  {k:'ejecutivo', l:'Productor Ejecutivo',   d:'Maneja todo el circuito; su pantalla es para aprobar pagos y controlar el presupuesto',
+   puede:['cargar','revisar','aprobar','pagar','equipo','tareas']},
+  {k:'admin',     l:'Administración',        d:'Ve todo y ejecuta los pagos',
+   puede:['cargar','revisar','aprobar','pagar','equipo','tareas']},
 ];
+/* del que menos al que más: para invitar no se puede dar más de lo que uno tiene */
+const ORDEN_ROLES = ['equipo','arte','asistprod','asistdir','produccion','ejecutivo','admin'];
 const ROL = k => ROLES.find(r=>r.k===k) || ROLES[0];
 /* Esperando aprobación no se puede hacer nada: el rol todavía no es tuyo. */
 const puede = (u, accion) => !!u && !u.pendiente && ROL(u.rol).puede.includes(accion);
+
+/* ======================  QUIÉN VE QUÉ  =====================================
+   El presupuesto es el ancla: lo ven y lo tocan Administración, el Productor
+   Ejecutivo y el jefe de producción. Los asistentes y el equipo entran a las
+   solapas de su tarea y no ven montos del presupuesto (ni el total, ni las
+   líneas). Sin usuario —la app de ejemplo— se ve todo.                     */
+const VE_PLATA = ['admin','ejecutivo','produccion'];
+const vePlata = (u = getUsuario()) => !u || (!u.pendiente && VE_PLATA.includes(u.rol));
+const SOLAPAS_DE = {
+  equipo:    ['resumen','callsheet','gastos','guia'],
+  arte:      ['resumen','callsheet','gastos','guia'],
+  asistprod: ['resumen','luces','personal:alta','callsheet','rodaje','gastos','guia'],
+  asistdir:  ['resumen','desglose','plan','callsheet','guia'],
+};
+/* de lo que ve, lo que además puede cambiar */
+const EDITA_DE = {
+  equipo:    ['resumen','gastos'],
+  arte:      ['resumen','gastos'],
+  asistprod: ['resumen','luces','personal:alta','callsheet','rodaje','gastos'],
+  asistdir:  ['resumen','desglose','plan'],
+};
+const claveSolapa = () => DB.ui.tab === 'personal' ? 'personal:' + (DB.ui.subPersonal || 'alta') : DB.ui.tab;
+function puedeSolapa(k, u = getUsuario()){
+  if(vePlata(u)) return true;
+  return (SOLAPAS_DE[u.rol] || SOLAPAS_DE.equipo).includes(k);
+}
+function editaSolapa(k = claveSolapa(), u = getUsuario()){
+  if(vePlata(u) || k === 'guia') return true;
+  return (EDITA_DE[u.rol] || []).includes(k);
+}
 
 /* Los estados por los que pasa un comprobante. */
 const ESTADOS = [
@@ -2636,13 +2694,16 @@ function resumenPlata(py, v){
   const cs = (py.comprobantes||[]).filter(c=>c.estado!=='rechazado');
   const ocs = py.ocs || [];
 
+  /* las liquidaciones: lo aprobado está comprometido; lo pagado es real y pagado */
+  const LQ = Object.values(liqPorLinea(py));
+  const liq = (cod, k) => LQ.filter(x => x.rubro === cod).reduce((s, x) => s + enBase(x[k], x.moneda), 0);
   const filas = (v?v.rubros:[]).map(r=>{
     const presu = totalRubro(r, v);
-    const real = cs.filter(c=>c.rubro===r.codigo).reduce((s,c)=>s+enBase(c.importe,c.moneda), 0);
+    const real = cs.filter(c=>c.rubro===r.codigo).reduce((s,c)=>s+enBase(c.importe,c.moneda), 0) + liq(r.codigo, 'pagado');
     const pagado = cs.filter(c=>c.rubro===r.codigo && c.estado==='pagado')
-      .reduce((s,c)=>s+enBase(c.importe,c.moneda), 0);
+      .reduce((s,c)=>s+enBase(c.importe,c.moneda), 0) + liq(r.codigo, 'pagado');
     const comp = ocs.filter(o=>o.rubro===r.codigo)
-      .reduce((s,o)=>s+comprometidoDeOC(py, o, base, tc), 0);
+      .reduce((s,o)=>s+comprometidoDeOC(py, o, base, tc), 0) + liq(r.codigo, 'aprobado');
     const cant = cs.filter(c=>c.rubro===r.codigo).length;
     return {codigo:r.codigo, nombre:r.nombre, presu, comp, real, pagado, cant,
       disponible: presu - comp - real, desvio: (comp + real) - presu};
@@ -2906,6 +2967,11 @@ function horasDe(clave, j, cfg, valorJornada, moneda, linea){
     detalleHE: textoHE(reparto), moneda:moneda||'ARS'};
 }
 
+/* cuántas personas es una línea de equipo: la cantidad, si es un número entero razonable */
+const puestosDeLinea = l => { const q = n(l.cantidad); return l.unidad === 'jornada' && q > 1 && q <= 30 && Number.isInteger(q) ? q : 1; };
+/* el personaje de una línea de elenco: el que se escribió, o el concepto */
+const personajeDe = l => String(l.personaje || l.concepto || '').trim();
+
 /* Todos los que participan de una jornada, técnicos y elenco, con lo que hace
    falta para citarlos y para liquidarles las horas.                          */
 function gentePorJornada(py, v, num){
@@ -2914,7 +2980,7 @@ function gentePorJornada(py, v, num){
   const linea = id => { for(const r of (v?.rubros||[])){ const l=r.lineas.find(x=>x.id===id); if(l) return l; } return null; };
 
   const crew = C.crew.map(c=>{
-    const l = linea(c.clave.slice(2));
+    const l = linea(c.clave.slice(2).split('#')[0]);
     return {clave:c.clave, grupo:c.depto, rol:c.funcion, nombre:c.nombre,
       tel:c.tel, email:c.email, tipo:'tecnico',
       valorJornada: l ? n(l.valorUnit) : 0, moneda: l ? l.moneda : 'ARS', linea: l};
@@ -2923,7 +2989,7 @@ function gentePorJornada(py, v, num){
   /* al elenco se le busca su línea en el rubro 09 por el nombre del personaje */
   const r9 = (v?.rubros||[]).find(r=>r.codigo==='09');
   const elenco = C.elenco.map(p=>{
-    const l = r9 ? r9.lineas.find(x=>norm(x.concepto)===norm(p.personaje)) : null;
+    const l = r9 ? r9.lineas.find(x=>norm(personajeDe(x))===norm(p.personaje)) || r9.lineas.find(x=>norm(x.concepto)===norm(p.personaje)) : null;
     const g = l ? (man['l:'+l.id]||{}) : {};
     const pe = p.persona || (l && l.refId ? DB.catalogo.personas.find(x=>x.id===l.refId) : null);
     return {clave:p.clave, grupo:'Elenco', rol:p.personaje,
@@ -3090,10 +3156,15 @@ function armarCallsheet(py, v, numJornada){
       /* gente del rodaje: no prepro/post ni alquileres o compras */
       if(l.etapa || NO_ES_PERSONA.test(l.concepto)) return;
       const pe = l.refId ? DB.catalogo.personas.find(x=>x.id===l.refId) : null;
-      const g = man['l:'+l.id] || {};
-      crew.push({clave:'l:'+l.id, rubro:r.codigo, depto:r.nombre, funcion:l.concepto,
-        nombre: pe?pe.nombre:(g.nombre||''), tel: pe?pe.tel:(g.tel||''),
-        email: pe?pe.email:(g.email||''), persona:pe});
+      /* "Asistente de producción × 3" son tres personas: tres citaciones y
+         tres fichadas (l:id, l:id#2, l:id#3); la ficha del catálogo es la del primero */
+      const N = puestosDeLinea(l);
+      for(let k = 1; k <= N; k++){
+        const clave = 'l:' + l.id + (k > 1 ? '#' + k : ''), g = man[clave] || {}, P = k === 1 ? pe : null;
+        crew.push({clave, rubro:r.codigo, depto:r.nombre, funcion: l.concepto + (N > 1 ? ` (${k} de ${N})` : ''),
+          nombre: P?P.nombre:(g.nombre||''), tel: P?P.tel:(g.tel||''),
+          email: P?P.email:(g.email||''), persona:P});
+      }
     });
   });
 
@@ -4416,9 +4487,17 @@ function fusionarProyectos(filas){
   return {nuevos, tocados};
 }
 
+let _proyectosServidor = new Set();
 async function sincronizarProyectos(){
   if(!sbConectado()) return null;
-  try{ return fusionarProyectos(await sbBajarProyectos()); }catch(e){ return null; }
+  try{
+    const filas = await sbBajarProyectos();
+    _proyectosServidor = new Set((filas || []).map(f => f.id));
+    const r = fusionarProyectos(filas);
+    await sincronizarUsuarios();
+    const py = getPy(); if(py) await sincronizarPartes(py);
+    return r;
+  }catch(e){ return null; }
 }
 
 /* Subir los proyectos de este navegador que el servidor no tenga. Es lo que
@@ -4433,6 +4512,234 @@ async function subirProyectosDe(pr){
   }
   if(subidos) guardar();
   return {subidos, fallos};
+}
+
+
+/* ====================  EL PROYECTO COMPLETO EN LA BASE  ====================
+   Hasta acá la base tenía sólo la ficha del proyecto; el resto vivía en cada
+   compu. Ahora cada proyecto viaja en PARTES (backend/proyecto-completo.sql)
+   y cada rol lee y escribe sólo las suyas: el que no ve la plata recibe la
+   parte "gente" —las líneas del presupuesto de rodaje sin montos— y nunca
+   el presupuesto.
+
+   Cómo se juntan dos personas trabajando a la vez: de cada parte se guarda
+   la última versión que vino de la base. Si mientras uno trabajaba otro
+   guardó, se comparan las tres (la de antes, la mía y la de la base) cosa
+   por cosa: lo que tocó sólo uno queda; lo que tocaron los dos, gana el
+   último que guarda. Así un asistente puede cargar comprobantes mientras
+   otro carga los suyos, y ninguno pisa al otro.                           */
+const ES_REAL = v => (v.nivel || 'produccion') === 'real';
+const desgloseSinPartes = d => d ? {...d, jornadas: (d.jornadas || []).map(j => { const {parte, ...resto} = j; return resto; })} : null;
+function gentePublica(py){
+  const v = versionRodaje(py);
+  if(!v) return {versiones: [], versionRodaje: null, piezas: py.piezas || []};
+  return {versionRodaje: v.id, piezas: py.piezas || [], versiones: [{id: v.id, nombre: v.nombre, nivel: 'produccion', estado: v.estado,
+    fecha: v.fecha, monedaBase: v.monedaBase, tc: 0, esqueleto: true, capas: {}, rubros: v.rubros.map(r => ({id: r.id, codigo: r.codigo, nombre: r.nombre,
+      lineas: r.lineas.map(l => ({id: l.id, origenId: l.origenId || null, concepto: l.concepto, personaje: l.personaje || '', refId: l.refId || null,
+        refTipo: l.refTipo || null, cantidad: l.cantidad, dias: l.dias, unidad: l.unidad, etapa: l.etapa || null, piezaId: l.piezaId || null,
+        area: l.area || '', valorUnit: 0, moneda: l.moneda || 'ARS'}))}))}]};
+}
+const conLineas = d => ((d && d.versiones) || []).some(v => (v.rubros || []).some(r => (r.lineas || []).some(l => String(l.concepto || '').trim())));
+const PARTES_PY = {
+  presupuesto: {
+    lee: py => ({versiones: (py.versiones || []).filter(v => !ES_REAL(v)), versionRodaje: py.versionRodaje || null, piezas: py.piezas || [], plantilla: py.plantilla || null}),
+    pone: (py, d) => { py.versiones = [...(py.versiones || []).filter(ES_REAL), ...(d.versiones || [])];
+      py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; py.plantilla = d.plantilla || null; },
+    algo: conLineas},
+  presupuesto_real: {
+    lee: py => ({versiones: (py.versiones || []).filter(ES_REAL)}),
+    pone: (py, d) => { py.versiones = [...(d.versiones || []), ...(py.versiones || []).filter(v => !ES_REAL(v))]; },
+    algo: conLineas},
+  gente: {
+    lee: gentePublica,
+    /* quien ve la plata tiene el presupuesto de verdad: la gente es para los demás */
+    pone: (py, d) => { if(vePlata()) return; py.versiones = d.versiones || []; py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; },
+    algo: conLineas},
+  plan: {
+    lee: py => ({desglose: desgloseSinPartes(py.desglose), plan: py.plan || null}),
+    pone: (py, d) => { const partes = {}; ((py.desglose || {}).jornadas || []).forEach(j => { if(j.parte) partes[j.numero] = j.parte; });
+      if(d.desglose) py.desglose = d.desglose; py.plan = d.plan || py.plan;
+      ((py.desglose || {}).jornadas || []).forEach(j => { j.parte = partes[j.numero] || j.parte || nuevoParte(); }); },
+    algo: d => !!d.desglose && ((d.desglose.escenas || []).length || (d.desglose.jornadas || []).length || ((d.plan || {}).items || []).length)},
+  rodaje: {
+    lee: py => ({partes: Object.fromEntries(((py.desglose || {}).jornadas || []).map(j => [j.numero, j.parte || null]))}),
+    pone: (py, d) => { ((py.desglose || {}).jornadas || []).forEach(j => { if(d.partes && d.partes[j.numero]) j.parte = d.partes[j.numero]; }); },
+    algo: d => Object.values(d.partes || {}).some(x => x && (Object.keys(x.fichadas || {}).length || Object.keys(x.citados || {}).length || (x.filmadas || []).length || x.wrap))},
+  luces:       {lee: py => ({pedidoLuces: py.pedidoLuces || null}), pone: (py, d) => { py.pedidoLuces = d.pedidoLuces || null; },
+                algo: d => !!(d.pedidoLuces && (d.pedidoLuces.items || []).length)},
+  alta:        {lee: py => ({alta: py.alta || {}}), pone: (py, d) => { py.alta = d.alta || {}; }},
+  gastos:      {lee: py => ({comprobantes: py.comprobantes || [], ocs: py.ocs || [], cajas: py.cajas || [], cheques: py.cheques || []}),
+                pone: (py, d) => { py.comprobantes = d.comprobantes || []; py.ocs = d.ocs || []; py.cajas = d.cajas || []; py.cheques = d.cheques || []; }},
+  liquidacion: {lee: py => ({liquidacion: py.liquidacion || {}}), pone: (py, d) => { py.liquidacion = d.liquidacion || {}; }},
+  tareas:      {lee: py => ({tareas: py.tareas || []}), pone: (py, d) => { py.tareas = d.tareas || []; }},
+  contactos:   {lee: py => ({contactos: py.contactos || {porLinea: {}, extra: []}}), pone: (py, d) => { py.contactos = d.contactos || {porLinea: {}, extra: []}; }},
+  extra:       {lee: py => ({configRodaje: py.configRodaje || null, tags: py.tags || null}),
+                pone: (py, d) => { if(d.configRodaje) py.configRodaje = d.configRodaje; if(d.tags) py.tags = d.tags; }},
+};
+/* lo mismo que dice la base (puedo_parte), para no intentar lo que va a rebotar */
+function puedeParte(parte, escribir, u = getUsuario()){
+  if(!u || u.pendiente) return false;
+  const r = u.rol;
+  if(r === 'admin' || r === 'ejecutivo') return true;
+  if(r === 'produccion') return parte !== 'presupuesto_real';
+  if(escribir) return ({asistdir: ['plan','tareas'], asistprod: ['rodaje','luces','alta','gastos','tareas','contactos']}[r] || ['gastos','tareas']).includes(parte);
+  return ['gente','plan','rodaje','luces','alta','gastos','tareas','contactos','extra'].includes(parte);
+}
+/* JSON con las claves ordenadas: la base reordena las claves, y sin esto
+   todo parecería cambiado */
+function canon(x){
+  return JSON.stringify(x, (k, v) => v && typeof v === 'object' && !Array.isArray(v)
+    ? Object.keys(v).sort().reduce((o, kk) => { o[kk] = v[kk]; return o; }, {}) : v);
+}
+const conIds = a => Array.isArray(a) && a.length && a.every(x => x && typeof x === 'object' && !Array.isArray(x) && (typeof x.id === 'string' || typeof x.id === 'number'));
+/* Junta tres versiones: B la de antes, L la mía, S la de la base. */
+function fusionar3(B, L, S){
+  const ig = (a, b) => canon(a) === canon(b);
+  if(ig(L, B)) return S;
+  if(ig(S, B) || ig(L, S)) return L;
+  const B2 = B == null ? (Array.isArray(L) || Array.isArray(S) ? [] : {}) : B;
+  if((conIds(L) || (Array.isArray(L) && !L.length)) && (conIds(S) || (Array.isArray(S) && !S.length)) && Array.isArray(B2)){
+    const ix = a => Object.fromEntries((a || []).map(x => [x.id, x]));
+    const b = ix(B2), l = ix(L), sx = ix(S);
+    const ids = [...S.map(x => x.id), ...L.map(x => x.id).filter(id => !(id in sx))];
+    return ids.map(id => fusionar3(b[id], l[id], sx[id])).filter(x => x !== undefined);
+  }
+  const obj = x => x && typeof x === 'object' && !Array.isArray(x);
+  if(obj(L) && obj(S) && (obj(B2))){
+    const out = {};
+    new Set([...Object.keys(S), ...Object.keys(L)]).forEach(k => { const v = fusionar3(B2[k], L[k], S[k]); if(v !== undefined) out[k] = v; });
+    return out;
+  }
+  return L;                                 /* lo tocaron los dos: gana el que guarda */
+}
+
+const SYNC_KEY = 'clap.sync';
+let SYNC = {};
+try{ SYNC = JSON.parse(localStorage.getItem(SYNC_KEY) || '{}') || {}; }catch(e){ SYNC = {}; }
+const guardarSync = () => { try{ localStorage.setItem(SYNC_KEY, JSON.stringify(SYNC)); }catch(e){} };
+let _sync = {corriendo: false, otraVez: false, cuando: null, error: null, t: null};
+async function sbPartes(pyId, conDatos, partes){
+  return await sbFetch(`/rest/v1/proyecto_parte?proyecto_id=eq.${pyId}&select=parte,version,cambiado_nombre,cambiado_el${conDatos ? ',datos' : ''}${partes ? `&parte=in.(${partes.join(',')})` : ''}`) || [];
+}
+async function sbGuardarParte(pyId, parte, datos, base){
+  return await sbFetch('/rest/v1/rpc/guardar_parte', {method: 'POST',
+    body: JSON.stringify({p_proyecto: pyId, p_parte: parte, p_datos: datos, p_base: base})});
+}
+/* si en esta compu había algo distinto la primera vez, no se tira: se guarda aparte */
+function respaldarParte(py, parte, datos){
+  try{ localStorage.setItem(`clap.respaldo.${py.id}.${parte}`, JSON.stringify({cuando: new Date().toISOString(), datos})); }catch(e){}
+}
+const NOMBRE_PARTE = {presupuesto: 'el presupuesto', presupuesto_real: 'el presupuesto Real', gente: 'el equipo', plan: 'el plan',
+  rodaje: 'el rodaje', luces: 'el pedido de luces', alta: 'las altas', gastos: 'los gastos', liquidacion: 'la liquidación',
+  tareas: 'las tareas', contactos: 'los contactos', extra: 'las condiciones'};
+async function sincronizarPartes(py){
+  if(!py || !py.enServidor || typeof sbConectado !== 'function' || !sbConectado()) return null;
+  if(_sync.corriendo){ _sync.otraVez = true; return null; }
+  _sync.corriendo = true;
+  const otros = [], yo = (getUsuario() || {}).nombre;
+  try{
+    const S = (SYNC[py.id] ||= {});
+    /* 1. lo que cambió en la base */
+    const filas = await sbPartes(py.id, false);
+    const nuevas = filas.filter(f => PARTES_PY[f.parte] && (!S[f.parte] || f.version > S[f.parte].v)).map(f => f.parte);
+    if(nuevas.length){
+      (await sbPartes(py.id, true, nuevas)).forEach(f => {
+        const P = PARTES_PY[f.parte], base = S[f.parte] ? JSON.parse(S[f.parte].h) : undefined, local = P.lee(py);
+        let datos = f.datos;
+        if(base === undefined){
+          if(puedeParte(f.parte, true) && (P.algo ? P.algo(local) : true) && canon(local) !== canon(f.datos)) respaldarParte(py, f.parte, local);
+        } else datos = fusionar3(base, local, f.datos);
+        P.pone(py, JSON.parse(JSON.stringify(datos)));
+        S[f.parte] = {v: f.version, h: canon(f.datos)};
+        if(f.cambiado_nombre && f.cambiado_nombre !== yo) otros.push({parte: f.parte, quien: f.cambiado_nombre});
+      });
+    }
+    /* 2. lo mío que cambió */
+    for(const parte of Object.keys(PARTES_PY)){
+      if(!puedeParte(parte, true)) continue;
+      const P = PARTES_PY[parte];
+      let datos = P.lee(py), b = S[parte];
+      if(b && b.h === canon(datos)) continue;
+      if(!b && P.algo && !P.algo(datos)) continue;
+      for(let i = 0; i < 3; i++){
+        const r = await sbGuardarParte(py.id, parte, datos, b ? b.v : null);
+        if(r && r.ok){ S[parte] = {v: r.version, h: canon(datos)}; break; }
+        /* alguien guardó antes: se junta con lo suyo y se prueba otra vez */
+        const srv = r && r.version != null ? r : (await sbPartes(py.id, true, [parte]))[0];
+        if(!srv){ b = null; continue; }
+        P.pone(py, JSON.parse(JSON.stringify(fusionar3(b ? JSON.parse(b.h) : undefined, datos, srv.datos))));
+        b = S[parte] = {v: srv.version, h: canon(srv.datos)};
+        datos = P.lee(py);
+        if(srv.quien && srv.quien !== yo) otros.push({parte, quien: srv.quien});
+      }
+    }
+    guardarSync();
+    _sync.cuando = new Date(); _sync.error = null;
+    if(otros.length){
+      const q = [...new Set(otros.map(x => x.quien))].join(' y '), qu = [...new Set(otros.map(x => NOMBRE_PARTE[x.parte] || x.parte))].join(', ');
+      toast(`${q} cambió ${qu}: ya está acá`);
+      guardar(); render();
+    }
+    return {otros};
+  }catch(e){ _sync.error = e.message; return null; }
+  finally{
+    _sync.corriendo = false;
+    if(_sync.otraVez){ _sync.otraVez = false; programarSync(); }
+  }
+}
+/* después de cada cambio, a los 3 segundos; y cada 25 segundos se mira la base */
+function programarSync(ms = 3000){
+  if(typeof setTimeout !== 'function' || typeof sbConectado !== 'function' || !sbConectado()) return;
+  clearTimeout(_sync.t);
+  _sync.t = setTimeout(() => { const py = getPy(); if(py) sincronizarPartes(py); }, ms);
+}
+if(typeof window !== 'undefined' && typeof setInterval === 'function' && typeof document !== 'undefined' && 'visibilityState' in document){
+  setInterval(() => { try{ if(document.visibilityState !== 'hidden' && sbConectado()) sincronizarPartes(getPy()); }catch(e){} }, 25000);
+  try{ window.addEventListener('focus', () => programarSync(300)); }catch(e){}
+}
+function estadoSyncTexto(){
+  if(!sbConectado()) return 'Sin conectar — los datos viven sólo en este navegador';
+  const py = getPy();
+  if(py && !py.enServidor) return 'Este proyecto todavía no está en la web: ☁ → Sincronizar todo';
+  if(_sync.error) return 'No pude guardar en la base: ' + _sync.error;
+  if(_sync.cuando) return 'Guardado en la base a las ' + _sync.cuando.toLocaleTimeString('es-AR', {hour: '2-digit', minute: '2-digit'});
+  return 'Conectado';
+}
+
+/* Los ids de la gente tienen que ser los de la base: si no, una tarea que
+   el jefe le encarga a alguien en su compu no le aparece al otro en la suya. */
+function cambiarIdUsuario(pr, viejo, nuevo){
+  if(!viejo || !nuevo || viejo === nuevo) return;
+  const u = (pr.usuarios || []).find(x => x.id === viejo); if(u) u.id = nuevo;
+  const cambia = x => x === viejo ? nuevo : x;
+  (pr.proyectos || []).forEach(py => {
+    py.invitados = (py.invitados || []).map(cambia);
+    (py.comprobantes || []).forEach(c => { c.cargadoPor = cambia(c.cargadoPor); (c.historial || []).forEach(h => { h.usuarioId = cambia(h.usuarioId); }); });
+    (py.cajas || []).forEach(c => { c.responsable = cambia(c.responsable); (c.adelantos || []).forEach(a => { a.entregadoPor = cambia(a.entregadoPor); }); });
+    (py.ocs || []).forEach(o => { o.emitidaPor = cambia(o.emitidaPor); });
+    (py.tareas || []).forEach(t => { t.asignadoA = cambia(t.asignadoA); t.creadaPor = cambia(t.creadaPor); t.hechaPor = cambia(t.hechaPor); });
+    (py.cheques || []).forEach(c => { c.pedidoPor = cambia(c.pedidoPor); });
+  });
+  if(DB.ui.usuarioId === viejo) DB.ui.usuarioId = nuevo;
+}
+/* La gente de mis productoras, tal como está en la base */
+async function sincronizarUsuarios(){
+  if(!sbConectado()) return null;
+  let filas = [];
+  try{ filas = await sbFetch('/rest/v1/usuario?select=id,productora_id,nombre,rol,email,tel,activo,pendiente,auth_uid&order=alta_el') || []; }
+  catch(e){ return null; }
+  filas.forEach(f => {
+    const pr = (DB.productoras || []).find(p => p.id === f.productora_id); if(!pr) return;
+    pr.usuarios ||= [];
+    let u = pr.usuarios.find(x => x.id === f.id) || pr.usuarios.find(x => f.auth_uid && x.authUid === f.auth_uid)
+         || pr.usuarios.find(x => f.email && norm(x.email) === norm(f.email));
+    if(!u){ u = nuevoUsuario(); u.id = f.id; pr.usuarios.push(u); }
+    else cambiarIdUsuario(pr, u.id, f.id);
+    Object.assign(u, {nombre: f.nombre || u.nombre, rol: f.rol, email: f.email || u.email, tel: f.tel || u.tel,
+      activo: f.activo !== false, pendiente: !!f.pendiente, authUid: f.auth_uid || u.authUid});
+  });
+  guardar();
+  return filas.length;
 }
 
 /* --- diagnóstico --------------------------------------------------------
@@ -4701,6 +5008,7 @@ function guardar(){
   clearTimeout(_t);
   _t = setTimeout(()=>{ try{ localStorage.setItem(KEY, JSON.stringify(DB)); }
     catch(e){ toast('⚠ No se pudo guardar (espacio lleno)'); } }, 120);
+  try{ programarSync(); }catch(e){}
 }
 
 /* Semilla: una productora con un proyecto de ejemplo, para que se entienda
@@ -4743,9 +5051,18 @@ function sembrar(){
     nuevoUsuario({nombre:'Lucía Ferrer',  rol:'produccion', depto:'Producción',     tel:'11 5555-1002', email:'lucia@ejemplo.com'}),
     nuevoUsuario({nombre:'Tomás Vidal',   rol:'ejecutivo',  depto:'Producción',     tel:'11 5555-1003', email:'tomas@ejemplo.com'}),
     nuevoUsuario({nombre:'Marta Giles',   rol:'admin',      depto:'Administración', tel:'11 5555-1004', email:'marta@ejemplo.com'}),
+    nuevoUsuario({nombre:'Paula Ríos',    rol:'asistdir',   depto:'Dirección',      tel:'11 5555-1005', email:'paula@ejemplo.com'}),
+    nuevoUsuario({nombre:'Diego Sosa',    rol:'asistprod',  depto:'Producción',     tel:'11 5555-1006', email:'diego@ejemplo.com'}),
+    nuevoUsuario({nombre:'Carla Méndez',  rol:'arte',       depto:'Arte',           tel:'11 5555-1007', email:'carla@ejemplo.com'}),
   ];
-  const [uArte, uProd, uEjec, uAdmin] = pr.usuarios;
+  const [uArte, uProd, uEjec, uAdmin, , uAsistP, uAsistA] = pr.usuarios;
   DB.ui.usuarioId = uEjec.id;
+  py.invitados = pr.usuarios.map(u => u.id);
+  /* una tarea encargada y un cheque pedido, para ver el circuito */
+  py.tareas = [nuevaTarea({titulo:'Pedir tres cotizaciones de cámara', detalle:'Para las jornadas del plan; que incluyan seguro',
+    asignadoA:uAsistP.id, creadaPor:uProd.id})];
+  py.cheques = [nuevoCheque({a:'Utilería El Baúl', monto:150000, motivo:'Garantía del alquiler de utilería',
+    pedidoPor:uAsistA.id, historial:[{a:'pedido', quien:uAsistA.nombre, cuando:hoy()}]})];
 
   /* Un movimiento de cada tipo, para que ninguna pantalla arranque vacía. */
   const oc = nuevaOC({numero:'OC-0001', rubro:'11', subrubro:'Paquete de luces',
@@ -4791,6 +5108,50 @@ const getV  = () => { const py=getPy(); if(!py) return null;
      producción no tiene que caer en el presupuesto Real por un id guardado */
   const mias = versionesQueVeo(py);
   return mias.find(v=>v.id===DB.ui.versionId) || mias[0] || null; };
+
+/* La versión de rodaje: la que usan el plan, el callsheet, el rodaje, las
+   altas y la liquidación. Es UNA, aunque arriba se mire otra para cotizar o
+   comparar. Sin elegir: la última de Producción aprobada; si no hay, la
+   última de Producción; si no, la primera.                                */
+function versionRodaje(py){
+  const vs = (py && py.versiones) || []; if(!vs.length) return null;
+  const prod = vs.filter(v => (v.nivel || 'produccion') === 'produccion' && !['rechazado','cerrado'].includes(v.estado));
+  return vs.find(v => v.id === py.versionRodaje)
+    || [...prod].reverse().find(v => v.estado === 'aprobado') || prod[prod.length - 1] || vs[0];
+}
+const getVR = () => versionRodaje(getPy());
+
+/* Las fichadas, citaciones y contactos están atados al id de la línea. Al
+   duplicar una versión cada línea guarda de cuál viene (origenId), y al
+   cambiar la versión de rodaje se pasan a la línea equivalente de la nueva. */
+const raizLinea = l => l.origenId || l.id;
+function mapaLineas(a, b){
+  const m = {}; if(!a || !b) return m;
+  const porRaiz = new Map();
+  a.rubros.forEach(r => r.lineas.forEach(l => porRaiz.set(raizLinea(l), l.id)));
+  b.rubros.forEach(r => r.lineas.forEach(L => {
+    const aid = porRaiz.get(raizLinea(L)); if(aid && aid !== L.id) m[aid] = L.id; }));
+  return m;
+}
+function remapearLineas(py, m){
+  if(!Object.keys(m).length) return 0;
+  let k = 0;
+  const ren = clave => { const mm = /^l:([^#]+)(#\d+)?$/.exec(clave); return mm && m[mm[1]] ? 'l:' + m[mm[1]] + (mm[2] || '') : null; };
+  const mover = obj => { if(!obj) return; Object.keys(obj).forEach(c => { const nc = ren(c); if(nc && !(nc in obj)){ obj[nc] = obj[c]; delete obj[c]; k++; } }); };
+  ((py.desglose && py.desglose.jornadas) || []).forEach(j => { mover(j.citaciones); if(j.parte){ mover(j.parte.fichadas); mover(j.parte.citados); } });
+  mover(py.contactos && py.contactos.porLinea);
+  (py.comprobantes || []).forEach(c => { if(c.lineaId && m[c.lineaId]){ c.lineaId = m[c.lineaId]; k++; } });
+  (py.tareas || []).forEach(t => { if(t.lineaId && m[t.lineaId]){ t.lineaId = m[t.lineaId]; k++; } });
+  return k;
+}
+function setVersionRodaje(id){
+  const py = getPy(), nueva = (py.versiones || []).find(v => v.id === id), vieja = versionRodaje(py);
+  if(!nueva || nueva === vieja) return;
+  if(!confirm(`¿Usar "${nueva.nombre}" para el rodaje?\n\nEl plan, el callsheet, el rodaje, las altas y la liquidación pasan a usar esa versión. Las citaciones y los partes ya cargados se pasan a sus líneas equivalentes.`)) return;
+  const k = remapearLineas(py, mapaLineas(vieja, nueva));
+  py.versionRodaje = id;
+  toast(`Versión de rodaje: ${nueva.nombre}${k ? ` · ${k} dato${k == 1 ? '' : 's'} pasado${k == 1 ? '' : 's'} a sus líneas` : ''}`); R();
+}
 
 /* ===========================  CALC  ======================================= */
 
@@ -4937,14 +5298,50 @@ function costoPorPieza(py, v){
 function realPorLinea(py, v){
   const porLinea = {}, porRubro = {}, sueltoRubro = {};
   const tc = v ? n(v.tc) : 1000, base = v ? v.monedaBase : 'ARS';
+  /* el comprobante apunta a la línea de la versión de rodaje: se cuelga de la
+     línea equivalente de la versión que se mira (la misma raíz) */
+  const aEsta = idEnEstaVersion(py, v);
   (py?.comprobantes||[]).forEach(c=>{
     if(c.estado === 'rechazado') return;
     const t = conv(n(c.importe), c.moneda||'ARS', base, tc);
     if(c.rubro) porRubro[c.rubro] = (porRubro[c.rubro]||0) + t;
-    if(c.lineaId) porLinea[c.lineaId] = (porLinea[c.lineaId]||0) + t;
+    const lid = c.lineaId && aEsta(c.lineaId);
+    if(lid) porLinea[lid] = (porLinea[lid]||0) + t;
     else if(c.rubro) sueltoRubro[c.rubro] = (sueltoRubro[c.rubro]||0) + t;
   });
+  /* lo pagado en la liquidación también es real */
+  const LQ = liqPorLinea(py);
+  Object.entries(LQ).forEach(([lid, x]) => { if(!x.pagado) return;
+    const t = conv(x.pagado, x.moneda, base, tc), id = aEsta(lid);
+    if(id) porLinea[id] = (porLinea[id]||0) + t;
+    if(x.rubro) porRubro[x.rubro] = (porRubro[x.rubro]||0) + t; });
   return {porLinea, porRubro, sueltoRubro, base};
+}
+/* id de una línea de cualquier versión → la línea de la misma raíz en v */
+function idEnEstaVersion(py, v){
+  const raiz = {}; (py?.versiones || []).forEach(x => x.rubros.forEach(r => r.lineas.forEach(l => { raiz[l.id] = raizLinea(l); })));
+  const enV = {}; (v?.rubros || []).forEach(r => r.lineas.forEach(l => { enV[raizLinea(l)] = l.id; }));
+  return id => enV[raiz[id] || id] || null;
+}
+/* Lo aprobado y lo pagado de cada liquidación, repartido en sus líneas (en
+   proporción a lo presupuestado de cada una). Las líneas que ya tienen su
+   comprobante cargado no suman: si no, se contaría dos veces.             */
+function liqPorLinea(py){
+  const out = {}, v = versionRodaje(py); if(!v || !py.liquidacion) return out;
+  const conCbte = new Set((py.comprobantes || []).filter(c => c.lineaId && c.estado !== 'rechazado').map(c => c.lineaId));
+  genteDelProyecto(py, v).forEach(g => {
+    const L = liqDe(py)[g.clave]; if(!L || !['aprobado','pagado'].includes(L.estado)) return;
+    const lin = g.lineas.filter(({l}) => !conCbte.has(l.id)); if(!lin.length) return;
+    const monto = L.estado === 'pagado' && L.montoPagado != null ? n(L.montoPagado)
+                : L.montoAprobado != null ? n(L.montoAprobado) : liquidarPersona(py, v, g).vivo;
+    const pesos = lin.map(({l}) => totalLinea(l, v)), tot = pesos.reduce((a, b) => a + b, 0);
+    lin.forEach(({rb, l}, i) => {
+      const parte = tot ? monto * pesos[i] / tot : monto / lin.length;
+      const x = (out[l.id] ||= {aprobado: 0, pagado: 0, rubro: rb.codigo, moneda: v.monedaBase});
+      x[L.estado === 'pagado' ? 'pagado' : 'aprobado'] += parte;
+    });
+  });
+  return out;
 }
 
 /* El filtro que usa la solapa de una pieza: lo propio más lo compartido,
@@ -5023,13 +5420,108 @@ function render(){
   app.innerHTML = `<div class="app">
     ${avisoAlta()}
     ${header(pr,py,v)}
-    <main><div class="wrap" id="vista">${cuerpo(pr,py,v)}</div></main>
+    <main><div class="wrap" id="vista">${cuerpo(pr,py,v)}${siguientePasoHTML()}</div></main>
     ${v && DB.ui.tab==='presu' ? barraTotal(v) : ''}
   </div>`;
   if(modal) app.insertAdjacentHTML('beforeend', modal);
   restaurarPantalla(antes);
   mejorarAccesibilidad(app);
   try{ app.querySelectorAll('input[data-indet]').forEach(x => x.indeterminate = true); }catch(e){}
+  soloMirar();
+  sincronizarHash();
+}
+/* Al pie de cada solapa, a dónde se sigue (y de dónde se viene), en el orden
+   en que se recorre una producción. Sólo lo que le toca a quien mira.      */
+const PASOS = [
+  {k:'presu',      l:'Presupuesto'},
+  {k:'desglose',   l:'Desglose'},
+  {k:'plan',       l:'Plan de rodaje'},
+  {k:'luces',      l:'Pedido de luces'},
+  {k:'personal:alta', l:'Altas y seguro'},
+  {k:'callsheet',  l:'Callsheet'},
+  {k:'rodaje:citaciones', l:'Citaciones'},
+  {k:'rodaje:parte', l:'Parte del día'},
+  {k:'gastos',     l:'Gastos'},
+  {k:'personal:liquidacion', l:'Liquidación'}];
+function pasoActual(){
+  const t = DB.ui.tab;
+  if(t === 'rodaje') return 'rodaje:' + (['parte','horas'].includes(DB.ui.subRodaje) ? 'parte' : 'citaciones');
+  if(t === 'personal') return 'personal:' + (DB.ui.subPersonal || 'alta');
+  return t;
+}
+function irAPaso(k){
+  const [t, sub] = k.split(':');
+  if(t === 'rodaje'){ DB.ui.subRodaje = sub; setTab('rodaje'); return; }
+  setTab(k);
+}
+function siguientePasoHTML(){
+  const mios = PASOS.filter(x => puedeSolapa(x.k.startsWith('rodaje') ? 'rodaje' : x.k));
+  const i = mios.findIndex(x => x.k === pasoActual()); if(i < 0) return '';
+  const j = DB.ui.jornada && ['plan','callsheet','rodaje'].includes(DB.ui.tab) ? ` · J${DB.ui.jornada}` : '';
+  const ant = mios[i - 1], sig = mios[i + 1];
+  if(!ant && !sig) return '';
+  return `<nav class="sigpaso noprint" aria-label="Paso anterior y siguiente">
+    ${ant ? `<button class="btn" onclick="irAPaso('${ant.k}')">← ${esc(ant.l)}</button>` : '<span></span>'}
+    ${sig ? `<button class="btn pri" onclick="irAPaso('${sig.k}')">Siguiente: ${esc(sig.l)}${['callsheet','rodaje:citaciones','rodaje:parte'].includes(sig.k) ? j : ''} →</button>` : ''}
+  </nav>`;
+}
+
+/* Links directos: #/rodaje/citaciones/j2 abre la citación de la jornada 2.
+   Sirven para mandarle a alguien justo lo que tiene que mirar, y para que el
+   botón de atrás del navegador vuelva a la solapa anterior. Los links de las
+   invitaciones y del mail usan otro formato (#inv=, #access_token=) y no se
+   tocan. */
+const SUBS = {rodaje:'subRodaje', plan:'subPlan', gastos:'subGasto', callsheet:'subCall'};
+function hashDeUI(){
+  const t = DB.ui.tab || 'resumen';
+  const partes = [t === 'personal' ? (DB.ui.subPersonal === 'liquidacion' ? 'liquidacion' : 'altas') : t];
+  if(SUBS[t] && DB.ui[SUBS[t]]) partes.push(DB.ui[SUBS[t]]);
+  if(['plan','callsheet','rodaje'].includes(t) && DB.ui.jornada) partes.push('j' + DB.ui.jornada);
+  return '#/' + partes.join('/');
+}
+function aplicarHash(h){
+  const m = /^#\/(.+)$/.exec(h || ''); if(!m) return false;
+  const [t0, ...resto] = m[1].split('/').map(decodeURIComponent);
+  const t = t0 === 'altas' ? 'personal' : t0 === 'liquidacion' ? 'personal' : t0;
+  const validas = ['resumen','presu','desglose','plan','luces','callsheet','rodaje','gastos','personal','catalogo','equipo','config','guia'];
+  if(!validas.includes(t)) return false;
+  DB.ui.tab = t;
+  if(t === 'personal') DB.ui.subPersonal = t0 === 'liquidacion' ? 'liquidacion' : 'alta';
+  resto.forEach(x => { const j = /^j(\d+)$/.exec(x); if(j) DB.ui.jornada = +j[1]; else if(SUBS[t]) DB.ui[SUBS[t]] = x; });
+  return true;
+}
+let _hashPush = false;
+function sincronizarHash(){
+  if(typeof location === 'undefined' || typeof history === 'undefined' || !history.replaceState) return;
+  if(location.hash && !location.hash.startsWith('#/')) return;
+  /* sin link pedido y sin haber cambiado de solapa, la barra queda limpia */
+  if(!location.hash && !_hashPush) return;
+  const h = hashDeUI(); if(location.hash === h) return;
+  try{ if(_hashPush) history.pushState(null, '', h); else history.replaceState(null, '', h); }catch(e){}
+  _hashPush = false;
+}
+function copiarLink(){
+  const u = typeof location !== 'undefined' ? location.href.split('#')[0] + hashDeUI() : hashDeUI();
+  alPortapapeles(u, 'Link copiado: abre esta misma pantalla (a quien tenga acceso al proyecto)');
+}
+if(typeof window !== 'undefined' && typeof window.addEventListener === 'function'){
+  window.addEventListener('popstate', () => { if(typeof location !== 'undefined' && aplicarHash(location.hash)) R(); });
+}
+
+/* En una solapa que sólo puede mirar, se deshabilita lo que cambia datos.
+   Quedan andando moverse (jornada, sub-solapas), imprimir, copiar y bajar. */
+const SOLO_MIRAR_OK = /print|irAPaso|setSub|selJornada|setTab|copiar|bajar|exp[A-Z]|DB\.ui\.|imprimir|toggle(Det|Rub)/;
+function soloMirar(){
+  if(editaSolapa()) return;
+  try{
+    const v = document.getElementById('vista'); if(!v || !v.querySelectorAll) return;
+    v.querySelectorAll('input,select,textarea,button').forEach(e => {
+      if(e.closest('.seg,.pick,.nav-ok')) return;
+      if(SOLO_MIRAR_OK.test(e.getAttribute('onclick') || '') || SOLO_MIRAR_OK.test(e.getAttribute('onchange') || '')) return;
+      e.disabled = true;
+    });
+    if(!v.querySelector('.solo-mirar')) v.insertAdjacentHTML('afterbegin', `<div class="solo-mirar noprint">Con tu rol (${esc(ROL(getUsuario().rol).l)}) esta solapa es para mirar.</div>`);
+  }catch(e){}
 }
 
 /* Las pantallas de afuera (entrar, sin acceso) reemplazan a toda la app. */
@@ -5329,6 +5821,9 @@ function header(pr,py,v){
      ['config','Productoras','Datos de las productoras y sus proyectos']],
     [['guia','Instructivo','Cómo se usa CLAP']]];
   const tabOn = k => { const [t, sub] = k.split(':'); return DB.ui.tab === t && (!sub || (DB.ui.subPersonal || 'alta') === sub); };
+  /* cada uno ve las solapas de su tarea; el resumen de un asistente es su panel */
+  const plata = vePlata();
+  const MIOS = TABS.map(g => g.filter(([k]) => puedeSolapa(k)).map(([k, l, t]) => k === 'resumen' && !plata ? [k, 'Mi panel', 'Tus tareas y lo que te toca'] : [k, l, t])).filter(g => g.length);
   return `<header>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
@@ -5338,9 +5833,9 @@ function header(pr,py,v){
           ${mios.map(p=>`<option value="${p.id}" ${p.id===py?.id?'selected':''}>${esc(p.nombre)}</option>`).join('')}
           ${!mios.length?`<option>${pr.proyectos.length?'— sin invitaciones —':'— ninguno —'}</option>`:''}
         </select></div>`; })():''}
-      ${py?`<button class="btn invbtn" onclick="invitarAlProyecto()"
+      ${py && plata?`<button class="btn invbtn" onclick="invitarAlProyecto()"
         title="Mandar un link para sumar a alguien a «${esc(py.nombre)}»">✉ Invitar</button>`:''}
-      ${py?(()=>{ const vs = versionesQueVeo(py); return `<div class="pick niv-${esc((v&&v.nivel)||'produccion')}"><label>Versión</label>
+      ${py && plata?(()=>{ const vs = versionesQueVeo(py); return `<div class="pick niv-${esc((v&&v.nivel)||'produccion')}"><label>Versión</label>
         <select onchange="selVersion(this.value)">
           ${vs.map(x=>`<option value="${x.id}" ${x.id===v?.id?'selected':''}>${esc(NIVEL(x.nivel).l)} · ${esc(x.nombre)} · ${esc(x.estado)}</option>`).join('')}
           ${!vs.length?'<option>— ninguna a tu alcance —</option>':''}
@@ -5352,15 +5847,20 @@ function header(pr,py,v){
         <button class="${DB.ui.vista==='cliente'?'on':''}" onclick="setVista('cliente')">Cliente</button>
       </div>`:''}
       <button class="btn ${sbConectado()?'nube-on':''}" onclick="menuNube()"
-        title="${sbConectado()?'Conectado a Supabase como '+esc(SB.user.email):'Sin conectar — los datos viven sólo en este navegador'}">☁</button>
+        title="${sbConectado()?esc(SB.user.email)+' · '+esc(estadoSyncTexto()):'Sin conectar — los datos viven sólo en este navegador'}">☁${sbConectado() && _sync.error ? '<span class="nube-err" aria-label="no se pudo guardar">!</span>' : ''}</button>
       <button class="btn" onclick="menuDatos()">Datos ▾</button>
     </div>
-    <div class="tabs">${TABS.map(grupo => grupo.map(([k,l,t])=>
+    <div class="tabs">${MIOS.map(grupo => grupo.map(([k,l,t])=>
       `<button class="tab ${tabOn(k)?'on':''}" onclick="setTab('${k}')" title="${esc(t)}">${l}</button>`).join('')).join('<span class="tab-sep" aria-hidden="true"></span>')}</div>
   </header>`;
 }
 
 function cuerpo(pr,py,v){
+  /* una solapa que no le toca: al panel (o a la parte de la pantalla que sí) */
+  if(!puedeSolapa(claveSolapa())){
+    if(DB.ui.tab === 'personal' && puedeSolapa('personal:alta')) DB.ui.subPersonal = 'alta';
+    else DB.ui.tab = 'resumen';
+  }
   if(!pr) return `<div class="card"><div class="empty">No hay productoras cargadas.<br><br>
     <button class="btn pri" onclick="editProductora()">Crear la primera productora</button></div></div>`;
   if(DB.ui.tab==='guia')     return vistaGuia();
@@ -5372,6 +5872,7 @@ function cuerpo(pr,py,v){
   /* Puede pasar que el proyecto tenga presupuestos y ninguno sea para vos: un
      técnico invitado no ve ni el Real ni el de Producción. Eso se dice, no se
      rompe la pantalla. */
+  if(DB.ui.tab === 'resumen' && !vePlata()) return vistaPanel(pr, py);
   if(!getV() && ['presu','resumen'].includes(DB.ui.tab)){
     const hay = (py.versiones||[]).length;
     return `<div class="card"><div class="empty">
@@ -5383,14 +5884,356 @@ function cuerpo(pr,py,v){
     </div></div>`;
   }
   if(DB.ui.tab==='desglose')  return vistaDesglose(py);
-  if(DB.ui.tab==='plan')      return vistaPlan(pr,py,v);
-  if(DB.ui.tab==='luces')     return vistaLuces(pr,py,v);
-  if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,v);
-  if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,v);
-  if(DB.ui.tab==='gastos')    return vistaGastos(pr,py,v);
-  if(DB.ui.tab==='personal')  return vistaPersonal(pr,py,v);
+  /* lo del set, con la versión de rodaje */
+  const vr = versionRodaje(py);
+  if(DB.ui.tab==='plan')      return vistaPlan(pr,py,vr);
+  if(DB.ui.tab==='luces')     return vistaLuces(pr,py,vr);
+  if(DB.ui.tab==='callsheet') return vistaCallsheet(pr,py,vr);
+  if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,vr);
+  if(DB.ui.tab==='gastos')    return vistaGastos(pr,py,vePlata() ? v : null);
+  if(DB.ui.tab==='personal')  return vistaPersonal(pr,py,vr);
   if(DB.ui.tab==='resumen')   return vistaResumen(pr,py,v);
   return vistaPresupuesto(pr,py,v);
+}
+
+
+/* ===================  EL PLAN CONTRA EL PRESUPUESTO  ======================
+   El plan de rodaje NUNCA cambia el presupuesto: el presupuesto es el ancla
+   y lo maneja el jefe de producción. Lo que hace el plan es avisar, al jefe
+   y al asistente de dirección, cuando lo que se planea no entra en lo
+   presupuestado (se pasa), cuando sobra algo pagado (se subutiliza) o
+   cuando el plan usa algo que el presupuesto no tiene. Sin montos: el
+   asistente de dirección no ve la plata.                                   */
+const veAvisosPresu = (u = getUsuario()) => vePlata(u) || (!!u && u.rol === 'asistdir');
+/* las jornadas de rodaje que paga el presupuesto: los días que más se repiten
+   en las líneas del equipo técnico */
+function jornadasDelPresupuesto(v){
+  const cuenta = {};
+  ((v && v.rubros) || []).filter(r => RUBROS_CREW.includes(r.codigo)).forEach(r => r.lineas.forEach(l => {
+    if(l.etapa || l.unidad !== 'jornada' || !String(l.concepto || '').trim() || NO_ES_PERSONA.test(l.concepto)) return;
+    const d = n(l.dias); if(d > 0) cuenta[d] = (cuenta[d] || 0) + 1; }));
+  const mejor = Object.entries(cuenta).sort((a, b) => b[1] - a[1] || b[0] - a[0])[0];
+  return mejor ? +mejor[0] : 0;
+}
+const listaJ = js => { const a = [...js].sort((x, y) => x - y).map(x => 'J' + x); return a.length > 1 ? a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1] : a[0] || ''; };
+const plural = (k, s, p) => k == 1 ? s : (p || s + 's');
+function avisosPlanPresupuesto(py, v){
+  const out = []; if(!py || !v) return out;
+  const d = py.desglose || {jornadas: [], escenas: []}, p = planDe(py);
+  const nums = (d.jornadas || []).map(j => j.numero);
+  const delDia = num => p.items.filter(x => x.jornada === num && x.tipo !== 'evento');
+  const conPlan = nums.filter(num => delDia(num).length);
+  if(!conPlan.length) return out;
+  const A = (k, t, det) => out.push({k, t, det: det || ''});
+  const todas = v.rubros.flatMap(r => r.lineas.map(l => ({r, l})));
+  const hay = re => todas.some(({l}) => re.test(norm(l.concepto || '')));
+
+  /* 1. las jornadas */
+  const pres = jornadasDelPresupuesto(v) || n(py.jornadas);
+  if(pres && nums.length > pres){
+    const de = nums.slice(pres);
+    A('pasa', `El plan tiene ${nums.length} jornadas y el presupuesto paga ${pres}`,
+      `${listaJ(de)} no ${plural(de.length, 'está presupuestada', 'están presupuestadas')}: equipo técnico, catering, equipos y transporte de ${de.length} ${plural(de.length, 'día')} más.`);
+  } else if(pres && conPlan.length < pres && nums.length < pres)
+    A('sobra', `El presupuesto paga ${pres} jornadas y el plan usa ${nums.length}`,
+      `Si el plan queda así, sobra${pres - nums.length > 1 ? 'n' : ''} ${pres - nums.length} ${plural(pres - nums.length, 'jornada')} en las líneas del equipo.`);
+
+  /* 2. el elenco: cada personaje, contra su línea del rubro 09 */
+  const r9 = v.rubros.find(r => r.codigo === '09');
+  const elenco = {};
+  conPlan.forEach(num => delDia(num).forEach(it => elencoDeItem(py, it).forEach(nom => {
+    (elenco[norm(nom)] ||= {nombre: nom, js: new Set()}).js.add(num); })));
+  Object.values(elenco).forEach(({nombre, js}) => {
+    const l = r9 && (r9.lineas.find(x => norm(personajeDe(x)) === norm(nombre)) || r9.lineas.find(x => norm(x.concepto) === norm(nombre)));
+    if(!l) return A('falta', `${nombre} no está en el presupuesto`,
+      `Aparece en ${listaJ(js)} y no hay una línea de elenco con ese personaje (en el presupuesto, cada línea del elenco puede llevar su personaje).`);
+    const pd = n(l.dias);
+    if(l.unidad === 'jornada' && js.size > pd) A('pasa', `${nombre} trabaja ${js.size} ${plural(js.size, 'jornada')} y el presupuesto paga ${pd}`, `Está en ${listaJ(js)}.`);
+    else if(l.unidad === 'jornada' && js.size < pd) A('sobra', `${nombre}: el presupuesto paga ${pd} ${plural(pd, 'jornada')} y el plan lo usa en ${js.size}`, `Está en ${listaJ(js)}.`);
+  });
+
+  /* 3. los extras: personas por jornada */
+  let extrasPlan = 0; conPlan.forEach(num => extrasDelDia(py, num).forEach(x => { extrasPlan += n(x.cant) || 1; }));
+  const linEx = r9 ? r9.lineas.filter(l => /extra|figura|bolo/.test(norm(l.concepto || ''))) : [];
+  const extrasPres = linEx.reduce((s, l) => s + Math.max(1, n(l.cantidad)) * Math.max(1, n(l.dias)), 0);
+  if(extrasPlan && !linEx.length) A('falta', `El plan usa ${extrasPlan} ${plural(extrasPlan, 'extra')} y el presupuesto no tiene extras`, 'Contando cada extra en cada jornada.');
+  else if(extrasPlan > extrasPres) A('pasa', `Extras: el plan necesita ${extrasPlan} y el presupuesto paga ${extrasPres}`, 'Contando cada extra en cada jornada.');
+  else if(extrasPres && extrasPlan && extrasPlan < extrasPres) A('sobra', `Extras: el presupuesto paga ${extrasPres} y el plan usa ${extrasPlan}`, 'Contando cada extra en cada jornada.');
+
+  /* 4. las locaciones, contra el rubro 10 */
+  const r10 = v.rubros.find(r => r.codigo === '10');
+  const locs = {};
+  conPlan.forEach(num => delDia(num).forEach(it => { const L = lugarDeItem(py, it); if(L) (locs[norm(L)] ||= {nombre: L, js: new Set()}).js.add(num); }));
+  Object.values(locs).forEach(({nombre, js}) => {
+    const k = norm(nombre);
+    const l = r10 && r10.lineas.find(x => { const c = norm(x.concepto || ''); return c && (c.includes(k) || k.includes(c.replace(/^locacion\s*[-—–]*\s*/, ''))); });
+    if(!l) return A('falta', `La locación "${nombre}" no está en el presupuesto`, `Se filma en ${listaJ(js)}.`);
+    if(l.unidad === 'jornada' && js.size > n(l.dias)) A('pasa', `"${nombre}": el plan la usa ${js.size} ${plural(js.size, 'jornada')} y el presupuesto paga ${n(l.dias)}`, `Se filma en ${listaJ(js)}.`);
+  });
+
+  /* 5. las horas: un día más largo que la jornada son horas extra */
+  const cfg = py.configRodaje || nuevaConfigRodaje(), base = horasJornadaDe(cfg) * 60;
+  const largos = [];
+  conPlan.forEach(num => { const D = calcularDia(py, num);
+    const comida = D.comida ? Math.max(0, n(D.comida.fin) - n(D.comida.inicio)) : 0;
+    const neto = n(D.fin) - n(D.inicio) - comida;
+    if(neto - base > 15) largos.push({num, h: Math.round((neto - base) / 30) / 2}); });
+  if(largos.length && !hay(/hora.*extra|extras? de hora|\bhe\b/))
+    A('pasa', `${largos.length == 1 ? 'Un día pasa' : largos.length + ' días pasan'} de la jornada de ${base / 60} h`,
+      largos.map(x => `J${x.num}: ${String(x.h).replace('.', ',')} h de más`).join(' · ') + '. El presupuesto no tiene horas extra.');
+
+  /* 6. cámara B y VFX */
+  const camB = conPlan.filter(num => delDia(num).some(it => String(it.camB || '').trim()));
+  if(camB.length && !hay(/camara b|segunda camara|2da camara|cam b\b/))
+    A('falta', 'El plan usa cámara B y el presupuesto no la tiene', `En ${listaJ(camB)}.`);
+  const vfx = conPlan.filter(num => delDia(num).some(it => String(it.vfx || '').trim()));
+  if(vfx.length && !hay(/vfx|post|efecto|composic|cgi/))
+    A('falta', 'El plan tiene planos con VFX y el presupuesto no tiene posproducción de efectos', `En ${listaJ(vfx)}.`);
+
+  /* 7. lo que el desglose pide y el presupuesto no tiene (utilería, vestuario, vehículos…) */
+  if((d.escenas || []).length){
+    try{
+      propuestaPresupuestoBase().lineas.filter(x => x.dep !== 'elenco' && x.dep !== 'locacion').forEach(x => {
+        const rb = v.rubros.find(r => r.codigo === x.rubro);
+        const ya = rb && rb.lineas.some(l => norm(l.concepto) === norm(x.concepto) && (l.piezaId || null) === (x.piezaId || null));
+        if(!ya) A('falta', `Falta en el presupuesto: ${x.concepto}`, x.nota || '');
+      });
+    }catch(e){}
+  }
+  return out;
+}
+const AV_PRESU = {pasa: {l: 'Se pasa', c: 'pl-av-pasa'}, falta: {l: 'Falta', c: 'pl-av-falta'}, sobra: {l: 'Sobra', c: 'pl-av-sobra'}};
+function planPresuHTML(py, v){
+  const A = avisosPlanPresupuesto(py, v), plata = vePlata();
+  const orden = {pasa: 0, falta: 1, sobra: 2};
+  A.sort((a, b) => orden[a.k] - orden[b.k]);
+  return `<div class="cs">
+    <div class="cshead"><div><div class="csttl">El plan contra el presupuesto</div>
+      <div class="cssub">Versión de rodaje ${esc(v ? v.nombre : '—')} · el plan no cambia el presupuesto: avisa</div></div>
+      <div style="text-align:right"><div class="csj">${A.filter(x => x.k !== 'sobra').length}<span> ${plural(A.filter(x => x.k !== 'sobra').length, 'aviso')}</span></div></div></div>
+    ${A.length ? `<div class="pad" style="display:flex;flex-direction:column;gap:8px">
+      ${A.map(x => `<div class="pl-av ${AV_PRESU[x.k].c}"><span class="pl-av-k">${AV_PRESU[x.k].l}</span>
+        <div><b>${esc(x.t)}</b>${x.det ? `<div class="muted" style="font-size:12px;margin-top:2px">${esc(x.det)}</div>` : ''}</div></div>`).join('')}
+    </div>` : `<div class="pad muted" style="font-size:12.5px">El plan entra en lo presupuestado: jornadas, elenco, extras, locaciones y horas.</div>`}
+    <div class="pad noprint" style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line)">
+      ${plata ? `<button class="btn sm pri" onclick="setTab('presu')">Ir al presupuesto</button>` : ''}
+      ${A.length ? `<button class="btn sm" onclick="copiarAvisosPresu()">Copiar los avisos ${plata ? '' : 'para el jefe de producción'}</button>` : ''}
+      <span class="muted" style="font-size:11.5px;align-self:center">Lo resuelve quien maneja el presupuesto: el plan sólo mira.</span>
+    </div></div>`;
+}
+function copiarAvisosPresu(){
+  const py = getPy(), A = avisosPlanPresupuesto(py, versionRodaje(py));
+  alPortapapeles(`${py.nombre} · el plan contra el presupuesto\n\n` + A.map(x => `• ${AV_PRESU[x.k].l}: ${x.t}${x.det ? '\n  ' + x.det : ''}`).join('\n'), 'Avisos copiados');
+}
+
+/* ===========================  TAREAS  =====================================
+   El jefe de producción (o el PE, o Administración) le encarga algo a un
+   asistente —desde una línea del presupuesto o suelto—. Le aparece en su
+   panel; cuando termina, lo confirma y queda anotado quién y cuándo.       */
+function nuevaTarea(o = {}){
+  return {id: uid('ta'), titulo: o.titulo || '', detalle: o.detalle || '', lineaId: o.lineaId || null,
+    asignadoA: o.asignadoA || null, vence: o.vence || '', creadaPor: o.creadaPor || null, creadaEl: o.creadaEl || hoy(),
+    estado: o.estado || 'pendiente', hechaEl: o.hechaEl || null, hechaPor: o.hechaPor || null, nota: o.nota || ''};
+}
+const tareasDe = py => (py.tareas ||= []);
+const puedeEncargar = (u = getUsuario()) => !u || puede(u, 'tareas');
+const nombreUsuario = id => { const u = getUsuarios().find(x => x.id === id); return u ? u.nombre : '—'; };
+const tareaVencida = t => t.estado !== 'hecha' && /^\d{4}-\d\d-\d\d$/.test(t.vence || '') && t.vence < hoy();
+function chipTarea(l, py){
+  if(!puedeEncargar()) return '';
+  const ts = tareasDe(py).filter(t => t.lineaId === l.id);
+  if(!ts.length) return `<button type="button" class="chipsel chip c-otr noprint" onclick="editTarea(null,'${l.id}')"
+    title="Encargarle esta línea a un asistente: le aparece en su panel y la confirma cuando termina">＋ tarea</button>`;
+  const pend = ts.filter(t => t.estado !== 'hecha');
+  return `<button type="button" class="chipsel chip ${pend.length ? (pend.some(tareaVencida) ? 'sica-bajo' : 'd-par') : 'd-si'} noprint" onclick="editTarea('${(pend[0] || ts[0]).id}')"
+    title="${esc(ts.map(t => t.titulo + ' · ' + nombreUsuario(t.asignadoA) + ' · ' + (t.estado === 'hecha' ? 'hecha' : 'pendiente')).join('\n'))}">${pend.length ? `tarea: ${esc(nombreUsuario(pend[0].asignadoA))}` : 'tarea hecha ✓'}</button>`;
+}
+function ubicarLinea(py, id){
+  for(const v of (py.versiones || [])) for(const r of v.rubros){ const l = r.lineas.find(x => x.id === id); if(l) return {v, r, l}; }
+  return null;
+}
+function editTarea(id, lineaId){
+  const py = getPy(), t = id ? tareasDe(py).find(x => x.id === id) : null;
+  const L = ubicarLinea(py, t ? t.lineaId : lineaId);
+  const us = getUsuarios().filter(u => u.activo !== false && !u.pendiente)
+    .sort((a, b) => (a.rol === 'asistprod' ? 0 : 1) - (b.rol === 'asistprod' ? 0 : 1) || String(a.nombre).localeCompare(String(b.nombre)));
+  const titulo = t ? t.titulo : (L ? L.l.concepto : '');
+  const det = t ? t.detalle : (L ? [L.r.nombre, `${n(L.l.cantidad)} × ${n(L.l.dias)} ${L.l.unidad}`, L.l.notas].filter(Boolean).join(' · ') : '');
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
+    <h3>${t ? 'Tarea' : 'Nueva tarea'}${L ? ' · ' + esc(L.l.concepto) : ''}</h3>
+    <div class="mbody">
+      ${campo('Qué hay que hacer','titulo',titulo,'text','placeholder="Conseguir 3 cotizaciones de cámara"')}
+      <label class="f"><span>Detalle</span><textarea name="detalle" rows="3" placeholder="Lo que tiene que saber para hacerlo">${esc(det)}</textarea></label>
+      ${sel('Para','asignadoA',t ? t.asignadoA : ((us.find(u => u.rol === 'asistprod') || {}).id || ''),
+        [{v:'', l:'— elegí a quién —'}, ...us.map(u => ({v:u.id, l:`${u.nombre} · ${ROL(u.rol).l}`}))])}
+      ${campo('Para cuándo','vence',t ? t.vence : '','date')}
+      ${t ? `<div class="muted" style="font-size:12px;margin-top:6px">Pedida por ${esc(nombreUsuario(t.creadaPor))} el ${esc(t.creadaEl)}${t.estado === 'hecha' ? ` · <b style="color:var(--ok)">hecha</b> por ${esc(nombreUsuario(t.hechaPor))} el ${esc(t.hechaEl)}` : ''}${t.nota ? `<br>Nota: ${esc(t.nota)}` : ''}</div>` : ''}
+    </div>
+    <div class="mfoot">
+      ${t ? `<button class="btn" onclick="borrarTarea('${t.id}')" style="margin-right:auto">Borrar</button>` : ''}
+      ${t && t.estado === 'hecha' ? `<button class="btn" onclick="reabrirTarea('${t.id}')">Volver a pendiente</button>` : ''}
+      <button class="btn" onclick="cerrar()">Cancelar</button>
+      <button class="btn pri" onclick="saveTarea(${t ? `'${t.id}'` : 'null'},${L ? `'${L.l.id}'` : 'null'})">${t ? 'Guardar' : 'Encargar'}</button>
+    </div></div></div>`);
+}
+function saveTarea(id, lineaId){
+  const d = datos(), py = getPy();
+  if(!String(d.titulo || '').trim()){ toast('Falta qué hay que hacer'); return; }
+  if(!d.asignadoA){ toast('Elegí a quién se la encargás'); return; }
+  let t = id ? tareasDe(py).find(x => x.id === id) : null;
+  if(!t){ t = nuevaTarea({lineaId, creadaPor: (getUsuario() || {}).id || null}); tareasDe(py).push(t); }
+  Object.assign(t, {titulo: d.titulo.trim(), detalle: d.detalle || '', asignadoA: d.asignadoA, vence: d.vence || ''});
+  cerrar(); toast(`Tarea para ${nombreUsuario(t.asignadoA)}: le aparece en su panel`); R();
+}
+function borrarTarea(id){
+  const py = getPy(), i = tareasDe(py).findIndex(x => x.id === id); if(i < 0) return;
+  const [t] = tareasDe(py).splice(i, 1); cerrar();
+  toast('Tarea borrada', {accion: 'Deshacer', fn: () => { tareasDe(py).splice(i, 0, t); R(); }}); R();
+}
+function terminarTarea(id){
+  const py = getPy(), t = tareasDe(py).find(x => x.id === id); if(!t) return;
+  const nota = prompt(`¿Terminaste "${t.titulo}"?\n\nSi querés, dejá una nota para quien te la encargó (o Aceptar sin nada):`, '');
+  if(nota === null) return;
+  Object.assign(t, {estado: 'hecha', hechaEl: hoy(), hechaPor: (getUsuario() || {}).id || null, nota: nota || ''});
+  toast('Tarea hecha ✓', {accion: 'Deshacer', fn: () => { Object.assign(t, {estado: 'pendiente', hechaEl: null, hechaPor: null}); R(); }}); R();
+}
+function reabrirTarea(id){
+  const t = tareasDe(getPy()).find(x => x.id === id); if(!t) return;
+  Object.assign(t, {estado: 'pendiente', hechaEl: null, hechaPor: null}); cerrar(); R();
+}
+function tareasHTML(py, lista, {mias = false} = {}){
+  if(!lista.length) return `<div class="pad muted" style="font-size:12.5px">${mias ? 'No tenés tareas pendientes.' : 'No hay tareas.'}</div>`;
+  return `<div class="pad" style="display:flex;flex-direction:column;gap:6px">${lista.map(t => {
+    const L = t.lineaId ? ubicarLinea(py, t.lineaId) : null;
+    return `<div class="tarea ${t.estado === 'hecha' ? 'hecha' : ''} ${tareaVencida(t) ? 'vencida' : ''}">
+      ${mias && t.estado !== 'hecha' ? `<button class="btn sm pri" onclick="terminarTarea('${t.id}')">Listo ✓</button>` : `<span class="tarea-est">${t.estado === 'hecha' ? '✓' : '·'}</span>`}
+      <div style="flex:1;min-width:0"><b>${esc(t.titulo)}</b>${t.detalle ? `<div class="muted" style="font-size:12px">${esc(t.detalle)}</div>` : ''}
+        <div class="muted" style="font-size:11.5px">${mias ? `te la pidió ${esc(nombreUsuario(t.creadaPor))}` : `para ${esc(nombreUsuario(t.asignadoA))}`}${t.vence ? ` · ${tareaVencida(t) ? '<b style="color:var(--bad)">venció</b>' : 'para el'} ${esc(t.vence.split('-').reverse().join('/'))}` : ''}${L && vePlata() ? ` · línea: ${esc(L.l.concepto)}` : ''}${t.estado === 'hecha' ? ` · hecha el ${esc(String(t.hechaEl || '').split('-').reverse().join('/'))}${t.nota ? ': ' + esc(t.nota) : ''}` : ''}</div></div>
+      ${!mias && puedeEncargar() ? `<button class="btn sm" onclick="editTarea('${t.id}')">Abrir</button>` : ''}
+    </div>`; }).join('')}</div>`;
+}
+
+/* ======================  CHEQUES DE GARANTÍA  =============================
+   Un rental o una locación piden un cheque en garantía. El asistente (de
+   arte o de producción) lo pide; el Productor Ejecutivo lo aprueba;
+   Administración lo entrega y anota cuando vuelve.                         */
+const EST_CHEQUE = {
+  pedido:    {l: 'Pedido',    sig: 'aprobado',  puede: 'aprobar', b: 'Aprobar'},
+  aprobado:  {l: 'Aprobado',  sig: 'entregado', puede: 'pagar',   b: 'Entregado'},
+  entregado: {l: 'Entregado', sig: 'devuelto',  puede: 'pagar',   b: 'Volvió'},
+  devuelto:  {l: 'Devuelto'},
+  rechazado: {l: 'Rechazado'}};
+const chequesDe = py => (py.cheques ||= []);
+function nuevoCheque(o = {}){
+  return {id: uid('ch'), a: o.a || '', monto: n(o.monto), moneda: o.moneda || 'ARS', motivo: o.motivo || '', devolverEl: o.devolverEl || '',
+    pedidoPor: o.pedidoPor || null, cuando: o.cuando || hoy(), estado: o.estado || 'pedido', historial: o.historial || []};
+}
+const chequeMio = (c, u) => !!u && c.pedidoPor === u.id;
+function chequesPend(u = getUsuario()){
+  const py = getPy(); if(!py || !u) return 0;
+  return chequesDe(py).filter(c => { const e = EST_CHEQUE[c.estado] || {}; return e.puede && puede(u, e.puede); }).length;
+}
+function pedirCheque(){
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:480px">
+    <h3>Pedir un cheque de garantía</h3>
+    <div class="mbody">
+      ${campo('A nombre de','a','','text','placeholder="Rental, locación, proveedor"')}
+      <div class="grid2">${campo('Monto','monto','','number','step="any" min="0"')}${sel('Moneda','moneda','ARS',['ARS','USD'])}</div>
+      ${campo('Para qué','motivo','','text','placeholder="Garantía del alquiler de utilería"')}
+      ${campo('Se devuelve el','devolverEl','','date')}
+      <div class="muted" style="font-size:12px">Lo aprueba el Productor Ejecutivo y lo entrega Administración.</div>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><button class="btn pri" onclick="saveCheque()">Pedir</button></div>
+  </div></div>`);
+}
+function saveCheque(){
+  const d = datos(), u = getUsuario();
+  if(!String(d.a || '').trim() || !(n(d.monto) > 0)){ toast('Falta a nombre de quién y el monto'); return; }
+  const c = nuevoCheque({...d, pedidoPor: u ? u.id : null});
+  c.historial.push({a: 'pedido', quien: u ? u.nombre : '', cuando: hoy()});
+  chequesDe(getPy()).push(c); cerrar(); toast('Cheque pedido: le llega al Productor Ejecutivo'); R();
+}
+function avanzarCheque(id){
+  const c = chequesDe(getPy()).find(x => x.id === id), u = getUsuario(); if(!c) return;
+  const e = EST_CHEQUE[c.estado]; if(!e || !e.sig || (u && !puede(u, e.puede))) return;
+  if(!confirm(`${e.b}: cheque a ${c.a} por ${fmt(c.monto, c.moneda)}. ¿Seguir?`)) return;
+  c.estado = e.sig; c.historial.push({a: e.sig, quien: u ? u.nombre : '', cuando: hoy()}); R();
+}
+function rechazarCheque(id){
+  const c = chequesDe(getPy()).find(x => x.id === id), u = getUsuario(); if(!c) return;
+  const nota = prompt('¿Por qué se rechaza? (le llega a quien lo pidió)', ''); if(nota === null) return;
+  c.estado = 'rechazado'; c.historial.push({a: 'rechazado', quien: u ? u.nombre : '', cuando: hoy(), nota}); R();
+}
+function chequesHTML(py, u){
+  const todos = chequesDe(py), lista = vePlata(u) ? todos : todos.filter(c => chequeMio(c, u));
+  const vencido = c => c.estado === 'entregado' && /^\d{4}-/.test(c.devolverEl || '') && c.devolverEl < hoy();
+  return `<div class="card"><h3>Cheques de garantía <span class="spacer"></span>
+      ${puede(u, 'cheque') || !u ? `<button class="btn sm pri" onclick="pedirCheque()">+ Pedir cheque</button>` : ''}</h3>
+    ${lista.length ? `<div class="scrollx"><table class="tbl">
+      <thead><tr><th>A nombre de</th><th>Para qué</th><th style="text-align:right">Monto</th><th>Pidió</th><th>Vuelve</th><th>Estado</th><th></th></tr></thead>
+      <tbody>${lista.map(c => { const e = EST_CHEQUE[c.estado] || {};
+        return `<tr><td><b>${esc(c.a)}</b></td><td style="font-size:12px">${esc(c.motivo)}</td>
+          <td class="num" style="text-align:right">${fmt(c.monto, c.moneda)}</td>
+          <td style="font-size:12px">${esc(nombreUsuario(c.pedidoPor))}<span class="muted" style="display:block;font-size:10.5px">${esc(String(c.cuando).split('-').reverse().join('/'))}</span></td>
+          <td style="font-size:12px" class="${vencido(c) ? 'pl-rojo' : ''}">${c.devolverEl ? esc(c.devolverEl.split('-').reverse().join('/')) : '—'}${vencido(c) ? ' · no volvió' : ''}</td>
+          <td><span class="chip ${c.estado === 'devuelto' ? 'd-si' : c.estado === 'rechazado' ? 'sica-bajo' : 'd-par'}">${esc(e.l || c.estado)}</span></td>
+          <td style="text-align:right;white-space:nowrap">${e.sig && (!u || puede(u, e.puede)) ? `<button class="btn sm ${c.estado === 'pedido' ? 'pri' : ''}" onclick="avanzarCheque('${c.id}')">${e.b}</button>` : ''}
+            ${c.estado === 'pedido' && (!u || puede(u, 'aprobar')) ? `<button class="btn sm" onclick="rechazarCheque('${c.id}')">Rechazar</button>` : ''}</td></tr>`; }).join('')}</tbody></table></div>`
+      : `<div class="empty">${vePlata(u) ? 'No se pidió ningún cheque.' : 'No pediste ningún cheque.'}</div>`}
+    <div class="pad muted" style="font-size:11.5px">Lo pide el asistente, lo aprueba el Productor Ejecutivo y lo entrega Administración, que anota cuando vuelve.</div></div>`;
+}
+
+/* ============================  MI PANEL  ==================================
+   Lo que ve un asistente (o alguien del equipo) al entrar: sus tareas, lo
+   que le toca de la próxima jornada y sus comprobantes y cheques. Sin el
+   presupuesto.                                                             */
+const QUE_HACE = {
+  desglose: ['Desglose', 'El guion o el storyboard: qué hace falta en cada escena'],
+  plan: ['Plan de rodaje', 'Jornadas, orden del día, horarios y citaciones'],
+  luces: ['Pedido de luces', 'El listado de equipos para los rentals'],
+  'personal:alta': ['Altas y seguro', 'Datos de la gente, seguro y contratos'],
+  callsheet: ['Callsheet', 'La hoja de citación de cada jornada'],
+  rodaje: ['Rodaje', 'En el set: citaciones, llegadas, liberaciones y el parte'],
+  gastos: ['Gastos', 'Tus comprobantes y cheques de garantía']};
+function vistaPanel(pr, py){
+  const u = getUsuario();
+  if(!py) return `<div class="card"><div class="empty">Todavía no te sumaron a ningún proyecto de ${esc(pr ? pr.nombre : 'la productora')}.<br>
+    <span class="muted" style="font-size:12px">Pedile el link de invitación al jefe de producción.</span></div></div>`;
+  const mias = tareasDe(py).filter(t => t.asignadoA === u.id);
+  const pend = mias.filter(t => t.estado !== 'hecha').sort((a, b) => String(a.vence || '9').localeCompare(String(b.vence || '9')));
+  const hechas = mias.filter(t => t.estado === 'hecha');
+  const bloque = (t, c) => `<div class="csblock"><h4>${esc(t)}</h4>${c}</div>`;
+  const d = py.desglose || {jornadas: []};
+  const yaPaso = j => /^\d{4}-\d\d-\d\d$/.test(j.fecha || '') && j.fecha < hoy();
+  const prox = (d.jornadas || []).find(j => !yaPaso(j));
+  const accesos = (SOLAPAS_DE[u.rol] || []).filter(k => QUE_HACE[k]);
+  let extra = '';
+  if(u.rol === 'asistdir'){
+    const A = avisosPlanPresupuesto(py, versionRodaje(py)).filter(x => x.k !== 'sobra');
+    extra += bloque('El plan contra el presupuesto', A.length
+      ? `<div class="pad" style="display:flex;flex-direction:column;gap:6px">${A.slice(0, 5).map(x => `<div class="pl-av ${AV_PRESU[x.k].c}"><span class="pl-av-k">${AV_PRESU[x.k].l}</span><div>${esc(x.t)}</div></div>`).join('')}
+         <button class="btn sm" style="align-self:flex-start" onclick="setTab('plan');setSubPlan('presu')">Ver todo${A.length > 5 ? ` (${A.length})` : ''}</button></div>`
+      : `<div class="pad muted" style="font-size:12.5px">El plan entra en lo presupuestado.</div>`);
+  }
+  if(['asistprod','arte','equipo'].includes(u.rol)){
+    const cs = getComprobantes().filter(c => c.cargadoPor === u.id);
+    const porEst = {}; cs.forEach(c => { porEst[c.estado] = (porEst[c.estado] || 0) + 1; });
+    const chs = chequesDe(py).filter(c => chequeMio(c, u));
+    extra += bloque('Tus comprobantes', `<div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      ${cs.length ? Object.entries(porEst).map(([k, x]) => `<span class="chip d-par">${x} ${esc(EST(k).l.toLowerCase())}</span>`).join('') : '<span class="muted" style="font-size:12.5px">Todavía no cargaste ninguno.</span>'}
+      <span style="flex:1"></span><button class="btn sm pri" onclick="setTab('gastos');cargarComprobante()">+ Cargar comprobante</button></div>`);
+    if(puede(u, 'cheque')) extra += bloque('Tus cheques de garantía', `<div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      ${chs.length ? chs.map(c => `<span class="chip ${c.estado === 'devuelto' ? 'd-si' : c.estado === 'rechazado' ? 'sica-bajo' : 'd-par'}">${esc(c.a)} · ${esc((EST_CHEQUE[c.estado] || {}).l || c.estado)}</span>`).join('') : '<span class="muted" style="font-size:12.5px">No pediste ninguno.</span>'}
+      <span style="flex:1"></span><button class="btn sm" onclick="setTab('gastos');setSubGasto('cheques');pedirCheque()">+ Pedir cheque</button></div>`);
+  }
+  return `<div class="cs">
+    <div class="cshead"><div><div class="csttl">Hola${u.nombre ? ', ' + esc(u.nombre.split(' ')[0]) : ''}</div>
+      <div class="cssub">${esc(ROL(u.rol).l)} · ${esc(py.nombre)}${prox ? ` · próxima jornada: J${prox.numero}${prox.fecha ? ' (' + esc(prox.fecha.split('-').reverse().join('/')) + ')' : ''}${prox.citacion ? ', citación ' + esc(prox.citacion) : ''}` : ''}</div></div>
+      <div style="text-align:right"><div class="csj">${pend.length}<span> ${plural(pend.length, 'tarea')}</span></div><div class="cssub">pendiente${pend.length == 1 ? '' : 's'}</div></div></div>
+    ${bloque('Tus tareas', tareasHTML(py, pend, {mias: true}) + (hechas.length ? `<details class="pad" style="padding-top:0"><summary class="muted" style="font-size:12px;cursor:pointer">${hechas.length} hecha${hechas.length == 1 ? '' : 's'}</summary>${tareasHTML(py, hechas, {mias: true})}</details>` : ''))}
+    ${extra}
+    ${bloque('Lo tuyo en CLAP', `<div class="pad panel-accesos">${accesos.map(k => `<button class="panel-acc" onclick="setTab('${k}')"><b>${esc(QUE_HACE[k][0])}</b><span>${esc(QUE_HACE[k][1])}${editaSolapa(k) ? '' : ' · para mirar'}</span></button>`).join('')}</div>`)}
+  </div>`;
 }
 
 /* ---------- vista presupuesto ---------- */
@@ -5703,6 +6546,10 @@ function lineaHTML(l,r,v,py,RL){
         </select>
         ${chipSICA(l, r, py)}
         ${chipsContrato(l, r, py)}
+        ${r.codigo === '09' ? `<input type="text" class="chipsel chip c-otr" style="width:120px" value="${esc(l.personaje || '')}" placeholder="personaje"
+          title="El personaje del guion o del plan, si el concepto dice otra cosa (Protagonista, Actriz…): así se engancha con el plan y el callsheet"
+          onchange="upLinea(${E},'personaje',this.value)">` : ''}
+        ${chipTarea(l, py)}
       </div>
     </div>
     <div class="mlbl" data-l="Unidad"><select onchange="upLinea(${E},'unidad',this.value)">
@@ -6248,7 +7095,7 @@ function vistaDesglose(py){
       <button class="btn sm noprint" onclick="document.getElementById('dgfile').click()" title="Otro guion, guion técnico o storyboard: se suma a lo que ya hay">+ Material</button>
       <button class="btn sm noprint" onclick="menuGuion()">Guion ▾</button>
       <button class="btn sm noprint" onclick="setTab('plan')" title="Repartir en jornadas y armar el día hora por hora">Plan de rodaje →</button>
-      <button class="btn sm pri noprint" onclick="aPresupuesto()">→ Presupuesto</button>
+      ${vePlata() ? `<button class="btn sm pri noprint" onclick="aPresupuesto()">→ Presupuesto</button>` : ''}
     </div>
     ${sub==='escenas' ? barraPiezasDesglose(py, d) : ''}
     <div class="noprint dgmini">${cajaMaterialHTML()}</div>
@@ -6612,6 +7459,27 @@ function vistaResumen(pr,py,v){
   if(d.jornadas.length && n(py.jornadas) && d.jornadas.length !== n(py.jornadas))
     pend.push({n:d.jornadas.length, t:`jornadas en el plan y ${n(py.jornadas)} en el proyecto: revisá los días del presupuesto`,
       ir:"setTab('presu')", urg:true});
+  /* liquidaciones y cheques que esperan a quien mira */
+  try{
+    const vr = versionRodaje(py), L = liqDe(py);
+    const G = vr ? genteDelProyecto(py, vr) : [];
+    [['revisado','aprobar','para aprobar'],['aprobado','pagar','para pagar'],['borrador','revisar','para revisar']].forEach(([est, que, t]) => {
+      if(!u || !puede(u, que)) return;
+      if(est === 'borrador' && !d.jornadas.some(j => Object.keys((j.parte || {}).fichadas || {}).length)) return;
+      const k = G.filter(g => ((L[g.clave] || {}).estado || 'borrador') === est).length;
+      if(k) pend.push({n:k, t:`liquidaci${k == 1 ? 'ón' : 'ones'} ${t}`, ir:"setTab('personal:liquidacion')", urg: que !== 'revisar'});
+    });
+  }catch(e){}
+  const chP = chequesPend(u);
+  if(chP) pend.push({n:chP, t:`cheque${chP == 1 ? '' : 's'} de garantía ${puede(u,'aprobar') && chequesDe(py).some(c => c.estado === 'pedido') ? 'para aprobar o entregar' : 'para entregar'}`, ir:"setTab('gastos');setSubGasto('cheques')", urg:true});
+  const chV = chequesDe(py).filter(c => c.estado === 'entregado' && /^\d{4}-/.test(c.devolverEl || '') && c.devolverEl < hoy()).length;
+  if(chV) pend.push({n:chV, t:`cheque${chV == 1 ? '' : 's'} de garantía que no volvi${chV == 1 ? 'ó' : 'eron'}`, ir:"setTab('gastos');setSubGasto('cheques')", urg:true});
+  /* tareas encargadas y avisos del plan, para quien maneja el presupuesto */
+  const tPend = tareasDe(py).filter(t => t.estado !== 'hecha');
+  if(tPend.length && puedeEncargar(u)) pend.push({n:tPend.length, t:`tarea${tPend.length == 1 ? '' : 's'} encargada${tPend.length == 1 ? '' : 's'} sin terminar${tPend.some(tareaVencida) ? ` (${tPend.filter(tareaVencida).length} vencida${tPend.filter(tareaVencida).length == 1 ? '' : 's'})` : ''}`,
+    ir:"document.getElementById('res-tareas')?.scrollIntoView({behavior:'smooth'})", urg: tPend.some(tareaVencida)});
+  const avP = avisosPlanPresupuesto(py, versionRodaje(py)).filter(x => x.k !== 'sobra').length;
+  if(avP) pend.push({n:avP, t:`aviso${avP == 1 ? '' : 's'} del plan contra el presupuesto`, ir:"setTab('plan');setSubPlan('presu')", urg:true});
   const sinDatos = armarContactos(py, v).sinDatos;
   if(sinDatos) pend.push({n:sinDatos, t:'contactos sin teléfono ni mail',
     ir:"setTab('callsheet');setSubCall('contactos')"});
@@ -6623,6 +7491,12 @@ function vistaResumen(pr,py,v){
 
   const dato = (val,l,col) => `<div><b${col?` style="color:${col}"`:''}>${val}</b><span>${esc(l)}</span></div>`;
   const bloque = (t,c,extra='') => `<div class="csblock"><h4>${esc(t)}${extra}</h4>${c}</div>`;
+  const tituloPend = u && u.rol === 'ejecutivo' ? 'Para aprobar y controlar' : u && u.rol === 'admin' ? 'Para pagar y controlar' : 'Esperan algo';
+  const pendHTML = pend.length ? bloque(tituloPend, `<div class="pad" style="display:flex;flex-direction:column;gap:1px">
+      ${pend.map(x=>`<button class="pendfila ${x.urg?'urg':''}" onclick="${x.ir}">
+        <span class="pendn">${x.n}</span><span>${esc(x.t)}</span><span class="pendir">→</span></button>`).join('')}
+    </div>`) : bloque(tituloPend, `<div class="pad muted" style="font-size:12.5px">
+      Nada pendiente. ${u?'':'Cargá el equipo para que aparezcan las bandejas.'}</div>`);
 
   return `<div class="cs">
     <div class="cshead">
@@ -6633,6 +7507,8 @@ function vistaResumen(pr,py,v){
         <div class="csj">${R?fmt(R.total, v.monedaBase):'—'}</div>
         <div class="cssub">presupuesto ${esc(v?v.nombre:'')} · ${esc(v?v.estado:'')}</div></div>
     </div>
+
+    ${u && ['ejecutivo','admin'].includes(u.rol) ? pendHTML : ''}
 
     ${v ? tcPanel(v, R) : ''}
 
@@ -6646,11 +7522,11 @@ function vistaResumen(pr,py,v){
 
     ${listaProyectosHTML(pr, py)}
 
-    ${pend.length ? bloque('Esperan algo', `<div class="pad" style="display:flex;flex-direction:column;gap:1px">
-      ${pend.map(x=>`<button class="pendfila ${x.urg?'urg':''}" onclick="${x.ir}">
-        <span class="pendn">${x.n}</span><span>${esc(x.t)}</span><span class="pendir">→</span></button>`).join('')}
-    </div>`) : bloque('Esperan algo', `<div class="pad muted" style="font-size:12.5px">
-      Nada pendiente. ${u?'':'Cargá el equipo para que aparezcan las bandejas.'}</div>`)}
+    ${u && ['ejecutivo','admin'].includes(u.rol) ? '' : pendHTML}
+
+    ${tareasDe(py).length || puedeEncargar(u) ? `<div id="res-tareas">${bloque('Tareas encargadas', tareasHTML(py, [...tareasDe(py)].sort((a, b) => (a.estado === 'hecha') - (b.estado === 'hecha')))
+      + (puedeEncargar(u) ? `<div class="pad noprint" style="padding-top:0"><button class="btn sm" onclick="editTarea()">+ Encargar una tarea</button>
+        <span class="muted" style="font-size:11.5px;margin-left:6px">o desde una línea del presupuesto (＋ tarea)</span></div>` : ''))}</div>` : ''}
 
     ${(()=>{const ch = tagsChipsHTML(py); return ch ? bloque('Qué tiene este proyecto',
       `<div class="pad">${ch}
@@ -7085,12 +7961,12 @@ function liquidarPersona(py, v, g){
 
 function vistaPersonal(pr, py, v){
   const u = getUsuario();
-  if(u && !['admin','ejecutivo','produccion'].includes(u.rol))
-    return `<div class="card"><div class="empty">El alta y la liquidación las ven Producción, el Productor Ejecutivo y Administración.</div></div>`;
+  if(u && !vePlata(u) && !puedeSolapa('personal:alta', u))
+    return `<div class="card"><div class="empty">El alta y la liquidación las ven el jefe de producción, el Productor Ejecutivo y Administración.</div></div>`;
   if(!v) return `<div class="card"><div class="empty">Este proyecto no tiene un presupuesto a tu alcance.</div></div>`;
   const sub = DB.ui.subPersonal || 'alta';
   const tabs = `<div class="seg noprint" style="margin-bottom:12px">
-    ${[['alta','Alta del equipo'],['liquidacion','Liquidación']].map(([k,l]) =>
+    ${[['alta','Alta del equipo'],['liquidacion','Liquidación']].filter(([k]) => puedeSolapa('personal:' + k)).map(([k,l]) =>
       `<button class="${sub===k?'on':''}" onclick="DB.ui.subPersonal='${k}';R()">${l}</button>`).join('')}</div>`;
   const G = genteDelProyecto(py, v);
   if(!G.length) return tabs + `<div class="card"><div class="empty">Todavía no hay equipo en el presupuesto.<br>
@@ -7116,7 +7992,7 @@ function altaHTML(pr, py, v, G){
       El mensaje trae lo que ya tenemos de cada uno: contestan OK o lo corrigen, y se carga en su ficha.
     </div>
     <div class="scrollx"><table class="tbl">
-      <thead><tr><th>Persona</th><th>Función</th><th>Seguro</th><th>Pago</th><th></th></tr></thead>
+      <thead><tr><th>Persona</th><th>Función</th><th>Seguro</th><th>Pago</th><th>Contrato</th><th></th></tr></thead>
       <tbody>${G.map(g => {
         const f = faltaDe(g), a = A[g.clave] || {};
         const wa = telWhatsapp(g.tel);
@@ -7127,9 +8003,13 @@ function altaHTML(pr, py, v, G){
           <td style="font-size:12px">${esc(g.funciones.join(' / '))}</td>
           <td>${f.sinAsignar ? '<span class="chip c-otr">sin asignar</span>' : f.sinFicha ? '<span class="chip sica-bajo">sin ficha</span>' : chip(f.seguro, 'completo', 'seguro')}</td>
           <td>${f.sinFicha ? '' : chip(f.pago, 'alias/CBU ✓', 'pago')}</td>
+          <td><select class="chipsel chip ${a.contrato === 'firmado' ? 'd-si' : a.contrato === 'enviado' ? 'd-par' : 'c-otr'}" onchange="upAlta('${g.clave}','contrato',this.value)" aria-label="Contrato de ${esc(g.nombre || g.funciones[0])}">
+            ${[['','sin contrato'],['enviado','enviado'],['firmado','firmado']].map(([k, l]) => `<option value="${k}" ${(a.contrato || '') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
           <td style="text-align:right;white-space:nowrap">
             ${a.pedidoEl ? `<span class="muted" style="font-size:10.5px;margin-right:6px">pedido ${esc(a.pedidoEl.split('-').reverse().join('/'))}</span>` : ''}
-            ${f.sinAsignar
+            ${f.sinAsignar && !vePlata()
+              ? `<span class="muted" style="font-size:11px">lo asigna el jefe de producción</span>`
+              : f.sinAsignar
               ? `<button class="btn sm pri" onclick="asignarPuesto('${g.clave}')">Asignar</button>`
               : f.sinFicha
               ? `<button class="btn sm" onclick="crearFichaDe('${g.clave}')">Crear ficha</button>`
@@ -7144,17 +8024,18 @@ function altaHTML(pr, py, v, G){
 /* Un puesto sin nadie: se elige del catálogo con el mismo buscador del
    presupuesto, y la persona queda en todas las líneas de ese puesto. */
 function asignarPuesto(clave){
-  const g = genteDelProyecto(getPy(), getV()).find(x => x.clave === clave); if(!g) return;
+  const g = genteDelProyecto(getPy(), getVR()).find(x => x.clave === clave); if(!g) return;
   pickPersona(g.lineas[0].rb.id);
   _pp.asignar = clave;
   const h = document.querySelector('.ppmod h3'); if(h) h.textContent = 'Asignar · ' + g.funciones.join(' / ');
 }
+function upAlta(clave, campo, val){ const A = altaDe(getPy()); A[clave] = {...(A[clave] || {}), [campo]: val}; R(); }
 function marcarPedido(clave){ const A = altaDe(getPy()); A[clave] = {...(A[clave] || {}), pedidoEl: hoy()}; guardar(); setTimeout(R, 50); }
 
 /* Los que no tienen ficha: se crea con lo que haya (nombre, teléfono) y se
    enlazan sus líneas, así lo que conteste queda guardado en el catálogo. */
 function crearFichaDe(clave){
-  const py = getPy(), v = getV();
+  const py = getPy(), v = getVR();
   const g = genteDelProyecto(py, v).find(x => x.clave === clave); if(!g) return;
   const rb0 = g.lineas[0].rb;
   const p = nuevaPersona({nombre: g.nombre || g.funciones[0], funcion: g.funciones[0], rubro: rb0.codigo,
@@ -7169,7 +8050,7 @@ function crearFichaDe(clave){
    WhatsApp por persona (el navegador no deja abrir veinte pestañas de una)
    y la opción de copiar todos los mensajes. */
 function pedirDatosTodos(){
-  const pr = getPr(), py = getPy(), v = getV();
+  const pr = getPr(), py = getPy(), v = getVR();
   const G = genteDelProyecto(py, v).filter(g => { const f = faltaDe(g); return !f.sinAsignar && (f.sinFicha || f.seguro.length || f.pago.length); });
   window._pedidos = G.map(g => ({clave: g.clave, nombre: g.nombre, wa: telWhatsapp(g.tel), texto: textoPedidoDatos(pr, py, g)}));
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:560px">
@@ -7193,7 +8074,7 @@ function pedirDatosTodos(){
 }
 
 function bajarAltaSeguro(){
-  const py = getPy(), v = getV();
+  const py = getPy(), v = getVR();
   const G = genteDelProyecto(py, v);
   const fechas = (py.desglose?.jornadas || []).map(j => j.fecha).filter(Boolean).sort();
   const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
@@ -7235,7 +8116,7 @@ function liquidacionHTML(pr, py, v, G){
           <td class="num" style="text-align:right">${fmt(L.base, mb)}</td>
           <td class="num" style="text-align:right">${L.trabajadas ? `${L.trabajadas} de ${L.presRodaje || '—'}` : '<span class="muted">—</span>'}
             ${L.montoDias ? `<span style="display:block;font-size:10.5px;color:var(--warn)">+ ${fmt(L.montoDias, mb)} (${L.deMas} de más)</span>` : ''}
-            ${L.faltan ? `<span style="display:block;font-size:10.5px" class="muted" title="Puede faltar cargar un parte: no se descuenta">${L.faltan} sin parte</span>` : ''}</td>
+            ${L.faltan ? `<button class="linkbtn" style="display:block;font-size:10.5px" title="Puede faltar cargar un parte: no se descuenta. Tocá para ir al parte" onclick="setTab('rodaje');setSubRodaje('parte')">${L.faltan} sin parte →</button>` : ''}</td>
           <td class="num" style="text-align:right">${L.he ? `${fmt(L.he, mb)}<span class="muted" style="display:block;font-size:10px">${fmtC(Math.round(L.heHoras * 10) / 10)} h</span>` : '<span class="muted">—</span>'}</td>
           <td style="text-align:right">${L.estado === 'pagado' ? fmt(L.ajuste, mb)
             : `<input type="number" step="any" value="${L.ajuste || ''}" placeholder="0" title="Adelantos en negativo; una jornada de más, en positivo"
@@ -7273,7 +8154,7 @@ function upLiq(clave, campo, val){
   R();
 }
 function avanzarLiq(clave, silencioso, desde){
-  const py = getPy(), v = getV(), L = liqDe(py); L[clave] ||= {estado: 'borrador'};
+  const py = getPy(), v = getVR(), L = liqDe(py); L[clave] ||= {estado: 'borrador'};
   const sig = LIQ_SIGUE[L[clave].estado || 'borrador']; if(!sig || !puedeLiq(sig.puede)) return false;
   /* un doble click no saltea un paso: el botón dice desde qué paso se apretó */
   if(desde && (L[clave].estado || 'borrador') !== desde) return false;
@@ -7299,7 +8180,7 @@ function volverLiq(clave){
   toast('Volvió a aprobada'); R();
 }
 function avanzarLiqTodos(desde){
-  const py = getPy(), v = getV(); let k = 0;
+  const py = getPy(), v = getVR(); let k = 0;
   const van = genteDelProyecto(py, v).filter(g => ((liqDe(py)[g.clave] || {}).estado || 'borrador') === desde);
   if(!van.length){ toast('No había ninguna en ese paso'); return; }
   const suma = van.reduce((s, g) => s + liquidarPersona(py, v, g).vivo, 0);
@@ -7309,7 +8190,7 @@ function avanzarLiqTodos(desde){
   R();
 }
 function bajarLiquidacion(){
-  const py = getPy(), v = getV();
+  const py = getPy(), v = getVR();
   const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
   const L = [['Nombre','CUIL/CUIT','DNI','Alias','CBU','Banco','Función','Cómo se paga',
     'Presupuesto','Jornadas trabajadas','Jornadas de más','Horas extra','Ajuste','Motivo del ajuste','Total ' + v.monedaBase,'Estado','Pagado el'].map(q).join(',')];
@@ -7331,7 +8212,8 @@ function vistaGastos(pr,py,v){
     hay que dar de alta a la gente y decir qué rol tiene cada uno.</span><br><br>
     <button class="btn pri" onclick="setTab('equipo')">Cargar el equipo</button></div></div>`;
 
-  const cs = getComprobantes();
+  /* quien no ve la plata del proyecto ve sus propios comprobantes */
+  const cs = vePlata() ? getComprobantes() : getComprobantes().filter(c => c.cargadoPor === u.id);
   const R = resumenGastos(py, v);
   /* sin presupuesto a la vista (el rol Equipo) se cargan y siguen los
      comprobantes; el tablero y las áreas, que comparan con el presupuesto, no */
@@ -7344,6 +8226,7 @@ function vistaGastos(pr,py,v){
              ['todos',`Comprobantes · ${cs.length}`],
              ['oc',`Órdenes de compra${getOCs().length?' · '+getOCs().length:''}`],
              ['caja',`Caja chica${abiertas?' · '+abiertas:''}`],
+             ...(puede(u,'cheque') || puede(u,'aprobar') || puede(u,'pagar') ? [['cheques',`Cheques de garantía${chequesPend(u)?' · '+chequesPend(u):''}`]] : []),
              ...(v ? [['areas','Áreas'],['control','Tablero']] : [])];
   let lista = sub==='bandeja' ? (puede(u,'revisar') ? pend : mios) : cs;
   /* filtros: administración necesita ver "todas las facturas de arte" */
@@ -7360,6 +8243,7 @@ function vistaGastos(pr,py,v){
                  todos:['+ Cargar comprobante','cargarComprobante()'],
                  oc:['+ Nueva orden de compra','editOC()'],
                  caja:['+ Abrir caja chica','editCaja()'],
+                 cheques: puede(u,'cheque') ? ['+ Pedir cheque','pedirCheque()'] : ['+ Cargar comprobante','cargarComprobante()'],
                  areas:['+ Cargar comprobante','cargarComprobante()'],
                  control:['+ Cargar comprobante','cargarComprobante()']}[sub];
 
@@ -7373,6 +8257,7 @@ function vistaGastos(pr,py,v){
     : sub==='areas'   ? areasHTML(py,v)
     : sub==='oc'      ? ocsHTML(py,v,u)
     : sub==='caja'    ? cajasHTML(py,v,u,pr)
+    : sub==='cheques' ? chequesHTML(py,u)
                       : bandejaHTML(lista, u, R, sub, pr, py, v, cs)}`;
 }
 
@@ -8082,8 +8967,8 @@ function vistaRodaje(pr,py,v){
   py.configRodaje ||= nuevaConfigRodaje();
   const cfg = py.configRodaje;
   const {gente, callsheet:C} = gentePorJornada(py, v, num);
-  const sub = DB.ui.subRodaje || 'citaciones';
-  const S = [['citaciones','Citaciones'],['parte','Parte del día'],['horas','Horas y extras']];
+  const S = [['citaciones','Citaciones'],['parte','Parte del día'],['horas','Horas y extras']].filter(([k]) => k !== 'horas' || vePlata());
+  const sub = S.some(([k]) => k === DB.ui.subRodaje) ? DB.ui.subRodaje : 'citaciones';
 
   return `<div class="noprint" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <div class="pick"><label>Jornada</label><select onchange="selJornada(this.value)">
@@ -8092,7 +8977,8 @@ function vistaRodaje(pr,py,v){
       <div class="seg">${S.map(([k,l])=>
         `<button class="${sub===k?'on':''}" onclick="setSubRodaje('${k}')">${l}</button>`).join('')}</div>
       <div style="flex:1"></div>
-      <button class="btn" onclick="cfgRodaje()">Condiciones ⚙</button>
+      ${vePlata() ? `<button class="btn" onclick="cfgRodaje()">Condiciones ⚙</button>` : ''}
+      <button class="btn" onclick="copiarLink()" title="Un link que abre esta misma pantalla, para mandar">🔗 Link</button>
       <button class="btn" onclick="window.print()">Imprimir / PDF</button>
     </div>
     ${sub==='citaciones' ? citacionesHTML(pr,py,j,C,gente,cfg)
@@ -8235,7 +9121,7 @@ function parteHTML(pr,py,j,C,gente,cfg){
             <td><input type="text" value="${esc(f.nota||'')}" placeholder="—"
               onchange="upFichada('${g.clave}','nota',this.value)" aria-label="Nota de ${esc(g.rol)}"></td></tr>`;}).join(''); }).join(''); })()}
         </tbody></table></div></div>
-    ${rdProveedoresHTML(py, getV(), j, cfg)}
+    ${rdProveedoresHTML(py, getVR(), j, cfg)}
     <div class="csblock"><h4>Incidencias del día</h4>
       <div class="pad grid2">
         ${F('Clima real','climaReal',p.climaReal,'text')}
@@ -9301,17 +10187,23 @@ function vistaPlan(pr, py, v){
   plInstalarArrastre();
   const S = [['dia','Día por día'],['planilla','Planilla para mandar'],['jornadas','Todas las jornadas']];
   if(d.escenas.length || p.items.some(x => x.tipo === 'plano' && x.elenco)) S.push(['elenco','Elenco por jornada']);
+  /* contra el presupuesto: lo ven el jefe de producción y el asistente de dirección */
+  const avP = veAvisosPresu() ? avisosPlanPresupuesto(py, v).filter(x => x.k !== 'sobra').length : 0;
+  if(veAvisosPresu()) S.push(['presu', `Contra el presupuesto${avP ? ' · ' + avP : ''}`]);
   const sub = S.some(s => s[0] === DB.ui.subPlan) ? DB.ui.subPlan : 'dia';
   const tabs = `<div class="noprint pl-subs">
     <div class="seg">${S.map(([k,l]) => `<button class="${sub===k?'on':''}" onclick="setSubPlan('${k}')">${l}</button>`).join('')}</div>
     <div style="flex:1"></div>
     <button class="btn sm" onclick="plAjustes()" title="Lugar para el sol y los tiempos que usa el cálculo">Ajustes ⚙</button>
+    <button class="btn sm" onclick="copiarLink()" title="Un link que abre esta misma pantalla, para mandar">🔗 Link</button>
     <button class="btn sm" onclick="window.print()">Imprimir / PDF</button>
   </div>`;
   if(sub === 'jornadas') return tabs + plTodasHTML(py);
   if(sub === 'planilla') return tabs + plPlanillaHTML(pr, py);
   if(sub === 'elenco') return tabs + plElencoHTML(py);
-  return tabs + plDiaHTML(pr, py, v);
+  if(sub === 'presu') return tabs + planPresuHTML(py, v);
+  return tabs + (avP ? `<div class="pl-av pl-av-pasa noprint" style="margin-bottom:10px;cursor:pointer" onclick="setSubPlan('presu')" role="button" tabindex="0">
+    <span class="pl-av-k">Presupuesto</span><div><b>${avP} ${plural(avP, 'aviso')} del plan contra el presupuesto</b> <span class="muted">· el plan no cambia el presupuesto: tocá para verlos</span></div></div>` : '') + plDiaHTML(pr, py, v);
 }
 function setSubPlan(k){ DB.ui.subPlan = k; R(); }
 
@@ -9352,7 +10244,7 @@ function plPlanillaHTML(pr, py){
   const D = calcularDia(py, num), j = D.j, H = horariosDelDia(py, num, D);
   const cfg = py.configRodaje || nuevaConfigRodaje();
   const cit = clave => j.citaciones[clave] || {};
-  let C = null; try{ C = armarCallsheet(py, getV(), num); }catch(e){}
+  let C = null; try{ C = armarCallsheet(py, getVR(), num); }catch(e){}
   /* locaciones numeradas en el orden en que aparecen */
   const lugares = [];
   D.filas.forEach(f => { if(f.it && f.it.tipo !== 'evento'){ const l = lugarDeItem(py, f.it); if(l && !lugares.includes(l)) lugares.push(l); } });
@@ -9698,7 +10590,7 @@ function plFilaHTML(py, f, mal){
 function plElencoDiaHTML(py, num, D){
   const E = elencoDelDia(py, num, D), X = extrasDelDia(py, num, D), H = horariosDelDia(py, num, D);
   const j = D.j, p = planDe(py);
-  let C = null; try{ C = armarCallsheet(py, getV(), num); }catch(e){}
+  let C = null; try{ C = armarCallsheet(py, getVR(), num); }catch(e){}
   const cit = clave => j.citaciones[clave] || {};
   const claveActor = nombre => { const e = C && C.elenco.find(x => norm(x.personaje) === norm(nombre)); return e ? e.clave : 'p:' + nombre; };
   const porDepto = {};
@@ -11116,7 +12008,7 @@ function citarDia(py, num){
   const comida = D.comida ? D.comida.dur : 60;
   const extrasDesde = cit => cit + horasJornadaDe(cfg) * 60 + (cfg.descontarComida !== false ? comida : 0);
   const salida = cit => H.viaje ? aHora(cit - H.viaje) : '';
-  let C = null; try{ C = armarCallsheet(py, getV(), num); }catch(e){}
+  let C = null; try{ C = armarCallsheet(py, getVR(), num); }catch(e){}
   const claveActor = nombre => { const e = C && C.elenco.find(x => norm(x.personaje) === norm(nombre)); return e ? e.clave : 'p:' + nombre; };
   let k = 0;
   const poner = (clave, datos) => { const c = j.citaciones[clave];
@@ -11716,7 +12608,7 @@ function calcularPedido(py){
   const iva = P.iva ? neto * 0.21 : 0;
   const sinPrecio = P.items.filter(it => !n(it.precio)).length;
   /* lo que dice el presupuesto para lo mismo */
-  const v = getV && getV();
+  const v = getV && getVR();
   const conceptos = ['Paquete de luces','Paquete de grip','Grupo electrógeno','Camión de luces','Camión de grip','Dolly y rieles'];
   const presu = v ? v.rubros.filter(r => r.codigo === '11').flatMap(r => r.lineas)
     .filter(l => conceptos.some(c => norm(l.concepto).startsWith(norm(c))))
@@ -11751,7 +12643,7 @@ function vistaLuces(pr, py, v){
       <td class="noprint lz-acc"><button class="btn sm" onclick="lzEditar('${it.id}')" title="Editar">✎</button>
         <button class="btn sm dgr" onclick="lzBorrar('${it.id}')" title="Quitar">×</button></td></tr>`;
   };
-  const hayPresu = C.presu > 0;
+  const hayPresu = C.presu > 0 && vePlata();
   return `<div class="cs lz">
     <div class="cshead">
       <div><div class="csttl">Pedido de luces</div>
@@ -11779,7 +12671,7 @@ function vistaLuces(pr, py, v){
         <option value="">Sumar un pedido base…</option>
         ${Object.entries(KITS_LUCES).map(([k, x]) => `<option value="${k}">${esc(x.l)}</option>`).join('')}</select>
       ${P.items.length ? `<button class="btn sm" onclick="lzEnviar()" title="El pedido en texto, para mandar por WhatsApp o mail">Mandar al rental</button>
-      <button class="btn sm" onclick="lzAlPresupuesto()" title="Pasa el total a las líneas de luces, grip, generador y camión del rubro 11">Pasar al presupuesto</button>
+      ${vePlata() ? `<button class="btn sm" onclick="lzAlPresupuesto()" title="Pasa el total a las líneas de luces, grip, generador y camión del rubro 11">Pasar al presupuesto</button>` : ''}
       <button class="btn sm" onclick="lzCSV()">Bajar planilla</button>
       <select class="pl-evsel" onchange="if(this.value){lzCompletarPrecios(this.value);this.value=''}" title="Para tener un número antes de cotizar">
         <option value="">Completar precios vacíos con…</option>
@@ -13275,7 +14167,11 @@ function setTab(t){
   const [tab, sub] = String(t).split(':');
   DB.ui.tab = tab;
   if(tab === 'personal' && sub) DB.ui.subPersonal = sub;
-  R(); }
+  _hashPush = true;
+  R();
+  /* en el teléfono las solapas se corren: que la elegida quede a la vista */
+  try{ setTimeout(() => { const el = document.querySelector('.tab.on'); if(el && el.scrollIntoView) el.scrollIntoView({block:'nearest', inline:'center'}); }, 0); }catch(e){}
+}
 function setVista(v){ DB.ui.vista=v; R(); }
 function selProductora(id){
   /* el menú de arriba también sirve para sumarse a una productora ajena o
@@ -13288,7 +14184,8 @@ function selProductora(id){
   DB.ui.proyectoId=pr?.proyectos[0]?.id||null;
   DB.ui.versionId=pr?.proyectos[0]?.versiones[0]?.id||null; DB.ui.tab='presu'; R(); }
 function selProyecto(id){ DB.ui.proyectoId=id;
-  DB.ui.versionId=getPy()?.versiones[0]?.id||null; DB.ui.tab='presu'; R(); }
+  DB.ui.versionId=getPy()?.versiones[0]?.id||null; DB.ui.tab = vePlata() ? 'presu' : 'resumen'; R();
+  try{ programarSync(200); }catch(e){} }
 function selVersion(id){ DB.ui.versionId=id; R(); }
 
 function toggleRubro(id){ const r=getV().rubros.find(x=>x.id===id); r.abierto=!r.abierto; R(); }
@@ -13557,13 +14454,15 @@ function derivarProduccion(){
 function confirmarDerivar(){
   const d = datos(), py = getPy(), v = getV();
   const rec = Math.min(90, Math.max(0, n(d.recorte)));
+  /* la copia es para cotizar: el set sigue con la versión de rodaje que tenía */
+  if(!py.versionRodaje && versionRodaje(py) && !ES_REAL(versionRodaje(py))) py.versionRodaje = versionRodaje(py).id;
   const copia = JSON.parse(JSON.stringify(v));
   copia.id = uid('v'); copia.fecha = hoy(); copia.estado = 'borrador';
   copia.nivel = 'produccion';
   copia.nombre = (d.nombre||'').trim() || (v.nombre + ' — Producción');
   copia.derivadaDe = v.id; copia.recorte = rec;
   copia.rubros.forEach(r=>{ r.id=uid('rb');
-    r.lineas.forEach(l=>{ l.id=uid('ln'); l.valorUnit = n(l.valorUnit) * (1 - rec/100); }); });
+    r.lineas.forEach(l=>{ l.origenId = raizLinea(l); l.id=uid('ln'); l.valorUnit = n(l.valorUnit) * (1 - rec/100); }); });
   py.versiones.push(copia);
   DB.ui.versionId = copia.id;
   cerrar();
@@ -13600,11 +14499,13 @@ function panelColchon(py, v){
 
 function duplicarVersion(){
   const py=getPy(), v=getV();
+  /* la copia es para cotizar: el set sigue con la versión de rodaje que tenía */
+  if(!py.versionRodaje && versionRodaje(py) && !ES_REAL(versionRodaje(py))) py.versionRodaje = versionRodaje(py).id;
   const copia = JSON.parse(JSON.stringify(v));
   copia.id = uid('v'); copia.fecha = hoy(); copia.estado = 'borrador';
   copia.nombre = 'v' + (py.versiones.length+1);
   copia.nivel = v.nivel || 'produccion';
-  copia.rubros.forEach(r=>{ r.id=uid('rb'); r.lineas.forEach(l=>l.id=uid('ln')); });
+  copia.rubros.forEach(r=>{ r.id=uid('rb'); r.lineas.forEach(l=>{ l.origenId = raizLinea(l); l.id=uid('ln'); }); });
   py.versiones.push(copia); DB.ui.versionId = copia.id;
   toast(`Creada ${copia.nombre} — la anterior queda intacta`); R(); }
 
@@ -14747,8 +15648,11 @@ function cargarComprobante(id, cajaId){
           <select name="subrubro" id="csub">${subrubroOpts(c.rubro, c.subrubro)}</select></label>
         <label class="f"><span id="clabarea">Área que lo gastó${etiquetaArea(c.rubro)}</span>
           <select name="area" id="carea">${areaOpts(c.area || areaDeRubro(c.rubro))}</select></label>
+        ${vePlata() && versionRodaje(py) ? `<label class="f"><span>Línea del presupuesto</span>
+          <select name="lineaId" id="clinea">${lineaOpts(c.rubro, c.lineaId)}</select></label>` : ''}
         ${campo('Detalle','concepto',c.concepto,'text','placeholder="opcional — qué es exactamente"')}
-        ${campo('Proveedor','proveedor',c.proveedor)}
+        ${campo('Proveedor','proveedor',c.proveedor,'text','list="dlprov" autocomplete="off" onchange="provDelCatalogo(this.value)"')}
+        <datalist id="dlprov">${[...new Set(DB.catalogo.personas.map(x => x.nombre).filter(Boolean))].sort().map(x => `<option value="${esc(x)}">`).join('')}</datalist>
         ${campo('CUIT','cuit',c.cuit)}
         ${sel('Comprobante','tipo',c.tipo,[{v:'',l:'— elegir —'},...TIPOS_CBTE])}
         ${campo('Número','numero',c.numero)}
@@ -14786,9 +15690,23 @@ const etiquetaArea = rubro => esTransversal(rubro)
 const etiquetaJornada = rubro => esPorJornada(rubro)
   ? ' <b style="color:var(--warn)">· se mide por día</b>' : '';
 
+/* las líneas de ese rubro en la versión de rodaje: así "Actual" se llena línea por línea */
+function lineaOpts(rubro, sel0){
+  const v = versionRodaje(getPy()), r = v && v.rubros.find(x => x.codigo === rubro);
+  const ls = r ? r.lineas.filter(l => String(l.concepto || '').trim()) : [];
+  return `<option value="">${rubro ? (ls.length ? '— sólo el rubro —' : '— el rubro no tiene líneas —') : '— elegí el rubro —'}</option>`
+    + ls.map(l => `<option value="${l.id}" ${l.id === sel0 ? 'selected' : ''}>${esc(l.concepto)}</option>`).join('');
+}
+/* elegir un proveedor del catálogo trae su CUIT */
+function provDelCatalogo(nom){
+  const p = DB.catalogo.personas.find(x => norm(x.nombre) === norm(nom)); if(!p) return;
+  const c = document.querySelector('.mod [name="cuit"]'); if(c && !c.value && p.cuit) c.value = p.cuit;
+}
 function alCambiarRubro(rubro){
   const t = document.getElementById('csub');
   if(t) t.innerHTML = subrubroOpts(rubro, '');
+  const cl = document.getElementById('clinea');
+  if(cl) cl.innerHTML = lineaOpts(rubro, '');
   /* avisar YA si el rubro es transversal, no recién al guardar */
   const lab = document.getElementById('clabarea');
   if(lab) lab.innerHTML = 'Área que lo gastó' + etiquetaArea(rubro);
@@ -14835,6 +15753,7 @@ function saveComprobante(id){
     importe:n(d.importe), moneda:d.moneda, circuito:d.circuito,
     jornada: d.jornada ? parseInt(d.jornada,10) : null, notas:d.notas, area:d.area||'',
     ocId: d.ocId || null, cajaId: d.cajaId || null});
+  if('lineaId' in d) c.lineaId = d.lineaId || null;
   if(_adjTmp){ c.adjunto = _adjTmp; _adjTmp = null; }
   /* Si va contra una OC, los datos salen de ahí: el rubro ya lo decidió quien
      emitió la orden. Va ANTES de validar, si no pide algo que ya está.       */
@@ -15135,7 +16054,7 @@ function toggleFilmada(eid, on){
 /* Fichar de una: la entrada de cada uno es su citación; la salida, el wrap.
    Es el 90% de los casos; después se corrigen las excepciones a mano.        */
 function ficharTodos(campo){
-  const py=getPy(), v=getV(), j=jornadaParte();
+  const py=getPy(), v=getVR(), j=jornadaParte();
   const {gente} = gentePorJornada(py, v, j.numero);
   let n0=0;
   gente.forEach(g=>{
@@ -15167,7 +16086,7 @@ function rdFichar(clave, campo, hora){
 /* liberar a un grupo (un departamento, el elenco, los extras) o a todos los
    que quedan: los que no tienen entrada entran a su citación */
 function rdLiberarGrupo(grupo, hora){
-  const py = getPy(), v = getV(), j = jornadaParte();
+  const py = getPy(), v = getVR(), j = jornadaParte();
   const {gente} = gentePorJornada(py, v, j.numero);
   const h = hora || ahoraHHMM();
   const quienes = gente.filter(g => (grupo === '*' || g.grupo === grupo) && !(j.parte.fichadas[g.clave] || {}).salida);
@@ -15232,8 +16151,16 @@ function rdProveedoresHTML(py, v, j, cfg){
    personaje ('p:Ana'), no con su línea: se lo busca así. */
 function horasDeLinea(py, rb, l, jj, cfg){
   const h = horasDe('l:' + l.id, jj, cfg, n(l.valorUnit), l.moneda, l);
+  /* una línea × 3: las horas de los tres */
+  const N = puestosDeLinea(l);
+  if(N > 1){
+    const hs = [h]; for(let k = 2; k <= N; k++) hs.push(horasDe('l:' + l.id + '#' + k, jj, cfg, n(l.valorUnit), l.moneda, l));
+    const con = hs.filter(x => !x.sinDatos);
+    if(!con.length) return h;
+    return {...con[0], sinDatos: false, extra: con.reduce((s, x) => s + n(x.extra), 0), costoHE: con.reduce((s, x) => s + n(x.costoHE), 0)};
+  }
   if(!h.sinDatos || rb !== '09') return h;
-  const k = Object.keys((jj.parte && jj.parte.fichadas) || {}).find(x => x.startsWith('p:') && norm(x.slice(2)) === norm(l.concepto));
+  const k = Object.keys((jj.parte && jj.parte.fichadas) || {}).find(x => x.startsWith('p:') && (norm(x.slice(2)) === norm(personajeDe(l)) || norm(x.slice(2)) === norm(l.concepto)));
   return k ? horasDe(k, jj, cfg, n(l.valorUnit), l.moneda, l) : h;
 }
 function liquidarProveedor(py, v, x){
@@ -15270,7 +16197,7 @@ function liquidacionProveedoresHTML(py, v){
         <td class="num" style="text-align:right;font-weight:700">${fmt(L.total, mb)}</td></tr>`).join('')}</tbody></table></div></div>`;
 }
 function bajarLiquidacionProveedores(){
-  const py = getPy(), v = getV();
+  const py = getPy(), v = getVR();
   const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
   const L = [['Qué','Rubro','Presupuesto','Jornadas presupuestadas','Jornadas usadas','Jornadas de más','Horas de más','Extra por horas','Total ' + v.monedaBase].map(q).join(',')];
   proveedoresDelRodaje(py, v).forEach(x => { const R2 = liquidarProveedor(py, v, x);
@@ -15299,7 +16226,7 @@ function marcarCitado(clave, val){
 }
 function marcarTodos(val){
   const py=getPy(), j=jornadaParte();
-  const {gente} = gentePorJornada(py, getV(), j.numero);
+  const {gente} = gentePorJornada(py, getVR(), j.numero);
   j.parte.citados = {};
   if(val) gente.forEach(g=>j.parte.citados[g.clave]={hora: horaCitada(j, g.clave), cuando: new Date().toISOString()});
   R();
@@ -15311,7 +16238,7 @@ function textoCitacionAl(pr, py, j, C, p, cfg){
 }
 function copiarCambiadas(){
   const pr=getPr(), py=getPy(), j=jornadaParte();
-  const {gente, callsheet:C} = gentePorJornada(py, getV(), j.numero);
+  const {gente, callsheet:C} = gentePorJornada(py, getVR(), j.numero);
   const van = gente.filter(p => estadoCitado(j, p.clave).k === 'cambio'), cfg = cfgActual();
   if(!van.length){ toast('Nadie tiene la hora vieja'); return; }
   const txt = van.map(p=>textoCitacionAl(pr,py,j,C,p,cfg)).join('\n\n' + '─'.repeat(28) + '\n\n');
@@ -15321,14 +16248,14 @@ function copiarCambiadas(){
 }
 function copiarCitacion(clave){
   const pr=getPr(), py=getPy(), j=jornadaParte();
-  const {gente, callsheet:C} = gentePorJornada(py, getV(), j.numero);
+  const {gente, callsheet:C} = gentePorJornada(py, getVR(), j.numero);
   const p = gente.find(x=>x.clave===clave); if(!p) return;
   alPortapapeles(textoCitacionAl(pr,py,j,C,p,cfgActual()), 'Citación copiada');
   marcarCitado(clave);
 }
 function copiarTodasCitaciones(){
   const pr=getPr(), py=getPy(), j=jornadaParte();
-  const {gente, callsheet:C} = gentePorJornada(py, getV(), j.numero);
+  const {gente, callsheet:C} = gentePorJornada(py, getVR(), j.numero);
   const cfg = cfgActual();
   const txt = gente.map(p=>textoCitacionAl(pr,py,j,C,p,cfg)).join('\n\n' + '─'.repeat(28) + '\n\n');
   gente.forEach(p => marcarCitado(p.clave));
@@ -15483,7 +16410,7 @@ function upContacto(clave, campo, val){
     return;
   }
   if(clave.startsWith('l:')){
-    const l = lineaPorId(clave.slice(2));
+    const l = lineaPorId(clave.slice(2).split('#')[0]);
     if(l && l.refId){
       const pe = DB.catalogo.personas.find(x=>x.id===l.refId);
       if(pe){ pe[campo]=val; R(); return; }
@@ -15510,7 +16437,7 @@ function delContacto(id){
 /* Guardar en el catálogo lo cargado a mano, para reusarlo en otros proyectos */
 function aCatalogo(clave){
   const C = getC(); const g = C.porLinea[clave]; if(!g || !g.nombre){ toast('Cargale el nombre primero'); return; }
-  const l = clave.startsWith('l:') ? lineaPorId(clave.slice(2)) : null;
+  const l = clave.startsWith('l:') ? lineaPorId(clave.slice(2).split('#')[0]) : null;
   const rubro = l ? (getV().rubros.find(r=>r.lineas.some(x=>x.id===l.id))||{}).codigo : '03';
   const pe = nuevaPersona({nombre:g.nombre, tel:g.tel, email:g.email,
     funcion: l ? l.concepto : '', rubro: rubro||'03',
@@ -15521,7 +16448,7 @@ function aCatalogo(clave){
   toast(`${pe.nombre} guardado en el catálogo`); R();
 }
 function copiarMails(){
-  const {mails} = armarContactos(getPy(), getV());
+  const {mails} = armarContactos(getPy(), getVR());
   if(!mails.length){ toast('Todavía no hay mails cargados'); return; }
   const txt = mails.join(', ');
   const ok = () => toast(`${mails.length} mails copiados`);
@@ -15529,7 +16456,7 @@ function copiarMails(){
   else prompt('Copiá los mails:', txt);
 }
 function expContactosCSV(){
-  const py=getPy(); const {grupos} = armarContactos(py, getV());
+  const py=getPy(); const {grupos} = armarContactos(py, getVR());
   const q = s => '"'+String(s??'').replace(/"/g,'""')+'"';
   const L = [['Grupo','Rol','Nombre','Teléfono','Mail'].map(q).join(',')];
   grupos.forEach(g=>g.filas.forEach(f=>
@@ -15916,6 +16843,7 @@ function leerInvitacion(){
 function invitarAlProyecto(){
   const pr = getPr(), py = getPy();
   if(!pr || !py){ toast('Elegí un proyecto primero.'); return; }
+  if(!rolesQuePuedoInvitar().length){ toast('A un proyecto invitan el jefe de producción, el Productor Ejecutivo o Administración.'); return; }
   const yo = getUsuario();
   const de = (yo && yo.nombre) || (sbConectado() ? SB.user.email : '') || 'Alguien';
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:600px">
@@ -15947,9 +16875,10 @@ function invitarAlProyecto(){
 /* Se invita con un rol igual o más bajo que el propio; Equipo no invita.
    La base controla lo mismo: esto es sólo para no ofrecer lo que va a rechazar. */
 function rolesQuePuedoInvitar(){
-  const yo = getUsuario(), orden = ['equipo','produccion','ejecutivo','admin'];
+  const yo = getUsuario(), orden = ORDEN_ROLES;
   const mio = (_miFicha && _miFicha.rol) || (yo && yo.rol) || 'admin';
-  return ROLES.filter(r => orden.indexOf(r.k) <= orden.indexOf(mio));
+  if(!VE_PLATA.includes(mio)) return [];
+  return ROLES.filter(r => orden.indexOf(r.k) <= orden.indexOf(mio)).sort((a, b) => orden.indexOf(a.k) - orden.indexOf(b.k));
 }
 
 /* El mensaje va corto a propósito: se manda por WhatsApp. */
@@ -16913,15 +17842,39 @@ function bajar(nombre, contenido, tipo){
 
 function expJSON(){ bajar(`clap-${hoy()}.json`, JSON.stringify(DB,null,2), 'application/json');
   toast('Respaldo descargado'); }
+/* Importar ya no borra todo: trae los proyectos del archivo. Los que ya
+   estaban (mismo proyecto) se reemplazan, avisando cuáles; los demás de esta
+   compu quedan como estaban. El catálogo se junta por ficha. */
+function importarRespaldo(d){
+  if(!d || !d.productoras) throw new Error('formato');
+  const pisa = [], nuevos = [];
+  d.productoras.forEach(p => (p.proyectos || []).forEach(py => {
+    const ya = (DB.productoras || []).some(x => (x.proyectos || []).some(y => y.id === py.id));
+    (ya ? pisa : nuevos).push(py.nombre || 'sin nombre'); }));
+  if(!pisa.length && !nuevos.length) throw new Error('vacío');
+  if(!confirm(`Del archivo:\n${nuevos.length ? `• ${nuevos.length} proyecto${nuevos.length == 1 ? '' : 's'} nuevo${nuevos.length == 1 ? '' : 's'}: ${nuevos.join(', ')}\n` : ''}${pisa.length ? `• ${pisa.length} que ya ${pisa.length == 1 ? 'estaba' : 'estaban'} y se reemplaza${pisa.length == 1 ? '' : 'n'} por la del archivo: ${pisa.join(', ')}\n` : ''}\nLo demás de esta compu queda como está. ¿Seguir?`)) return null;
+  d.productoras.forEach(p => {
+    let pr = (DB.productoras || []).find(x => x.id === p.id);
+    if(!pr){ pr = {...p, proyectos: []}; DB.productoras.push(pr); }
+    (p.usuarios || []).forEach(u => { if(!(pr.usuarios ||= []).some(x => x.id === u.id)) pr.usuarios.push(u); });
+    (p.proyectos || []).forEach(py => {
+      const i = (pr.proyectos ||= []).findIndex(x => x.id === py.id);
+      DB.productoras.forEach(x => { if(x !== pr) x.proyectos = (x.proyectos || []).filter(y => y.id !== py.id); });
+      if(i >= 0) pr.proyectos[i] = py; else pr.proyectos.push(py);
+    });
+  });
+  ((d.catalogo || {}).personas || []).forEach(pe => { const L = DB.catalogo.personas; const i = L.findIndex(x => x.id === pe.id); if(i >= 0) L[i] = {...L[i], ...pe}; else L.push(pe); });
+  migrar();
+  return {pisa: pisa.length, nuevos: nuevos.length};
+}
 function impJSON(inp){
   const f=inp.files[0]; if(!f) return;
   const fr=new FileReader();
-  fr.onload=()=>{ try{
-      const d=JSON.parse(fr.result);
-      if(!d.productoras) throw new Error('formato');
-      if(!confirm('Esto reemplaza todos los datos actuales. ¿Seguir?')) return;
-      DB=d; migrar(); cerrar(); toast('Respaldo importado');
-    }catch(e){ alert('El archivo no es un respaldo válido de CLAP.'); } };
+  fr.onload=()=>{ let r;
+    try{ r = importarRespaldo(JSON.parse(fr.result)); }
+    catch(e){ alert('El archivo no es un respaldo válido de CLAP.'); return; }
+    if(!r) return;
+    cerrar(); toast(`Importado: ${r.nuevos} nuevo${r.nuevos == 1 ? '' : 's'}, ${r.pisa} reemplazado${r.pisa == 1 ? '' : 's'}`); R(); };
   fr.readAsText(f); }
 function expCSV(){
   const v=getV(), py=getPy(); if(!v) return;
@@ -16968,7 +17921,7 @@ function resetDB(){
    puede bajarse sus datos, en vez de quedarse mirando una pantalla blanca sin
    más información que "no se abre". */
 try{ sbCargar(); }catch(e){ console.error('sbCargar', e); }
-try{ cargar(); }
+try{ cargar(); try{ if(typeof location !== 'undefined') aplicarHash(location.hash); }catch(e){} }
 catch(e){ console.error('cargar', e); _fallaArranque = {donde:'leer los datos guardados', error:e};
   try{ DB = dbVacia(); sembrar(); }catch(_){} }
 
