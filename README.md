@@ -696,6 +696,10 @@ ningún monto del presupuesto:
 
 - Cada uno entra a **Mi panel**: sus tareas, sus comprobantes, sus cheques y
   accesos a lo suyo. Lo que sólo puede mirar aparece con los campos apagados.
+- **El margen lo ven sólo Administración y el PE**: el fee, el precio al
+  cliente, la versión *Cliente*, el *Real* y el colchón. El jefe de producción
+  ve los costos y su total es el **costo de producción** (costo directo +
+  contingencia); en la base, el Real y el Cliente viajan en una parte que no lee.
 - El **Productor Ejecutivo** ve arriba de todo *Para aprobar y controlar*
   (comprobantes, liquidaciones revisadas, cheques); **Administración**, *Para
   pagar y controlar*.

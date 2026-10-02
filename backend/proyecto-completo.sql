@@ -18,7 +18,8 @@
 --
 -- QUIÉN LEE Y QUIÉN ESCRIBE CADA PARTE
 --   Administración y Productor Ejecutivo: todo.
---   Jefe de producción: todo menos el presupuesto "Real".
+--   Jefe de producción: todo menos el margen: el presupuesto "Real" y el del
+--     "Cliente" van en la parte presupuesto_real, que no lee.
 --   Asistente de dirección: escribe el plan; lee la gente, el plan y el rodaje.
 --   Asistente de producción: escribe el rodaje, el pedido de luces, las altas,
 --     los gastos, las tareas y los contactos; lee también la gente y el plan.

@@ -180,4 +180,20 @@ const n0 = py.comprobantes.length;
 const r = importarRespaldo(otro);
 ok('importar no borra todo: reemplaza el proyecto del archivo', r && r.pisa === 1 && getPr().proyectos.length === 1 && getPy().nombre === 'Del archivo');
 
+console.log('\n--- 10. EL MARGEN: SÓLO ADMINISTRACIÓN Y EL PE ---');
+DB = dbVacia(); sembrar();
+const pr3 = getPr(), py3 = getPy(), q3 = rol => pr3.usuarios.find(u => u.rol === rol);
+DB.ui.usuarioId = q3('ejecutivo').id;
+const R3 = calcular(getV()), tot3 = fmt(R3.total, 'ARS'), fee3 = fmt(R3.fee, 'ARS');
+setTab('presu');
+ok('el PE ve el fee y el total al cliente', app.innerHTML.includes(tot3) && app.innerHTML.includes(fee3) && /setVista\('cliente'\)/.test(app.innerHTML));
+DB.ui.usuarioId = q3('produccion').id; DB.ui.vista = 'cliente';
+const vistos = ['resumen','presu','gastos','personal:liquidacion','config'].filter(k => { setTab(k); return app.innerHTML.includes(tot3) || app.innerHTML.includes(fee3) || />Fee</.test(app.innerHTML); });
+ok('el jefe de producción no ve el fee ni el total al cliente en ninguna solapa', !vistos.length, vistos.join(','));
+setTab('presu');
+ok('ve su costo de producción (costo directo + contingencia), sin la vista Cliente', /COSTO DE PRODUCCIÓN/.test(app.innerHTML) && app.innerHTML.includes(fmt(R3.subtotal + R3.contingencia, 'ARS')) && !/setVista\('cliente'\)/.test(app.innerHTML));
+const vc = nuevaVersion(); vc.nivel = 'cliente'; py3.versiones.push(vc);
+ok('no abre la versión del Cliente', !versionesQueVeo(py3).includes(vc));
+ok('ni le llega: el Real y el Cliente viajan en la parte que no lee', PARTES_PY.presupuesto_real.lee(py3).versiones.includes(vc) && !PARTES_PY.presupuesto.lee(py3).versiones.includes(vc) && !puedeParte('presupuesto_real', false, q3('produccion')));
+
 console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');

@@ -1798,12 +1798,13 @@ function nuevaLinea(o={}){
 
    No se resuelve escondiendo líneas: son números distintos, así que son
    versiones distintas. Y quién ve cuál lo decide el rol, no un checkbox:
-   Administración y Productor Ejecutivo ven los tres; Producción ve el suyo y
-   el del cliente; Equipo, sólo el del cliente.                              */
+   Administración y Productor Ejecutivo ven los tres; el jefe de producción
+   sólo el suyo (ni el Real ni el del cliente: no ve el margen). Los demás no
+   ven presupuestos.                                                          */
 const NIVELES = [
   {k:'real',       l:'Real',       d:'Sólo lo ven Administración y Productor Ejecutivo', roles:['admin','ejecutivo']},
   {k:'produccion', l:'Producción', d:'El que maneja el jefe de producción',              roles:['admin','ejecutivo','produccion']},
-  {k:'cliente',    l:'Cliente',    d:'El que se presenta afuera',                        roles:['admin','ejecutivo','produccion','equipo']},
+  {k:'cliente',    l:'Cliente',    d:'El que se presenta afuera',                        roles:['admin','ejecutivo']},
 ];
 const NIVEL = k => NIVELES.find(x=>x.k===k) || NIVELES[1];
 /* ¿Este usuario puede abrir esta versión? Sin usuario -mirando el ejemplo sin
@@ -2564,6 +2565,12 @@ const puede = (u, accion) => !!u && !u.pendiente && ROL(u.rol).puede.includes(ac
    líneas). Sin usuario —la app de ejemplo— se ve todo.                     */
 const VE_PLATA = ['admin','ejecutivo','produccion'];
 const vePlata = (u = getUsuario()) => !u || (!u.pendiente && VE_PLATA.includes(u.rol));
+/* El margen (el fee, el precio al cliente, el Real y el colchón) lo ven
+   Administración y el Productor Ejecutivo. El jefe de producción ve los
+   costos: su total es el costo de producción (costo directo + contingencia). */
+const veMargen = (u = getUsuario()) => !u || veTodo(u);
+const totalVisible = (R, u = getUsuario()) => !R ? 0 : veMargen(u) ? R.total : R.subtotal + R.contingencia;
+const nombreTotal = (u = getUsuario()) => veMargen(u) ? 'total' : 'costo de producción';
 const SOLAPAS_DE = {
   equipo:    ['resumen','callsheet','gastos','guia'],
   arte:      ['resumen','callsheet','gastos','guia'],
@@ -4528,7 +4535,8 @@ async function subirProyectosDe(pr){
    por cosa: lo que tocó sólo uno queda; lo que tocaron los dos, gana el
    último que guarda. Así un asistente puede cargar comprobantes mientras
    otro carga los suyos, y ninguno pisa al otro.                           */
-const ES_REAL = v => (v.nivel || 'produccion') === 'real';
+/* el Real y el del Cliente llevan el margen: viajan en la parte que sólo leen Administración y el PE */
+const ES_REAL = v => ['real','cliente'].includes(v.nivel || 'produccion');
 const desgloseSinPartes = d => d ? {...d, jornadas: (d.jornadas || []).map(j => { const {parte, ...resto} = j; return resto; })} : null;
 function gentePublica(py){
   const v = versionRodaje(py);
@@ -5842,7 +5850,7 @@ function header(pr,py,v){
         </select></div>`; })():''}
       <div class="spacer"></div>
       ${chipIdentidad(pr)}
-      ${DB.ui.tab==='presu'&&v?`<div class="seg">
+      ${DB.ui.tab==='presu'&&v&&veMargen()?`<div class="seg">
         <button class="${DB.ui.vista==='interna'?'on':''}" onclick="setVista('interna')">Interna</button>
         <button class="${DB.ui.vista==='cliente'?'on':''}" onclick="setVista('cliente')">Cliente</button>
       </div>`:''}
@@ -6238,7 +6246,7 @@ function vistaPanel(pr, py){
 
 /* ---------- vista presupuesto ---------- */
 function vistaPresupuesto(pr,py,v){
-  const cli = DB.ui.vista==='cliente';
+  const cli = DB.ui.vista==='cliente' && veMargen();
   const piezas = piezasDe(py);
   /* la pieza elegida tiene que existir todavía */
   const sel = piezas.some(p => p.id === DB.ui.pieza) ? DB.ui.pieza : null;
@@ -6626,6 +6634,19 @@ function panelTotales(v,R,piezaNom){
   const verCargas = interna ? (R.baseSica > 0 || n(v.capas.cargas) > 0) : R.cargas > 0;
   const verElenco = interna ? (R.baseAAA > 0 || n(v.capas.cargasElenco) > 0) : R.cargasElenco > 0;
   const sobre = (base, que) => `<span class="muted" style="font-size:10.5px">s/ ${fmt(base,v.monedaBase)} ${que}</span>`;
+  /* el jefe de producción ve los costos, no el margen ni el precio al cliente */
+  if(!veMargen()) return `<div class="card"><h3>Costo de producción${piezaNom?` — ${esc(piezaNom)}`:''}</h3><div class="pad">
+    ${verCargas || verElenco ? `<div class="tot sub"><span>Líneas del presupuesto</span><b>${fmt(R.subtotalLineas,v.monedaBase)}</b></div>` : ''}
+    ${verCargas ? cap('cargas','Cargas sociales SICA', R.cargas, sobre(R.baseSica, 'de sueldos de convenio')) : ''}
+    ${verElenco ? cap('cargasElenco','Cargas del elenco (AAA)', R.cargasElenco, sobre(R.baseAAA, 'de cachets')) : ''}
+    <div class="tot sub"><span>Subtotal costo directo</span><b>${fmt(R.subtotal,v.monedaBase)}</b></div>
+    ${cap('contingencia','Contingencia', R.contingencia)}
+    <div class="tot big"><span>COSTO DE PRODUCCIÓN ${v.monedaBase}</span><b>${fmt(R.subtotal + R.contingencia,v.monedaBase)}</b></div>
+    <div class="tot sub" style="border:none;padding-top:6px">
+      <span class="muted">Equivalente en ${otra} · TC ${esc(v.tcNombre)} ${fmtC(v.tc)}</span>
+      <b class="muted">${fmt(conv(R.subtotal + R.contingencia,v.monedaBase,otra,n(v.tc)), otra)}</b></div>
+    <div class="muted" style="font-size:11px;margin-top:6px">Sin fee ni impuestos: el precio al cliente lo ven Administración y el Productor Ejecutivo.</div>
+  </div></div>`;
   return `<div class="card"><h3>Totales${piezaNom?` — ${esc(piezaNom)} <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">(propio + compartido)</span>`:''}</h3><div class="pad">
     ${verCargas || verElenco ? `<div class="tot sub"><span>Líneas del presupuesto</span><b>${fmt(R.subtotalLineas,v.monedaBase)}</b></div>` : ''}
     ${verCargas ? cap('cargas','Cargas sociales SICA', R.cargas, sobre(R.baseSica, 'de sueldos de convenio')
@@ -6725,6 +6746,10 @@ function panelExposicion(v){
 function barraTotal(v){
   const R = calcular(v);
   const otra = v.monedaBase==='ARS'?'USD':'ARS';
+  if(!veMargen()) return `<div class="stick">
+    <div><div class="lbl">Costo de producción ${v.monedaBase}</div>
+      <div class="alt">Costo directo + contingencia · ${fmt(conv(totalVisible(R),v.monedaBase,otra,n(v.tc)),otra)}</div></div>
+    <div class="val">${fmt(totalVisible(R), v.monedaBase)}</div></div>`;
   return `<div class="stick">
     <div><div class="lbl">Total ${v.monedaBase} · c/ IVA</div>
       <div class="alt">Neto ${fmt(R.neto,v.monedaBase)} · ${fmt(conv(R.total,v.monedaBase,otra,n(v.tc)),otra)}</div></div>
@@ -6986,13 +7011,13 @@ function vistaConfig(prActiva){
       El catálogo de personas y equipos, en cambio, se comparte entre todas.</div>
     <div class="scrollx"><table class="tbl">
       <thead><tr><th>Productora</th><th>CUIT</th><th>Cond. IVA</th><th>Juris.</th>
-        <th style="text-align:center">Fee</th><th style="text-align:center">Cont.</th>
+        ${veMargen() ? '<th style="text-align:center">Fee</th>' : ''}<th style="text-align:center">Cont.</th>
         <th style="text-align:center">IVA</th><th style="text-align:center">Proyectos</th><th></th></tr></thead>
       <tbody>${DB.productoras.map(p=>`<tr style="${p.id===prActiva?.id?'background:rgba(224,169,46,.05)':''}">
         <td><b>${esc(p.nombre)}</b></td>
         <td class="muted" style="font-family:var(--mono);font-size:11.5px">${esc(p.cuit||'—')}</td>
         <td class="muted">${esc(p.condicionIVA)}</td><td class="muted">${esc(p.jurisdiccion)}</td>
-        <td style="text-align:center;font-family:var(--mono)">${p.feeDefault}%</td>
+        ${veMargen() ? `<td style="text-align:center;font-family:var(--mono)">${p.feeDefault}%</td>` : ''}
         <td style="text-align:center;font-family:var(--mono)">${p.contingenciaDefault}%</td>
         <td style="text-align:center;font-family:var(--mono)">${p.ivaDefault}%</td>
         <td style="text-align:center">${p.proyectos.length}</td>
@@ -7012,7 +7037,7 @@ function vistaConfig(prActiva){
           return `<tr><td><b>${esc(p.nombre)}</b></td><td class="muted">${esc(p.tipo)}</td>
             <td>${esc(p.cliente||'—')}</td><td class="muted">${esc(p.agencia||'—')}</td>
             <td style="text-align:center">${p.jornadas}</td><td style="text-align:center">${p.versiones.length}</td>
-            <td style="text-align:right;font-family:var(--mono)">${v?fmt(calcular(v).total, v.monedaBase):'—'}</td>
+            <td style="text-align:right;font-family:var(--mono)">${v?fmt(totalVisible(calcular(v)), v.monedaBase):'—'}</td>
             <td style="text-align:right;white-space:nowrap">
               <button class="btn sm" onclick="selProyecto('${p.id}')">Abrir</button>
               <button class="btn sm" onclick="editProyecto('${p.id}')">Editar</button>
@@ -7354,7 +7379,7 @@ function planHTML(py,d,r){
    al lado cuánto da el total convertido, que es para lo que uno lo toca.   */
 function tcPanel(v, R){
   const otra = v.monedaBase === 'ARS' ? 'USD' : 'ARS';
-  const equiv = R ? conv(R.total, v.monedaBase, otra, n(v.tc)) : 0;
+  const equiv = R ? conv(totalVisible(R), v.monedaBase, otra, n(v.tc)) : 0;
   return `<div class="tcpanel">
     <div class="tcp-tit">Tipo de cambio</div>
     <div class="tcp-eq">
@@ -7404,7 +7429,7 @@ function listaProyectosHTML(pr, actual){
         <span class="pysub">${esc(sub||'sin datos de cliente')}</span>
         ${pz.length?`<span class="pypz">${pz.map(x=>`<span class="pypzchip">${esc(nombrePieza(p,x.id))}</span>`).join('')}</span>`:''}</span>
       <span class="pyest">${v?esc(v.nombre)+' · '+esc(v.estado):'sin presupuesto'}</span>
-      <span class="pytot">${R?fmt(R.total, v.monedaBase):'—'}</span>
+      <span class="pytot">${R?fmt(totalVisible(R), v.monedaBase):'—'}</span>
     </button>`;
   };
   const cuerpo = mios.length
@@ -7504,8 +7529,8 @@ function vistaResumen(pr,py,v){
         <div class="cssub">${esc(pr.nombre)}${py.cliente?' · '+esc(py.cliente):''}${py.agencia?' · '+esc(py.agencia):''}
           · ${py.jornadas} jornada${py.jornadas==1?'':'s'}${py.tipo?' · '+esc(py.tipo):''}</div></div>
       <div style="text-align:right">
-        <div class="csj">${R?fmt(R.total, v.monedaBase):'—'}</div>
-        <div class="cssub">presupuesto ${esc(v?v.nombre:'')} · ${esc(v?v.estado:'')}</div></div>
+        <div class="csj">${R?fmt(totalVisible(R), v.monedaBase):'—'}</div>
+        <div class="cssub">${veMargen() ? 'presupuesto' : 'costo de producción'} ${esc(v?v.nombre:'')} · ${esc(v?v.estado:'')}</div></div>
     </div>
 
     ${u && ['ejecutivo','admin'].includes(u.rol) ? pendHTML : ''}
@@ -14558,7 +14583,7 @@ function editProductora(id){
       <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
         Valores por defecto para presupuestos nuevos</div>
       <div class="grid2">
-        ${campo('Fee de producción %','feeDefault',p.feeDefault,'number','step="any"')}
+        ${veMargen() ? campo('Fee de producción %','feeDefault',p.feeDefault,'number','step="any"') : ''}
         ${campo('Contingencia %','contingenciaDefault',p.contingenciaDefault,'number','step="any"')}
         ${campo('IVA %','ivaDefault',p.ivaDefault,'number','step="any"')}
         ${campo('IIBB %','iibbDefault',p.iibbDefault,'number','step="any"')}
@@ -14570,7 +14595,7 @@ function saveProductora(id){
   const d = datos();
   let p = id ? DB.productoras.find(x=>x.id===id) : nuevaProductora();
   Object.assign(p, {nombre:d.nombre||'Sin nombre', cuit:d.cuit, condicionIVA:d.condicionIVA,
-    jurisdiccion:d.jurisdiccion, feeDefault:n(d.feeDefault), contingenciaDefault:n(d.contingenciaDefault),
+    jurisdiccion:d.jurisdiccion, feeDefault:'feeDefault' in d ? n(d.feeDefault) : (p.feeDefault ?? 15), contingenciaDefault:n(d.contingenciaDefault),
     ivaDefault:n(d.ivaDefault), iibbDefault:n(d.iibbDefault)});
   if(!id){ DB.productoras.push(p); DB.ui.productoraId=p.id; DB.ui.proyectoId=null; }
   cerrar();
@@ -17895,10 +17920,15 @@ function expCSV(){
     if(R2.cargasElenco) L.push([q(`Cargas del elenco AAA ${n(v.capas.cargasElenco)}% s/ ${Math.round(R2.baseAAA)}`),'','','','','','','',Math.round(R2.cargasElenco)].join(','));
   }
   L.push('', [q('Subtotal'),'','','','','','','',Math.round(R2.subtotal)].join(','));
-  L.push([q(`Fee ${v.capas.fee}%`),'','','','','','','',Math.round(R2.fee)].join(','));
-  L.push([q(`Contingencia ${v.capas.contingencia}%`),'','','','','','','',Math.round(R2.contingencia)].join(','));
-  L.push([q(`IVA ${v.capas.iva}%`),'','','','','','','',Math.round(R2.iva)].join(','));
-  L.push([q('TOTAL'),'','','','','','','',Math.round(R2.total)].join(','));
+  if(veMargen()){
+    L.push([q(`Fee ${v.capas.fee}%`),'','','','','','','',Math.round(R2.fee)].join(','));
+    L.push([q(`Contingencia ${v.capas.contingencia}%`),'','','','','','','',Math.round(R2.contingencia)].join(','));
+    L.push([q(`IVA ${v.capas.iva}%`),'','','','','','','',Math.round(R2.iva)].join(','));
+    L.push([q('TOTAL'),'','','','','','','',Math.round(R2.total)].join(','));
+  } else {
+    L.push([q(`Contingencia ${v.capas.contingencia}%`),'','','','','','','',Math.round(R2.contingencia)].join(','));
+    L.push([q('COSTO DE PRODUCCIÓN'),'','','','','','','',Math.round(R2.subtotal + R2.contingencia)].join(','));
+  }
   /* y cuánto sale cada pieza, aclarando que lo común no se gasta de nuevo */
   const CP = costoPorPieza(py, v);
   if(CP.filas.length){
