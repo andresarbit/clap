@@ -699,7 +699,12 @@ ningún monto del presupuesto:
 - **El margen lo ven sólo Administración y el PE**: el fee, el precio al
   cliente, la versión *Cliente*, el *Real* y el colchón. El jefe de producción
   ve los costos y su total es el **costo de producción** (costo directo +
-  contingencia); en la base, el Real y el Cliente viajan en una parte que no lee.
+  contingencia); en la base, el Real y el Cliente viajan en una parte que no lee,
+  y el fee (de cada presupuesto y el de la productora) va aparte: al jefe no le
+  llega ni el número.
+- El botón **Cotización** (antes "Cliente") arma lo que se le manda a la agencia
+  para ganar el trabajo: por rubro, con fee e impuestos, sin el detalle. Por eso
+  es de Administración y el PE.
 - El **Productor Ejecutivo** ve arriba de todo *Para aprobar y controlar*
   (comprobantes, liquidaciones revisadas, cheques); **Administración**, *Para
   pagar y controlar*.

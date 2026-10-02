@@ -26,6 +26,8 @@
 --   Asistente de arte y Equipo: escriben gastos y tareas; leen lo del set.
 --   Nadie que no sea Administración, PE o jefe lee el presupuesto ni la
 --   liquidación.
+--   El fee (el margen) lo leen sólo Administración y el PE: el de cada
+--   presupuesto y el que trae por defecto cada productora.
 -- ===========================================================================
 
 -- Los roles nuevos van entre Equipo y Producción: para invitar, nadie puede
@@ -123,6 +125,46 @@ begin
 end $$;
 revoke all on function guardar_parte(uuid, text, jsonb, int) from public, anon;
 grant execute on function guardar_parte(uuid, text, jsonb, int) to authenticated;
+
+-- ---------------------------------------------------------------------------
+-- 1b. EL FEE ES MARGEN: sólo Administración y el Productor Ejecutivo
+--
+-- El fee de cada presupuesto ya viaja aparte (en presupuesto_real). Queda el
+-- fee por defecto de cada productora, que estaba en la tabla productora, que
+-- leen todos los de la productora. Se pasa a una tabla propia y en productora
+-- queda en 0.
+-- ---------------------------------------------------------------------------
+create table if not exists productora_privado (
+  productora_id uuid primary key references productora(id) on delete cascade,
+  fee_default   numeric(6,3) not null default 15,
+  cambiado_el   timestamptz not null default now()
+);
+alter table productora_privado enable row level security;
+grant select, insert, update on productora_privado to authenticated;
+drop policy if exists privado_margen on productora_privado;
+create policy privado_margen on productora_privado for all
+  using (mi_rol(productora_id)::text in ('admin','ejecutivo'))
+  with check (mi_rol(productora_id)::text in ('admin','ejecutivo'));
+
+insert into productora_privado (productora_id, fee_default)
+  select id, fee_default from productora where fee_default <> 0
+  on conflict (productora_id) do nothing;
+update productora set fee_default = 0 where fee_default <> 0;
+alter table productora alter column fee_default set default 0;
+
+-- las productoras nuevas nacen con su fee en la tabla privada
+create or replace function fee_a_privado() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  insert into productora_privado (productora_id, fee_default)
+  values (new.id, case when new.fee_default > 0 then new.fee_default else 15 end)
+  on conflict (productora_id) do nothing;
+  if new.fee_default <> 0 then update productora set fee_default = 0 where id = new.id; end if;
+  return new;
+end $$;
+drop trigger if exists tr_fee_a_privado on productora;
+create trigger tr_fee_a_privado after insert on productora
+  for each row execute function fee_a_privado();
 
 -- ---------------------------------------------------------------------------
 -- 2. INVITAR: los asistentes y el equipo no invitan

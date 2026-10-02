@@ -196,4 +196,6 @@ const vc = nuevaVersion(); vc.nivel = 'cliente'; py3.versiones.push(vc);
 ok('no abre la versión del Cliente', !versionesQueVeo(py3).includes(vc));
 ok('ni le llega: el Real y el Cliente viajan en la parte que no lee', PARTES_PY.presupuesto_real.lee(py3).versiones.includes(vc) && !PARTES_PY.presupuesto.lee(py3).versiones.includes(vc) && !puedeParte('presupuesto_real', false, q3('produccion')));
 
+ok('el presupuesto viaja sin el fee; el fee, en la parte del PE', !canon(PARTES_PY.presupuesto.lee(py3)).includes('"fee"') && canon(PARTES_PY.presupuesto_real.lee(py3)).includes('"fees"'));
+
 console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');

@@ -4390,13 +4390,29 @@ async function sincronizarCatalogo(){
      - `productoras_para_elegir()` TODAS las del sistema, sólo id y nombre.
        Es lo que me deja sumarme a una a la que todavía no pertenezco.       */
 const PROD_CAMPOS = [['nombre','nombre'],['cuit','cuit'],['condicion_iva','condicionIVA'],
-  ['jurisdiccion','jurisdiccion'],['fee_default','feeDefault'],
+  ['jurisdiccion','jurisdiccion'],
   ['contingencia_default','contingenciaDefault'],['iva_default','ivaDefault'],
   ['iibb_default','iibbDefault']];
 
 async function sbBajarProductoras(){
   if(!await sbSesionViva()) return [];
   return await sbFetch('/rest/v1/productora?select=*&order=nombre') || [];
+}
+/* el fee por defecto de la productora: en una tabla aparte que sólo leen
+   Administración y el PE (backend/proyecto-completo.sql) */
+async function sbSubirFeeDefault(pr){
+  if(!veMargen() || pr.feeDefault == null) return null;
+  return await sbFetch('/rest/v1/productora_privado', {method:'POST',
+    headers:{'Prefer':'resolution=merge-duplicates,return=minimal'},
+    body: JSON.stringify({productora_id: pr.id, fee_default: n(pr.feeDefault)})});
+}
+async function sbBajarFeeDefault(){
+  let filas;
+  try{ filas = await sbFetch('/rest/v1/productora_privado?select=productora_id,fee_default') || []; }catch(e){ return; }
+  /* donde no soy Administración ni PE, la base no me lo da: no queda ningún número viejo guardado */
+  (DB.productoras || []).filter(p => p.enServidor).forEach(pr => {
+    const f = filas.find(x => x.productora_id === pr.id);
+    pr.feeDefault = f ? n(f.fee_default) : null; });
 }
 async function sbSubirProductora(pr){
   const f = {id: pr.id, nombre: pr.nombre || 'Sin nombre'};
@@ -4437,6 +4453,7 @@ async function sincronizarProductoras(){
   if(!sbConectado()) return null;
   let r = null;
   try{ r = fusionarProductoras(await sbBajarProductoras()); }catch(e){ r = null; }
+  await sbBajarFeeDefault();
   try{ _todasLasProductoras = await sbProductorasParaElegir() || []; }catch(e){}
   return r;
 }
@@ -4548,16 +4565,34 @@ function gentePublica(py){
         area: l.area || '', valorUnit: 0, moneda: l.moneda || 'ARS'}))}))}]};
 }
 const conLineas = d => ((d && d.versiones) || []).some(v => (v.rubros || []).some(r => (r.lineas || []).some(l => String(l.concepto || '').trim())));
+/* El fee es margen: el presupuesto de Producción viaja SIN el fee, y el fee
+   de cada versión va en la parte que sólo leen Administración y el PE. Al
+   jefe de producción no le llega ni el número. */
+const sinFee = v => { const {fee, ...capas} = v.capas || {}; return {...v, capas}; };
+const prDe = py => (DB.productoras || []).find(p => (p.proyectos || []).includes(py));
+function ponerFees(py, fees){
+  if(!veMargen()) return;
+  (py.versiones || []).filter(v => !ES_REAL(v)).forEach(v => {
+    v.capas ||= {};
+    if(fees && fees[v.id] != null) v.capas.fee = fees[v.id];
+    else if(v.capas.fee == null) v.capas.fee = n((prDe(py) || {}).feeDefault);
+  });
+}
 const PARTES_PY = {
   presupuesto: {
-    lee: py => ({versiones: (py.versiones || []).filter(v => !ES_REAL(v)), versionRodaje: py.versionRodaje || null, piezas: py.piezas || [], plantilla: py.plantilla || null}),
-    pone: (py, d) => { py.versiones = [...(py.versiones || []).filter(ES_REAL), ...(d.versiones || [])];
-      py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; py.plantilla = d.plantilla || null; },
+    lee: py => ({versiones: (py.versiones || []).filter(v => !ES_REAL(v)).map(sinFee), versionRodaje: py.versionRodaje || null, piezas: py.piezas || [], plantilla: py.plantilla || null}),
+    pone: (py, d) => {
+      const antes = Object.fromEntries((py.versiones || []).map(v => [v.id, v.capas && v.capas.fee]));
+      py.versiones = [...(py.versiones || []).filter(ES_REAL), ...(d.versiones || [])];
+      py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; py.plantilla = d.plantilla || null;
+      ponerFees(py, {...(py._fees || {}), ...Object.fromEntries(Object.entries(antes).filter(([, f]) => f != null))}); },
     algo: conLineas},
   presupuesto_real: {
-    lee: py => ({versiones: (py.versiones || []).filter(ES_REAL)}),
-    pone: (py, d) => { py.versiones = [...(d.versiones || []), ...(py.versiones || []).filter(v => !ES_REAL(v))]; },
-    algo: conLineas},
+    lee: py => ({versiones: (py.versiones || []).filter(ES_REAL),
+      fees: Object.fromEntries((py.versiones || []).filter(v => !ES_REAL(v)).map(v => [v.id, v.capas ? v.capas.fee ?? null : null]))}),
+    pone: (py, d) => { py.versiones = [...(d.versiones || []), ...(py.versiones || []).filter(v => !ES_REAL(v))];
+      py._fees = d.fees || {}; ponerFees(py, py._fees); },
+    algo: d => conLineas(d) || Object.keys(d.fees || {}).length > 0},
   gente: {
     lee: gentePublica,
     /* quien ve la plata tiene el presupuesto de verdad: la gente es para los demás */
@@ -5851,8 +5886,8 @@ function header(pr,py,v){
       <div class="spacer"></div>
       ${chipIdentidad(pr)}
       ${DB.ui.tab==='presu'&&v&&veMargen()?`<div class="seg">
-        <button class="${DB.ui.vista==='interna'?'on':''}" onclick="setVista('interna')">Interna</button>
-        <button class="${DB.ui.vista==='cliente'?'on':''}" onclick="setVista('cliente')">Cliente</button>
+        <button class="${DB.ui.vista==='interna'?'on':''}" onclick="setVista('interna')" title="El presupuesto completo, línea por línea">Interna</button>
+        <button class="${DB.ui.vista==='cliente'?'on':''}" onclick="setVista('cliente')" title="La cotización que se le manda a la agencia o al cliente para ganar el trabajo: por rubro, con fee e impuestos, sin el detalle de cada línea. Se imprime o se pasa a PDF">Cotización</button>
       </div>`:''}
       <button class="btn ${sbConectado()?'nube-on':''}" onclick="menuNube()"
         title="${sbConectado()?esc(SB.user.email)+' · '+esc(estadoSyncTexto()):'Sin conectar — los datos viven sólo en este navegador'}">☁${sbConectado() && _sync.error ? '<span class="nube-err" aria-label="no se pudo guardar">!</span>' : ''}</button>
@@ -14599,7 +14634,7 @@ function saveProductora(id){
     ivaDefault:n(d.ivaDefault), iibbDefault:n(d.iibbDefault)});
   if(!id){ DB.productoras.push(p); DB.ui.productoraId=p.id; DB.ui.proyectoId=null; }
   cerrar();
-  if(sbConectado() && p.enServidor) sbSubirProductora(p)
+  if(sbConectado() && p.enServidor) sbSubirProductora(p).then(() => sbSubirFeeDefault(p))
     .catch(e => toast('Guardado acá, pero no pude subirlo: ' + e.message));
 }
 function delProductora(id){ const p=DB.productoras.find(x=>x.id===id);

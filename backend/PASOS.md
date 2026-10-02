@@ -146,6 +146,12 @@ Hace dos cosas:
 2. **Los roles nuevos:** Asistente de dirección, Asistente de producción y
    Asistente de arte. La base no les da el presupuesto ni la liquidación:
    reciben el equipo sin montos.
+3. **El fee es sólo de Administración y del PE.** El presupuesto viaja sin el
+   fee; el de cada versión y el de cada productora van en una parte que sólo
+   ellos leen. Al jefe de producción no le llega ni el número. El SQL pasa el
+   fee por defecto de cada productora a esa tabla (en la de productoras queda
+   en 0); después, entrando como Administración, revisá en *Productoras* que
+   esté bien.
 
 Pegá todo `backend/proyecto-completo.sql` en el SQL Editor y **Run**. Se
 puede correr dos veces. Después, en CLAP: **☁ → Sincronizar todo**, desde la
