@@ -26,7 +26,7 @@ ok('están los tres', NIVELES.map(x => x.k).join(',') === 'real,produccion,clien
 ok('el Real es sólo de admin y ejecutivo',
   NIVEL('real').roles.join(',') === 'admin,ejecutivo');
 ok('Producción lo ve también el jefe', NIVEL('produccion').roles.includes('produccion'));
-ok('el de Cliente lo ve todo el mundo', NIVEL('cliente').roles.length === 4);
+ok('el de Cliente (lleva el margen) lo ven Administración y el PE', NIVEL('cliente').roles.join(',') === 'admin,ejecutivo');
 ok('una versión nueva nace como Producción', nuevaVersion().nivel === 'produccion');
 
 console.log('\n--- 2. QUIEN VE QUE ---');
@@ -42,14 +42,14 @@ ok('EL JEFE DE PRODUCCION NO VE EL REAL', !ve('produccion', vReal));
 ok('equipo tampoco', !ve('equipo', vReal));
 ok('el jefe SI ve el de Producción', ve('produccion', vProd));
 ok('equipo NO ve el de Producción', !ve('equipo', vProd));
-ok('todos ven el de Cliente',
-  ['admin','ejecutivo','produccion','equipo'].every(r => ve(r, vCli)));
+ok('el de Cliente: Administración y el PE sí; el jefe y el equipo no',
+  ['admin','ejecutivo'].every(r => ve(r, vCli)) && !['produccion','equipo'].some(r => ve(r, vCli)));
 
 comoRol('produccion');
-ok('el jefe ve dos versiones, no tres', versionesQueVeo(py).length === 2,
+ok('el jefe ve una sola versión: la de Producción', versionesQueVeo(py).length === 1,
   versionesQueVeo(py).map(v => v.nombre).join(', '));
 comoRol('equipo');
-ok('el de equipo ve una', versionesQueVeo(py).length === 1,
+ok('el de equipo no ve ninguna', versionesQueVeo(py).length === 0,
   versionesQueVeo(py).map(v => v.nombre).join(', '));
 comoRol('admin');
 ok('admin ve las tres', versionesQueVeo(py).length === 3);
