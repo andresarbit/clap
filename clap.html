@@ -5454,45 +5454,276 @@ function ticketDeEjemplo(o){
     `<rect width="300" height="${y + 40}" fill="#fffdf6"/><path d="M0 ${y + 40} l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 V${y + 40}Z" fill="#e8e3d3"/>` +
     `<g font-family="Courier New, monospace" fill="#222">${txt}</g></svg>`);
 }
-/* Semilla: una productora con un proyecto de ejemplo, para que se entienda
-   el modelo al abrirlo por primera vez.                                      */
+/* El guion del proyecto de ejemplo: el spot de 30″ de Brisa (todo inventado).
+   Lo usan el desglose del ejemplo y "Probar con un guion de ejemplo".       */
+const GUION_DEMO = `BRISA · "RESPIRÁ" · SPOT 30"
+
+1. EXT. COSTANERA - DÍA
+
+Mañana de calor en la costanera. CAMI (30) corre con auriculares y una
+mochila liviana. Pasan otros CORREDORES. El sol pega de frente.
+
+Cami se frena, agitada. Saca de la mochila una botella de Brisa y toma
+un trago largo. Respira.
+
+2. EXT. PLAZA DEL BARRIO - DÍA
+
+Cami cruza la plaza caminando. Un NENE (9) juega a la pelota con su
+papá. La pelota rueda hasta los pies de Cami: ella la devuelve de taco.
+El nene festeja. VECINOS en los bancos.
+
+3. INT. CASA DE CAMI - COCINA - DÍA
+
+Cami entra a la cocina. NICO (35) abre la heladera: la puerta está
+llena de botellas de Brisa transpirando. Le sirve un vaso con hielo.
+
+NICO
+¿Y? ¿Cuántos kilómetros?
+
+CAMI
+(sonríe y toma)
+Los suficientes.
+
+4. INT. CASA DE CAMI - LIVING - DÍA
+
+Packshot: la botella de Brisa sobre la mesa, con la luz de la ventana.
+Las gotas caen por la etiqueta.
+
+LOCUTOR (OFF)
+Brisa. Agua mineral de manantial. Respirá.
+`;
+
+/* Semilla: el proyecto de ejemplo. UNA publicidad mediana, entera y a mitad
+   de camino, para que cada pantalla (y cada tutorial) muestre un paso
+   distinto del mismo trabajo. Todo inventado: la productora, la marca, la
+   agencia, la gente, los números de CUIT y los tickets.
+
+     Brisa — "Respirá" · agua mineral · agencia Faro Comunicación
+     1 spot de 30″ + cutdown de 15″ + 3 piezas para redes
+     J1 (ayer):        exteriores, costanera y plaza · ya se filmó
+     J2 (pasado mañana): interior, la casa de Martínez · por filmar
+
+   Las fechas van contra el día en que se abre (la J1 siempre fue ayer). La
+   ficha completa del ejemplo está en docs/proyecto-de-ejemplo.md: si se
+   cambia algo acá, se cambia allá.                                          */
 function sembrar(){
-  const cat = [
-    nuevaPersona({nombre:'Martín Bevilacqua', funcion:'Director de Fotografía', rubro:'04', tarifaRef:450000, condicion:'Monotributista', cuit:'20-28456789-3', dni:'28456789'}),
-    nuevaPersona({nombre:'Lucía Ferrer',      funcion:'Jefa de Producción',      rubro:'03', tarifaRef:320000, condicion:'Monotributista', cuit:'27-31222444-8', dni:'31222444'}),
-    nuevaPersona({nombre:'Diego Roldán',      funcion:'Gaffer',                  rubro:'05', tarifaRef:280000, condicion:'Monotributista', dni:'30111222'}),
-    nuevaPersona({nombre:'Casa de alquiler — Cinecolor', funcion:'Paquete cámara + ópticas', rubro:'11', tarifaRef:900000, condicion:'Responsable Inscripto', tipo:'proveedor'}),
-    nuevaPersona({nombre:'Catering La Mesa',   funcion:'Almuerzo',               rubro:'13', tarifaRef:14000, unidad:'persona', condicion:'Monotributista', tipo:'proveedor'}),
+  const J1 = hoyMas(-1), J2 = hoyMas(2);
+  /* --- el catálogo de la productora: la gente con la que trabaja ------- */
+  /* CUIT/CUIL inventados, con el dígito verificador bien (si no, el alta los marca) */
+  const cuitEj = (pre, dni) => { for(let k = 0; k < 30; k++){ const d = String(+dni + k).padStart(8, '0'), b = pre + d, w = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2];
+    let t = 0; for(let i = 0; i < 10; i++) t += +b[i] * w[i]; let v = 11 - (t % 11); if(v === 11) v = 0;
+    if(v < 10) return {dni: d, cuit: `${pre}-${d}-${v}`}; } return {dni: String(dni), cuit: ''}; };
+  const aliasEj = nm => norm(nm).replace(/[^a-z]+/g, '.').replace(/^\.|\.$/g, '') + '.ej';
+  /* [clave, nombre, función, rubro, tel, dni, nacimiento, mujer, lo que le falta] */
+  const GENTE = [
+    ['julian', 'Julián Paz', 'Director', '02', '11 5555-2001', 27111222, '1979-04-12', 0, {condicion:'Responsable Inscripto'}],
+    ['paula', 'Paula Ríos', 'Asistente de Dirección (1° AD)', '02', '11 5555-1005', 33555666, '1988-06-30', 1],
+    ['lara', 'Lara Benítez', '2° Ayudante de Dirección', '02', '11 5555-3001', 39111444, '1996-02-11', 1],
+    ['inesO', 'Inés Ocampo', 'Script / Continuista', '02', '11 5555-3002', 34222555, '1989-09-02', 1],
+    ['lucia', 'Lucía Ferrer', 'Jefa de Producción', '03', '11 5555-1002', 31222444, '1985-02-03', 1],
+    ['diego', 'Diego Sosa', 'Asistente de Producción', '03', '11 5555-1006', 38444555, '1994-09-21', 0],
+    ['facundo', 'Facundo Ibarra', '2° Asistente de Producción', '03', '11 5555-3003', 40111222, '1998-05-17', 0],
+    ['rodrigo', 'Rodrigo Medina', 'Location Manager', '03', '11 5555-3004', 30555111, '1983-12-06', 0],
+    ['abril', 'Abril Torres', 'Aprendiz', '03', '11 5555-3005', 43222111, '2002-03-23', 1],
+    ['martinB', 'Martín Bevilacqua', 'Director de Fotografía', '04', '11 5555-2002', 28456789, '1980-11-15', 0],
+    ['nico', 'Nico Ferraro', 'Foquista (1° AC)', '04', '11 5555-2004', 35666777, '1991-01-08', 0, {alias:''}],   /* le falta el alias para el pago */
+    ['lucas', 'Lucas Prieto', '2° Asistente de Cámara', '04', '11 5555-3007', 39888222, '1996-08-30', 0],
+    ['bianca', 'Bianca Luna', 'DIT', '04', '11 5555-3008', 37111999, '1993-04-04', 1],
+    ['gaston', 'Gastón Vera', 'Video Assist', '04', '11 5555-3009', 36444111, '1992-07-27', 0],
+    ['martinG', 'Martín Gómez', 'Gaffer', '05', '11 5555-2003', 30111222, '1983-07-19', 0],
+    ['hernan', 'Hernán Díaz', 'Jefe eléctrico', '05', '11 5555-3010', 29777111, '1982-10-10', 0],
+    ['ezequiel', 'Ezequiel Mora', 'Eléctrico', '05', '11 5555-3011', 38999111, '1995-01-29', 0],
+    ['raul', 'Raúl Benítez', 'Generadorista', '05', '11 5555-3012', 26111333, '1977-06-14', 0],
+    ['pablo', 'Pablo Acosta', 'Key Grip', '05', '11 5555-3013', 32111777, '1986-11-03', 0],
+    ['ivan', 'Iván Correa', 'Grip', '05', '11 5555-3014', 41222333, '', 0, {cuit:'', alias:''}],   /* le faltan CUIL, nacimiento y alias */
+    ['ines', 'Inés Calvo', 'Director de Arte', '06', '11 5555-2006', 29333444, '1982-12-01', 1],
+    ['federico', 'Federico Sanz', 'Ambientador / 1° Asistente de Arte', '06', '11 5555-3015', 33999444, '1988-03-08', 0],
+    ['carla', 'Carla Méndez', 'Asistente de Arte', '06', '11 5555-1007', 37888999, '1993-03-27', 1],
+    ['micaela', 'Micaela Ortiz', 'Ayudante de Arte', '06', '11 5555-3016', 42555111, '2000-12-19', 1],
+    ['ramon', 'Ramón Suárez', 'Utilero', '06', '11 5555-3017', 25444666, '1975-05-05', 0],
+    ['sofia', 'Sofía Roldán', 'Vestuarista', '07', '11 5555-1001', 34111000, '', 1, {alias:''}],   /* le faltan nacimiento y alias */
+    ['julieta', 'Julieta Castro', 'Asistente de Vestuario', '07', '11 5555-3018', 40555777, '1997-09-12', 1],
+    ['ana', 'Ana Quiroga', 'Maquillador/a', '07', '11 5555-2007', 32999000, '1987-05-14', 1],
+    ['daniela', 'Daniela Ruiz', 'Peinador/a', '07', '11 5555-3019', 35222888, '1990-02-25', 1],
+    ['vale', 'Valentina Sur', 'Actriz', '09', '11 5555-2009', 36222111, '1995-08-09', 1],
+    ['mateo', 'Mateo Lanza', 'Actor', '09', '11 5555-2010', 31444333, '1986-10-22', 0, {cuit:'', alias:''}],   /* le faltan CUIT y alias */
   ];
-  DB.catalogo.personas = cat;
+  const C = {};
+  GENTE.forEach(([k, nombre, funcion, rubro, tel, dni, fechaNac, mujer, mas = {}]) => {
+    const id = cuitEj(mujer ? '27' : '20', dni), [nom1, ...resto] = nombre.split(' ');
+    C[k] = nuevaPersona({nombre, funcion, rubro, tel, email: norm(nom1) + '.' + norm(resto[resto.length - 1]) + '@ejemplo.com',
+      dni: id.dni, cuit: id.cuit, fechaNac, alias: aliasEj(nombre), banco: 'Banco de ejemplo',
+      condicion: rubro === '09' ? 'Monotributista' : 'Relación de dependencia', ...mas});
+  });
+  const prov = (k, o) => { C[k] = nuevaPersona({tipo:'proveedor', condicion:'Responsable Inscripto', ...o}); };
+  prov('cine', {nombre:'Cámaras del Sur', funcion:'Paquete cámara + ópticas', rubro:'11', cuit:'30-71000111-2', tel:'11 4000-0101', email:'pedidos@camarasdelsur.ejemplo'});
+  prov('rental', {nombre:'Rental Sur', funcion:'Luces y grip', rubro:'11', cuit:'30-70111222-3', tel:'11 4000-0202', email:'cotiza@rentalsur.ejemplo'});
+  prov('catering', {nombre:'Catering La Mesa', funcion:'Catering', rubro:'13', unidad:'persona', cuit:'30-71555000-8', tel:'11 4000-0303', email:'hola@lamesa.ejemplo'});
+  prov('transporte', {nombre:'Transportes Costa', funcion:'Camión, combi y auto', rubro:'12', cuit:'30-71666000-4', tel:'11 4000-0404'});
+  prov('baul', {nombre:'Utilería El Baúl', funcion:'Alquiler de utilería', rubro:'06', condicion:'Monotributista', cuit:'20-25777888-2', tel:'11 4000-0505'});
+  prov('vestuario', {nombre:'Vestuario Teatral de ejemplo', funcion:'Alquiler de vestuario', rubro:'07', condicion:'Monotributista', cuit:'27-28444999-1', tel:'11 4000-0606'});
+  prov('casting', {nombre:'Elenco Sur Casting (ejemplo)', funcion:'Agencia de casting', rubro:'09', cuit:'30-71888000-5', tel:'11 4000-0707', email:'casting@elencosur.ejemplo'});
+  prov('servicios', {nombre:'Servicios al Set Norte (ejemplo)', funcion:'Seguridad, limpieza y motorhome', rubro:'10', cuit:'30-71999000-2', tel:'11 4000-0808'});
+  prov('post', {nombre:'Postproductora Río (ejemplo)', funcion:'Edición, color y sonido', rubro:'14', cuit:'30-72000111-6', tel:'11 4000-0909', email:'post@rio.ejemplo'});
+  prov('seguros', {nombre:'Aseguradora de ejemplo', funcion:'Seguros de rodaje', rubro:'15', cuit:'30-72111222-8', tel:'11 4000-1010', email:'rodajes@aseguradora.ejemplo'});
+  prov('casa', {nombre:'Casa de Martínez (dueños)', funcion:'Locación', rubro:'10', condicion:'Monotributista', tel:'11 5555-3030'});
+  prov('permisos', {nombre:'Oficina de permisos de filmación (ejemplo)', funcion:'Permisos en vía pública', rubro:'10', condicion:'Exento', tel:'11 4000-1111'});
+  DB.catalogo.personas = Object.values(C);
 
-  const v = nuevaVersion({nombre:'v1', tc:1420, tcNombre:'MEP'});
-  const set = (cod, lineas)=>{ const r = v.rubros.find(x=>x.codigo===cod); r.lineas = lineas; r.abierto = true; };
-  set('02',[ nuevaLinea({concepto:'Director', valorUnit:600000, dias:1, circuito:'transferencia', comprobante:'facBC'}),
-             nuevaLinea({concepto:'Ayudante de Dirección (1° AD)', valorUnit:280000, dias:1, circuito:'transferencia', comprobante:'facBC'}) ]);
-  set('03',[ nuevaLinea({concepto:'Jefa de Producción', refId:cat[1].id, refTipo:'persona', valorUnit:320000, dias:3, circuito:'transferencia', comprobante:'facBC'}),
-             nuevaLinea({concepto:'Asistente de Producción', valorUnit:150000, dias:2, circuito:'efectivo', comprobante:'reciboS'}),
-             nuevaLinea({concepto:'Fijador', valorUnit:90000, dias:1, unidad:'global', circuito:'efectivo', comprobante:'ninguno'}),
-             /* la caja chica de producción: de ahí salen los fondos (💵 Dar fondo) */
-             nuevaLinea({concepto:'Caja chica de producción', valorUnit:300000, unidad:'global', circuito:'efectivo', comprobante:'ninguno'}) ]);
-  set('04',[ nuevaLinea({concepto:'Director de Fotografía', refId:cat[0].id, refTipo:'persona', valorUnit:450000, dias:1, circuito:'transferencia', comprobante:'facBC'}),
-             nuevaLinea({concepto:'Foquista', valorUnit:190000, dias:1, circuito:'transferencia', comprobante:'facBC'}) ]);
-  set('11',[ nuevaLinea({concepto:'Paquete cámara + ópticas', refId:cat[3].id, refTipo:'persona', valorUnit:900000, dias:1, circuito:'transferencia', comprobante:'facA'}),
-             nuevaLinea({concepto:'Paquete de luces', valorUnit:520000, dias:1, circuito:'transferencia', comprobante:'facA'}) ]);
-  set('13',[ nuevaLinea({concepto:'Almuerzo', refId:cat[4].id, refTipo:'persona', cantidad:32, dias:1, unidad:'persona', valorUnit:14000, circuito:'efectivo', comprobante:'reciboS'}) ]);
-  set('09',[ nuevaLinea({concepto:'Actor Principal', valorUnit:1200, moneda:'USD', dias:1, circuito:'transferencia', comprobante:'facBC'}),
-             nuevaLinea({concepto:'Buyout / Cesión de derechos — Digital 12 meses AR', valorUnit:1800, moneda:'USD', unidad:'global', circuito:'transferencia', comprobante:'facBC'}) ]);
-
-  const py = nuevoProyecto({nombre:'Spot Verano — 30"', cliente:'Marca X', agencia:'Agencia Y',
-    producto:'Bebida', jornadas:1, versiones:[v]});
+  /* --- el presupuesto: la plantilla "Publicidad · mediana", con sus precios -- */
+  const vR = nuevaVersion({nombre:'v1 · Real', nivel:'real', estado:'aprobado', tc:1420, tcNombre:'MEP',
+    capas:{fee:15, contingencia:5, iibb:0, iva:21, cargas:40, cargasElenco:30}});
+  const py = nuevoProyecto({nombre:'Brisa — "Respirá"', tipo:'publicidad', cliente:'Brisa (agua mineral)', agencia:'Faro Comunicación',
+    producto:'Agua mineral Brisa', territorio:'Argentina', plazo:'12 meses', medios:'TV, digital y redes', jornadas:2, versiones:[vR]});
   const pr = nuevaProductora({nombre:'Productora Demo', cuit:'30-71234567-9', proyectos:[py]});
   DB.productoras = [pr];
-  DB.ui.productoraId = pr.id; DB.ui.proyectoId = py.id; DB.ui.versionId = v.id;
+  DB.ui.productoraId = pr.id; DB.ui.proyectoId = py.id; DB.ui.versionId = vR.id;
+  /* las dos jornadas primero: la fecha del rodaje elige la escala SICA de los sueldos */
+  nuevaJornadaPlan(py); nuevaJornadaPlan(py);
+  const [j1, j2] = py.desglose.jornadas;
+  j1.fecha = J1; j2.fecha = J2;
+  py.piezas = [nuevaPieza({nombre:'Spot 30″', numero:1, duracion:'30″'}), nuevaPieza({nombre:'Cutdown 15″', numero:2, duracion:'15″'}),
+    nuevaPieza({nombre:'Redes · Reel', numero:3, duracion:'20″ (9:16)'}), nuevaPieza({nombre:'Redes · Story', numero:4, duracion:'10″ (9:16)'}),
+    nuevaPieza({nombre:'Redes · Feed', numero:5, duracion:'6″ (1:1)'})];
+  py.piezas.forEach((p, i) => { p.peso = [6, 2, 1, 1, 1][i]; });
+  const [pzSpot, pzCut, pzReel, pzStory, pzPost] = py.piezas;
+  aplicarPlantilla(py, vR, 'pub-mediana', {jornadas:2});
+  const R_ = c => vR.rubros.find(r => r.codigo === c);
+  const LN = (c, concepto, etapa = null) => R_(c).lineas.find(l => l.concepto === concepto && (l.etapa || null) === etapa);
+  const pon = (c, concepto, o) => { const l = LN(c, concepto); if(l) Object.assign(l, o); return l; };
+  const nueva = (c, o) => { const l = nuevaLinea({circuito:'transferencia', comprobante:'facBC', area:areaDeRubro(c) || '', ...o});
+    if(!o.valorUnit) autocompletarSICA(l, py); R_(c).lineas.push(l); R_(c).abierto = true; return l; };
+  const sacar = (c, concepto) => { R_(c).lineas = R_(c).lineas.filter(l => l.concepto !== concepto); };
+  /* "Eléctrico × 2" y "Aprendiz × 2" son dos personas: una línea cada una (así cada
+     uno tiene su alta, su citación y su liquidación) */
+  ['05:Eléctrico', '03:Aprendiz'].forEach(x => { const [c, concepto] = x.split(':'), l = LN(c, concepto); if(!l || n(l.cantidad) < 2) return;
+    l.cantidad = 1; const otra = JSON.parse(JSON.stringify(l)); otra.id = uid('ln'); R_(c).lineas.splice(R_(c).lineas.indexOf(l) + 1, 0, otra); });
+  /* cada puesto del equipo, con su ficha del catálogo */
+  const PUESTOS = [['02', 'Ayudante de Dirección (1° AD)', 'paula'], ['02', '2° Ayudante de Dirección', 'lara'], ['02', 'Script / Continuista', 'inesO'],
+    ['03', 'Jefe de Producción', 'lucia'], ['03', 'Asistente de Producción', 'diego'], ['03', '2° Asistente de Producción', 'facundo'], ['03', 'Location Manager', 'rodrigo'], ['03', 'Aprendiz', 'abril'],
+    ['04', 'Director de Fotografía', 'martinB'], ['04', 'Foquista (1° AC)', 'nico'], ['04', '2° Asistente de Cámara', 'lucas'], ['04', 'DIT', 'bianca'], ['04', 'Video Assist', 'gaston'],
+    ['05', 'Gaffer', 'martinG'], ['05', 'Jefe eléctrico', 'hernan'], ['05', 'Eléctrico', 'ezequiel'], ['05', 'Generadorista', 'raul'], ['05', 'Key Grip', 'pablo'], ['05', 'Grip', 'ivan'],
+    ['06', 'Director de Arte', 'ines'], ['06', 'Ambientador / 1° Asistente de Arte', 'federico'], ['06', 'Asistente de Arte', 'carla'], ['06', 'Ayudante de Arte', 'micaela'], ['06', 'Utilero', 'ramon'],
+    ['07', 'Vestuarista', 'sofia'], ['07', 'Asistente de Vestuario', 'julieta'], ['07', 'Maquillador/a', 'ana'], ['07', 'Peinador/a', 'daniela']];
+  /* la primera línea de cada puesto (y su preproducción) va a esa ficha */
+  PUESTOS.forEach(([c, concepto, k]) => R_(c).lineas.filter(l => l.concepto === concepto).forEach((l, i, ls) => {
+    if(l.etapa || ls.filter(x => !x.etapa).indexOf(l) === 0) Object.assign(l, {refId: C[k].id, refTipo: 'persona'}); }));
+  /* 01 preproducción */
+  pon('01', 'Scouting / búsqueda de locaciones', {valorUnit:850000, circuito:'efectivo', comprobante:'reciboS'});
+  pon('01', 'Casting', {valorUnit:900000});
+  pon('01', 'Pre Production Meeting (PPM)', {valorUnit:250000});
+  pon('01', 'Shootingboard', {valorUnit:450000});
+  /* 02 dirección: Paula es la asistente de dirección (1° AD), como en su usuario */
+  pon('02', 'Director', {valorUnit:4800000, refId:C.julian.id, refTipo:'persona', comprobante:'facA'});
+  R_('02').lineas.forEach(l => { if(l.concepto === 'Ayudante de Dirección (1° AD)') l.concepto = 'Asistente de Dirección (1° AD)'; });
+  /* 03 producción */
+  R_('03').lineas.forEach(l => { if(l.concepto === 'Jefe de Producción') l.concepto = 'Jefa de Producción'; });
+  /* la caja chica de producción: de ahí salen los fondos (💵 Dar fondo) */
+  pon('03', 'Caja chica de producción', {valorUnit:700000, circuito:'efectivo', comprobante:'ninguno'});
+  /* 04 cámara */
+  /* 05 eléctrica y grip: el grip cobra como ayudante (el convenio no tiene grip) */
+  pon('05', 'Grip', {valorUnit:239251});
+  /* 06 arte: Carla es asistente de arte, como en su usuario; la directora es Inés */
+  pon('06', 'Alquiler de utilería', {valorUnit:900000, refId:C.baul.id, refTipo:'persona'});
+  pon('06', 'Compras de arte', {valorUnit:650000, circuito:'efectivo'});
+  pon('06', 'Alquiler de muebles', {valorUnit:550000});
+  /* 07 vestuario y maquillaje */
+  pon('07', 'Alquiler de vestuario', {valorUnit:420000});
+  pon('07', 'Compra de vestuario', {valorUnit:380000, circuito:'efectivo'});
+  pon('07', 'Insumos de maquillaje', {valorUnit:140000, circuito:'efectivo'});
+  /* 09 elenco: dos principales, el nene (menor, con permiso) y los extras */
+  sacar('09', 'Actor / Actriz Principal'); sacar('09', 'Actor / Actriz Secundario'); sacar('09', 'Extra');
+  R_('09').lineas.forEach(l => { if(l.concepto === 'Fee de agencia de casting') l.concepto = 'Agencia de casting (comisión)'; });
+  R_('09').lineas.unshift(
+    nuevaLinea({concepto:'Actriz principal', personaje:'Cami', refId:C.vale.id, refTipo:'persona', valorUnit:800, moneda:'USD', dias:2, circuito:'transferencia', comprobante:'facBC', area:'elenco'}),
+    /* Nico está en el plan sólo en la J2: el presupuesto le paga 2 (sobra una) */
+    nuevaLinea({concepto:'Actor principal', personaje:'Nico', refId:C.mateo.id, refTipo:'persona', valorUnit:800, moneda:'USD', dias:2, circuito:'transferencia', comprobante:'facBC', area:'elenco'}),
+    nuevaLinea({concepto:'Actor infantil — Nene (menor de edad)', personaje:'Nene', valorUnit:180000, dias:1, circuito:'transferencia', comprobante:'reciboS', area:'elenco'}),
+    /* el plan pide 10 extras (6 corredores y 4 vecinos): el presupuesto paga 8 */
+    nuevaLinea({concepto:'Extras — corredores y vecinos', cantidad:8, valorUnit:95000, dias:1, circuito:'efectivo', comprobante:'reciboS', area:'elenco'}));
+  pon('09', 'Buyout / Cesión de derechos', {valorUnit:2400, moneda:'USD', concepto:'Buyout / Cesión de derechos — TV y digital 12 meses AR'});
+  pon('09', 'Agencia de casting (comisión)', {valorUnit:450000});
+  nueva('09', {concepto:'Chaperona', valorUnit:60000, dias:1, comprobante:'reciboS'});
+  nueva('09', {concepto:'Permiso de menores (escribanía)', unidad:'global', valorUnit:120000});
+  /* 10 locaciones */
+  R_('10').lineas.forEach(l => {
+    if(l.concepto === 'Fee de locación') Object.assign(l, {concepto:'Locación — Casa de Cami (Martínez)', dias:1, valorUnit:1800000});
+    if(l.concepto === 'Permiso municipal de filmación') Object.assign(l, {concepto:'Locación — Costanera y plaza (permiso de vía pública)', valorUnit:480000});
+  });
+  pon('10', 'Seguridad de locación', {valorUnit:95000});
+  pon('10', 'Limpieza', {valorUnit:160000});
+  nueva('10', {concepto:'Motorhome / camarín', dias:2, valorUnit:420000});
+  /* 11 equipos */
+  pon('11', 'Paquete cámara + ópticas', {valorUnit:1350000, refId:C.cine.id, refTipo:'persona', comprobante:'facA'});
+  pon('11', 'Paquete de luces', {valorUnit:1400000, refId:C.rental.id, refTipo:'persona', comprobante:'facA'});
+  pon('11', 'Paquete de grip', {valorUnit:450000, comprobante:'facA'});
+  pon('11', 'Grupo electrógeno', {valorUnit:380000, comprobante:'facA'});
+  pon('11', 'Handies / walkies', {valorUnit:65000});
+  pon('11', 'Camión de luces', {valorUnit:340000});
+  pon('11', 'Expendables (gelatinas, cintas, pilas)', {valorUnit:260000, circuito:'efectivo'});
+  /* 12 transporte */
+  pon('12', 'Auto de producción', {valorUnit:120000, refId:C.transporte.id, refTipo:'persona'});
+  pon('12', 'Combustible', {valorUnit:320000, circuito:'efectivo', comprobante:'ticket'});
+  pon('12', 'Peajes', {valorUnit:60000, circuito:'efectivo', comprobante:'ticket'});
+  pon('12', 'Camión de producción', {valorUnit:280000});
+  pon('12', 'Combi de pasajeros', {valorUnit:260000});
+  /* 13 catering, por persona y por jornada */
+  pon('13', 'Desayuno', {valorUnit:6500, refId:C.catering.id, refTipo:'persona'});
+  pon('13', 'Almuerzo', {valorUnit:16000, refId:C.catering.id, refTipo:'persona'});
+  pon('13', 'Merienda / snacks', {valorUnit:5000});
+  pon('13', 'Agua y bebidas', {valorUnit:180000, circuito:'efectivo'});
+  /* 14 posproducción: lo común y lo de cada pieza */
+  pon('14', 'Colorista', {valorUnit:950000});
+  pon('14', 'Mezcla y masterización de audio', {valorUnit:650000});
+  pon('14', 'Diseño sonoro', {valorUnit:500000});
+  pon('14', 'Licencia de música', {valorUnit:900000});
+  pon('14', 'Locución', {valorUnit:450000});
+  nueva('14', {concepto:'Edición del cutdown 15″', unidad:'global', valorUnit:380000, piezaId:pzCut.id});
+  [pzReel, pzStory, pzPost].forEach(pz => nueva('14', {concepto:`Adaptación para redes — ${pz.nombre.replace('Redes · ', '')}`, unidad:'global', valorUnit:220000, piezaId:pz.id}));
+  /* 15 seguros */
+  pon('15', 'Seguro de Accidentes Personales', {valorUnit:380000});
+  pon('15', 'Responsabilidad Civil', {valorUnit:260000});
+  pon('15', 'Todo Riesgo Equipos', {valorUnit:320000});
+  /* los proveedores de cada línea (así la lista de contactos sale completa) */
+  const deQuien = (c, k, ...conceptos) => conceptos.forEach(cc => R_(c).lineas.filter(l => l.concepto === cc).forEach(l => Object.assign(l, {refId: C[k].id, refTipo: 'persona'})));
+  deQuien('06', 'baul', 'Alquiler de muebles');
+  deQuien('07', 'vestuario', 'Alquiler de vestuario');
+  deQuien('09', 'casting', 'Extras — corredores y vecinos', 'Agencia de casting (comisión)', 'Buyout / Cesión de derechos — TV y digital 12 meses AR', 'Permiso de menores (escribanía)');
+  deQuien('10', 'casa', 'Locación — Casa de Cami (Martínez)');
+  deQuien('10', 'permisos', 'Locación — Costanera y plaza (permiso de vía pública)');
+  deQuien('10', 'servicios', 'Seguridad de locación', 'Limpieza', 'Motorhome / camarín');
+  deQuien('11', 'rental', 'Paquete de grip', 'Grupo electrógeno', 'Handies / walkies', 'Camión de luces', 'Expendables (gelatinas, cintas, pilas)');
+  deQuien('12', 'transporte', 'Camión de producción', 'Combi de pasajeros', 'Combustible', 'Peajes');
+  deQuien('13', 'catering', 'Merienda / snacks', 'Agua y bebidas');
+  deQuien('14', 'post', 'Montajista', 'Colorista', 'Mezcla y masterización de audio', 'Diseño sonoro', 'Licencia de música', 'Locución', 'Edición del cutdown 15″',
+    ...R_('14').lineas.filter(l => /^Adaptación para redes/.test(l.concepto)).map(l => l.concepto));
+  deQuien('15', 'seguros', 'Seguro de Accidentes Personales', 'Responsabilidad Civil', 'Todo Riesgo Equipos');
+  /* lo que no se dijo: por transferencia; el equipo del convenio con recibo de sueldo (lleva
+     cargas sociales), los demás contra factura */
+  vR.rubros.forEach(r => r.lineas.forEach(l => { l.circuito ||= 'transferencia'; l.comprobante ||= (l.valorOrigen === 'sica' ? 'reciboX' : 'facBC'); }));
+  vR.condiciones = condicionesTipicas(py, vR);
 
-  /* Equipo de ejemplo: uno por rol, para que el circuito se pueda probar de
-     entrada sin tener que cargar gente antes de ver nada.                    */
+  /* --- las versiones: el Real (arriba), la de rodaje (la del jefe, con un 8 % menos
+     en los proveedores todavía no cerrados: ahí queda el colchón) y la del cliente -- */
+  const copia = (v, o) => { const c = JSON.parse(JSON.stringify(v)); c.id = uid('v');
+    c.rubros.forEach(r => { r.id = uid('rb'); r.lineas.forEach(l => { l.origenId = raizLinea(l); l.id = uid('ln'); }); }); return Object.assign(c, o); };
+  const vRod = copia(vR, {nombre:'v2 · Rodaje', nivel:'produccion', estado:'aprobado', derivadaDe:vR.id, recorte:8});
+  vRod.rubros.forEach(r => r.lineas.forEach(l => { if(l.valorOrigen !== 'sica' && (l.moneda || 'ARS') === 'ARS' && !['Caja chica de producción', 'Director', 'Paquete de luces', 'Paquete cámara + ópticas', 'Locación — Casa de Cami (Martínez)'].includes(l.concepto) && !/elenco/.test(l.area || '')) l.valorUnit = Math.round(n(l.valorUnit) * 0.92 / 1000) * 1000; }));
+  /* la que se le presentó a la agencia: los proveedores un poco más arriba que el Real */
+  const vCli = copia(vR, {nombre:'v1 · Cliente', nivel:'cliente', estado:'aprobado'});
+  vCli.rubros.forEach(r => r.lineas.forEach(l => { if(l.valorOrigen !== 'sica' && (l.moneda || 'ARS') === 'ARS' && l.concepto !== 'Caja chica de producción') l.valorUnit = Math.round(n(l.valorUnit) * 1.06 / 1000) * 1000; }));
+  py.versiones = [vCli, vR, vRod];
+  py.versionRodaje = vRod.id;
+  DB.ui.versionId = vRod.id;
+  const RR = c => vRod.rubros.find(r => r.codigo === c);
+  const LR = (c, concepto) => RR(c).lineas.find(l => l.concepto === concepto && !l.etapa);
+  /* un adicional aprobado y uno propuesto (no tocan el presupuesto) */
+  py.adicionales = [nuevoAdicional({concepto:'Versión de 6″ para pre-roll', detalle:'Sale del material filmado: edición y color', cantidad:1, valor:650000, estado:'aprobado', fecha:hoyMas(-3)}),
+    nuevoAdicional({concepto:'Un día más de color', detalle:'Lo pidió la agencia para el cutdown', cantidad:1, valor:420000, estado:'propuesto', fecha:hoy()})];
+
+  /* --- la gente: los que usan CLAP (uno por rol) ---------------------- */
   pr.usuarios = [
-    nuevoUsuario({nombre:'Sofía Roldán',  rol:'equipo',     depto:'Arte',           tel:'11 5555-1001', email:'sofia@ejemplo.com'}),
+    nuevoUsuario({nombre:'Sofía Roldán',  rol:'equipo',     depto:'Vestuario',      tel:'11 5555-1001', email:'sofia@ejemplo.com'}),
     nuevoUsuario({nombre:'Lucía Ferrer',  rol:'produccion', depto:'Producción',     tel:'11 5555-1002', email:'lucia@ejemplo.com'}),
     nuevoUsuario({nombre:'Tomás Vidal',   rol:'ejecutivo',  depto:'Producción',     tel:'11 5555-1003', email:'tomas@ejemplo.com'}),
     nuevoUsuario({nombre:'Marta Giles',   rol:'admin',      depto:'Administración', tel:'11 5555-1004', email:'marta@ejemplo.com'}),
@@ -5500,75 +5731,247 @@ function sembrar(){
     nuevoUsuario({nombre:'Diego Sosa',    rol:'asistprod',  depto:'Producción',     tel:'11 5555-1006', email:'diego@ejemplo.com'}),
     nuevoUsuario({nombre:'Carla Méndez',  rol:'arte',       depto:'Arte',           tel:'11 5555-1007', email:'carla@ejemplo.com'}),
   ];
-  const [uArte, uProd, uEjec, uAdmin, , uAsistP, uAsistA] = pr.usuarios;
-  DB.ui.usuarioId = uEjec.id;
+  const [uSofia, uLucia, uTomas, uMarta, uPaula, uDiego, uCarla] = pr.usuarios;
+  DB.ui.usuarioId = uTomas.id;
   py.invitados = pr.usuarios.map(u => u.id);
-  /* una tarea encargada y un cheque pedido, para ver el circuito */
-  py.tareas = [nuevaTarea({titulo:'Pedir tres cotizaciones de cámara', detalle:'Para las jornadas del plan; que incluyan seguro',
-    asignadoA:uAsistP.id, creadaPor:uProd.id})];
-  py.cheques = [nuevoCheque({a:'Utilería El Baúl', monto:150000, motivo:'Garantía del alquiler de utilería',
-    pedidoPor:uAsistA.id, historial:[{a:'pedido', quien:uAsistA.nombre, cuando:hoy()}]})];
 
-  /* Un movimiento de cada tipo, para que ninguna pantalla arranque vacía. */
-  const oc = nuevaOC({numero:'OC-0001', rubro:'11', subrubro:'Paquete de luces',
-    proveedor:'Rental Sur', importe:520000, estado:'emitida', emitidaPor:uEjec.id,
-    condicion:'50% anticipo, 50% contra entrega',
-    historial:[{a:'emitida', usuario:uEjec.nombre, fecha:hoy()}]});
-  py.ocs = [oc];
+  /* los nombres de los puestos sin ficha en el catálogo (en la versión de rodaje) */
+  /* los que todavía no tienen ficha en el catálogo: van con nombre y teléfono */
+  const CP = py.contactos.porLinea;
+  const sinFicha = (c, concepto, nombre, tel) => { const l = RR(c).lineas.find(x => x.concepto === concepto && !x.etapa && !x.refId); if(l) CP['l:' + l.id] = {nombre, tel}; };
+  sinFicha('05', 'Eléctrico', 'Bruno Lage', '11 5555-2005');
+  sinFicha('03', 'Aprendiz', 'Joaquín Rey', '11 5555-3006');
+  sinFicha('09', 'Actor infantil — Nene (menor de edad)', 'Benjamín Ortiz (9)', '11 5555-3020');
+  sinFicha('09', 'Chaperona', 'Laura Ortiz (la mamá de Benjamín)', '11 5555-3021');
+  sinFicha('06', 'Compras de arte', 'Carla Méndez (compras)', '11 5555-1007');
+  sinFicha('07', 'Compra de vestuario', 'Sofía Roldán (compras)', '11 5555-1001');
+  sinFicha('07', 'Insumos de maquillaje', 'Ana Quiroga (compras)', '11 5555-2007');
+  sinFicha('03', 'Caja chica de producción', 'Diego Sosa (la maneja)', '11 5555-1006');
+  /* la gente de la marca y de la agencia */
+  py.contactos.extra.push({id: uid('cx'), grupo:'Producción y cliente', rol:'Marketing de Brisa', nombre:'Gabriela Núñez', tel:'11 5555-4001', email:'gabriela@brisa.ejemplo'},
+    {id: uid('cx'), grupo:'Producción y cliente', rol:'Producer de la agencia', nombre:'Sergio Aldao (Faro Comunicación)', tel:'11 5555-4002', email:'sergio@faro.ejemplo'},
+    {id: uid('cx'), grupo:'Producción y cliente', rol:'Directora creativa', nombre:'Mora Lentini (Faro Comunicación)', tel:'11 5555-4003', email:'mora@faro.ejemplo'});
+  /* las locaciones del desglose, con quién habla */
+  [['COSTANERA', 'Rodrigo Medina (location manager)', '11 5555-3004'], ['PLAZA DEL BARRIO', 'Rodrigo Medina (location manager)', '11 5555-3004'],
+   ['CASA DE CAMI - COCINA', 'Casa de Martínez (dueños)', '11 5555-3030'], ['CASA DE CAMI - LIVING', 'Casa de Martínez (dueños)', '11 5555-3030']]
+    .forEach(([l, nombre, tel]) => { CP['loc:' + l] = {nombre, tel}; });
 
-  const caja = nuevaCaja({nombre:'Caja de arte', responsable:uArte.id, jornada:1,
-    adelantos:[{id:uid('ad'), fecha:hoy(), importe:200000, circuito:'efectivo',
-      entregadoPor:uProd.id, nota:'Adelanto para compras'}]});
-  py.cajas = [caja];
+  /* --- el desglose del guion y el plan de rodaje ----------------------- */
+  const d = py.desglose;
+  const des = desglosar(GUION_DEMO);
+  Object.assign(d, {guion: GUION_DEMO, escenas: des.escenas, modo: des.modo, importado: hoyMas(-9)});
+  /* el locutor es una voz en off (se graba en la post): Paula lo sacó del elenco del rodaje */
+  d.escenas.forEach(e => { e.personajes = e.personajes.filter(x => !/^LOCUTOR/i.test(x)); });
+  /* en publicidad las jornadas se arman con los planos del plan (cada plano dice de qué escena es): las escenas del desglose no llevan jornada */
+  const p = planDe(py);
+  p.lugar = 'caba';
+  [j1, j2].forEach(j => { j.citacion = '06:30';
+    j.hospital = {nombre:'Hospital de ejemplo (guardia)', direccion: j === j1 ? 'Av. Figueroa Alcorta 4000, CABA' : 'Av. del Libertador 15000, San Isidro', tel: j === j1 ? '11 4000-1000' : '11 4000-2000'};
+    j.emergencia = {nombre:'Emergencias médicas', tel:'107'}; });
+  j1.clima = 'Soleado, 28° de máxima'; j2.clima = 'Nublado parcial, 24°';
+  j1.direcciones = {'Costanera': {direccion:'Av. Rafael Obligado y La Pampa, Costanera Norte, CABA', contacto:'Rodrigo Medina · 11 5555-3004', notas:'Los camiones estacionan sobre la colectora; el permiso de vía pública lo tiene Rodrigo'},
+    'Plaza': {direccion:'Plaza de ejemplo, Av. Costanera y Sarmiento, CABA', contacto:'Rodrigo Medina · 11 5555-3004', notas:'Baños en el bar de la esquina'}};
+  j2.direcciones = {'Casa de Cami': {direccion:'Calle de ejemplo 1234, Martínez, San Isidro', contacto:'Familia dueña de casa · 11 5555-3030', notas:'Entrar con cubrecalzado; el living tiene parquet'}};
+  const esc = n0 => d.escenas[n0 - 1] ? d.escenas[n0 - 1].id : null;
+  const pl = (num, numero, o) => { const it = nuevoItemPlan({tipo:'plano', numero, ...o}); p.items.push(it); meterEnJornada(py, it, num); return it; };
+  /* J1: exteriores (ya se filmó) */
+  [['1', {desc:'PG: Cami corre por la costanera, el sol de frente', set:'Costanera - sendero', emplazamiento:'A', tamano:'PG', movimiento:'Travelling', elenco:'Cami', escenaId:esc(1), duracion:40}],
+   ['2', {desc:'PM lateral: Cami corre, pasan otros corredores', set:'Costanera - sendero', emplazamiento:'A', tamano:'PM', movimiento:'Travelling', elenco:'Cami', extras:'Corredores x6', escenaId:esc(1), duracion:35}],
+   ['3', {desc:'PP: los auriculares, la respiración', set:'Costanera - sendero', emplazamiento:'B', tamano:'PP', movimiento:'Cámara en mano', elenco:'Cami', escenaId:esc(1), duracion:30}],
+   ['4', {desc:'PG: corredores en contraluz (para el cutdown)', set:'Costanera - sendero', emplazamiento:'B', tamano:'PG', movimiento:'Fijo', extras:'Corredores x6', escenaId:esc(1), piezaId:pzCut.id, duracion:30}],
+   ['5', {desc:'PM: Cami se frena, agitada', set:'Costanera - baranda', emplazamiento:'C', tamano:'PM', movimiento:'Fijo', elenco:'Cami', escenaId:esc(1), duracion:30}],
+   ['6', {desc:'Detalle: saca la botella de la mochila', set:'Costanera - baranda', emplazamiento:'C', tamano:'Detalle', movimiento:'Fijo', elenco:'Cami', elementos:'Botella de Brisa, mochila', escenaId:esc(1), duracion:30}],
+   ['7', {desc:'PP: toma un trago largo y respira', set:'Costanera - baranda', emplazamiento:'C', tamano:'PP', movimiento:'Cámara lenta / alta velocidad', elenco:'Cami', elementos:'Botella de Brisa', escenaId:esc(1), duracion:35}],
+   ['8', {desc:'Reel: Cami a cámara, vertical, "¿cuántos kilómetros hoy?"', set:'Costanera - baranda', emplazamiento:'D', tamano:'PM', movimiento:'Gimbal', elenco:'Cami', escenaId:esc(1), piezaId:pzReel.id, duracion:20}],
+   ['9', {desc:'PG: la plaza, vecinos en los bancos, el nene con la pelota', set:'Plaza - cancha', emplazamiento:'E', tamano:'PG', movimiento:'Travelling', elenco:'Cami, Nene', extras:'Vecinos x4', escenaId:esc(2), duracion:50}],
+   ['10', {desc:'PM: la pelota rueda hasta los pies de Cami', set:'Plaza - cancha', emplazamiento:'E', tamano:'PM', movimiento:'Fijo', elenco:'Cami, Nene', elementos:'Pelota', escenaId:esc(2), duracion:30}],
+   ['11', {desc:'Detalle: el taco devolviendo la pelota', set:'Plaza - cancha', emplazamiento:'F', tamano:'Detalle', movimiento:'Cámara lenta / alta velocidad', elenco:'Cami', elementos:'Pelota', escenaId:esc(2), duracion:45}],
+   ['12', {desc:'PP: el nene festeja', set:'Plaza - cancha', emplazamiento:'F', tamano:'PP', movimiento:'Cámara en mano', elenco:'Nene', extras:'Vecinos x4', escenaId:esc(2), duracion:35}],
+   ['13', {desc:'Feed: Cami sigue caminando, sale de cuadro (1:1)', set:'Plaza - cancha', emplazamiento:'G', tamano:'PG', movimiento:'Fijo', elenco:'Cami', escenaId:esc(2), piezaId:pzPost.id, duracion:15}],
+  ].forEach(([num0, o]) => pl(1, num0, {...o, estado:'filmado', luz:'dia', intExt:'EXT'}));
+  /* J2: interior de la casa (por filmar) */
+  [['14', {desc:'PG: Cami entra a la cocina', set:'Casa de Cami - cocina', emplazamiento:'H', tamano:'PG', movimiento:'Dolly', elenco:'Cami, Nico', escenaId:esc(3), duracion:40}],
+   ['15', {desc:'PM: Nico abre la heladera', set:'Casa de Cami - cocina', emplazamiento:'H', tamano:'PM', movimiento:'Fijo', elenco:'Nico', elementos:'Heladera llena de botellas', escenaId:esc(3), duracion:40}],
+   ['16', {desc:'Detalle: la puerta llena de botellas transpirando', set:'Casa de Cami - cocina', emplazamiento:'I', tamano:'Detalle', movimiento:'Fijo', elementos:'Botellas de Brisa, rociador', escenaId:esc(3), duracion:35}],
+   ['17', {desc:'PP: Nico sirve el vaso con hielo', set:'Casa de Cami - cocina', emplazamiento:'I', tamano:'PP', movimiento:'Cámara lenta / alta velocidad', elenco:'Nico', elementos:'Vaso, hielo', escenaId:esc(3), duracion:35}],
+   ['18', {desc:'Plano y contraplano: "¿Y? ¿Cuántos kilómetros?"', set:'Casa de Cami - cocina', emplazamiento:'J', tamano:'PM', movimiento:'Fijo', elenco:'Cami, Nico', escenaId:esc(3), duracion:45}],
+   ['19', {desc:'PP: Cami sonríe y toma', set:'Casa de Cami - cocina', emplazamiento:'J', tamano:'PP', movimiento:'Fijo', elenco:'Cami', escenaId:esc(3), duracion:35}],
+   ['20', {desc:'Story: Nico deja el vaso y mira a cámara (9:16)', set:'Casa de Cami - cocina', emplazamiento:'K', tamano:'PM', movimiento:'Gimbal', elenco:'Nico', escenaId:esc(3), piezaId:pzStory.id, duracion:30}],
+   ['21', {desc:'Packshot: la botella sobre la mesa, luz de ventana', set:'Casa de Cami - living', emplazamiento:'L', tamano:'PP', movimiento:'Dolly', elementos:'Botella de Brisa', vfx:'Limpieza de etiqueta', escenaId:esc(4), duracion:90}],
+   ['22', {desc:'Packshot macro: las gotas por la etiqueta', set:'Casa de Cami - living', emplazamiento:'L', tamano:'Detalle', movimiento:'Cámara lenta / alta velocidad', elementos:'Botella de Brisa, glicerina', vfx:'Gotas y brillo', escenaId:esc(4), duracion:85}],
+   ['23', {desc:'Placa final: BRISA · RESPIRÁ', set:'Casa de Cami - living', emplazamiento:'M', tamano:'PP', movimiento:'Fijo', elementos:'Botella de Brisa', vfx:'Placa y logo', escenaId:esc(4), duracion:50}],
+  ].forEach(([num0, o]) => pl(2, num0, {...o, luz:'dia', intExt:'INT'}));
+  asegurarEventosBase(py);
+  /* el orden del día, como lo dejó Paula: desayuno, armado, la mañana, el
+     almuerzo a las 12:30, la tarde y el wrap (la J1 ya se filmó así) */
+  const ordenDia = (num, antes, despues) => {
+    const del = p.items.filter(x => x.jornada === num), ev = k => del.find(x => x.tipo === 'evento' && x.clase === k);
+    const porNum = k => del.find(x => x.numero === k);
+    [ev('desayuno'), ev('prelight'), ...antes.map(porNum), ev('almuerzo'), ...despues.map(porNum), ev('wrap')].filter(Boolean).forEach((x, i) => { x.orden = i + 1; });
+    const alm = ev('almuerzo'); if(alm) alm.fijo = '12:30';
+    volcarHorarios(py, num);
+  };
+  ordenDia(1, ['1', '2', '3', '4', '5', '6', '7'], ['8', '9', '10', '11', '12', '13']);
+  ordenDia(2, ['14', '15', '16', '17', '18', '19'], ['20', '21', '22', '23']);
+  sincronizarPlan(py);
+  /* las citaciones que se tocaron a mano: producción y eléctrica antes */
+  [j1, j2].forEach(j => {
+    const {gente} = gentePorJornada(py, vRod, j.numero);
+    gente.forEach(g => { const c = j.citaciones[g.clave] ||= {};
+      if(g.grupo === 'Equipo de Producción') Object.assign(c, {citacion:'05:45', auto:false});
+      else if(g.grupo === 'Eléctrica y Grip') Object.assign(c, {citacion:'06:00', auto:false}); });
+  });
 
-  const paso = (de,a,accion,usr) => ({de, a, accion, usuario:usr.nombre, usuarioId:usr.id,
-    rol:usr.rol, fecha:hoy(), nota:''});
-  py.comprobantes = [
-    nuevoComprobante({rubro:'11', subrubro:'Paquete de luces', proveedor:'Rental Sur',
-      cuit:'30-70111222-3', tipo:'facA', numero:'0001-00009911', importe:300000,
-      circuito:'transferencia', ocId:oc.id, estado:'revisado', cargadoPor:uProd.id,
-      historial:[paso(null,'cargado','cargar',uProd), paso('cargado','revisado','revisar',uProd)]}),
-    nuevoComprobante({rubro:'06', subrubro:'Compras de arte', proveedor:'Pinturería Norte',
-      tipo:'facBC', numero:'0003-00000455', importe:45000, circuito:'efectivo',
-      cajaId:caja.id, estado:'cargado', cargadoPor:uArte.id, notas:'Telas y pintura',
-      historial:[paso(null,'cargado','cargar',uArte)]}),
-    nuevoComprobante({rubro:'06', subrubro:'Utilero', proveedor:'Feria de Once',
-      tipo:'ninguno', importe:30000, circuito:'efectivo', cajaId:caja.id,
-      estado:'cargado', cargadoPor:uArte.id, notas:'Sin comprobante, se pagó en la feria',
-      historial:[paso(null,'cargado','cargar',uArte)]}),
-    nuevoComprobante({rubro:'13', subrubro:'Almuerzo', proveedor:'Catering La Mesa',
-      tipo:'facBC', numero:'0002-00001180', importe:448000, circuito:'transferencia',
-      estado:'pagado', cargadoPor:uProd.id,
-      historial:[paso(null,'cargado','cargar',uProd), paso('cargado','revisado','revisar',uProd),
-        paso('revisado','aprobado','aprobar',uEjec), paso('aprobado','pagado','pagar',uAdmin)]}),
+  /* --- la J1 ya pasó: el parte del día, con horas extra ---------------- */
+  const P1 = j1.parte;
+  Object.assign(P1, {primeraToma:'08:05', comidaIn:'13:10', comidaOut:'14:10', ultimaToma:'19:40', wrap:'20:15', comidasServidas:46,
+    incidencias:'Se demoró el permiso en la plaza: arrancamos 20 minutos tarde. Wrap 20:15 (45 min de extra).', climaReal:'Soleado, 29°'});
+  const {gente: g1} = gentePorJornada(py, vRod, 1);
+  g1.forEach(g => {
+    const ent = horaCitada(j1, g.clave);
+    const sal = g.tipo === 'elenco' ? ((j1.citaciones[g.clave] || {}).libera || '19:00') : g.tipo === 'extras' ? ((j1.citaciones[g.clave] || {}).libera || '17:00') : '20:15';
+    P1.fichadas[g.clave] = {entrada: ent, salida: sal};
+    P1.citados[g.clave] = {hora: ent, cuando: hoyMas(-3) + 'T18:00:00.000Z'};
+  });
+  /* la J2: citados casi todos, y las confirmaciones (una no puede, una con la hora vieja) */
+  const {gente: g2} = gentePorJornada(py, vRod, 2);
+  const P2 = j2.parte; P2.confirmados ||= {};
+  g2.forEach((g, i) => {
+    if(g.tipo === 'extras') return;
+    P2.citados[g.clave] = {hora: horaCitada(j2, g.clave), cuando: hoyMas(-1) + 'T21:00:00.000Z'};
+    if(i % 3 !== 2) P2.confirmados[g.clave] = {cuando: hoyMas(-1) + 'T22:10:00.000Z', hora: horaCitada(j2, g.clave), confirma: true, respuesta: ''};
+  });
+  const gNico = g2.find(g => g.rol === 'Nico'), gSofia = g2.find(g => g.nombre === 'Sofía Roldán'), gGrip = g2.find(g => g.nombre === 'Iván Correa');
+  if(gSofia){ const h = horaCitada(j2, gSofia.clave); j2.citaciones[gSofia.clave] = {...(j2.citaciones[gSofia.clave] || {}), citacion: aHora(aMin(h) - 15), auto: false};
+    /* le adelantaron la hora después de citarla: tiene la vieja */
+    P2.citados[gSofia.clave] = {hora: h, cuando: hoyMas(-1) + 'T21:00:00.000Z'}; P2.confirmados[gSofia.clave] = {cuando: hoyMas(-1) + 'T22:30:00.000Z', hora: h, confirma: true, respuesta: ''}; }
+  if(gGrip) P2.confirmados[gGrip.clave] = {cuando: hoy() + 'T08:15:00.000Z', confirma: false, respuesta: 'Llego 30 minutos tarde: vengo de otro rodaje'};
+  if(gNico) P2.confirmados[gNico.clave] = {cuando: hoyMas(-1) + 'T23:00:00.000Z', hora: horaCitada(j2, gNico.clave), confirma: true, respuesta: 'Llevo dos remeras más por si acaso'};
+
+  /* --- el pedido de luces (lo armó el gaffer, cotizado con Rental Sur) --- */
+  const PL = pedidoDe(py);
+  Object.assign(PL, {rentalId: C.rental.id, rental: C.rental.nombre, armadoPor: 'Martín Gómez', estado: 'cotizado', descuento: 10});
+  KITS_LUCES.mediano.items.forEach(([nombre, cant]) => { const e = EQUIPOS_LUZ.find(x => x.nombre === nombre); if(!e) return;
+    const it = lzSumar(py, e.k, cant), r = refDe(e);
+    it.precio = r ? Math.min(...Object.values(r)) : 0; });
+  PL.items.forEach(it => { if(/HMI|M18|Butterfly|Marco 12x12/.test(it.nombre)) it.jornadas = [1];
+    if(/SkyPanel S360|Dedolight|Kino|Fresnel 1K/.test(it.nombre)) it.jornadas = [2]; });
+
+  /* --- las altas: a quién se le pidieron los datos, y la liquidación de la J1 --- */
+  const A = altaDe(py), LQ = liqDe(py);
+  const G = genteDelProyecto(py, vRod);
+  const gq = nombre => G.find(g => g.nombre === nombre);
+  ['Nico Ferraro', 'Bruno Lage', 'Sofía Roldán', 'Mateo Lanza'].forEach(nm => { const g = gq(nm); if(g) A[g.clave] = {pedidoEl: hoyMas(-4)}; });
+  const liq = (nm, o) => { const g = gq(nm); if(g) LQ[g.clave] = o; };
+  liq('Martín Bevilacqua', {estado:'revisado'}); liq('Martín Gómez', {estado:'revisado'}); liq('Hernán Díaz', {estado:'revisado'});
+  liq('Lucas Prieto', {estado:'aprobado'}); liq('Bianca Luna', {estado:'aprobado'});
+  liq('Valentina Sur', {estado:'aprobado'});
+
+  /* --- tareas: las del jefe para cada uno ----------------------------- */
+  const ta = o => nuevaTarea({creadaPor: uLucia.id, ...o});
+  const lCompras = LR('06', 'Compras de arte'), lMotor = LR('10', 'Motorhome / camarín'), lGen = LR('11', 'Grupo electrógeno'), lGrip = LR('11', 'Paquete de grip');
+  py.tareas = [
+    ta({titulo:'Chequear el motorhome', detalle:'Que llegue limpio, con baño y aire funcionando, a las 06:00 en Martínez', asignadoA: uDiego.id, vence: hoyMas(-1), lineaId: lMotor && lMotor.id}),
+    ta({titulo:'Generador para vestuario', detalle:'Uno chico aparte para planchas y vaporera en la J2', asignadoA: uDiego.id, vence: hoyMas(1), lineaId: lGen && lGen.id}),
+    ta({titulo:'Los agarres especiales que pidió grip', detalle:'Confirmar con Rental Sur la lista que mandó Pablo Acosta (key grip)', asignadoA: uDiego.id, vence: hoyMas(1), lineaId: lGrip && lGrip.id}),
+    ta({titulo:'Confirmar el horario de entrada a la casa de Martínez', detalle:'Y dónde estacionan el camión y la combi', asignadoA: uDiego.id, vence: hoyMas(1)}),
+    ta({titulo:'Pedir el seguro de equipos', asignadoA: uDiego.id, vence: hoyMas(-5), estado:'hecha', hechaEl: hoyMas(-5), hechaPor: uDiego.id, nota:'Pedido a la aseguradora, llega la póliza el lunes'}),
+    ta({titulo:'Cerrar el plan de la J2', detalle:'Con el packshot al final y el almuerzo en el cambio de set', asignadoA: uPaula.id, vence: hoy()}),
+    ta({titulo:'Conseguir plantas para el living', detalle:'Verdes, nada de flores: que no compitan con la botella', asignadoA: uCarla.id, vence: hoyMas(1), lineaId: lCompras && lCompras.id}),
+    ta({titulo:'Mandar fotos de la prueba de vestuario de Nico', asignadoA: uSofia.id, vence: hoy()}),
+    ta({titulo:'Mandarle a Tomás la cotización del día más de color', detalle:'La pidió la agencia para el cutdown', asignadoA: uLucia.id, vence: hoyMas(1)}),
+    ta({titulo:'Reconfirmar la chaperona del nene', asignadoA: uPaula.id, vence: hoyMas(-2), estado:'hecha', hechaEl: hoyMas(-2), hechaPor: uPaula.id, nota:'Viene la mamá, con el permiso firmado'}),
   ];
 
-  /* Una rendición de ejemplo, ya mandada al jefe: el asistente de producción
-     recibió $ 150.000 y rinde cinco tickets (todo inventado). */
-  const uJefe = uProd;
-  /* el fondo sale de la caja chica de producción del presupuesto */
-  const lCaja = v.rubros.find(x => x.codigo === '03').lineas.find(l => l.concepto === 'Caja chica de producción');
-  const fondo = nuevaCaja({nombre:'Fondo de producción', responsable:uAsistP.id, jornada:null, lineaId:lCaja.id,
-    adelantos:[{id:uid('ad'), fecha:hoyMas(-4), importe:150000, entregadoPor:uJefe.id, nota:'Para el scouting y la preproducción', lineaId:lCaja.id}]});
-  fondo.rendicion = {estado:'enviada',
-    pasos:[{id:uid('rp'), de:'borrador', a:'enviada', quienId:uAsistP.id, quien:uAsistP.nombre, rol:uAsistP.rol, cuando:hoy()+' 18:40', nota:''}],
-    charla:[{id:uid('rm'), quienId:uAsistP.id, quien:uAsistP.nombre, rol:uAsistP.rol, cuando:hoy()+' 18:41', gastoId:null,
-      texto:'La descarga del camión fue sin comprobante: le pagué en mano al changarín.'}]};
-  py.cajas.push(fondo);
-  const tk = (o) => nuevoComprobante({moneda:'ARS', circuito:'efectivo', cajaId:fondo.id, estado:'cargado', cargadoPor:uAsistP.id,
-    area:'produccion', historial:[paso(null,'cargado','cargar',uAsistP)], ...o,
-    adjunto: o.tipo === 'ninguno' ? null : {nombre:`ticket-${norm(o.proveedor).replace(/[^a-z]+/g,'-').replace(/^-|-$/g,'')}.svg`, tipo:'image/svg+xml',
-      dataUrl:ticketDeEjemplo(o), bytes:1200, w:300, h:440}});
-  py.comprobantes.push(
-    tk({rubro:'12', concepto:'Nafta para el scouting', proveedor:'Estación de servicio Ruta 2 (ejemplo)', cuit:'30-71234567-1',
-        tipo:'facBC', numero:'00012-00004521', fecha:hoyMas(-4), importe:42000}),
-    tk({rubro:'12', concepto:'Peaje', proveedor:'Autopista del Sol (ejemplo)', cuit:'30-70999888-5',
-        tipo:'ticket', numero:'0003-00981234', fecha:hoyMas(-4), importe:3450}),
-    tk({rubro:'03', concepto:'Cinta, precintos y pilas', proveedor:'Ferretería del Centro (ejemplo)', cuit:'20-33444555-1',
-        tipo:'facBC', numero:'00002-00001877', fecha:hoyMas(-3), importe:18500}),
-    tk({rubro:'13', concepto:'Desayuno del equipo de scouting', proveedor:'Panadería La Espiga (ejemplo)', cuit:'30-71555666-5',
-        tipo:'ticket', numero:'0001-00045210', fecha:hoyMas(-3), importe:24300}),
-    tk({rubro:'03', concepto:'Descarga del camión (changarín)', proveedor:'', tipo:'ninguno', fecha:hoyMas(-2), importe:50000}));
+  /* --- la plata: una OC, comprobantes en cada estado, cheques y rendiciones --- */
+  const paso = (de, a, accion, u, fecha = hoy()) => ({de, a, accion, usuario: u.nombre, usuarioId: u.id, rol: u.rol, fecha, nota: ''});
+  const oc = nuevaOC({numero:'OC-0001', rubro:'11', subrubro:'Paquete de luces', area:'electrica', proveedor:'Rental Sur', cuit:C.rental.cuit,
+    concepto:'Luces y grip, dos jornadas', importe:2800000, estado:'emitida', emitidaPor: uTomas.id, condicion:'50% anticipo, 50% contra entrega',
+    historial:[{a:'emitida', usuario: uTomas.nombre, fecha: hoyMas(-6)}]});
+  py.ocs = [oc];
+  const lin = (c, concepto) => { const l = LR(c, concepto); return l ? l.id : null; };
+  py.comprobantes = [
+    /* pagado: el anticipo de luces (50% de la OC) */
+    nuevoComprobante({rubro:'11', subrubro:'Paquete de luces', area:'electrica', proveedor:'Rental Sur', cuit:C.rental.cuit, tipo:'facA', numero:'0004-00012870',
+      fecha: hoyMas(-5), importe:1400000, circuito:'transferencia', ocId: oc.id, lineaId: lin('11', 'Paquete de luces'), estado:'pagado', cargadoPor: uLucia.id, notas:'Anticipo 50%',
+      historial:[paso(null, 'cargado', 'cargar', uLucia, hoyMas(-5)), paso('cargado', 'revisado', 'revisar', uLucia, hoyMas(-5)), paso('revisado', 'aprobado', 'aprobar', uTomas, hoyMas(-4)), paso('aprobado', 'pagado', 'pagar', uMarta, hoyMas(-4))]}),
+    /* aprobado, para pagar: el catering de la J1 */
+    nuevoComprobante({rubro:'13', subrubro:'Almuerzo', area:'catering', proveedor:'Catering La Mesa', cuit:C.catering.cuit, tipo:'facBC', numero:'0002-00004410',
+      fecha: J1, importe:1012000, circuito:'transferencia', jornada:1, lineaId: lin('13', 'Almuerzo'), estado:'aprobado', cargadoPor: uLucia.id, notas:'Desayuno, almuerzo y merienda J1 (46 personas)',
+      historial:[paso(null, 'cargado', 'cargar', uLucia), paso('cargado', 'revisado', 'revisar', uLucia), paso('revisado', 'aprobado', 'aprobar', uTomas)]}),
+    /* revisado, para aprobar: la cámara de la J1 */
+    nuevoComprobante({rubro:'11', subrubro:'Paquete cámara + ópticas', area:'camara', proveedor:'Cámaras del Sur', cuit:C.cine.cuit, tipo:'facA', numero:'0003-00007321',
+      fecha: J1, importe:1350000, circuito:'transferencia', jornada:1, lineaId: lin('11', 'Paquete cámara + ópticas'), estado:'revisado', cargadoPor: uLucia.id,
+      historial:[paso(null, 'cargado', 'cargar', uLucia), paso('cargado', 'revisado', 'revisar', uLucia)]}),
+    /* cargado por Diego: lo revisa la jefa */
+    nuevoComprobante({rubro:'12', subrubro:'Remises y aplicaciones', area:'produccion', proveedor:'Remises Costa (ejemplo)', tipo:'reciboS', importe:38000,
+      fecha: hoyMas(-7), circuito:'efectivo', estado:'cargado', cargadoPor: uDiego.id, notas:'Traslado del scouting a Martínez',
+      historial:[paso(null, 'cargado', 'cargar', uDiego, hoyMas(-7))]}),
+    /* de Sofía (equipo): pasa por producción. Uno espera a Diego, otro se rechazó */
+    nuevoComprobante({rubro:'07', subrubro:'Lavandería y tintorería', area:'vestuario', proveedor:'Lavadero de ejemplo', tipo:'ticket', numero:'0001-00002215', importe:24500,
+      fecha: J1, circuito:'efectivo', jornada:1, estado:'cargado', cargadoPor: uSofia.id, notas:'Lavado del vestuario de Cami después de la J1',
+      historial:[paso(null, 'cargado', 'cargar', uSofia)]}),
+    nuevoComprobante({rubro:'12', subrubro:'Remises y aplicaciones', area:'vestuario', proveedor:'Taxi', tipo:'ninguno', importe:15000,
+      fecha: J1, circuito:'efectivo', estado:'rechazado', cargadoPor: uSofia.id, notas:'Taxi con el vestuario',
+      historial:[paso(null, 'cargado', 'cargar', uSofia, J1), {...paso('cargado', 'rechazado', 'rechazar', uDiego), nota:'Sin ticket no se puede pagar: pedí el comprobante o cargalo con el recibo de la app'}]}),
+    /* un gasto suelto de arte: Diego ya se lo pasó a la jefa */
+    Object.assign(nuevoComprobante({rubro:'06', subrubro:'Plantas y flores', area:'arte', proveedor:'Vivero de ejemplo', tipo:'facBC', numero:'0005-00000981', importe:46000,
+      fecha: hoy(), circuito:'efectivo', jornada:2, estado:'cargado', cargadoPor: uCarla.id, notas:'Plantas para el living (J2)',
+      historial:[paso(null, 'cargado', 'cargar', uCarla)]}), {vistoProd: {quienId: uDiego.id, quien: uDiego.nombre, cuando: hoy() + ' 10:20'}}),
+  ];
+  py.cheques = [
+    nuevoCheque({a:'Utilería El Baúl', monto:300000, motivo:'Garantía del alquiler de utilería y muebles', pedidoPor: uCarla.id, devolverEl: hoyMas(6),
+      historial:[{a:'pedido', quien: uCarla.nombre, cuando: hoy()}]}),
+    nuevoCheque({a:'Rental Sur', monto:1500000, motivo:'Garantía del paquete de luces y grip', pedidoPor: uDiego.id, estado:'aprobado', devolverEl: hoyMas(7),
+      cuando: hoyMas(-3), historial:[{a:'pedido', quien: uDiego.nombre, cuando: hoyMas(-3)}, {a:'aprobado', quien: uTomas.nombre, cuando: hoyMas(-2)}]}),
+    nuevoCheque({a:'Familia dueña de la casa de Martínez', monto:800000, motivo:'Garantía por daños en la locación', pedidoPor: uDiego.id, estado:'entregado', devolverEl: hoyMas(5),
+      cuando: hoyMas(-6), historial:[{a:'pedido', quien: uDiego.nombre, cuando: hoyMas(-6)}, {a:'aprobado', quien: uTomas.nombre, cuando: hoyMas(-5)}, {a:'entregado', quien: uMarta.nombre, cuando: hoyMas(-4)}]}),
+  ];
+  /* las rendiciones: los fondos salen de la caja chica de producción */
+  const lCaja = LR('03', 'Caja chica de producción');
+  const rp = (de, a, u, cuando, nota = '') => ({id: uid('rp'), de, a, quienId: u.id, quien: u.nombre, rol: u.rol, cuando, nota});
+  const msg = (u, cuando, texto, gastoId = null) => ({id: uid('rm'), quienId: u.id, quien: u.nombre, rol: u.rol, cuando, gastoId, texto});
+  const fondo = (u, nombre, importe, fecha, nota) => nuevaCaja({nombre, responsable: u.id, lineaId: lCaja.id,
+    adelantos:[{id: uid('ad'), fecha, importe, entregadoPor: uLucia.id, nota, lineaId: lCaja.id}]});
+  const ticket = (cj, u, area, o) => { const c = nuevoComprobante({moneda:'ARS', circuito:'efectivo', cajaId: cj.id, estado:'cargado', cargadoPor: u.id, area, ...o,
+    historial:[{de: null, a:'cargado', accion:'cargar', usuario: u.nombre, usuarioId: u.id, rol: u.rol, fecha: o.fecha || hoy(), nota:'en la rendición'}],
+    adjunto: o.tipo === 'ninguno' ? null : {nombre: 'ticket-' + norm(o.proveedor).replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '') + '.svg', tipo:'image/svg+xml',
+      dataUrl: ticketDeEjemplo(o), bytes: 1200, w: 300, h: 440}}); py.comprobantes.push(c); return c; };
+  /* 1. Diego, el scouting: cerrada (devolvió lo que sobró) */
+  const fD1 = fondo(uDiego, 'Scouting y preproducción', 120000, hoyMas(-12), 'Para el scouting de locaciones');
+  [{rubro:'12', concepto:'Nafta del scouting', proveedor:'Estación de servicio Ruta 2 (ejemplo)', cuit:'30-71234567-1', tipo:'facBC', numero:'00012-00004521', fecha: hoyMas(-11), importe:52000},
+   {rubro:'12', concepto:'Peajes', proveedor:'Autopista del Sol (ejemplo)', cuit:'30-70999888-5', tipo:'ticket', numero:'0003-00981234', fecha: hoyMas(-11), importe:4700},
+   {rubro:'13', concepto:'Almuerzo del scouting (4 personas)', proveedor:'Bodegón de ejemplo', cuit:'30-71555666-5', tipo:'facBC', numero:'0001-00045210', fecha: hoyMas(-11), importe:55000},
+  ].forEach(o => { const c = ticket(fD1, uDiego, 'produccion', o); c.estado = 'pagado'; });
+  Object.assign(fD1, {estado:'rendida', rendidaEl: hoyMas(-8), rendidaPor: uMarta.id, devuelto: 8300});
+  fD1.cierre = {tipo:'devolucion', devuelto: 8300, reintegro: 0, saldo: 8300, fecha: hoyMas(-8), quienId: uMarta.id, quien: uMarta.nombre, rol: uMarta.rol, cuando: hoyMas(-8) + ' 11:30'};
+  fD1.rendicion = {estado:'cerrada', pasos:[rp('borrador', 'enviada', uDiego, hoyMas(-10) + ' 19:10'), rp('enviada', 'aprobada', uLucia, hoyMas(-9) + ' 10:00'),
+    rp('aprobada', 'cerrada', uMarta, hoyMas(-8) + ' 11:30', 'Devolvió $ 8.300')], charla:[]};
+  /* 2. Diego, el rodaje: mandada a la jefa (la tiene que revisar y elevar) */
+  const fD2 = fondo(uDiego, 'Caja chica de producción', 250000, hoyMas(-2), 'Para la J1 y la J2');
+  const tD = [{rubro:'03', concepto:'Cinta, precintos y pilas', proveedor:'Ferretería del Centro (ejemplo)', cuit:'20-33444555-1', tipo:'facBC', numero:'00002-00001877', fecha: hoyMas(-2), importe:18500},
+   {rubro:'13', concepto:'Hielo y agua para el set', proveedor:'Kiosco de ejemplo', cuit:'20-29888777-3', tipo:'ticket', numero:'0001-00310042', fecha: J1, importe:21600},
+   {rubro:'12', concepto:'Nafta del auto de producción', proveedor:'Estación de servicio Costanera (ejemplo)', cuit:'30-71234567-1', tipo:'facBC', numero:'00015-00007712', fecha: J1, importe:48000},
+   {rubro:'12', concepto:'Estacionamiento en la costanera', proveedor:'Playa de estacionamiento de ejemplo', cuit:'30-70333444-9', tipo:'ticket', numero:'0002-00055120', fecha: J1, importe:9000},
+   {rubro:'10', concepto:'Baño del bar de la plaza (todo el día)', proveedor:'', tipo:'ninguno', fecha: J1, importe:25000},
+   {rubro:'03', concepto:'Descarga del camión (changarín)', proveedor:'', tipo:'ninguno', fecha: J1, importe:40000}].map(o => ticket(fD2, uDiego, 'produccion', o));
+  fD2.rendicion = {estado:'enviada', pasos:[rp('borrador', 'enviada', uDiego, hoy() + ' 09:40')],
+    charla:[msg(uDiego, hoy() + ' 09:41', 'Lo del changarín y el baño del bar fue sin comprobante: pagué en mano.', tD[5].id)]};
+  /* 3. Carla, compras de preproducción: la pasó Diego y la elevó Lucía (la cierra Marta) */
+  const fC1 = fondo(uCarla, 'Compras de arte (preproducción)', 80000, hoyMas(-8), 'Compras para el set de la plaza');
+  [{rubro:'06', concepto:'Pintura y rodillos', proveedor:'Pinturería Norte (ejemplo)', cuit:'30-71222333-4', tipo:'facBC', numero:'00003-00000512', fecha: hoyMas(-7), importe:38500},
+   {rubro:'06', concepto:'Cinta de papel y lijas', proveedor:'Ferretería del Centro (ejemplo)', cuit:'20-33444555-1', tipo:'facBC', numero:'00002-00001790', fecha: hoyMas(-7), importe:12000},
+  ].forEach(o => ticket(fC1, uCarla, 'arte', o));
+  fC1.rendicion = {estado:'aprobada', pasos:[rp('borrador', 'aProduccion', uCarla, hoyMas(-5) + ' 18:00'), rp('aProduccion', 'enviada', uDiego, hoyMas(-4) + ' 10:15'),
+    rp('enviada', 'aprobada', uLucia, hoyMas(-3) + ' 12:00')], charla:[msg(uDiego, hoyMas(-4) + ' 10:14', 'Revisada: está todo con factura.')]};
+  /* 4. Carla, el rodaje: mandada a producción (la tiene que chequear Diego) */
+  const fC2 = fondo(uCarla, 'Compras de arte (rodaje)', 150000, hoyMas(-2), 'Compras de arte para la J1 y la J2');
+  const tC = [{rubro:'06', concepto:'Telas para los bancos de la plaza', proveedor:'Telas Once (ejemplo)', cuit:'20-30444555-6', tipo:'ticket', numero:'0002-00031877', fecha: hoyMas(-2), importe:27000},
+   {rubro:'06', concepto:'Pelota de fútbol y conos', proveedor:'Deportes de ejemplo', cuit:'30-71777888-1', tipo:'facBC', numero:'0007-00002231', fecha: hoyMas(-2), importe:31000},
+   {rubro:'06', concepto:'Rociador y glicerina para las botellas', proveedor:'', tipo:'ninguno', fecha: J1, importe:12500}].map(o => ticket(fC2, uCarla, 'arte', o));
+  fC2.rendicion = {estado:'aProduccion', pasos:[rp('borrador', 'aProduccion', uCarla, hoy() + ' 08:50')],
+    charla:[msg(uCarla, hoy() + ' 08:51', 'El rociador lo compré en la feria: no dan ticket.', tC[2].id)]};
+  py.cajas = [fD1, fD2, fC1, fC2];
 }
 
 /* Accesores de contexto ---------------------------------------------------- */
@@ -16100,48 +16503,7 @@ function crearPiezasDeGuiones(){
   R();
 }
 function guionEjemplo(){
-  importarGuion(`1. INT. COCINA DEPARTAMENTO - DÍA
-
-Luz de mañana. LUCÍA (32) revuelve un mate mientras mira el celular
-apoyado contra una taza. Sobre la mesa hay un diario abierto y las
-llaves del auto.
-
-LUCÍA
-(sin levantar la vista)
-Otra vez treinta y ocho grados.
-
-Del pasillo llega un ladrido. El PERRO entra corriendo y se frena
-en seco frente a la heladera.
-
-CORTE A:
-
-2. EXT. CALLE DEL BARRIO - DÍA
-
-Lucía sale con la bicicleta. Un COLECTIVO pasa levantando polvo.
-En la vereda hay GENTE haciendo cola frente a un kiosco. Un CARTEL
-descolorido anuncia helados.
-
-VECINO
-¡Buen día!
-
-Lucía saluda con la mano. Lleva anteojos de sol y una campera liviana.
-
-3. EXT. PLAZA - ATARDECER
-
-Un DRON sobrevuela la plaza. Cae una lluvia fina de los aspersores.
-Lucía se moja la cara.
-
-LUCÍA
-Ahora sí.
-
-4. INT. COCINA DEPARTAMENTO - NOCHE
-
-Lucía abre la heladera y saca una botella. El perro la mira.
-
-LUCÍA
-Salud.
-
-FIN`);
+  importarGuion(GUION_DEMO);
 }
 function menuGuion(){
   const d=getD();

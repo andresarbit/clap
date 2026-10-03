@@ -30,10 +30,10 @@ delEl(e1.id,'personajes','EXTRA CANCHERO');
 ok('delEl personaje', !e1.personajes.includes('EXTRA CANCHERO'));
 
 // re-detectar conserva lo manual y borra sugerencias descartadas
-delEl(e1.id,'utileria','mate');           // descarto una sugerencia
+delEl(e1.id,'utileria','mochila');        // descarto una sugerencia
 reDetectar();
 ok('reDetectar conserva lo agregado a mano', e1.elementos.utileria.includes('repasador'), e1.elementos.utileria.join(','));
-ok('reDetectar reencuentra la sugerencia borrada', e1.elementos.utileria.includes('mate'),
+ok('reDetectar reencuentra la sugerencia borrada', e1.elementos.utileria.includes('mochila'),
    'esperado: vuelve, porque la palabra sigue en el guion');
 
 // jornadas
@@ -58,10 +58,11 @@ console.log('\n--- LINEAS PROPUESTAS ---');
 p.lineas.forEach(l=>console.log(`  ${l.rubro}  ${String(l.cantidad)}x${String(l.dias).padEnd(2)} ${l.concepto.padEnd(44)} ${l.nota.slice(0,40)}`));
 ok('propone lineas', p.lineas.length>8, p.lineas.length+' lineas');
 ok('elenco va al rubro 09', p.lineas.filter(l=>l.dep==='elenco').every(l=>l.rubro==='09'));
-ok('una linea por personaje', p.lineas.filter(l=>l.dep==='elenco').length===2);
-ok('LUCIA aparece en 2 jornadas', p.lineas.find(l=>l.concepto==='LUCÍA').dias>=1,
-   'dias='+p.lineas.find(l=>l.concepto==='LUCÍA').dias);
-ok('una linea por locacion', p.lineas.filter(l=>l.dep==='locacion').length===3);
+/* el guion de ejemplo es el spot de Brisa: CAMI, NICO y el LOCUTOR (en off) */
+ok('una linea por personaje', p.lineas.filter(l=>l.dep==='elenco').length===3, p.lineas.filter(l=>l.dep==='elenco').map(l=>l.concepto).join(','));
+ok('CAMI aparece en sus jornadas', p.lineas.find(l=>l.concepto==='CAMI').dias>=1,
+   'dias='+p.lineas.find(l=>l.concepto==='CAMI').dias);
+ok('una linea por locacion', p.lineas.filter(l=>l.dep==='locacion').length===4);
 ok('vehiculos al rubro 12', p.lineas.filter(l=>l.dep==='vehiculos').every(l=>l.rubro==='12'));
 ok('utileria agrupada en 1 linea', p.lineas.filter(l=>l.dep==='utileria').length===1,
    p.lineas.find(l=>l.dep==='utileria')?.concepto);

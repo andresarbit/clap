@@ -9,12 +9,13 @@ administren muchas productoras al mismo tiempo.
 ## Estado
 
 **v0.1 — prototipo del presupuestador.** Un solo archivo, `clap.html`.
-Abrilo con doble clic en cualquier navegador; no necesita servidor ni instalación.
-Los datos se guardan en el navegador (`localStorage`).
+Se entra con mail y contraseña (Supabase): cada proyecto vive en la base, por
+partes, y cada uno recibe sólo lo que su rol puede ver (ver *Privado* y *Datos
+centralizados*). Sin sesión, el archivo abre una copia de prueba con el proyecto
+de ejemplo (`docs/proyecto-de-ejemplo.md`) que vive sólo en ese navegador.
 
-> ⚠️ Exportá el `.json` seguido (botón **Datos → Exportar todo**). Hasta que haya
-> backend, ese archivo es el único respaldo y también la forma de pasarle el trabajo
-> a la otra persona.
+> **Datos → Exportar todo** baja un `.json` con todo (Administración y el PE):
+> sirve de respaldo aparte y para llevar un proyecto a otra base.
 
 ## Qué hace hoy
 
@@ -459,9 +460,9 @@ recalcula el dia entero.
   **Orden del dia** (con la miniatura del storyboard) y el elenco y las
   locaciones de los planos. Un spot sin guion desglosado ya tiene callsheet.
 
-El plan vive con el resto del desglose en el navegador (como las escenas): no
-se comparte por la base todavia. Los cuadros del storyboard se guardan chicos
-(320 px) para no llenar el navegador.
+El plan viaja a la base con el resto del proyecto (la parte "plan"), así el
+asistente de dirección, el jefe y el asistente de producción ven el mismo. Los
+cuadros del storyboard se guardan chicos (320 px).
 
 ### Desglose: el material de la agencia
 
@@ -730,6 +731,25 @@ el PE o Administración le encargan algo a alguien, con fecha. Le aparece en
 su panel; la confirma con **Listo ✓** (y una nota). La línea muestra a quién
 se le encargó y si está hecha; el Resumen avisa las vencidas.
 
+**Tareas del equipo** (en el Resumen del jefe, del PE y de Administración): el
+tablero para repartir el trabajo. Todas las tareas del proyecto agrupadas por
+persona (los asistentes, arte, el equipo y él mismo, "Vos"), con su estado
+(pendiente, vencida, hecha). **+ Tarea** para cualquiera del proyecto o para
+uno mismo (qué, detalle, para quién, para cuándo y, si tiene, la línea del
+presupuesto); un **+ Tarea** por persona; **Para** para pasársela a otro;
+**Hecha ✓** (queda anotado quién la marcó); **Ver** para filtrar por persona.
+Son las mismas tareas que cada uno ve en su panel. Prueba: `test/tareas-equipo.js`.
+
+**El panel de Equipo** trae tres tarjetas con lo que ya sabe la app: *¿Cambió tu
+hora?* (su citación de cada jornada que viene, si se la cambiaron después de
+citarlo y si confirmó), *¿Un cheque de garantía?* (a quién del proyecto
+pedírselo, con WhatsApp) y *¿Tus datos para el pago?* (qué le falta en el alta y
+cómo mandarlo: *Mis datos* con sesión, o por WhatsApp al asistente de producción).
+
+**El jefe no ve nada del fee**: ni "Quitar del fee", ni los chips "s/fee", ni el
+IVA exento, ni las condiciones para el cliente, ni el fee en el CSV o en el
+instructivo. Eso es de Administración y del PE.
+
 **Cheques de garantía.** El asistente los pide en *Gastos → Cheques de
 garantía*; el PE los aprueba, Administración los entrega y anota cuando
 vuelven. Los que no volvieron a tiempo se avisan.
@@ -846,8 +866,8 @@ Cinco sub-vistas en **Gastos**:
   reintegrarle, y queda cerrada con fecha y notas.
 - **Rendiciones** — la caja chica con su circuito. El fondo sale del
   **presupuesto**: en la línea de caja chica de producción (o la que el jefe
-  marque como fondo) el jefe toca **💵 Dar fondo** y elige cuánto, cuándo, cómo
-  se entrega y a quién (los asistentes de producción del proyecto y, abajo, los
+  marque como fondo) el jefe toca **💵 Dar fondo** y elige cuánto, cuándo
+  y a quién (los asistentes de producción del proyecto y, abajo, los
   de arte); si esa persona ya tiene uno abierto de esa línea, se le suma. La
   línea muestra «Fondos entregados: $ X a N personas» y el tablero lo cuenta
   como comprometido hasta que se rinde. Esa persona sube las fotos y los PDF
@@ -861,9 +881,12 @@ Cinco sub-vistas en **Gastos**:
   los tickets pegados de a cuatro por hoja. Circuito: cargando → enviada al
   jefe → observada (vuelve con comentario) → aprobada → cerrada por
   Administración, con charla por rendición y por gasto. Lo de **arte** (y el
-  equipo) va primero **a producción**: el asistente de producción lo revisa y
+  equipo) va primero **a producción**: el asistente de producción lo chequea y
   se lo pasa al jefe, que es el único que lo eleva (si el proyecto no tiene
-  jefe de producción, lo eleva el PE). Al cerrar, Administración
+  jefe de producción, lo eleva el PE). Mientras está en producción el jefe lo
+  ve, pero no lo toca; sólo si el proyecto no tiene asistente de producción lo
+  revisa él directo. Lo mismo con un comprobante suelto de arte. Los fondos son
+  sólo para los asistentes de producción y de arte. Al cerrar, Administración
   anota lo que vuelve («Le sobró $ X: lo devuelve», o el reintegro si gastó de
   más) con monto y fecha; lo devuelto no es gasto. El fondo se da con el monto
   (y la fecha): no se pide cómo se entrega. Cada asistente ve, arma y **recibe** sólo la suya (los gastos ajenos
@@ -1285,6 +1308,11 @@ productora le aparece en el menu de arriba y el proyecto en el de proyectos.
 > ni si ya tiene cuenta. Quien tiene el link entra sin aprobación, así que se
 > manda por privado.
 
+**Quién invita** (la pantalla y la base dicen lo mismo, `crear_invitacion`):
+Administración y el PE, a cualquiera (también a Administración); el jefe de
+producción, a su equipo (no a Administración ni al PE); los asistentes y el
+equipo no invitan. La grilla *Quién entra a cada proyecto* sigue la misma regla.
+
 **Ojo con el orden**: anotar a la persona en el proyecto va ANTES de
 sincronizar. Con rol Produccion o Equipo el acceso a la productora sale de
 estar anotado en alguno de sus proyectos (`productoras_con_acceso`), asi que
@@ -1427,7 +1455,11 @@ de `productoraId`, así que el schema ya es multi-tenant.
 
 ## Pruebas
 
-El motor de cálculo y los caminos de render se prueban headless (sin navegador):
+El motor de cálculo y los caminos de render se prueban headless (sin navegador).
+Las pruebas de la lógica arrancan con un ejemplo chico y fijo
+(`test/ejemplo-chico.js`, el "Spot Verano" de antes), que `test/run.js` carga
+antes de cada una; las que prueban el ejemplo de la app (el de Brisa, ver
+`docs/proyecto-de-ejemplo.md`) llaman a `sembrar()`.
 
 ```bash
 node test/run.js test/pruebas.js    # presupuesto: cálculo, capas, versionado
@@ -1460,6 +1492,8 @@ node test/run.js test/plata.js     # ordenes de compra, caja chica y tablero
 node test/run.js test/rendiciones.js # rendiciones: circuito, permisos, Excel, PDF, leer el QR/PDF/ticket, quien ve OC y Datos, fondos desde el presupuesto, devolución, arte por producción
 node test/sql-gastos.mjs            # la base de verdad (PGlite): a cada asistente le llegan sólo sus gastos; arte pasa por producción (necesita @electric-sql/pglite)
 node test/run.js test/resumen.js   # portada, pendientes y datos de ejemplo
+node test/run.js test/ejemplo.js   # el proyecto de ejemplo de la app (Brisa): lo que dice docs/proyecto-de-ejemplo.md, y todas las pantallas de todos los roles
+node test/run.js test/tareas-equipo.js # tablero "Tareas del equipo", tarjetas del panel de Equipo, el jefe sin nada del fee, quién invita
 node test/run.js test/guia.js      # instructivo: contenido, navegacion y que no mienta
 node test/run.js test/backend.js   # conexion, login, renovacion de sesion y diagnostico
 node test/run.js test/puerta.js    # sin sesion no se ve nada, sin señal se sigue, dos personas en una compu
