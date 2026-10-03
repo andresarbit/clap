@@ -179,7 +179,15 @@ nuevo (se puede correr las veces que haga falta, no borra nada):
     desde antes, sin recargar) en la compu de un asistente va a mostrar el
     **!** rojo al guardar gastos: alcanza con recargar la página.
   - Probado contra un Postgres armado como esta base (PGlite) con la app de
-    verdad arriba: `node test/sql-gastos.mjs` (51 pruebas).
+    verdad arriba: `node test/sql-gastos.mjs` (63 pruebas).
+- **(03/10, más tarde) Si el proyecto no tiene jefe de producción, lo de arte
+  lo eleva el PE** (función nueva `proyecto_sin_jefe`, `gastos_permitidos`
+  con un parámetro más, y `guardar_parte` que se lo pasa). Siempre hay jefe,
+  así que es sólo el caso de reserva; Administración sigue sin poder elevarlo
+  salteando producción. La rendición propia del asistente de producción la
+  siguen elevando el jefe, Administración y el PE, como antes. Hasta que lo
+  corras, en un proyecto sin jefe la base no deja que el PE eleve lo de arte
+  (CLAP le muestra el botón, pero al guardar sale el **!** rojo).
 
 Hace dos cosas:
 

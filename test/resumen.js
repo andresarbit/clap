@@ -53,7 +53,11 @@ ok('muestra las cinco cifras', ['Costo directo', 'Comprometido', 'Real cargado',
   .every(x => html.includes(x)));
 ok('tiene el bloque de pendientes', /Esperan algo|Para aprobar y controlar/.test(html));
 ok('tiene el bloque del proyecto', /Guion y desglose/.test(html) && /Rodaje/.test(html) && /Equipo/.test(html));
-ok('la OC emitida se ve como comprometida', P.comp === 220000, fmt(P.comp) + ' (520.000 − 300.000 facturados)');
+/* comprometido = la OC emitida sin facturar (520.000 − 300.000) + lo que Diego todavía no
+   rindió de su fondo, que sale de la caja chica del 03 (150.000 − 138.250 = 11.750) */
+ok('la OC emitida y el fondo sin rendir se ven como comprometidos', P.comp === 220000 + 11750, fmt(P.comp) + ' (520.000 − 300.000 facturados + 11.750 del fondo)');
+ok('la caja chica de producción está en el presupuesto (03, $ 300.000) y el fondo de Diego sale de ahí',
+  (() => { const l = lineasFondo(py).map(x => x.l); return l.length === 1 && totalLinea(l[0], v) === 300000 && py.cajas[1].lineaId === l[0].id && P.filas.find(f => f.codigo === '03').comp === 11750; })());
 
 console.log('\n--- 4. LOS PENDIENTES SON REALES ---');
 /* el ejecutivo tiene que ver el comprobante revisado esperando aprobación */

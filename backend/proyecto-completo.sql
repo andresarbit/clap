@@ -123,7 +123,8 @@ create policy parte_ver     on proyecto_parte for select using (puedo_parte(proy
 --   · tocar las órdenes de compra (van en la parte "compras", que no leen).
 -- El jefe revisa y eleva, pero no cierra. Y lo de arte llega a
 -- Administración sólo elevado por el jefe: nadie lo aprueba salteando
--- producción, ni Administración lo cierra antes.
+-- producción, ni Administración lo cierra antes. Si el proyecto no tiene
+-- jefe de producción (casi nunca pasa), lo eleva el PE en su lugar.
 -- ---------------------------------------------------------------------------
 create or replace function rend_estado(c jsonb) returns text
 language sql immutable as $$
@@ -138,6 +139,15 @@ language sql stable security definer set search_path = public as $$
    where productora_id = p_prod and rol::text in ('arte', 'equipo')
 $$;
 revoke all on function gastos_arte(uuid) from public, anon, authenticated;
+
+-- ¿el proyecto NO tiene jefe de producción? (invitado, activo y aprobado).
+-- Casi nunca: entonces lo de arte y el equipo lo eleva el PE.
+create or replace function proyecto_sin_jefe(p_proyecto uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select not exists (select 1 from proyecto_persona pp join usuario u on u.id = pp.usuario_id
+                      where pp.proyecto_id = p_proyecto and u.rol::text = 'produccion' and u.activo and not u.pendiente)
+$$;
+revoke all on function proyecto_sin_jefe(uuid) from public, anon, authenticated;
 
 -- Lo que le toca ver a cada uno de los gastos
 create or replace function gastos_visibles(p jsonb, p_yo text, p_rol text, p_arte text[])
@@ -210,12 +220,15 @@ begin
   return v_out;
 end $$;
 
--- La versión de antes (4 parámetros) queda reemplazada por la de abajo
+-- Las versiones de antes (4 y 5 parámetros) quedan reemplazadas por la de abajo
 drop function if exists gastos_permitidos(jsonb, jsonb, text, text);
+drop function if exists gastos_permitidos(jsonb, jsonb, text, text, text[]);
 
 -- null si el cambio está permitido; si no, el motivo (en castellano).
--- A un asistente se le pasa lo que ve de antes y lo que manda.
-create or replace function gastos_permitidos(p_viejo jsonb, p_nuevo jsonb, p_yo text, p_rol text, p_arte text[])
+-- A un asistente se le pasa lo que ve de antes y lo que manda. p_sin_jefe:
+-- el proyecto no tiene jefe de producción (lo de arte lo eleva el PE).
+create or replace function gastos_permitidos(p_viejo jsonb, p_nuevo jsonb, p_yo text, p_rol text, p_arte text[],
+                                             p_sin_jefe boolean default false)
 returns text
 language plpgsql immutable set search_path = public as $$
 declare
@@ -231,12 +244,14 @@ begin
   p_arte := coalesce(p_arte, '{}'::text[]);
   -- 0. Para todos: lo de arte y el equipo pasa por producción. Lo eleva sólo
   --    el jefe (desde producción), y Administración lo cierra recién elevado.
+  --    Si el proyecto no tiene jefe de producción, el PE hace de jefe.
   for c in select * from jsonb_array_elements(nc) loop
     if c->>'responsable' = any(p_arte) then
       select x into v from jsonb_array_elements(vc) x where x->>'id' = c->>'id' limit 1;
       e_n := rend_estado(c);
       e_v := case when v is null then 'borrador' else rend_estado(v) end;
-      if e_n <> e_v and e_n = 'aprobada' and (p_rol <> 'produccion' or e_v not in ('aProduccion', 'enviada')) then
+      if e_n <> e_v and e_n = 'aprobada'
+         and (not (p_rol = 'produccion' or (p_rol = 'ejecutivo' and coalesce(p_sin_jefe, false))) or e_v not in ('aProduccion', 'enviada')) then
         return 'Lo de arte lo eleva el jefe de producción, después de pasar por producción.';
       end if;
       if e_n <> e_v and e_n = 'cerrada' and e_v <> 'aprobada' then
@@ -253,7 +268,7 @@ begin
                           where x->>'id' = c->>'cajaId' and rend_estado(x) in ('aprobada', 'cerrada')) then
             return 'Los gastos de arte van con su rendición: primero la revisa producción.';
           end if;
-        elsif p_rol <> 'produccion' then
+        elsif not (p_rol = 'produccion' or (p_rol = 'ejecutivo' and coalesce(p_sin_jefe, false))) then
           return 'Los gastos de arte los revisa primero producción (el asistente y el jefe).';
         end if;
       end if;
@@ -403,7 +418,7 @@ returns json
 language plpgsql security definer set search_path = public as $$
 declare
   v_prod uuid; v_yo uuid; v_nom text; v_rol text; v_hay boolean; v_err text;
-  v_arte text[]; v_filtra boolean;
+  v_arte text[]; v_filtra boolean; v_sin_jefe boolean := false;
   r proyecto_parte%rowtype;
 begin
   if auth.uid() is null then raise exception 'Hay que iniciar sesión.'; end if;
@@ -419,7 +434,7 @@ begin
    where auth_uid = auth.uid() and productora_id = v_prod limit 1;
   v_rol := mi_rol_en_proyecto(p_proyecto)::text;
   v_filtra := p_parte = 'gastos' and v_rol not in ('admin', 'ejecutivo', 'produccion');
-  if p_parte = 'gastos' then v_arte := gastos_arte(v_prod); end if;
+  if p_parte = 'gastos' then v_arte := gastos_arte(v_prod); v_sin_jefe := proyecto_sin_jefe(p_proyecto); end if;
   select * into r from proyecto_parte where proyecto_id = p_proyecto and parte = p_parte for update;
   v_hay := found;
   if v_hay and p_base is distinct from r.version then
@@ -434,12 +449,12 @@ begin
   if p_parte = 'gastos' then
     if v_filtra then
       v_err := gastos_permitidos(case when v_hay then gastos_visibles(r.datos, v_yo::text, v_rol, v_arte) else null end,
-                                 p_datos, v_yo::text, v_rol, v_arte);
+                                 p_datos, v_yo::text, v_rol, v_arte, v_sin_jefe);
       if v_err is not null then raise exception '%', v_err; end if;
       -- lo suyo, metido en lo de todos (las órdenes de compra y lo ajeno quedan como estaban)
       p_datos := gastos_juntar(case when v_hay then r.datos else '{}'::jsonb end, p_datos, v_yo::text, v_rol, v_arte);
     else
-      v_err := gastos_permitidos(case when v_hay then r.datos else null end, p_datos, v_yo::text, v_rol, v_arte);
+      v_err := gastos_permitidos(case when v_hay then r.datos else null end, p_datos, v_yo::text, v_rol, v_arte, v_sin_jefe);
       if v_err is not null then raise exception '%', v_err; end if;
     end if;
   end if;

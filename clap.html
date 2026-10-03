@@ -1126,7 +1126,6 @@ tr.csdep td{background:#f3f3f1;color:#171717}
 .lfondo{font:inherit;font-size:10.5px;border:1px solid var(--line2);background:var(--bg3);color:var(--tx);border-radius:999px;padding:1px 8px;cursor:pointer}
 .lfondo:hover{border-color:var(--ac)}
 .rd-cierre{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-.rd-cierre .f:first-child{grid-column:1/-1}
 @media (max-width:560px){.rd-cierre{grid-template-columns:1fr}}
 .rd-drop{border:2px dashed var(--line2);border-radius:var(--r2);padding:18px 14px;text-align:center;background:var(--bg3);display:flex;flex-direction:column;gap:8px;align-items:center}
 .rd-drop.sobre{border-color:var(--ac);background:var(--bg4)}
@@ -2809,7 +2808,7 @@ function nuevaCaja(o={}){
   return {id:uid('cj'), nombre:o.nombre||'', responsable:o.responsable||null,
     jornada:o.jornada??null, moneda:o.moneda||'ARS',
     lineaId:o.lineaId||null,     /* la línea del presupuesto de la que sale (versión de rodaje) */
-    adelantos:o.adelantos||[],   /* [{id, fecha, importe, circuito, entregadoPor, nota}] */
+    adelantos:o.adelantos||[],   /* [{id, fecha, importe, entregadoPor, nota}] (los de antes pueden traer circuito: no se muestra) */
     estado:o.estado||'abierta',  /* abierta | rendida */
     rendidaEl:o.rendidaEl||'', rendidaPor:o.rendidaPor||null,
     devuelto:o.devuelto??0, reintegro:o.reintegro??0, notas:o.notas||''};
@@ -2843,8 +2842,9 @@ function saldoCaja(py, caja){
 /* Arte (y el resto del equipo) no le manda la rendición al jefe: la manda
    "a producción". La ve el asistente de producción del proyecto (y el
    jefe): la revisa, la charla, se la devuelve o se la pasa al jefe. Sólo el
-   jefe la eleva a Administración, que nunca recibe una que se salteó
-   producción (la base también lo hace cumplir).                           */
+   jefe la eleva a Administración (si el proyecto no tiene jefe de
+   producción, el PE), que nunca recibe una que se salteó producción (la
+   base también lo hace cumplir).                           */
 const EST_REND = {
   borrador:  {l:'Cargando',  d:'La está armando quien rinde', c:'#56565a'},
   aProduccion: {l:'En producción', d:'La revisa el asistente de producción (o el jefe)', c:'#6b4fa8'},
@@ -2863,13 +2863,19 @@ const ROLES_VIA_PROD = ['arte', 'equipo'];
 const rolDeUsuario = id => (getUsuarios().find(x => x.id === id) || {}).rol || null;
 const viaProduccion = cj => !!cj && ROLES_VIA_PROD.includes(rolDeUsuario(cj.responsable));
 const esJefeProd = u => !!u && !u.pendiente && u.rol === 'produccion';
+/* ¿el proyecto tiene jefe de producción? Casi siempre: es el que eleva lo de arte. */
+const hayJefeProd = (py = getPy(), pr = (py && prDe(py)) || getPr()) =>
+  ((pr && pr.usuarios) || []).some(x => x.rol === 'produccion' && x.activo !== false && !x.pendiente && ((py && py.invitados) || []).includes(x.id));
+/* quién hace de jefe con lo de arte y el equipo: el jefe; si el proyecto no
+   tiene jefe de producción, el PE (la base hace cumplir lo mismo) */
+const jefeDeArte = u => esJefeProd(u) || (!!u && !u.pendiente && u.rol === 'ejecutivo' && !hayJefeProd());
 /* el asistente de producción revisa lo de arte y el equipo (nunca lo suyo) */
 const asistRevisa = (cj, u = getUsuario()) => !!u && !u.pendiente && u.rol === 'asistprod' && viaProduccion(cj) && !rendMia(cj, u);
 const veRend = (cj, u = getUsuario()) => !u || vePlata(u) || rendMia(cj, u) || asistRevisa(cj, u);
 const cargaRend = (cj, u = getUsuario()) => ['borrador','observada'].includes(estadoRend(cj)) && (!u || (!u.pendiente && (rendMia(cj, u) || veTodo(u))));
 const revisaRend = (u = getUsuario()) => !u || puede(u, 'revisar');
-/* quién eleva a Administración: lo de arte, sólo el jefe; lo demás, quien revisa */
-const elevaRend = (cj, u = getUsuario()) => !u || (viaProduccion(cj) ? esJefeProd(u) : revisaRend(u));
+/* quién eleva a Administración: lo de arte, sólo el jefe (sin jefe en el proyecto, el PE); lo demás, quien revisa */
+const elevaRend = (cj, u = getUsuario()) => !u || (viaProduccion(cj) ? jefeDeArte(u) : revisaRend(u));
 const cierraRend = (u = getUsuario()) => !u || puede(u, 'pagar');
 const daFondos = (u = getUsuario()) => !u || vePlata(u);
 /* a dónde va cuando quien rinde la manda */
@@ -2878,7 +2884,7 @@ const destinoRend = cj => viaProduccion(cj) ? 'aProduccion' : 'enviada';
 function esperaDe(cj, u = getUsuario()){
   const e = estadoRend(cj);
   if(!u) return e === 'enviada' || e === 'aprobada';
-  if(e === 'aProduccion') return asistRevisa(cj, u) || esJefeProd(u);
+  if(e === 'aProduccion') return asistRevisa(cj, u) || jefeDeArte(u);
   if(e === 'enviada') return elevaRend(cj, u) && !rendMia(cj, u);
   if(e === 'aprobada') return cierraRend(u);
   return false;
@@ -3044,7 +3050,7 @@ function accionesDe(c, u){
      manda a aprobar. Administración y el PE no lo reciben salteando eso. */
   if(c.estado === 'cargado' && ROLES_VIA_PROD.includes(rolDeUsuario(c.cargadoPor)) && c.cargadoPor !== u.id){
     if(u.rol === 'asistprod' && !u.pendiente) return c.vistoProd ? [] : ['pasar', 'rechazar'];
-    if(!esJefeProd(u)) return [];
+    if(!jefeDeArte(u)) return [];
   }
   const est = EST(c.estado);
   const out = [];
@@ -5441,7 +5447,9 @@ function sembrar(){
              nuevaLinea({concepto:'Ayudante de Dirección (1° AD)', valorUnit:280000, dias:1, circuito:'transferencia', comprobante:'facBC'}) ]);
   set('03',[ nuevaLinea({concepto:'Jefa de Producción', refId:cat[1].id, refTipo:'persona', valorUnit:320000, dias:3, circuito:'transferencia', comprobante:'facBC'}),
              nuevaLinea({concepto:'Asistente de Producción', valorUnit:150000, dias:2, circuito:'efectivo', comprobante:'reciboS'}),
-             nuevaLinea({concepto:'Fijador', valorUnit:90000, dias:1, unidad:'global', circuito:'efectivo', comprobante:'ninguno'}) ]);
+             nuevaLinea({concepto:'Fijador', valorUnit:90000, dias:1, unidad:'global', circuito:'efectivo', comprobante:'ninguno'}),
+             /* la caja chica de producción: de ahí salen los fondos (💵 Dar fondo) */
+             nuevaLinea({concepto:'Caja chica de producción', valorUnit:300000, unidad:'global', circuito:'efectivo', comprobante:'ninguno'}) ]);
   set('04',[ nuevaLinea({concepto:'Director de Fotografía', refId:cat[0].id, refTipo:'persona', valorUnit:450000, dias:1, circuito:'transferencia', comprobante:'facBC'}),
              nuevaLinea({concepto:'Foquista', valorUnit:190000, dias:1, circuito:'transferencia', comprobante:'facBC'}) ]);
   set('11',[ nuevaLinea({concepto:'Paquete cámara + ópticas', refId:cat[3].id, refTipo:'persona', valorUnit:900000, dias:1, circuito:'transferencia', comprobante:'facA'}),
@@ -5513,8 +5521,10 @@ function sembrar(){
   /* Una rendición de ejemplo, ya mandada al jefe: el asistente de producción
      recibió $ 150.000 y rinde cinco tickets (todo inventado). */
   const uJefe = uProd;
-  const fondo = nuevaCaja({nombre:'Fondo de producción', responsable:uAsistP.id, jornada:null,
-    adelantos:[{id:uid('ad'), fecha:hoyMas(-4), importe:150000, circuito:'efectivo', entregadoPor:uJefe.id, nota:'Para el scouting y la preproducción'}]});
+  /* el fondo sale de la caja chica de producción del presupuesto */
+  const lCaja = v.rubros.find(x => x.codigo === '03').lineas.find(l => l.concepto === 'Caja chica de producción');
+  const fondo = nuevaCaja({nombre:'Fondo de producción', responsable:uAsistP.id, jornada:null, lineaId:lCaja.id,
+    adelantos:[{id:uid('ad'), fecha:hoyMas(-4), importe:150000, entregadoPor:uJefe.id, nota:'Para el scouting y la preproducción', lineaId:lCaja.id}]});
   fondo.rendicion = {estado:'enviada',
     pasos:[{id:uid('rp'), de:'borrador', a:'enviada', quienId:uAsistP.id, quien:uAsistP.nombre, rol:uAsistP.rol, cuando:hoy()+' 18:40', nota:''}],
     charla:[{id:uid('rm'), quienId:uAsistP.id, quien:uAsistP.nombre, rol:uAsistP.rol, cuando:hoy()+' 18:41', gastoId:null,
@@ -8415,7 +8425,7 @@ arte (y el equipo) la mandan a producción → el asistente de producción la re
   y se la pasa al jefe → el jefe la eleva → Administración la cierra</pre>
     <ul>
       <li><b>Dar el fondo</b> — sale del <b>presupuesto</b>: en la línea de caja chica de producción
-        (o la que marques como fondo) tocá <b>💵 Dar fondo</b>: cuánto, cuándo, cómo se entrega y a quién
+        (o la que marques como fondo) tocá <b>💵 Dar fondo</b>: cuánto, cuándo y a quién
         (los asistentes de producción del proyecto y, abajo, los de arte). Si esa persona ya tiene un
         fondo abierto de esa línea, se le suma. La línea muestra cuánto se entregó y a quién; en el
         tablero queda <b>comprometido</b> hasta que rinda. En Gastos → Rendiciones, <b>💵 Dar un fondo</b>
@@ -8437,10 +8447,10 @@ arte (y el equipo) la mandan a producción → el asistente de producción la re
         cierra, el jefe la <b>devuelve con un comentario</b>; el asistente corrige y la reenvía.</li>
       <li><b>Arte pasa por producción</b> — la rendición de arte (o de alguien del equipo) va primero
         al asistente de producción, que la revisa, la charla, la devuelve o se la <b>pasa al jefe</b>.
-        Sólo el jefe la eleva: Administración nunca recibe una que se salteó producción.</li>
+        Sólo el jefe la eleva (si el proyecto no tiene jefe de producción, el PE): Administración nunca recibe una que se salteó producción.</li>
       <li><b>Cerrar</b> — Administración anota la plata que vuelve: <b>«Le sobró $ X: lo devuelve»</b>
-        (o «Gastó $ X de más: hay que reintegrárselo»), con el monto puesto (se puede cambiar), la fecha
-        y si fue en efectivo o por transferencia. Lo devuelto no es gasto: en el presupuesto y el tablero
+        (o «Gastó $ X de más: hay que reintegrárselo»), con el monto puesto (se puede cambiar) y la fecha.
+        Lo devuelto no es gasto: en el presupuesto y el tablero
         queda gastado lo entregado menos lo devuelto. Los gastos quedan pagados (salieron del fondo).</li>
     </ul>
     <p class="tip">Mientras la revisan no se puede cambiar. Cada uno ve y arma sólo la suya; el jefe,
@@ -16246,7 +16256,6 @@ function darFondo(lineaId, persona, cajaId, pre = {}){
   const extra = quien && ![...A.prod, ...A.arte].some(u => u.id === quien) ? getUsuarios().filter(u => u.id === quien) : [];
   const opL = ({r, l}) => `<option value="${l.id}" ${l.id === lid ? 'selected' : ''}>${esc(r.codigo + ' · ' + l.concepto)}</option>`;
   const nadie = !A.prod.length && !A.arte.length && !extra.length;
-  const CIRC = CIRCUITOS.filter(x => ['efectivo', 'transferencia'].includes(x.v));
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
     <h3>${fija ? 'Más plata para ' + esc(nombreUsuario(fija.responsable)) : 'Dar un fondo para rendir'}</h3><div class="mbody">
       <div class="grid2">
@@ -16265,8 +16274,7 @@ function darFondo(lineaId, persona, cajaId, pre = {}){
           </select></label>
         ${campo('Cuánto', 'monto', pre.monto || '', 'number', 'step="any" min="0" inputmode="decimal" placeholder="0"')}
         ${campo('Fecha', 'fecha', pre.fecha || hoy(), 'date')}
-        ${sel('Cómo se entrega', 'circuito', pre.circuito && CIRC.some(x => x.v === pre.circuito) ? pre.circuito : 'efectivo', CIRC.map(x => ({v: x.v, l: x.l})))}
-        ${campo('Nota', 'nota', pre.nota || '', 'text', 'placeholder="Para el scouting, la jornada 2…"')}
+        ${campo('Nota', 'nota', pre.nota || '', 'text', 'placeholder="Para el scouting, la jornada 2…"').replace('<label class="f">', '<label class="f" style="grid-column:1/-1">')}
       </div>
       ${nadie ? `<div class="avisomodo" style="margin-top:10px">No hay asistentes de producción ni de arte en este proyecto. Invitalos desde <b>Equipo</b> y vuelvé.</div>` : ''}
       <div class="muted" style="font-size:11.5px;margin-top:9px">${fija ? 'Se suma a su rendición abierta.' : 'Si ya tiene un fondo abierto de esa línea, se le suma; si no, le aparece uno nuevo en <b>Gastos → Rendiciones</b> para cargar los tickets.'}
@@ -16301,7 +16309,8 @@ function guardarFondo(cajaFija){
   const nueva = !cj, sinLinea = !nueva && !cj.lineaId;
   if(nueva){ cj = nuevaCaja({nombre: ub.l.concepto || 'Fondo', responsable: persona, moneda: ub.l.moneda || 'ARS', lineaId: lid}); (py.cajas ||= []).push(cj); }
   else if(sinLinea) cj.lineaId = lid;
-  const ad = {id: uid('ad'), fecha: d.fecha || hoy(), importe: imp, circuito: d.circuito || 'efectivo',
+  /* sólo el monto (y la fecha): cómo se entrega no se pide */
+  const ad = {id: uid('ad'), fecha: d.fecha || hoy(), importe: imp,
     entregadoPor: getUsuario()?.id || null, nota: d.nota || '', lineaId: lid};
   cj.adelantos.push(ad);
   cerrar();
@@ -16334,7 +16343,6 @@ function editCaja(id){
       ${id?'':`<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Lo que se le entrega</div>
       <div class="grid2">
         ${campo('Importe','adelanto',0,'number','step="any" min="0"')}
-        ${sel('Cómo se entrega','circuito','efectivo',CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
       </div>
       <div class="muted" style="font-size:11.5px;margin-top:8px">Le aparece en <b>Gastos → Rendiciones</b> para cargar los tickets y mandarte la rendición.</div>`}
     </div>
@@ -16352,7 +16360,7 @@ function saveCaja(id){
   if(!id){
     py.cajas.push(cj);
     if(n(d.adelanto) > 0) cj.adelantos.push({id:uid('ad'), fecha:hoy(), importe:n(d.adelanto),
-      circuito:d.circuito, entregadoPor:getUsuario()?.id||null, nota:''});
+      entregadoPor:getUsuario()?.id||null, nota:''});
     toast(`Fondo para ${nombreUsuario(cj.responsable)}: le aparece para rendir`);
   }
   cerrar();
@@ -16365,7 +16373,6 @@ function addAdelanto(id){
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:440px">
     <h3>Más plata para ${esc(nombreUsuario(cj.responsable))} · ${esc(cj.nombre)}</h3><div class="mbody"><div class="grid2">
       ${campo('Importe','importe',0,'number','step="any" min="0"')}
-      ${sel('Cómo se entrega','circuito','efectivo',CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
       ${campo('Fecha','fecha',hoy(),'date')}
       ${campo('Nota','nota','','text')}
     </div></div>
@@ -16378,7 +16385,7 @@ function saveAdelanto(id){
   if(!cj || !daFondos()) return;
   if(n(d.importe) <= 0){ alert('Poné un importe.'); return; }
   cj.adelantos.push({id:uid('ad'), fecha:d.fecha||hoy(), importe:n(d.importe),
-    circuito:d.circuito, entregadoPor:getUsuario()?.id||null, nota:d.nota||''});
+    entregadoPor:getUsuario()?.id||null, nota:d.nota||''});
   toast(`Adelanto de ${fmt(n(d.importe), cj.moneda)}`); cerrar();
 }
 /* Cerrar la rendición: Administración registra si devuelve o si hay que
@@ -16388,7 +16395,6 @@ function rendirCaja(id){
   if(!cj || !cierraRend()){ toast('La rendición la cierra Administración'); return; }
   if(viaProduccion(cj) && estadoRend(cj) !== 'aprobada'){ toast('Primero la revisa producción y la eleva el jefe'); return; }
   const s = saldoCaja(py, cj);
-  const CIRC = CIRCUITOS.filter(x => ['efectivo', 'transferencia'].includes(x.v));
   /* lo que sobró vuelve; lo que gastó de más se le reintegra: el monto viene puesto y se puede cambiar */
   const queda = s.saldo > 0 ? `Le sobró <b>${fmt(s.saldo, cj.moneda)}</b>: lo devuelve`
               : s.saldo < 0 ? `Gastó <b>${fmt(-s.saldo, cj.moneda)}</b> de más: hay que reintegrárselo` : 'Cierra justo: no sobró ni faltó plata';
@@ -16406,11 +16412,10 @@ function rendirCaja(id){
       ${s.saldo ? `<div class="rd-cierre">
         ${campo(s.saldo > 0 ? 'Cuánto devolvió' : 'Cuánto se le reintegra', 'monto', Math.abs(s.saldo), 'number', 'step="any" min="0" inputmode="decimal"')}
         ${campo('Fecha', 'fecha', hoy(), 'date')}
-        ${sel(s.saldo > 0 ? 'Cómo lo devolvió' : 'Cómo se le reintegra', 'circuito', 'efectivo', CIRC.map(x => ({v: x.v, l: x.l})))}
       </div>
       <div class="muted" style="font-size:11.5px;margin-top:6px">${s.saldo > 0 ? 'Lo que devuelve no es gasto: en el presupuesto y el tablero queda gastado lo entregado menos lo devuelto.' : 'El reintegro es gasto: en el presupuesto y el tablero queda gastado lo entregado más el reintegro.'}</div>` : ''}
       <label class="f" style="margin-top:12px"><span>Notas del cierre</span>
-        <textarea name="notas" rows="3" placeholder="Devolvió en efectivo, se le transfirió el reintegro…">${esc(cj.notas)}</textarea></label>
+        <textarea name="notas" rows="3" placeholder="Algo que haya que anotar del cierre…">${esc(cj.notas)}</textarea></label>
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
       <button class="btn pri" onclick="confirmarRendicion('${id}')">Cerrar la rendición</button></div>
@@ -16450,7 +16455,7 @@ function confirmarRendicion(id){
   cj.reintegro = s.saldo < 0 ? monto : 0;
   cj.notas = d.notas || '';
   cj.cierre = {tipo: s.saldo > 0 ? 'devolucion' : s.saldo < 0 ? 'reintegro' : 'justo', devuelto: cj.devuelto, reintegro: cj.reintegro,
-    saldo: s.saldo, fecha: d.fecha || hoy(), circuito: s.saldo ? (d.circuito || 'efectivo') : '',
+    saldo: s.saldo, fecha: d.fecha || hoy(),
     quienId: u ? u.id : null, quien: u ? u.nombre : '—', rol: u ? u.rol : null, cuando: ahoraTxt()};
   const txt = cierreTxt(cj);
   pasoRend(cj, 'cerrada', [txt, cj.notas].filter(Boolean).join(' · '));
@@ -16463,13 +16468,12 @@ function confirmarRendicion(id){
   cerrar();
   toast(`Rendición de ${nombreUsuario(cj.responsable)} cerrada${txt ? ' · ' + txt.toLowerCase() : ''}`, {accion: 'Deshacer', fn: () => { volverFotoRend(py, foto); R(); }});
 }
-/* "Devolvió $ 8.300 en efectivo el 03/10" / "Se le reintegraron $ 5.000 por transferencia" */
+/* "Devolvió $ 8.300 el 03/10" / "Se le reintegraron $ 5.000 el 03/10" (cómo se entregó no se muestra) */
 function cierreTxt(cj, corto){
   const c = cj.cierre || {}, dev = devueltoDe(cj), rei = reintegroDe(cj);
-  const como = c.circuito ? (c.circuito === 'efectivo' ? ' en efectivo' : ' por ' + ((CIRCUITOS.find(x => x.v === c.circuito) || {l: c.circuito}).l).toLowerCase()) : '';
   const cuando = c.fecha && !corto ? ' el ' + fFecha(c.fecha) : '';
-  if(dev) return `Devolvió ${fmt(dev, cj.moneda)}${como}${cuando}`;
-  if(rei) return `Se le reintegraron ${fmt(rei, cj.moneda)}${como}${cuando}`;
+  if(dev) return `Devolvió ${fmt(dev, cj.moneda)}${cuando}`;
+  if(rei) return `Se le reintegraron ${fmt(rei, cj.moneda)}${cuando}`;
   if(estadoRend(cj) === 'cerrada' && c.tipo === 'justo') return 'Cerró justo';
   return '';
 }
@@ -16518,7 +16522,7 @@ function cajasHTML(py, v, u, pr){ return vePlata(u) ? rendListaHTML(py, u, pr) :
 function fondosHTML(cj){
   if(!(cj.adelantos || []).length) return '<div class="muted" style="font-size:12px">Todavía no se anotó plata entregada.</div>';
   return `<div class="rd-fondos">${cj.adelantos.map(a => `<div class="tot sub"><span>${esc(fFecha(a.fecha) || '—')}
-      <span class="muted">· lo dio ${esc(nombreUsuario(a.entregadoPor))}${a.circuito ? ' · ' + esc((CIRCUITOS.find(x => x.v === a.circuito) || {l: ''}).l) : ''}${a.nota ? ' · ' + esc(a.nota) : ''}</span></span>
+      <span class="muted">· lo dio ${esc(nombreUsuario(a.entregadoPor))}${a.nota ? ' · ' + esc(a.nota) : ''}</span></span>
       <b>${fmt(a.importe, cj.moneda)}</b></div>`).join('')}</div>`;
 }
 function numerosRend(T, cj, mia){
@@ -16607,7 +16611,7 @@ function rendListaHTML(py, u, pr){
           <td class="num" style="text-align:right">${fmt(T.entregado, cj.moneda)}</td>
           <td class="num" style="text-align:right">${fmt(T.gastado, cj.moneda)}<span class="muted" style="display:block;font-size:10.5px">${T.cant} ${plural(T.cant, 'gasto')}</span></td>
           <td class="num" style="text-align:right">${fmt(Math.abs(T.saldo), cj.moneda)}<span class="muted" style="display:block;font-size:10.5px">${estadoRend(cj) === 'cerrada' ? 'al cerrar' : saldoTxt(T.saldo)}</span></td>
-          <td class="num" style="text-align:right">${devueltoDe(cj) ? fmt(devueltoDe(cj), cj.moneda) : reintegroDe(cj) ? '−' + fmt(reintegroDe(cj), cj.moneda) : '—'}${(cj.cierre || {}).fecha && (devueltoDe(cj) || reintegroDe(cj)) ? `<span class="muted" style="display:block;font-size:10.5px">${esc(fFecha(cj.cierre.fecha))}${cj.cierre.circuito ? ' · ' + esc((CIRCUITOS.find(x => x.v === cj.cierre.circuito) || {l: ''}).l.toLowerCase()) : ''}</span>` : ''}</td>
+          <td class="num" style="text-align:right">${devueltoDe(cj) ? fmt(devueltoDe(cj), cj.moneda) : reintegroDe(cj) ? '−' + fmt(reintegroDe(cj), cj.moneda) : '—'}${(cj.cierre || {}).fecha && (devueltoDe(cj) || reintegroDe(cj)) ? `<span class="muted" style="display:block;font-size:10.5px">${esc(fFecha(cj.cierre.fecha))}</span>` : ''}</td>
           <td>${chipRend(cj)}${cierreTxt(cj, true) ? `<span class="muted" style="display:block;font-size:10.5px">${esc(cierreTxt(cj, true))}</span>` : ''}${faltanteRend(py, cj) ? `<span style="display:block;font-size:10.5px;color:var(--bad)">Faltan ${fmt(faltanteRend(py, cj), cj.moneda)}</span>` : ''}</td>
           <td class="noprint" style="white-space:nowrap"><button class="btn sm pri" onclick="abrirRend('${cj.id}')">Abrir</button>
             <button class="btn sm" onclick="bajarExcelRend('${cj.id}')" title="Bajar la planilla en Excel">⬇ Excel</button>
@@ -16637,7 +16641,7 @@ function rendDetalleHTML(py, cj, u, pr){
     borrador: mia ? `Subí las fotos o los PDF de los tickets: cada uno es una fila. Completá lo que falte y mandala ${aQuien}.` : `La está armando ${esc(nombreUsuario(cj.responsable))}.`,
     aProduccion: mia ? `La tiene producción para revisar: el asistente de producción (o el jefe). Si la devuelven con un comentario, la corregís y la reenviás.`
       : asistRevisa(cj, u) ? `La mandó ${esc(nombreUsuario(cj.responsable))} a producción. Revisala: si está bien, pasásela al jefe; si no, devolvela con un comentario.`
-      : esJefeProd(u) ? `La mandó ${esc(nombreUsuario(cj.responsable))} a producción: la puede revisar el asistente de producción, o vos directamente.`
+      : jefeDeArte(u) ? `La mandó ${esc(nombreUsuario(cj.responsable))} a producción: la puede revisar el asistente de producción, o vos directamente.`
       : `La está revisando producción (el asistente de producción o el jefe). Llega a Administración cuando el jefe la eleve.`,
     enviada: mia ? `La tiene el jefe de producción para revisar. Si la devuelve con un comentario, la corregís y la reenviás.`
       : elevaRend(cj, u) ? `${via && pasada && pasada.quienId !== cj.responsable ? `${esc(pasada.quien)} la revisó y te la pasó.` : `La mandó ${esc(nombreUsuario(cj.responsable))}.`} Revisala: si está bien, elevala a Administración; si no, devolvela con un comentario.`
@@ -16651,7 +16655,7 @@ function rendDetalleHTML(py, cj, u, pr){
     acc.push(`<button class="btn pri" onclick="pasarJefeRend('${cj.id}')">Pasar al jefe ✓</button>`);
     acc.push(`<button class="btn" onclick="devolverRend('${cj.id}')">Devolver a ${esc(nombreUsuario(cj.responsable).split(' ')[0])} con comentario</button>`);
   }
-  if((e === 'enviada' || (e === 'aProduccion' && esJefeProd(u))) && elevaRend(cj, u) && !mia){
+  if((e === 'enviada' || (e === 'aProduccion' && jefeDeArte(u))) && elevaRend(cj, u) && !mia){
     acc.push(`<button class="btn pri" onclick="elevarRend('${cj.id}')">Elevar a Administración ✓</button>`);
     acc.push(`<button class="btn" onclick="devolverRend('${cj.id}')">Devolver con comentario</button>`);
   }
@@ -16673,7 +16677,7 @@ function rendDetalleHTML(py, cj, u, pr){
       </div></div>
     <div class="csblock"><h4>Lo que recibió${e === 'cerrada' && (devueltoDe(cj) || reintegroDe(cj)) ? ' y lo que volvió' : ''}</h4><div class="pad">${fondosHTML(cj)}
       ${e === 'cerrada' && (devueltoDe(cj) || reintegroDe(cj)) ? `<div class="rd-fondos"><div class="tot sub"><span>${esc(fFecha((cj.cierre || {}).fecha) || '—')}
-        <span class="muted">· ${devueltoDe(cj) ? 'devolvió' : 'se le reintegró'}${(cj.cierre || {}).circuito ? ' · ' + esc((CIRCUITOS.find(x => x.v === cj.cierre.circuito) || {l: ''}).l) : ''}${(cj.cierre || {}).quien ? ' · lo anotó ' + esc(cj.cierre.quien) : ''}</span></span>
+        <span class="muted">· ${devueltoDe(cj) ? 'devolvió' : 'se le reintegró'}${(cj.cierre || {}).quien ? ' · lo anotó ' + esc(cj.cierre.quien) : ''}</span></span>
         <b style="color:var(--ok)">${devueltoDe(cj) ? '−' : '+'} ${fmt(devueltoDe(cj) || reintegroDe(cj), cj.moneda)}</b></div></div>` : ''}</div></div>
     ${edita ? `<div class="csblock noprint"><h4>Subir tickets</h4><div class="pad">${zonaRendHTML(cj)}</div></div>` : ''}
     <div class="csblock"><h4>Los gastos · ${T.cant}${T.faltan.length && edita ? ` <span class="rd-falta-n">${T.faltan.length} con datos por completar</span>` : ''}</h4>${filasRendHTML(py, cj, T, edita, u)}</div>
@@ -16902,7 +16906,7 @@ function pasarJefeRend(id){
 }
 function devolverRend(id){
   const py = getPy(), cj = cajaPorId(id), e = estadoRend(cj);
-  if(!cj || rendMia(cj) || !((e === 'aProduccion' && (asistRevisa(cj) || esJefeProd(getUsuario()))) || (e === 'enviada' && elevaRend(cj)) || (e === 'aprobada' && cierraRend()))) return;
+  if(!cj || rendMia(cj) || !((e === 'aProduccion' && (asistRevisa(cj) || jefeDeArte(getUsuario()))) || (e === 'enviada' && elevaRend(cj)) || (e === 'aprobada' && cierraRend()))) return;
   const nota = prompt(`¿Qué hay que corregir? (lo lee ${nombreUsuario(cj.responsable)})`, '');
   if(nota === null) return;
   if(!String(nota).trim()){ toast('Escribí qué hay que corregir, si no no sirve'); return; }
@@ -16913,8 +16917,8 @@ function devolverRend(id){
 }
 function elevarRend(id){
   const py = getPy(), cj = cajaPorId(id), e = estadoRend(cj), u = getUsuario();
-  /* lo de arte lo eleva sólo el jefe (desde producción o cuando el asistente se la pasó) */
-  if(!cj || rendMia(cj) || !(e === 'enviada' || (e === 'aProduccion' && (!u || esJefeProd(u)))) || !elevaRend(cj)) return;
+  /* lo de arte lo eleva sólo el jefe (desde producción o cuando el asistente se la pasó); sin jefe en el proyecto, el PE */
+  if(!cj || rendMia(cj) || !(e === 'enviada' || (e === 'aProduccion' && (!u || jefeDeArte(u)))) || !elevaRend(cj)) return;
   const T = totalesRend(py, cj);
   if(!confirm(`¿Elevar a Administración la rendición de ${nombreUsuario(cj.responsable)}?\n\n${T.cant} ${plural(T.cant, 'gasto')} por ${fmt(T.gastado, cj.moneda)} · ${saldoTxt(T.saldo).toLowerCase()} ${fmt(Math.abs(T.saldo), cj.moneda)}`)) return;
   const foto = fotoRend(py, cj);
@@ -17390,8 +17394,7 @@ function hojasRendicion(py, cj){
     [B('Total rendido'), PB(T.gastado)],
     [B(T.saldo >= 0 ? 'Saldo a devolver' : 'Saldo a reintegrar'), PB(Math.abs(T.saldo))],
     ...(estadoRend(cj) === 'cerrada' ? (() => { const c = cj.cierre || {}, dev = devueltoDe(cj), rei = reintegroDe(cj), P0 = plataFondo(py, cj);
-      const como = c.circuito ? (CIRCUITOS.find(x => x.v === c.circuito) || {l: c.circuito}).l : '';
-      return [...(dev || rei ? [[B(dev ? 'Devolvió' : 'Se le reintegró'), PB(dev || rei), c.fecha ? {fecha: c.fecha} : '', como]] : [[B('Al cerrar'), 'Cerró justo']]),
+      return [...(dev || rei ? [[B(dev ? 'Devolvió' : 'Se le reintegró'), PB(dev || rei), c.fecha ? {fecha: c.fecha} : '']] : [[B('Al cerrar'), 'Cerró justo']]),
         ...(faltanteRend(py, cj) ? [[B('Faltante (no volvió)'), PB(faltanteRend(py, cj))]] : []),
         [B('Gastado de verdad'), PB(P0.real), 'entregado − devuelto' + (rei ? ' + reintegro' : '')],
         ...(c.quien ? [[B('Cierre anotado por'), c.quien, c.cuando ? {fecha: String(c.cuando).slice(0, 10)} : '']] : [])]; })() : []),
@@ -17472,7 +17475,7 @@ function rendImpresionHTML(py, cj){
         <div><span>Fondo recibido</span><b>${fmt(T.entregado, mon)}</b></div>
         <div><span>Total rendido</span><b>${fmt(T.gastado, mon)}</b></div>
         <div><span>${T.saldo >= 0 ? 'Saldo a devolver' : 'Saldo a reintegrar'}</span><b>${fmt(Math.abs(T.saldo), mon)}</b></div>
-        ${estadoRend(cj) === 'cerrada' && (devueltoDe(cj) || reintegroDe(cj)) ? `<div><span>${devueltoDe(cj) ? 'Devolvió' : 'Se le reintegró'}${(cj.cierre || {}).fecha ? ' · ' + esc(fFecha(cj.cierre.fecha)) : ''}${(cj.cierre || {}).circuito ? ' · ' + esc((CIRCUITOS.find(x => x.v === cj.cierre.circuito) || {l: ''}).l.toLowerCase()) : ''}</span><b>${fmt(devueltoDe(cj) || reintegroDe(cj), mon)}</b></div>` : ''}
+        ${estadoRend(cj) === 'cerrada' && (devueltoDe(cj) || reintegroDe(cj)) ? `<div><span>${devueltoDe(cj) ? 'Devolvió' : 'Se le reintegró'}${(cj.cierre || {}).fecha ? ' · ' + esc(fFecha(cj.cierre.fecha)) : ''}</span><b>${fmt(devueltoDe(cj) || reintegroDe(cj), mon)}</b></div>` : ''}
       </div>
       ${estadoRend(cj) === 'cerrada' ? `<div class="ri-cbtes">Cierre: ${esc(cierreTxt(cj) || 'cerró justo')}${(cj.cierre || {}).quien ? ' · lo anotó ' + esc(cj.cierre.quien) : ''} · gastado de verdad <b>${fmt(plataFondo(py, cj).real, mon)}</b>${faltanteRend(py, cj) ? ` · <b>faltan ${fmt(faltanteRend(py, cj), mon)}</b>` : ''}</div>` : ''}
       <table class="ri-tabla"><thead><tr><th>Rubro</th><th style="text-align:right">Gastos</th><th style="text-align:right">Total</th></tr></thead>
@@ -17685,7 +17688,7 @@ function saveComprobante(id){
   const d = datos(); const py = getPy(); const u = getUsuario();
   /* un retiro para darle plata a un asistente no es un gasto: es un fondo de producción */
   if(!id && d.esFondo === 'si' && daFondos(u)){
-    cerrar(); darFondo(d.lineaId || null, null, null, {monto: n(d.importe) || '', fecha: d.fecha, circuito: d.circuito, nota: d.concepto || ''}); return;
+    cerrar(); darFondo(d.lineaId || null, null, null, {monto: n(d.importe) || '', fecha: d.fecha, nota: d.concepto || ''}); return;
   }
   py.comprobantes ||= [];
   let c = id ? py.comprobantes.find(x=>x.id===id) : nuevoComprobante();

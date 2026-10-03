@@ -202,7 +202,9 @@ const tot = calcular(getV()).total;
 migrar();
 ok('versión vieja: cargas en 0 y condiciones vacías', getV().capas.cargas === 0 && !!getV().condiciones);
 ok('y el total no cambia', calcular(getV()).total === tot, fmt(tot));
-ok('el ejemplo sigue dando $12.291.906', Math.round(calcular(getV()).total) === 12291906, fmt(calcular(getV()).total));
+/* el ejemplo trae la caja chica de producción (03, $ 300.000): con contingencia 5 % y fee 15 %
+   (300.000 × 1,20 = 360.000) más IVA 21 % suma $ 435.600 a los $ 12.291.906 de antes */
+ok('el ejemplo sigue dando $12.727.506', Math.round(calcular(getV()).total) === 12291906 + 435600, fmt(calcular(getV()).total));
 
 console.log('\n--- 9. CATÁLOGO: EXCEL Y CATÁLOGO PREPARADO ---');
 (async () => {

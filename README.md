@@ -862,10 +862,11 @@ Cinco sub-vistas en **Gastos**:
   jefe → observada (vuelve con comentario) → aprobada → cerrada por
   Administración, con charla por rendición y por gasto. Lo de **arte** (y el
   equipo) va primero **a producción**: el asistente de producción lo revisa y
-  se lo pasa al jefe, que es el único que lo eleva. Al cerrar, Administración
+  se lo pasa al jefe, que es el único que lo eleva (si el proyecto no tiene
+  jefe de producción, lo eleva el PE). Al cerrar, Administración
   anota lo que vuelve («Le sobró $ X: lo devuelve», o el reintegro si gastó de
-  más) con monto, fecha y si fue en efectivo o transferencia; lo devuelto no es
-  gasto. Cada asistente ve, arma y **recibe** sólo la suya (los gastos ajenos
+  más) con monto y fecha; lo devuelto no es gasto. El fondo se da con el monto
+  (y la fecha): no se pide cómo se entrega. Cada asistente ve, arma y **recibe** sólo la suya (los gastos ajenos
   no llegan a su compu); la base lo hace cumplir (`backend/proyecto-completo.sql`).
 - **Tablero** — Presupuestado · Comprometido · Real · Pagado · **Disponible**,
   rubro por rubro.

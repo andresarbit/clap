@@ -114,7 +114,8 @@ como('admin'); setTab('resumen'); h = app.innerHTML;
 ok('a Administración le aparece para cerrar', /rendición para cerrar/.test(h));
 abrirRend(fondo.id); h = app.innerHTML;
 ok('con el botón de cerrar', /rendirCaja\('/.test(h));
-rendirCaja(fondo.id); ok('el cierre dice cuánto le sobró, con el monto puesto para la devolución', modal && /Le sobró/.test(modal) && /lo devuelve/.test(modal) && modal.includes(fmt(150000 - 141700)) && /name="monto" value="8300"/.test(modal) && /name="circuito"/.test(modal) && /name="fecha"/.test(modal));
+rendirCaja(fondo.id); ok('el cierre dice cuánto le sobró, con el monto puesto para la devolución', modal && /Le sobró/.test(modal) && /lo devuelve/.test(modal) && modal.includes(fmt(150000 - 141700)) && /name="monto" value="8300"/.test(modal) && /name="fecha"/.test(modal));
+ok('al cerrar no pregunta cómo lo devuelve (efectivo o transferencia): sólo el monto y la fecha', !/name="circuito"/.test(modal) && !/Cómo lo devolvió|efectivo|transferencia/i.test(modal));
 global.document.querySelectorAll = sel => String(sel).includes('[name]') ? [{name: 'notas', value: 'Devolvió en efectivo'}] : [];
 confirmarRendicion(fondo.id);
 global.document.querySelectorAll = () => [];
@@ -312,8 +313,13 @@ const diego5 = U5('asistprod'), carla5 = U5('arte'), sofia5 = U5('equipo'), luci
 const formu = o => { global.document.querySelectorAll = sel => String(sel).includes('[name]') ? Object.entries(o).map(([name, value]) => ({name, value})) : []; };
 const sinFormu = () => { global.document.querySelectorAll = () => []; };
 const r03 = v5.rubros.find(r => r.codigo === '03');
-const lcaja = nuevaLinea({concepto: 'Caja chica de producción', valorUnit: 300000, unidad: 'global', circuito: 'efectivo', comprobante: 'ninguno'});
-r03.lineas.push(lcaja);
+/* el ejemplo ya trae la caja chica de producción en el 03 (como las vistas por rol), y el fondo de Diego sale de ahí */
+const lcaja = r03.lineas.find(l => l.concepto === 'Caja chica de producción');
+const fEj = py5.cajas.find(c => c.responsable === diego5.id);
+ok('el ejemplo trae la caja chica de producción en el 03, de $ 300.000, con el fondo de Diego colgado',
+  !!lcaja && totalLinea(lcaja, v5) === 300000 && fEj.lineaId === lcaja.id && fEj.adelantos.every(a => a.lineaId === lcaja.id) && fondosDeLinea(py5, lcaja.id).entregado === 150000);
+/* para que las cuentas de esta sección arranquen de cero, el fondo de ejemplo se descuelga de la línea */
+fEj.lineaId = null; fEj.adelantos.forEach(a => { delete a.lineaId; });
 /* otro asistente de producción de la productora, que NO está en este proyecto */
 const ana = nuevoUsuario({nombre: 'Ana Fuera (ejemplo)', rol: 'asistprod'}); pr5.usuarios.push(ana);
 como5('produccion');
@@ -322,26 +328,27 @@ const P0 = resumenPlata(py5, v5), f0 = P0.filas.find(f => f.codigo === '03'), f1
 DB.ui.tab = 'presu'; DB.ui.vista = 'interna'; render(); h = app.innerHTML;
 ok('en el presupuesto, la línea de caja chica tiene 💵 Dar fondo (y ninguna otra)', h.includes(`darFondo('${lcaja.id}')`) && (h.match(/darFondo\('/g) || []).length === 1);
 darFondo(lcaja.id); let m5 = modal;
-ok('el diálogo pide cuánto, fecha, cómo se entrega y a quién', /name="monto"/.test(m5) && /name="fecha"/.test(m5) && /name="circuito"/.test(m5) && /name="persona"/.test(m5));
+ok('el diálogo pide cuánto, la fecha y a quién', /name="monto"/.test(m5) && /name="fecha"/.test(m5) && /name="persona"/.test(m5));
+ok('y no cómo se entrega (efectivo o transferencia): sólo el monto', !/name="circuito"/.test(m5) && !/Cómo se entrega|efectivo|transferencia/i.test(m5));
 const selPersona = m5.split('name="persona"')[1].split('</select>')[0];
 ok('A quién: los asistentes de producción del proyecto y, abajo, los de arte', /Asistentes de producción[\s\S]*Diego Sosa[\s\S]*Asistentes de arte[\s\S]*Carla Méndez/.test(selPersona));
 ok('nadie más: ni el equipo, ni el jefe, ni quien no está en el proyecto', !/Sofía|Lucía|Marta|Tomás|Paula|Ana Fuera/.test(selPersona), selPersona.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
-ok('se entrega en efectivo o por transferencia', /value="efectivo"/.test(m5) && /value="transferencia"/.test(m5) && !/value="cheque"/.test(m5.split('name="circuito"')[1].split('</select>')[0]));
 ok('la línea viene elegida', new RegExp(`value="${lcaja.id}" selected`).test(m5));
 /* otro proyecto, otra gente: el dropdown es por proyecto */
 const pyOtro = nuevoProyecto({nombre: 'Otro proyecto (ejemplo)'}); pyOtro.invitados = [lucia5.id, carla5.id];
 ok('en otro proyecto, sólo los asistentes de ese proyecto', (() => { const A = asistentesParaFondo(pyOtro, pr5); return A.prod.length === 0 && A.arte.length === 1 && A.arte[0].id === carla5.id; })());
-formu({lineaId: lcaja.id, persona: diego5.id, monto: '100000', fecha: hoy(), circuito: 'efectivo', nota: 'Para la jornada 1'});
+formu({lineaId: lcaja.id, persona: diego5.id, monto: '100000', fecha: hoy(), nota: 'Para la jornada 1'});
 guardarFondo(''); sinFormu();
 const fd5 = py5.cajas.find(c => c.lineaId === lcaja.id && c.responsable === diego5.id);
 ok('le abre un fondo a Diego, colgado de la línea', fd5 && fd5.adelantos.length === 1 && fd5.adelantos[0].lineaId === lcaja.id && fd5.adelantos[0].importe === 100000 && estadoRend(fd5) === 'borrador');
-formu({lineaId: lcaja.id, persona: diego5.id, monto: '50000', fecha: hoy(), circuito: 'transferencia', nota: ''});
+formu({lineaId: lcaja.id, persona: diego5.id, monto: '50000', fecha: hoy(), nota: ''});
 guardarFondo(''); sinFormu();
-ok('si ya tiene uno abierto de esa línea, se le suma (no abre otro)', py5.cajas.filter(c => c.lineaId === lcaja.id && c.responsable === diego5.id).length === 1 && saldoCaja(py5, fd5).entregado === 150000 && fd5.adelantos[1].circuito === 'transferencia');
-formu({lineaId: lcaja.id, persona: carla5.id, monto: '60000', fecha: hoy(), circuito: 'efectivo', nota: ''});
+ok('si ya tiene uno abierto de esa línea, se le suma (no abre otro)', py5.cajas.filter(c => c.lineaId === lcaja.id && c.responsable === diego5.id).length === 1 && saldoCaja(py5, fd5).entregado === 150000);
+ok('la entrega guarda el monto, la fecha y quién la dio (no cómo)', fd5.adelantos.every(a => !('circuito' in a)) && fd5.adelantos[1].fecha === hoy() && fd5.adelantos[1].entregadoPor === lucia5.id);
+formu({lineaId: lcaja.id, persona: carla5.id, monto: '60000', fecha: hoy(), nota: ''});
 guardarFondo(''); sinFormu();
 const fc5 = py5.cajas.find(c => c.lineaId === lcaja.id && c.responsable === carla5.id);
-formu({lineaId: lcaja.id, persona: sofia5.id, monto: '1000', fecha: hoy(), circuito: 'efectivo', nota: ''});
+formu({lineaId: lcaja.id, persona: sofia5.id, monto: '1000', fecha: hoy(), nota: ''});
 guardarFondo(''); sinFormu();
 ok('a alguien que no es asistente no se le da (aunque fuerce el formulario)', !py5.cajas.some(c => c.lineaId === lcaja.id && c.responsable === sofia5.id));
 let FL = fondosDeLinea(py5, lcaja.id);
@@ -367,20 +374,21 @@ darFondo(); ok('con la línea de caja chica elegida', modal && new RegExp(`value
 editCaja(); ok('el "dar un fondo" de antes lleva al mismo lugar', modal && /Dar un fondo para rendir/.test(modal) && /guardarFondo\(/.test(modal));
 addAdelanto(fd5.id); ok('"+ Más plata" también: suma a ese fondo, desde su línea', modal && /Más plata para Diego/.test(modal) && /guardarFondo\('/.test(modal) && modal.includes(fd5.id)); modal = null;
 cargarComprobante(); ok('al cargar un retiro, se puede marcar como fondo de producción', /name="esFondo"/.test(modal) && /fondo de producción/.test(modal)); modal = null;
-formu({esFondo: 'si', importe: '25000', fecha: hoy(), circuito: 'efectivo', lineaId: lcaja.id, concepto: 'Retiro del banco', rubro: '03'});
+formu({esFondo: 'si', importe: '25000', fecha: hoy(), lineaId: lcaja.id, concepto: 'Retiro del banco', rubro: '03'});
 const nCbtes = py5.comprobantes.length;
 saveComprobante(''); sinFormu();
 ok('y en vez de un gasto, abre "Dar fondo" con el monto', py5.comprobantes.length === nCbtes && modal && /name="monto" value="25000"/.test(modal) && /Dar un fondo para rendir/.test(modal)); modal = null;
 /* una línea cualquiera, marcada como fondo desde el diálogo */
 const lAsist = r03.lineas.find(l => l.concepto === 'Asistente de Producción');
-formu({lineaId: lAsist.id, persona: carla5.id, monto: '5000', fecha: hoy(), circuito: 'efectivo', nota: ''});
+formu({lineaId: lAsist.id, persona: carla5.id, monto: '5000', fecha: hoy(), nota: ''});
 guardarFondo(''); sinFormu();
 ok('el jefe puede usar otra línea: queda marcada como fondo', lAsist.fondo === true && esLineaFondo(lAsist) && py5.cajas.some(c => c.lineaId === lAsist.id && c.responsable === carla5.id));
 ok('deshacer lo vuelve atrás (y la línea deja de ser de fondos)', (toastAccion(), !esLineaFondo(lAsist) && !py5.cajas.some(c => c.lineaId === lAsist.id)));
 /* sin línea de fondos: la crea */
 DB = dbVacia(); sembrar(); DB.ui.usuarioId = getPr().usuarios.find(u => u.rol === 'produccion').id; modal = null;
+(() => { const r = versionRodaje(getPy()).rubros.find(x => x.codigo === '03'); r.lineas = r.lineas.filter(l => !esLineaFondo(l)); getPy().cajas.forEach(c => { c.lineaId = null; }); })();
 darFondo(); ok('si el presupuesto no tiene caja chica, la ofrece agregar', modal && /value="__nueva" selected/.test(modal)); modal = null;
-formu({lineaId: '__nueva', persona: getPr().usuarios.find(u => u.rol === 'asistprod').id, monto: '20000', fecha: hoy(), circuito: 'efectivo'});
+formu({lineaId: '__nueva', persona: getPr().usuarios.find(u => u.rol === 'asistprod').id, monto: '20000', fecha: hoy()});
 guardarFondo(''); sinFormu();
 ok('y al dar el fondo la agrega en el 03 y cuelga el fondo de ahí', (() => { const l = lineasFondo(getPy())[0]; return l && l.r.codigo === '03' && /Caja chica/.test(l.l.concepto) && getPy().cajas.some(c => c.lineaId === l.l.id); })());
 
@@ -393,10 +401,10 @@ ok('Diego (asistente de producción) la manda directo al jefe', estadoRend(fd5) 
 como5('produccion'); elevarRend(fd5.id); ok('el jefe la eleva', estadoRend(fd5) === 'aprobada');
 como5('admin'); rendirCaja(fd5.id); m5 = modal;
 ok('al cerrar: "Le sobró $ 110.000: lo devuelve", con el monto puesto', /Le sobró <b>\$ 110\.000<\/b>: lo devuelve/.test(m5) && /name="monto" value="110000"/.test(m5), (m5 || '').match(/Le sobró[^.]*/)?.[0]);
-ok('con la fecha y cómo lo devolvió (efectivo o transferencia)', /name="fecha"/.test(m5) && /Cómo lo devolvió/.test(m5) && /value="transferencia"/.test(m5));
-formu({monto: '100000', fecha: '2026-10-02', circuito: 'transferencia', notas: ''});
+ok('con la fecha, sin preguntar cómo lo devolvió', /name="fecha"/.test(m5) && !/name="circuito"/.test(m5) && !/Cómo lo devolvió/.test(m5));
+formu({monto: '100000', fecha: '2026-10-02', notas: ''});
 confirmarRendicion(fd5.id); sinFormu();
-ok('el cierre anota cuánto devolvió, cuándo, cómo y quién', fd5.cierre && fd5.cierre.devuelto === 100000 && fd5.devuelto === 100000 && fd5.cierre.fecha === '2026-10-02' && fd5.cierre.circuito === 'transferencia' && fd5.cierre.quien === marta5.nombre, JSON.stringify(fd5.cierre));
+ok('el cierre anota cuánto devolvió, cuándo y quién (no cómo)', fd5.cierre && fd5.cierre.devuelto === 100000 && fd5.devuelto === 100000 && fd5.cierre.fecha === '2026-10-02' && !('circuito' in fd5.cierre) && fd5.cierre.quien === marta5.nombre, JSON.stringify(fd5.cierre));
 ok('devolvió menos de lo que le sobraba: faltan $ 10.000', faltanteRend(py5, fd5) === 10000);
 P1 = resumenPlata(py5, v5); f1 = P1.filas.find(f => f.codigo === '03');
 ok('lo devuelto no es gasto: queda gastado lo entregado menos lo devuelto', f1.real - f0.real === 150000 - 100000, fmt(f1.real - f0.real));
@@ -405,22 +413,22 @@ ok('la línea del presupuesto también', realPorLinea(py5, v5).porLinea[lcaja.id
 ok('el tablero lo cuenta como pagado', f1.pagado - f0.pagado === 50000);
 DB.ui.tab = 'presu'; render(); ok('en el presupuesto: "devolvieron"', /devolvieron/.test(app.innerHTML) && app.innerHTML.includes(fmt(100000)));
 abrirRend(fd5.id); h = app.innerHTML;
-ok('en la rendición se ve la devolución', /Devolvió \$ 100\.000 por transferencia el 02\/10\/2026/.test(h) && /lo anotó Marta Giles/.test(h) && /Faltan \$ 10\.000/.test(h));
+ok('en la rendición se ve la devolución (sin el medio)', /Devolvió \$ 100\.000 el 02\/10\/2026/.test(h) && !/transferencia|en efectivo/i.test(h) && /lo anotó Marta Giles/.test(h) && /Faltan \$ 10\.000/.test(h));
 DB.ui.rendId = null; render(); h = app.innerHTML;
-ok('y en la lista de todas', /Devuelto/.test(h) && /Devolvió \$ 100\.000 por transferencia/.test(h));
+ok('y en la lista de todas (sin el medio)', /Devuelto/.test(h) && /Devolvió \$ 100\.000</.test(h) && h.includes('02/10/2026') && !/transferencia/i.test(h));
 const car5 = hojasRendicion(py5, fd5)[0].filas.map(f => f.map(c => c && typeof c === 'object' ? (c.v ?? c.fecha ?? '') : c).join(' | ')).join('\n');
-ok('en la carátula del Excel: devolvió, cuándo, cómo, y lo gastado de verdad', /Devolvió \| 100000 \| 2026-10-02 \| Transferencia/.test(car5) && /Gastado de verdad \| 50000/.test(car5) && /Faltante \(no volvió\) \| 10000/.test(car5), car5.split('\n').filter(l => /Devol|Gastado|Falt/.test(l)).join(' / '));
+ok('en la carátula del Excel: devolvió, cuándo, y lo gastado de verdad (sin el medio)', /^Devolvió \| 100000 \| 2026-10-02$/m.test(car5) && !/Transferencia|Efectivo/i.test(car5) && /Gastado de verdad \| 50000/.test(car5) && /Faltante \(no volvió\) \| 10000/.test(car5), car5.split('\n').filter(l => /Devol|Gastado|Falt/.test(l)).join(' / '));
 const imp5 = rendImpresionHTML(py5, fd5);
-ok('y en la del PDF', /Devolvió · 02\/10\/2026 · transferencia/.test(imp5) && imp5.includes(fmt(100000)) && /gastado de verdad/.test(imp5));
+ok('y en la del PDF', /Devolvió · 02\/10\/2026</.test(imp5) && !/transferencia|efectivo/i.test(imp5) && imp5.includes(fmt(100000)) && /gastado de verdad/.test(imp5));
 /* gastó de más: se le reintegra */
 como5('produccion');
-formu({lineaId: lcaja.id, persona: diego5.id, monto: '10000', fecha: hoy(), circuito: 'efectivo'}); guardarFondo(''); sinFormu();
+formu({lineaId: lcaja.id, persona: diego5.id, monto: '10000', fecha: hoy()}); guardarFondo(''); sinFormu();
 const fd6 = py5.cajas.find(c => c.lineaId === lcaja.id && c.responsable === diego5.id && c.id !== fd5.id);
 ok('como el anterior ya se cerró, le abre otro fondo', !!fd6 && fd6 !== fd5);
 como5('asistprod'); nuevoGastoRend(fd6, {fecha: hoy(), proveedor: 'Remís de prueba', rubro: '12', tipo: 'reciboS', importe: 15000, concepto: 'Traslado'});
 enviarRend(fd6.id); como5('produccion'); elevarRend(fd6.id); como5('admin'); rendirCaja(fd6.id);
 ok('si gastó de más: "Gastó $ 5.000 de más: hay que reintegrárselo"', /Gastó <b>\$ 5\.000<\/b> de más: hay que reintegrárselo/.test(modal) && /Cuánto se le reintegra/.test(modal));
-formu({monto: '5000', fecha: hoy(), circuito: 'efectivo', notas: ''}); confirmarRendicion(fd6.id); sinFormu();
+formu({monto: '5000', fecha: hoy(), notas: ''}); confirmarRendicion(fd6.id); sinFormu();
 ok('el reintegro queda anotado y es gasto', fd6.reintegro === 5000 && plataFondo(py5, fd6).real === 15000 && !faltanteRend(py5, fd6));
 
 console.log('\n--- 12. ARTE PASA POR PRODUCCIÓN ---');
@@ -455,13 +463,13 @@ ok('el jefe la tiene para revisar', esperaDe(fc5) && app.innerHTML.includes(`abr
 abrirRend(fc5.id); ok('y ve quién de producción se la pasó', /Diego Sosa la revisó y te la pasó/.test(app.innerHTML));
 elevarRend(fc5.id); ok('el jefe la eleva', estadoRend(fc5) === 'aprobada');
 como5('admin'); ok('recién ahí le llega a Administración', esperaDe(fc5));
-rendirCaja(fc5.id); formu({monto: String(saldoCaja(py5, fc5).saldo), fecha: hoy(), circuito: 'efectivo', notas: ''}); confirmarRendicion(fc5.id); sinFormu();
+rendirCaja(fc5.id); formu({monto: String(saldoCaja(py5, fc5).saldo), fecha: hoy(), notas: ''}); confirmarRendicion(fc5.id); sinFormu();
 ok('y la cierra con la devolución', estadoRend(fc5) === 'cerrada' && fc5.devuelto === 60000 - 22000);
 const car6 = hojasRendicion(py5, fc5)[0].filas.map(f => f.map(c => c && typeof c === 'object' ? (c.v ?? '') : c).join(' | ')).join('\n');
 ok('las firmas: rindió Carla, revisó Diego (producción), revisó el jefe, recibió Administración', /Rindió \| Carla Méndez/.test(car6) && /Revisó \(asistente de producción\) \| Diego Sosa/.test(car6) && /Revisó \(jefe de producción\) \| Lucía Ferrer/.test(car6) && /Recibió \(administración\) \| Marta Giles/.test(car6));
 ok('en el PDF, cuatro firmas', (rendImpresionHTML(py5, fc5).match(/class="ri-firma"/g) || []).length === 4);
 /* el jefe también la puede tomar directo desde producción */
-como5('produccion'); formu({lineaId: lcaja.id, persona: carla5.id, monto: '8000', fecha: hoy(), circuito: 'efectivo'}); guardarFondo(''); sinFormu();
+como5('produccion'); formu({lineaId: lcaja.id, persona: carla5.id, monto: '8000', fecha: hoy()}); guardarFondo(''); sinFormu();
 const fc6 = py5.cajas.find(c => c.responsable === carla5.id && estadoRend(c) === 'borrador' && c.lineaId === lcaja.id);
 como5('arte'); nuevoGastoRend(fc6, {fecha: hoy(), proveedor: 'Kiosco de prueba', rubro: '06', tipo: 'ticket', importe: 3000, concepto: 'Cinta'}); enviarRend(fc6.id);
 como5('produccion'); abrirRend(fc6.id);

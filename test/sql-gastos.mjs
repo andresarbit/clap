@@ -5,7 +5,8 @@
        asistente de producción, además, lo de arte, que revisa);
      · un asistente guarda lo suyo y la base lo junta con lo de los demás;
      · nadie escribe la tabla directo (salteando los controles);
-     · lo de arte pasa por producción: Administración no lo recibe salteado.
+     · lo de arte pasa por producción: Administración no lo recibe salteado;
+       lo eleva el jefe (sin jefe en el proyecto, el PE).
 
    Uso:   node test/sql-gastos.mjs
    Necesita @electric-sql/pglite (no es parte de CLAP: sólo para probar):
@@ -246,12 +247,12 @@ ok('y revisa el gasto suelto', g.datos.comprobantes.find(c => c.id === 'cp-carla
 ({py} = armarCompu('marta', PY));
 await run('sincronizarPartes(getPy())');
 const T = run(`totalesRend(getPy(), cajaPorId('cj-carla'))`);
-run(`document.querySelectorAll = sel => String(sel).includes('[name]') ? [{name: 'monto', value: '${T.saldo}'}, {name: 'fecha', value: hoy()}, {name: 'circuito', value: 'transferencia'}, {name: 'notas', value: ''}] : []`);
+run(`document.querySelectorAll = sel => String(sel).includes('[name]') ? [{name: 'monto', value: '${T.saldo}'}, {name: 'fecha', value: hoy()}, {name: 'notas', value: ''}] : []`);
 run(`confirmarRendicion('cj-carla')`);
 run(`document.querySelectorAll = () => []`);
 await run('sincronizarPartes(getPy())');
 g = await enBase(PY); cjC = g.datos.cajas.find(c => c.id === 'cj-carla');
-ok('Administración la cierra y anota la devolución', cjC.rendicion.estado === 'cerrada' && cjC.devuelto === T.saldo && cjC.cierre.circuito === 'transferencia', run('_sync.error') || JSON.stringify(cjC.cierre));
+ok('Administración la cierra y anota la devolución (el monto y la fecha, no cómo)', cjC.rendicion.estado === 'cerrada' && cjC.devuelto === T.saldo && !!cjC.cierre.fecha && !('circuito' in cjC.cierre), run('_sync.error') || JSON.stringify(cjC.cierre));
 
 console.log('\n--- 6. EL CAMBIO: UNA COMPU QUE TENÍA LOS GASTOS ENTEROS ---');
 ({py} = armarCompu('sofia', PY));
@@ -290,6 +291,31 @@ r = await guardarComo('jefe', PY, x, V.v); ok('el jefe eleva la del asistente de
 V = await vis('carla');
 r = await guardarComo('carla', PY, V.d, V.v - 1);
 ok('si alguien guardó antes, a Carla le vuelve sólo lo suyo para juntar', r.ok === false && r.datos && !JSON.stringify(r.datos).includes(CATERING) && r.datos.cajas.every(c => c.responsable === UID.carla));
+
+console.log('\n--- 8. QUIÉN ELEVA: SIN JEFE DE PRODUCCIÓN, LO DE ARTE LO ELEVA EL PE ---');
+/* Administración da tres fondos: uno de Carla, ya en producción, y dos de Diego, mandados */
+const fondo8 = (id, quien, estado) => ({id, nombre: 'Fondo ' + id, responsable: UID[quien], moneda: 'ARS', estado: 'abierta',
+  adelantos: [{id: 'ad-' + id, fecha: '2026-10-01', importe: 10000, entregadoPor: UID.marta}], rendicion: {estado, pasos: [], charla: []}});
+V = await vis('marta'); x = clon(V.d);
+x.cajas.push(fondo8('cj-carla-8', 'carla', 'aProduccion'), fondo8('cj-diego-8a', 'diego', 'enviada'), fondo8('cj-diego-8b', 'diego', 'enviada'));
+x.comprobantes.push({id: 'cp-carla-8', rubro: '06', proveedor: 'Kiosco de prueba', importe: 2000, tipo: 'ticket', cargadoPor: UID.carla, estado: 'cargado', historial: []});
+r = await guardarComo('marta', PY, x, V.v); ok('(Administración da los fondos)', r.ok === true, r.error || '');
+const elevar = async (k, id) => { const W = await vis(k), y = clon(W.d); y.cajas.find(c => c.id === id).rendicion.estado = 'aprobada'; return guardarComo(k, PY, y, W.v); };
+const revisar = async (k, id) => { const W = await vis(k), y = clon(W.d); y.comprobantes.find(c => c.id === id).estado = 'revisado'; return guardarComo(k, PY, y, W.v); };
+r = await elevar('tomas', 'cj-carla-8'); ok('con jefe en el proyecto, el PE no eleva lo de arte', !!r.error, r.error);
+r = await revisar('tomas', 'cp-carla-8'); ok('ni revisa un gasto suelto de arte', !!r.error, r.error);
+r = await elevar('marta', 'cj-diego-8a'); ok('la del asistente de producción la eleva Administración', r.ok === true, r.error || '');
+r = await elevar('tomas', 'cj-diego-8b'); ok('y el PE (como el jefe)', r.ok === true, r.error || '');
+await db.query(`delete from proyecto_persona where proyecto_id=$1 and usuario_id=$2`, [PY, UID.jefe]);
+ok('(el proyecto se queda sin jefe de producción)', (await db.query(`select proyecto_sin_jefe($1) s`, [PY])).rows[0].s === true);
+r = await elevar('marta', 'cj-carla-8'); ok('sin jefe, Administración sigue sin elevar lo de arte', !!r.error, r.error);
+r = await elevar('diego', 'cj-carla-8'); ok('ni el asistente de producción', !!r.error, r.error);
+r = await elevar('tomas', 'cj-carla-8'); ok('sin jefe en el proyecto, el PE eleva lo de arte', r.ok === true, r.error || '');
+r = await revisar('tomas', 'cp-carla-8'); ok('y revisa el gasto suelto de arte', r.ok === true, r.error || '');
+g = await enBase(PY);
+ok('en la base quedó elevada', g.datos.cajas.find(c => c.id === 'cj-carla-8').rendicion.estado === 'aprobada' && g.datos.comprobantes.find(c => c.id === 'cp-carla-8').estado === 'revisado');
+await db.query(`insert into proyecto_persona(proyecto_id,usuario_id) values($1,$2)`, [PY, UID.jefe]);
+ok('(con el jefe de vuelta, el proyecto tiene jefe)', (await db.query(`select proyecto_sin_jefe($1) s`, [PY])).rows[0].s === false);
 
 console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');
 process.exit(fallos ? 1 : 0);
