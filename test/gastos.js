@@ -137,7 +137,7 @@ DB.ui.tab = 'gastos';
   try { setSubGasto(k); render(); ok('render ' + k, true); } catch (e) { ok('render ' + k, false, e.message); }
 });
 try { DB.ui.tab = 'equipo'; render(); ok('render equipo', true); } catch (e) { ok('render equipo', false, e.message); }
-ok('la vista de equipo avisa que no es seguridad', /todavía no es seguridad/i.test(vistaEquipo(pr)));
+ok('la vista de equipo dice que lo controla la base (ya no "no es seguridad" ni "Entrar como")', /lo controla la base/i.test(vistaEquipo(pr)) && !/no es seguridad|Entrar como/i.test(vistaEquipo(pr)));
 ok('sin equipo cargado manda a cargarlo', (() => {
   const guardado = pr.usuarios; pr.usuarios = [];
   const h = vistaGastos(pr, py, v); pr.usuarios = guardado;

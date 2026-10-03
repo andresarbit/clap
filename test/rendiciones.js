@@ -11,7 +11,7 @@ const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? 
 global.confirm = () => true;
 const clon = x => JSON.parse(JSON.stringify(x));
 
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const pr = getPr(), py = getPy();
 const quien = rol => pr.usuarios.find(u => u.rol === rol);
 const como = rol => { DB.ui.usuarioId = quien(rol).id; modal = null; };
@@ -155,7 +155,7 @@ ok('los tickets de a cuatro por hoja', (imp.match(/class="ri-hoja ri-tk"/g) || [
 imprimirRend(fondo.id); ok('abrir la vista para imprimir no rompe', true);
 
 console.log('\n--- 6. DOS PERSONAS A LA VEZ ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const py2 = getPy(), pr2 = getPr(), d2 = pr2.usuarios.find(u => u.rol === 'asistprod');
 const f2 = py2.cajas.find(cj => cj.responsable === d2.id);
 f2.rendicion.estado = 'enviada';
@@ -232,7 +232,7 @@ ok('sin la palabra total no inventa el importe', parsearTextoComprobante('Varios
 ['$ 12.345,67|12345.67', '12,345.67|12345.67', '1.234.567|1234567', '12,5|12.5', '1234|1234', '-1.000,00|-1000'].forEach(x => {
   const [a, b] = x.split('|'); if(parseImporte(a) !== +b) ok(`parseImporte("${a}")`, false, String(parseImporte(a))); });
 ok('los importes en formato de acá y de afuera', true);
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const py3 = getPy(), d3 = getPr().usuarios.find(u => u.rol === 'asistprod');
 DB.ui.usuarioId = d3.id;
 const f3 = py3.cajas.find(cj => cj.responsable === d3.id); f3.rendicion.estado = 'borrador';
@@ -272,7 +272,7 @@ const vistos = totalesRend(py3, f3).comprobantes.slice(-3).map(c => miniAdj(c.ad
 ok('miniaturas: PDF con su ícono, la foto con la foto', /PDF/.test(vistos[0]) && /HEIC/.test(vistos[1]) && /<img/.test(vistos[2]), vistos.join(' | '));
 
 console.log('\n--- 9. ÓRDENES DE COMPRA, COMPROBANTES AJENOS Y EL MENÚ DATOS ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const pr4 = getPr(), py4 = getPy(), oc = py4.ocs[0];
 ['equipo', 'arte', 'asistprod'].forEach(rol => {
   DB.ui.usuarioId = pr4.usuarios.find(u => u.rol === rol).id; modal = null;
@@ -289,7 +289,7 @@ const pr4 = getPr(), py4 = getPy(), oc = py4.ocs[0];
   const cj = py4.cajas[0], n1 = cj.adelantos.length; addAdelanto(cj.id); saveAdelanto(cj.id);
   ok(`${ROL(rol).l}: un adelanto no entra`, cj.adelantos.length === n1 && modal === null);
   menuDatos(); const m = modal; modal = null;
-  ok(`${ROL(rol).l}: el menú Datos sólo conecta (no exporta ni importa ni borra)`, /Conectar con Supabase/.test(m) && !/expJSON\(\)/.test(m) && !/impJSON/.test(m) && !/resetDB\(\)/.test(m) && !/expCSV\(\)/.test(m));
+  ok(`${ROL(rol).l}: el menú Datos sólo conecta (no exporta ni importa ni borra)`, /menuNube()/.test(m) && !/Supabase/.test(m) && !/expJSON\(\)/.test(m) && !/impJSON/.test(m) && !/resetDB\(\)/.test(m) && !/expCSV\(\)/.test(m));
   let bajo = 0; const _b = bajar; bajar = () => { bajo++; }; expJSON(); bajar = _b;
   ok(`${ROL(rol).l}: y "Exportar todo" no baja nada`, bajo === 0);
 });
@@ -305,7 +305,7 @@ DB.ui.subGasto = 'todos'; render();
 ok('y ve todos los comprobantes', app.innerHTML.includes(fmt(448000)));
 
 console.log('\n--- 10. EL FONDO SALE DEL PRESUPUESTO ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const pr5 = getPr(), py5 = getPy(), v5 = versionRodaje(py5);
 const U5 = rol => pr5.usuarios.find(u => u.rol === rol);
 const como5 = rol => { DB.ui.usuarioId = U5(rol).id; modal = null; };
@@ -385,7 +385,7 @@ guardarFondo(''); sinFormu();
 ok('el jefe puede usar otra línea: queda marcada como fondo', lAsist.fondo === true && esLineaFondo(lAsist) && py5.cajas.some(c => c.lineaId === lAsist.id && c.responsable === carla5.id));
 ok('deshacer lo vuelve atrás (y la línea deja de ser de fondos)', (toastAccion(), !esLineaFondo(lAsist) && !py5.cajas.some(c => c.lineaId === lAsist.id)));
 /* sin línea de fondos: la crea */
-DB = dbVacia(); sembrar(); DB.ui.usuarioId = getPr().usuarios.find(u => u.rol === 'produccion').id; modal = null;
+DB = dbVacia(); sembrarChico(); DB.ui.usuarioId = getPr().usuarios.find(u => u.rol === 'produccion').id; modal = null;
 (() => { const r = versionRodaje(getPy()).rubros.find(x => x.codigo === '03'); r.lineas = r.lineas.filter(l => !esLineaFondo(l)); getPy().cajas.forEach(c => { c.lineaId = null; }); })();
 darFondo(); ok('si el presupuesto no tiene caja chica, la ofrece agregar', modal && /value="__nueva" selected/.test(modal)); modal = null;
 formu({lineaId: '__nueva', persona: getPr().usuarios.find(u => u.rol === 'asistprod').id, monto: '20000', fecha: hoy()});
@@ -393,7 +393,7 @@ guardarFondo(''); sinFormu();
 ok('y al dar el fondo la agrega en el 03 y cuelga el fondo de ahí', (() => { const l = lineasFondo(getPy())[0]; return l && l.r.codigo === '03' && /Caja chica/.test(l.l.concepto) && getPy().cajas.some(c => c.lineaId === l.l.id); })());
 
 console.log('\n--- 11. AL CERRAR: LO QUE DEVUELVE ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 /* volvemos al proyecto de la sección 10 */
 DB.productoras = [pr5]; DB.ui.productoraId = pr5.id; DB.ui.proyectoId = py5.id; DB.ui.versionId = v5.id;
 como5('asistprod'); enviarRend(fd5.id);
@@ -468,18 +468,26 @@ ok('y la cierra con la devolución', estadoRend(fc5) === 'cerrada' && fc5.devuel
 const car6 = hojasRendicion(py5, fc5)[0].filas.map(f => f.map(c => c && typeof c === 'object' ? (c.v ?? '') : c).join(' | ')).join('\n');
 ok('las firmas: rindió Carla, revisó Diego (producción), revisó el jefe, recibió Administración', /Rindió \| Carla Méndez/.test(car6) && /Revisó \(asistente de producción\) \| Diego Sosa/.test(car6) && /Revisó \(jefe de producción\) \| Lucía Ferrer/.test(car6) && /Recibió \(administración\) \| Marta Giles/.test(car6));
 ok('en el PDF, cuatro firmas', (rendImpresionHTML(py5, fc5).match(/class="ri-firma"/g) || []).length === 4);
-/* el jefe también la puede tomar directo desde producción */
+/* mientras está en producción, el jefe la ve pero no la toca: primero el asistente */
 como5('produccion'); formu({lineaId: lcaja.id, persona: carla5.id, monto: '8000', fecha: hoy()}); guardarFondo(''); sinFormu();
 const fc6 = py5.cajas.find(c => c.responsable === carla5.id && estadoRend(c) === 'borrador' && c.lineaId === lcaja.id);
 como5('arte'); nuevoGastoRend(fc6, {fecha: hoy(), proveedor: 'Kiosco de prueba', rubro: '06', tipo: 'ticket', importe: 3000, concepto: 'Cinta'}); enviarRend(fc6.id);
-como5('produccion'); abrirRend(fc6.id);
-ok('el jefe también la ve en producción y la puede elevar directo', /elevarRend\('/.test(app.innerHTML) && (elevarRend(fc6.id), estadoRend(fc6) === 'aprobada'));
+como5('produccion'); abrirRend(fc6.id); h = app.innerHTML;
+ok('el jefe la ve en producción (con sus gastos), pero sin botones: primero la chequea el asistente', h.includes(fmt(3000)) && !/elevarRend\('/.test(h) && !/devolverRend\('/.test(h) && /primero la chequea el asistente de producción/.test(h) && !esperaDe(fc6));
+elevarRend(fc6.id); global.prompt = () => 'no'; devolverRend(fc6.id);
+ok('y no la puede elevar ni devolver salteándolo', estadoRend(fc6) === 'aProduccion');
+/* si el proyecto no tiene asistente de producción, el jefe la toma directo */
+py5.invitados = py5.invitados.filter(id => id !== diego5.id);
+abrirRend(fc6.id);
+ok('sin asistente de producción en el proyecto, el jefe la revisa directo y la eleva', !hayAsistProd(py5) && esperaDe(fc6) && /elevarRend\('/.test(app.innerHTML) && /no tiene asistente de producción/.test(app.innerHTML) && (elevarRend(fc6.id), estadoRend(fc6) === 'aprobada'));
+py5.invitados.push(diego5.id);
 /* un gasto suelto de arte */
 const suelto = nuevoComprobante({rubro: '06', proveedor: 'Telas de prueba', importe: 9000, tipo: 'facBC', cargadoPor: carla5.id, estado: 'cargado',
   historial: [{de: null, a: 'cargado', accion: 'cargar', usuario: carla5.nombre, usuarioId: carla5.id, rol: 'arte', fecha: hoy(), nota: ''}]});
 py5.comprobantes.push(suelto);
 ok('un gasto suelto de arte: Administración y el PE no lo reciben', accionesDe(suelto, marta5).length === 0 && accionesDe(suelto, U5('ejecutivo')).length === 0);
 ok('el asistente de producción se lo pasa al jefe (o lo devuelve)', accionesDe(suelto, diego5).join() === 'pasar,rechazar');
+ok('el jefe lo ve, pero no lo revisa ni lo rechaza hasta que el asistente se lo pase', accionesDe(suelto, lucia5).length === 0);
 como5('asistprod'); DB.ui.tab = 'gastos'; DB.ui.subGasto = 'bandeja'; render();
 ok('le aparece en su bandeja', app.innerHTML.includes(`accionComprobante('${suelto.id}','pasar')`));
 accionComprobante(suelto.id, 'pasar');

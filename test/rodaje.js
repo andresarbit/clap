@@ -17,7 +17,7 @@ ok('formato de nulo', fmtHoras(null) === '—');
 
 /* --- 2. horas trabajadas y extras --------------------------------------- */
 console.log('\n--- 2. HORAS Y EXTRAS ---');
-guionEjemplo(); autoAgrupar();
+guionChico(); autoAgrupar();
 const d = getD(); DB.ui.jornada = 1;
 const j = normalizarJornada(d.jornadas[0]);
 j.citacion = '07:00';

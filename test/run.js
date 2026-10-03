@@ -13,4 +13,7 @@ const fs=require('fs');
 /* relativo al repo, para que corra igual en otra máquina y en GitHub Actions */
 const src=fs.readFileSync(require('path').join(__dirname,'..','clap.html'),'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 const tst=fs.readFileSync(process.argv[2],"utf8");
-eval(src+'\n;\n'+tst);
+/* las pruebas de la lógica arrancan con el ejemplo CHICO (test/ejemplo-chico.js,
+   números fijos); las que prueban el ejemplo de la app llaman a sembrar() (Brisa) */
+const chico=fs.readFileSync(require('path').join(__dirname,'ejemplo-chico.js'),'utf8');
+eval(src+'\n;\n'+chico+'\n;\ntry{ DB = dbVacia(); sembrarChico(); }catch(e){ console.log("FALLA no pude armar el ejemplo chico: " + e.message); }\n;\n'+tst);

@@ -5,7 +5,7 @@
 let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
 
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 DB.ui.tab = 'presu'; DB.ui.vista = 'interna';
 const v = getV();
 

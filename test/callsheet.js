@@ -8,7 +8,7 @@ const pr = getPr(), py = getPy(), v = getV();
 DB.ui.tab = 'callsheet';
 ok('sin guion ni jornadas manda al plan o al desglose', /setTab\('plan'\)/.test(vistaCallsheet(pr, py, v)) && /Ir al desglose/.test(vistaCallsheet(pr, py, v)));
 
-guionEjemplo();
+guionChico();
 ok('con guion pero sin jornadas manda al plan', /Auto-agrupar/.test(vistaCallsheet(pr, py, v)));
 
 setPagJornada(0.25); autoAgrupar();

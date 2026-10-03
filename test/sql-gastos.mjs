@@ -96,6 +96,8 @@ const ctx = vm.createContext({
 });
 const src = fs.readFileSync(path.join(AQUI, '..', 'clap.html'), 'utf8').match(/<script>([\s\S]*?)<\/script>/)[1];
 vm.runInContext(src, ctx);
+/* el ejemplo CHICO de las pruebas (números fijos), no el de la app */
+vm.runInContext(fs.readFileSync(path.join(AQUI, 'ejemplo-chico.js'), 'utf8'), ctx);
 await new Promise(r => setTimeout(r, 200));
 const run = js => vm.runInContext(js, ctx);
 ctx.sbSesionViva = async () => true;
@@ -123,7 +125,7 @@ const entrar = k => { actual = k; run(`SB.url='https://x.test'; SB.anon='a'; SB.
 const MAPA = {produccion: 'jefe', asistprod: 'diego', arte: 'carla', equipo: 'sofia', admin: 'marta', ejecutivo: 'tomas', asistdir: 'paula'};
 function armarCompu(k, pyId){
   for (const x in store) delete store[x];
-  run(`DB = dbVacia(); sembrar(); SYNC = {}; _leerGastos = null;`);
+  run(`DB = dbVacia(); sembrarChico(); SYNC = {}; _leerGastos = null;`);
   const pr = run('getPr()'); pr.id = prodId;
   pr.usuarios.forEach(u => { const kk = MAPA[u.rol]; run(`cambiarIdUsuario(getPr(), ${JSON.stringify(u.id)}, ${JSON.stringify(UID[kk])})`);
     Object.assign(u, {authUid: U[kk], email: kk + '@ejemplo.com'}); });
@@ -304,18 +306,46 @@ const elevar = async (k, id) => { const W = await vis(k), y = clon(W.d); y.cajas
 const revisar = async (k, id) => { const W = await vis(k), y = clon(W.d); y.comprobantes.find(c => c.id === id).estado = 'revisado'; return guardarComo(k, PY, y, W.v); };
 r = await elevar('tomas', 'cj-carla-8'); ok('con jefe en el proyecto, el PE no eleva lo de arte', !!r.error, r.error);
 r = await revisar('tomas', 'cp-carla-8'); ok('ni revisa un gasto suelto de arte', !!r.error, r.error);
+r = await elevar('jefe', 'cj-carla-8'); ok('el jefe tampoco la eleva mientras está en producción: primero la chequea el asistente', /asistente de producción/.test(r.error || ''), r.error);
+r = await revisar('jefe', 'cp-carla-8'); ok('ni revisa el gasto suelto que el asistente todavía no le pasó', /asistente de producción/.test(r.error || ''), r.error);
+{ const W = await vis('jefe'), y = clon(W.d); y.comprobantes.find(c => c.id === 'cp-carla-8').estado = 'rechazado';
+  r = await guardarComo('jefe', PY, y, W.v); ok('ni lo rechaza salteándolo', /asistente de producción/.test(r.error || ''), r.error); }
+{ const W = await vis('diego'), y = clon(W.d);
+  y.cajas.find(c => c.id === 'cj-carla-8').rendicion.estado = 'enviada';
+  y.comprobantes.find(c => c.id === 'cp-carla-8').vistoProd = {quien: 'Diego Sosa', cuando: '2026-10-01'};
+  r = await guardarComo('diego', PY, y, W.v); ok('(el asistente de producción se los pasa al jefe)', r.ok === true, r.error || ''); }
 r = await elevar('marta', 'cj-diego-8a'); ok('la del asistente de producción la eleva Administración', r.ok === true, r.error || '');
 r = await elevar('tomas', 'cj-diego-8b'); ok('y el PE (como el jefe)', r.ok === true, r.error || '');
 await db.query(`delete from proyecto_persona where proyecto_id=$1 and usuario_id=$2`, [PY, UID.jefe]);
 ok('(el proyecto se queda sin jefe de producción)', (await db.query(`select proyecto_sin_jefe($1) s`, [PY])).rows[0].s === true);
 r = await elevar('marta', 'cj-carla-8'); ok('sin jefe, Administración sigue sin elevar lo de arte', !!r.error, r.error);
 r = await elevar('diego', 'cj-carla-8'); ok('ni el asistente de producción', !!r.error, r.error);
-r = await elevar('tomas', 'cj-carla-8'); ok('sin jefe en el proyecto, el PE eleva lo de arte', r.ok === true, r.error || '');
+r = await elevar('tomas', 'cj-carla-8'); ok('sin jefe en el proyecto, el PE eleva lo de arte (ya pasado por el asistente)', r.ok === true, r.error || '');
 r = await revisar('tomas', 'cp-carla-8'); ok('y revisa el gasto suelto de arte', r.ok === true, r.error || '');
 g = await enBase(PY);
 ok('en la base quedó elevada', g.datos.cajas.find(c => c.id === 'cj-carla-8').rendicion.estado === 'aprobada' && g.datos.comprobantes.find(c => c.id === 'cp-carla-8').estado === 'revisado');
+/* sin asistente de producción en el proyecto, quien hace de jefe la toma directo */
+{ const W = await vis('marta'), y = clon(W.d); y.cajas.push(fondo8('cj-carla-9', 'carla', 'aProduccion'));
+  r = await guardarComo('marta', PY, y, W.v); ok('(otro fondo de Carla, en producción)', r.ok === true, r.error || ''); }
+r = await elevar('tomas', 'cj-carla-9'); ok('con asistente en el proyecto, el PE (sin jefe) no la toma directo', !!r.error, r.error);
+await db.query(`delete from proyecto_persona where proyecto_id=$1 and usuario_id=$2`, [PY, UID.diego]);
+ok('(el proyecto se queda sin asistente de producción)', (await db.query(`select proyecto_sin_asist($1) s`, [PY])).rows[0].s === true);
+r = await elevar('tomas', 'cj-carla-9'); ok('sin asistente de producción, la revisa y la eleva directo', r.ok === true, r.error || '');
+await db.query(`insert into proyecto_persona(proyecto_id,usuario_id) values($1,$2)`, [PY, UID.diego]);
 await db.query(`insert into proyecto_persona(proyecto_id,usuario_id) values($1,$2)`, [PY, UID.jefe]);
 ok('(con el jefe de vuelta, el proyecto tiene jefe)', (await db.query(`select proyecto_sin_jefe($1) s`, [PY])).rows[0].s === false);
+
+console.log('\n--- 9. QUIÉN INVITA (crear_invitacion) ---');
+const invitar9 = async (k, rol) => { try { return {tok: (await q1(k, `select crear_invitacion($1, $2::rol_usuario) t`, [PY, rol]))[0].t}; } catch (e) { return {error: e.message}; } };
+r = await invitar9('tomas', 'admin'); ok('el PE invita a Administración', !!r.tok, r.error || '');
+ok('(ese link sirve para una persona)', (await db.query(`select usos_max from invitacion where token=$1`, [r.tok])).rows[0].usos_max === 1);
+r = await invitar9('marta', 'admin'); ok('Administración también', !!r.tok, r.error || '');
+r = await invitar9('jefe', 'asistprod'); ok('el jefe invita a su equipo (un asistente)', !!r.tok, r.error || '');
+r = await invitar9('jefe', 'equipo'); ok('(y a alguien del equipo)', !!r.tok, r.error || '');
+r = await invitar9('jefe', 'admin'); ok('el jefe no invita a Administración', !!r.error, r.error);
+r = await invitar9('jefe', 'ejecutivo'); ok('ni al PE', !!r.error, r.error);
+r = await invitar9('diego', 'equipo'); ok('los asistentes no invitan', !!r.error, r.error);
+r = await invitar9('sofia', 'equipo'); ok('ni el equipo', !!r.error, r.error);
 
 console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');
 process.exit(fallos ? 1 : 0);

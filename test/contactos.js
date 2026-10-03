@@ -43,7 +43,7 @@ ok('guarda lo cargado a mano', dir.nombre === 'Ana Suárez' && dir.email === 'an
 
 /* --- 3. EL CIRCUITO: lo cargado acá aparece en el callsheet -------------- */
 console.log('\n--- 3. EL DATO VIAJA AL CALLSHEET ---');
-guionEjemplo(); autoAgrupar(); DB.ui.jornada = 1;
+guionChico(); autoAgrupar(); DB.ui.jornada = 1;
 const CS = armarCallsheet(py, v, 1);
 const enCS = CS.crew.find(c => c.clave === 'l:' + lineaDir.id);
 ok('el nombre cargado a mano llega al callsheet', enCS && enCS.nombre === 'Ana Suárez', enCS && enCS.nombre);

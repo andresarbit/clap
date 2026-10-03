@@ -188,6 +188,24 @@ nuevo (se puede correr las veces que haga falta, no borra nada):
   siguen elevando el jefe, Administración y el PE, como antes. Hasta que lo
   corras, en un proyecto sin jefe la base no deja que el PE eleve lo de arte
   (CLAP le muestra el botón, pero al guardar sale el **!** rojo).
+- **(03/10, tarde) Lo de arte lo chequea primero el asistente de producción,
+  y el PE puede invitar a Administración** (función nueva
+  `proyecto_sin_asist`, `gastos_permitidos` con otro parámetro más,
+  `guardar_parte` que se lo pasa, y `crear_invitacion` cambiada):
+  - Una rendición de arte "en producción" (o un comprobante suelto de arte)
+    la toca sólo el asistente de producción: el jefe la ve, pero no la eleva,
+    ni la devuelve, ni revisa ni rechaza el comprobante hasta que el asistente
+    se lo pasa. Si el proyecto no tiene asistente de producción, el jefe la
+    toma directo (y si tampoco tiene jefe, el PE).
+  - Quién invita: Administración y el PE, a cualquiera (también a
+    Administración); el jefe de producción, a su equipo (no a Administración
+    ni al PE); los asistentes y el equipo no invitan.
+  - Hasta que lo corras: el jefe todavía podría elevar lo de arte salteando al
+    asistente (la pantalla ya no le da el botón), y si el PE intenta generar un
+    link para Administración la base lo rechaza ("No podés invitar con un rol
+    más alto que el tuyo").
+  - Probado contra un Postgres armado como esta base (PGlite):
+    `node test/sql-gastos.mjs` (secciones 8 y 9).
 
 Hace dos cosas:
 

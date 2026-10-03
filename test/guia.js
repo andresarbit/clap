@@ -28,7 +28,8 @@ const todo = GUIA.map(g => g.t + ' ' + g.c).join(' ');
 ['la fórmula del disponible', /Disponible = presupuestado/],
 ['circuito de pago y comprobante', /Respaldo documental/i],
 ['roles', /acumulativos/i],
-['que no es seguridad', /no es seguridad/i],
+['que lo controla la base', /lo controla la base/i],
+['quién invita', /el jefe de\s+producción, a su equipo/i],
 ['dónde viven los datos', /en este navegador/i],
 ['el respaldo en JSON', /Exportar todo/],
 ['el límite de espacio', /5 MB/],
@@ -36,6 +37,16 @@ const todo = GUIA.map(g => g.t + ' ' + g.c).join(' ');
 ['PDF escaneado', /escaneado/i],
 ['que la escala vence', /vence/i],
 ].forEach(([l, re]) => ok('explica ' + l, re.test(todo)));
+
+/* lo de antes del login ya no se dice: ahora hay sesión y la base controla */
+ok('no dice que no es seguridad ni que falta el backend', !/no es seguridad|hasta que montemos|No hay servidor todav/i.test(todo));
+ok('los fondos son para los asistentes de producción y de arte (no para el equipo)', /sólo para ellos/.test(todo) && !/o a alguien del equipo\) le dan plata/.test(todo));
+/* el jefe de producción no ve nada del fee, tampoco en el instructivo */
+{ const pr0 = getPr(), jefe = (pr0.usuarios || []).find(u => u.rol === 'produccion'), antes = DB.ui.usuarioId;
+  if (jefe) { DB.ui.usuarioId = jefe.id;
+    const txtJefe = GUIA.map(g => g.t + ' ' + g.c).join(' ');
+    ok('al jefe el instructivo no le habla del fee', !/\bfee\b/i.test(txtJefe), (txtJefe.match(/.{40}\bfee\b.{40}/i) || [''])[0]);
+    DB.ui.usuarioId = antes; } }
 
 console.log('\n--- 2. NAVEGACION ---');
 DB.ui.tab = 'guia';

@@ -51,7 +51,7 @@ ok('el prefijo viejo se ignora', !ids[0].includes('ln_'));
 ok('esUuid rechaza los de antes', !esUuid('ln_a1b2c3') && !esUuid('') && !esUuid(null) && !esUuid(7));
 
 console.log('\n--- 2. SEMBRAR YA GENERA UUID ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 ok('todos los ids del ejemplo son UUID', todosLosIds().every(esUuid),
   todosLosIds().filter(i => !esUuid(i)).join(',') || todosLosIds().length + ' ids, todos UUID');
 

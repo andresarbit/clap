@@ -953,6 +953,22 @@ header{background:var(--bg);border-bottom:1px solid var(--line)}
 .pl-av-sobra .pl-av-k{background:#fdf3d8;color:#7a5600}
 .tarea{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
 .tarea.hecha{opacity:.75}.tarea.vencida{border-color:#c0392b}
+.te-grupo{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.te-grupo.yo{border-color:var(--ac)}
+.te-cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.te-cab b{font-size:13.5px}
+.te-est{font-size:10.5px;font-weight:700;border-radius:999px;padding:1px 8px;border:1px solid var(--line2);white-space:nowrap}
+.te-est.pend{color:var(--tx2)}.te-est.venc{color:#fff;background:#b42318;border-color:#b42318}.te-est.hecha{color:var(--ok);border-color:var(--ok)}
+.te-fila{display:flex;gap:9px;align-items:flex-start;flex-wrap:wrap;border-top:1px dashed var(--line);padding-top:7px}
+.te-fila .te-txt{flex:1;min-width:180px}
+.te-fila select{font:inherit;font-size:11.5px;max-width:170px}
+.te-acc{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.panel-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.panel-card{border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:7px}
+.panel-card h5{margin:0;font-size:14px}
+.panel-card .pc-l{font-size:12.5px;line-height:1.5}
+.panel-card .pc-ok{color:var(--ok)}.panel-card .pc-mal{color:var(--bad)}
+.panel-card .btn{align-self:flex-start}
 .tarea-est{flex:none;width:22px;text-align:center;font-weight:700;color:var(--ok)}
 .panel-accesos{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
 .panel-acc{display:flex;flex-direction:column;gap:3px;text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px;background:none;cursor:pointer;font:inherit;color:inherit}
@@ -2658,10 +2674,9 @@ const RUBROS_PROV = ['10','11','12','13','14','15'];
    producción la chequea, el ejecutivo la aprueba y administración la paga.
    Cada paso queda registrado con quién y cuándo.
 
-   OJO: sin backend esto NO es seguridad. El selector de sesión simula quién
-   sos para que cada rol vea su bandeja; cualquiera que abra el archivo puede
-   cambiarse de rol. El modelo de datos sí es el definitivo: cuando haya
-   backend se reemplaza el selector por un login y no se toca nada más.       */
+   Con sesión, el rol lo da la invitación y lo hace cumplir la base (lo que
+   cada uno recibe y lo que puede guardar: backend/*.sql). Sin sesión, la
+   copia de prueba deja mirar como cualquier rol desde "Viendo como".       */
 
 const ROLES = [
   {k:'equipo',    l:'Equipo / Departamento', d:'Carga los comprobantes de su área',
@@ -2673,7 +2688,7 @@ const ROLES = [
    puede:['cargar','cheque']},
   {k:'asistdir',  l:'Asistente de dirección', d:'Arma el desglose y el plan de rodaje; ve el callsheet',
    puede:[]},
-  {k:'produccion',l:'Jefe de producción',    d:'Ve todo: arma el presupuesto de producción, revisa comprobantes y asigna tareas',
+  {k:'produccion',l:'Jefe de producción',    d:'Arma el presupuesto de producción (el costo), revisa comprobantes y rendiciones, reparte las tareas del equipo e invita a su equipo',
    puede:['cargar','revisar','tareas']},
   /* Ejecutivo y Administración manejan todo el circuito. En una productora
      chica es el PE el que decide y el que a veces paga, así que separarlos
@@ -2840,14 +2855,16 @@ function saldoCaja(py, caja){
    comentarios llevan id, así lo que escriben a la vez el asistente y el
    jefe se junta (fusionar3) en vez de pisarse.                            */
 /* Arte (y el resto del equipo) no le manda la rendición al jefe: la manda
-   "a producción". La ve el asistente de producción del proyecto (y el
-   jefe): la revisa, la charla, se la devuelve o se la pasa al jefe. Sólo el
-   jefe la eleva a Administración (si el proyecto no tiene jefe de
+   "a producción". La chequea primero el asistente de producción del
+   proyecto: la revisa, la charla, se la devuelve o se la pasa al jefe. El
+   jefe la ve mientras tanto, pero actúa recién cuando se la pasan (si el
+   proyecto no tiene asistente de producción, la revisa él directo). Sólo
+   el jefe la eleva a Administración (si el proyecto no tiene jefe de
    producción, el PE), que nunca recibe una que se salteó producción (la
    base también lo hace cumplir).                           */
 const EST_REND = {
   borrador:  {l:'Cargando',  d:'La está armando quien rinde', c:'#56565a'},
-  aProduccion: {l:'En producción', d:'La revisa el asistente de producción (o el jefe)', c:'#6b4fa8'},
+  aProduccion: {l:'En producción', d:'La chequea el asistente de producción y se la pasa al jefe', c:'#6b4fa8'},
   enviada:   {l:'Enviada',   d:'Espera la revisión del jefe de producción', c:'#1f5fa8'},
   observada: {l:'Observada', d:'Volvió con un comentario: hay que corregir y reenviar', c:'#b3261e'},
   aprobada:  {l:'Aprobada',  d:'El jefe la elevó: la cierra Administración', c:'#8a6100'},
@@ -2869,6 +2886,12 @@ const hayJefeProd = (py = getPy(), pr = (py && prDe(py)) || getPr()) =>
 /* quién hace de jefe con lo de arte y el equipo: el jefe; si el proyecto no
    tiene jefe de producción, el PE (la base hace cumplir lo mismo) */
 const jefeDeArte = u => esJefeProd(u) || (!!u && !u.pendiente && u.rol === 'ejecutivo' && !hayJefeProd());
+/* ¿el proyecto tiene asistente de producción? Es el que chequea primero lo de arte. */
+const hayAsistProd = (py = getPy(), pr = (py && prDe(py)) || getPr()) =>
+  ((pr && pr.usuarios) || []).some(x => x.rol === 'asistprod' && x.activo !== false && !x.pendiente && ((py && py.invitados) || []).includes(x.id));
+/* el jefe (o el PE sin jefe) actúa sobre lo de arte que está "en producción"
+   sólo si no hay asistente de producción que lo chequee antes */
+const jefeDirecto = u => jefeDeArte(u) && !hayAsistProd();
 /* el asistente de producción revisa lo de arte y el equipo (nunca lo suyo) */
 const asistRevisa = (cj, u = getUsuario()) => !!u && !u.pendiente && u.rol === 'asistprod' && viaProduccion(cj) && !rendMia(cj, u);
 const veRend = (cj, u = getUsuario()) => !u || vePlata(u) || rendMia(cj, u) || asistRevisa(cj, u);
@@ -2884,7 +2907,7 @@ const destinoRend = cj => viaProduccion(cj) ? 'aProduccion' : 'enviada';
 function esperaDe(cj, u = getUsuario()){
   const e = estadoRend(cj);
   if(!u) return e === 'enviada' || e === 'aprobada';
-  if(e === 'aProduccion') return asistRevisa(cj, u) || jefeDeArte(u);
+  if(e === 'aProduccion') return asistRevisa(cj, u) || jefeDirecto(u);
   if(e === 'enviada') return elevaRend(cj, u) && !rendMia(cj, u);
   if(e === 'aprobada') return cierraRend(u);
   return false;
@@ -3051,6 +3074,8 @@ function accionesDe(c, u){
   if(c.estado === 'cargado' && ROLES_VIA_PROD.includes(rolDeUsuario(c.cargadoPor)) && c.cargadoPor !== u.id){
     if(u.rol === 'asistprod' && !u.pendiente) return c.vistoProd ? [] : ['pasar', 'rechazar'];
     if(!jefeDeArte(u)) return [];
+    /* el jefe lo ve, pero lo toca cuando el asistente se lo pasó (sin asistente, directo) */
+    if(!c.vistoProd && hayAsistProd()) return [];
   }
   const est = EST(c.estado);
   const out = [];
@@ -6450,18 +6475,28 @@ function avisosPlanPresupuesto(py, v){
   if(vfx.length && !hay(/vfx|post|efecto|composic|cgi/))
     A('falta', 'El plan tiene planos con VFX y el presupuesto no tiene posproducción de efectos', `En ${listaJ(vfx)}.`);
 
-  /* 7. lo que el desglose pide y el presupuesto no tiene (utilería, vestuario, vehículos…) */
+  /* 7. lo que el desglose pide y el presupuesto no tiene (utilería, vestuario, vehículos…).
+     Lo que va agrupado (la utilería, el vestuario) está cubierto si el rubro ya tiene
+     una línea de eso, aunque no se llame igual que la que propone el desglose. */
   if((d.escenas || []).length){
     try{
       propuestaPresupuestoBase().lineas.filter(x => x.dep !== 'elenco' && x.dep !== 'locacion').forEach(x => {
         const rb = v.rubros.find(r => r.codigo === x.rubro);
-        const ya = rb && rb.lineas.some(l => norm(l.concepto) === norm(x.concepto) && (l.piezaId || null) === (x.piezaId || null));
+        const cubre = CUBRE_DESGLOSE[x.dep];
+        const ya = rb && rb.lineas.some(l => (norm(l.concepto) === norm(x.concepto) && (l.piezaId || null) === (x.piezaId || null))
+          || (cubre && cubre.test(norm(l.concepto || ''))));
         if(!ya) A('falta', `Falta en el presupuesto: ${x.concepto}`, x.nota || '');
       });
     }catch(e){}
   }
   return out;
 }
+/* qué líneas del presupuesto ya cubren lo que el desglose pide en grupo */
+const CUBRE_DESGLOSE = {
+  utileria: /utiler|compras de arte/, arte: /ambienta|mueble|utiler|compras de arte|escenograf/,
+  extras: /extra|figura|bolo/, vestuario: /vestuario/, maquillaje: /maquill|caracteriz|protesis/,
+  sfx: /efectos? especial/, vfx: /vfx|composic|cgi|efectos? visual/, sonido: /music|locuci|sonido/,
+  animales: /animal|adiestr/, stunts: /riesgo|doble/};
 const AV_PRESU = {pasa: {l: 'Se pasa', c: 'pl-av-pasa'}, falta: {l: 'Falta', c: 'pl-av-falta'}, sobra: {l: 'Sobra', c: 'pl-av-sobra'}};
 function planPresuHTML(py, v){
   const A = avisosPlanPresupuesto(py, v), plata = vePlata();
@@ -6526,11 +6561,27 @@ function ubicarLinea(py, id){
   for(const v of (py.versiones || [])) for(const r of v.rubros){ const l = r.lineas.find(x => x.id === id); if(l) return {v, r, l}; }
   return null;
 }
-function editTarea(id, lineaId){
+/* La gente del proyecto, para encargarle tareas: los que entran a este
+   proyecto (invitados, y Administración y el PE), activos y aprobados. El
+   orden: asistentes de producción, arte, dirección, equipo, el jefe y arriba. */
+const ORDEN_TAREAS = ['asistprod', 'arte', 'asistdir', 'equipo', 'produccion', 'ejecutivo', 'admin'];
+function genteParaTareas(py){
+  return getUsuarios().filter(u => u.activo !== false && !u.pendiente && entraAlProyecto(py, u))
+    .sort((a, b) => ORDEN_TAREAS.indexOf(a.rol) - ORDEN_TAREAS.indexOf(b.rol) || String(a.nombre).localeCompare(String(b.nombre)));
+}
+function editTarea(id, lineaId, paraId){
   const py = getPy(), t = id ? tareasDe(py).find(x => x.id === id) : null;
   const L = ubicarLinea(py, t ? t.lineaId : lineaId);
-  const us = getUsuarios().filter(u => u.activo !== false && !u.pendiente)
-    .sort((a, b) => (a.rol === 'asistprod' ? 0 : 1) - (b.rol === 'asistprod' ? 0 : 1) || String(a.nombre).localeCompare(String(b.nombre)));
+  const yo = getUsuario();
+  const us = genteParaTareas(py);
+  /* si la tarea es de alguien que ya no está en el proyecto, igual se muestra */
+  if(t && t.asignadoA && !us.some(u => u.id === t.asignadoA)){ const x = getUsuarios().find(u => u.id === t.asignadoA); if(x) us.push(x); }
+  const para = t ? t.asignadoA : (paraId || (us.find(u => u.rol === 'asistprod') || {}).id || '');
+  /* la línea del presupuesto (opcional): las de la versión de rodaje */
+  const vr = vePlata() ? versionRodaje(py) : null;
+  const opLineas = vr ? vr.rubros.filter(r => r.lineas.length).map(r => `<optgroup label="${esc(r.codigo + ' · ' + r.nombre)}">${r.lineas.map(l =>
+    `<option value="${l.id}" ${L && L.l.id === l.id ? 'selected' : ''}>${esc(l.concepto || '—')}</option>`).join('')}</optgroup>`).join('') : '';
+  const lineaFuera = L && vr && !vr.rubros.some(r => r.lineas.some(l => l.id === L.l.id));
   const titulo = t ? t.titulo : (L ? L.l.concepto : '');
   const det = t ? t.detalle : (L ? [L.r.nombre, `${n(L.l.cantidad)} × ${n(L.l.dias)} ${L.l.unidad}`, L.l.notas].filter(Boolean).join(' · ') : '');
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
@@ -6538,9 +6589,11 @@ function editTarea(id, lineaId){
     <div class="mbody">
       ${campo('Qué hay que hacer','titulo',titulo,'text','placeholder="Conseguir 3 cotizaciones de cámara"')}
       <label class="f"><span>Detalle</span><textarea name="detalle" rows="3" placeholder="Lo que tiene que saber para hacerlo">${esc(det)}</textarea></label>
-      ${sel('Para','asignadoA',t ? t.asignadoA : ((us.find(u => u.rol === 'asistprod') || {}).id || ''),
-        [{v:'', l:'— elegí a quién —'}, ...us.map(u => ({v:u.id, l:`${u.nombre} · ${ROL(u.rol).l}`}))])}
+      ${sel('Para','asignadoA',para,
+        [{v:'', l:'— elegí a quién —'}, ...us.map(u => ({v:u.id, l:`${u.id === (yo || {}).id ? 'Yo · ' : ''}${u.nombre} · ${ROL(u.rol).l}`}))])}
       ${campo('Para cuándo','vence',t ? t.vence : '','date')}
+      ${vr ? `<label class="f"><span>Línea del presupuesto (si tiene)</span><select name="lineaId">
+        <option value="">— ninguna —</option>${lineaFuera ? `<option value="${L.l.id}" selected>${esc(L.l.concepto)}</option>` : ''}${opLineas}</select></label>` : ''}
       ${t ? `<div class="muted" style="font-size:12px;margin-top:6px">Pedida por ${esc(nombreUsuario(t.creadaPor))} el ${esc(t.creadaEl)}${t.estado === 'hecha' ? ` · <b style="color:var(--ok)">hecha</b> por ${esc(nombreUsuario(t.hechaPor))} el ${esc(t.hechaEl)}` : ''}${t.nota ? `<br>Nota: ${esc(t.nota)}` : ''}</div>` : ''}
     </div>
     <div class="mfoot">
@@ -6557,7 +6610,68 @@ function saveTarea(id, lineaId){
   let t = id ? tareasDe(py).find(x => x.id === id) : null;
   if(!t){ t = nuevaTarea({lineaId, creadaPor: (getUsuario() || {}).id || null}); tareasDe(py).push(t); }
   Object.assign(t, {titulo: d.titulo.trim(), detalle: d.detalle || '', asignadoA: d.asignadoA, vence: d.vence || ''});
-  cerrar(); toast(`Tarea para ${nombreUsuario(t.asignadoA)}: le aparece en su panel`); R();
+  if('lineaId' in d) t.lineaId = d.lineaId || null;
+  const paraMi = t.asignadoA === (getUsuario() || {}).id;
+  cerrar(); toast(paraMi ? 'Tarea para vos: la tenés en Tareas del equipo' : `Tarea para ${nombreUsuario(t.asignadoA)}: le aparece en su panel`); R();
+}
+/* pasarle la tarea a otra persona (desde el tablero) */
+function reasignarTarea(id, quien){
+  const t = tareasDe(getPy()).find(x => x.id === id); if(!t || !quien || !puedeEncargar()) return;
+  const antes = t.asignadoA; if(antes === quien) return;
+  t.asignadoA = quien;
+  toast(`Ahora es de ${nombreUsuario(quien)}: le aparece en su panel`, {accion: 'Deshacer', fn: () => { t.asignadoA = antes; R(); }}); R();
+}
+/* marcar hecha una tarea de otro (si es mía, es "Listo ✓" con la nota) */
+function hechaTarea(id){
+  const t = tareasDe(getPy()).find(x => x.id === id), u = getUsuario(); if(!t || t.estado === 'hecha') return;
+  if(!u || t.asignadoA === u.id){ terminarTarea(id); return; }
+  if(!puedeEncargar() || !confirm(`¿Marcar como hecha "${t.titulo}"?\n\nEra de ${nombreUsuario(t.asignadoA)}: queda anotado que la marcaste vos.`)) return;
+  Object.assign(t, {estado: 'hecha', hechaEl: hoy(), hechaPor: u.id, nota: t.nota || ''});
+  toast('Tarea hecha ✓', {accion: 'Deshacer', fn: () => { Object.assign(t, {estado: 'pendiente', hechaEl: null, hechaPor: null}); R(); }}); R();
+}
+function filtroTareas(v){ DB.ui.fTareas = v || ''; R(); }
+const estTarea = t => t.estado === 'hecha' ? {k: 'hecha', l: 'Hecha'} : tareaVencida(t) ? {k: 'venc', l: 'Vencida'} : {k: 'pend', l: 'Pendiente'};
+/* El tablero del jefe (y del PE y Administración): todas las tareas del
+   proyecto, por persona, para repartir el trabajo. Son las mismas tareas que
+   cada uno ve en su panel. */
+function tareasEquipoHTML(py, u){
+  const yo = u || null, todas = tareasDe(py), edita = puedeEncargar(u);
+  const gente = genteParaTareas(py);
+  /* también los que tienen tareas aunque ya no estén en el proyecto */
+  todas.forEach(t => { if(t.asignadoA && !gente.some(g => g.id === t.asignadoA)){ const x = getUsuarios().find(g => g.id === t.asignadoA); if(x) gente.push(x); } });
+  if(yo){ const i = gente.findIndex(g => g.id === yo.id); if(i > 0) gente.unshift(gente.splice(i, 1)[0]); }
+  const F = DB.ui.fTareas || '';
+  const mostrar = F ? gente.filter(g => g.id === F) : gente;
+  const pend = todas.filter(t => t.estado !== 'hecha'), venc = pend.filter(tareaVencida), hechas = todas.filter(t => t.estado === 'hecha');
+  const fecha = f => String(f || '').split('-').reverse().join('/');
+  const ord = (a, b) => (tareaVencida(b) - tareaVencida(a)) || String(a.vence || '9').localeCompare(String(b.vence || '9'));
+  const opsPara = t => gente.filter(g => g.activo !== false && !g.pendiente).map(g => `<option value="${g.id}" ${g.id === t.asignadoA ? 'selected' : ''}>${esc(g.id === (yo || {}).id ? 'Yo' : g.nombre)}</option>`).join('');
+  const fila = t => { const e = estTarea(t), L = t.lineaId ? ubicarLinea(py, t.lineaId) : null, mia = yo && t.asignadoA === yo.id;
+    return `<div class="te-fila"><span class="te-est ${e.k}">${e.l}</span>
+      <div class="te-txt"><b>${esc(t.titulo)}</b>${t.detalle ? `<div class="muted" style="font-size:12px">${esc(t.detalle)}</div>` : ''}
+        <div class="muted" style="font-size:11.5px">${t.vence ? `${e.k === 'venc' ? '<b style="color:var(--bad)">venció el</b>' : 'para el'} ${esc(fecha(t.vence))} · ` : ''}la pidió ${esc(nombreUsuario(t.creadaPor))}${L ? ` · línea: ${esc(L.l.concepto)}` : ''}${t.estado === 'hecha' ? ` · hecha el ${esc(fecha(t.hechaEl))}${t.hechaPor && t.hechaPor !== t.asignadoA ? ` (la marcó ${esc(nombreUsuario(t.hechaPor))})` : ''}${t.nota ? ': ' + esc(t.nota) : ''}` : ''}</div></div>
+      ${edita ? `<div class="te-acc noprint">${t.estado !== 'hecha' ? `<label class="muted" style="font-size:11px">Para <select onchange="reasignarTarea('${t.id}', this.value)" title="Pasarle la tarea a otra persona">${opsPara(t)}</select></label>
+        <button class="btn sm ${mia ? 'pri' : ''}" onclick="hechaTarea('${t.id}')">${mia ? 'Listo ✓' : 'Hecha ✓'}</button>` : `<button class="btn sm" onclick="reabrirTarea('${t.id}')">Volver a pendiente</button>`}
+        <button class="btn sm" onclick="editTarea('${t.id}')">Abrir</button></div>` : ''}
+    </div>`; };
+  const grupo = g => { const ts = todas.filter(t => t.asignadoA === g.id), p = ts.filter(t => t.estado !== 'hecha').sort(ord), h = ts.filter(t => t.estado === 'hecha');
+    const vv = p.filter(tareaVencida).length, esYo = yo && g.id === yo.id;
+    return `<div class="te-grupo ${esYo ? 'yo' : ''}">
+      <div class="te-cab"><b>${esYo ? 'Vos' : esc(g.nombre)}</b><span class="muted" style="font-size:11.5px">${esc(ROL(g.rol).l)}${g.depto ? ' · ' + esc(g.depto) : ''}</span>
+        <span style="flex:1"></span>
+        ${p.length ? `<span class="te-est pend">${p.length} ${plural(p.length, 'pendiente')}</span>` : ''}${vv ? `<span class="te-est venc">${vv} ${plural(vv, 'vencida')}</span>` : ''}${h.length ? `<span class="te-est hecha">${h.length} ${plural(h.length, 'hecha')}</span>` : ''}
+        ${edita ? `<button class="btn sm noprint" onclick="editTarea(null,null,'${g.id}')" title="Encargarle una tarea a ${esc(esYo ? 'vos' : g.nombre)}">+ Tarea</button>` : ''}</div>
+      ${p.map(fila).join('') || `<div class="muted" style="font-size:12px">${esYo ? 'No tenés tareas pendientes.' : 'Sin tareas pendientes.'}</div>`}
+      ${h.length ? `<details><summary class="muted" style="font-size:12px;cursor:pointer">${h.length} ${plural(h.length, 'hecha')}</summary>${h.map(fila).join('')}</details>` : ''}
+    </div>`; };
+  return `<div class="pad noprint" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-bottom:0">
+      ${edita ? `<button class="btn sm pri" onclick="editTarea()">+ Tarea</button>` : ''}
+      <label class="muted" style="font-size:12px">Ver <select onchange="filtroTareas(this.value)">
+        <option value="">a todos</option>${gente.map(g => `<option value="${g.id}" ${g.id === F ? 'selected' : ''}>${esc(yo && g.id === yo.id ? 'mis tareas' : g.nombre)}</option>`).join('')}</select></label>
+      <span class="muted" style="font-size:12px">${pend.length} ${plural(pend.length, 'pendiente')}${venc.length ? ` · <b style="color:var(--bad)">${venc.length} ${plural(venc.length, 'vencida')}</b>` : ''} · ${hechas.length} ${plural(hechas.length, 'hecha')}</span>
+      <span class="muted" style="font-size:11.5px">También se encargan desde una línea del presupuesto (＋ tarea). Cada uno las ve en su panel.</span>
+    </div>
+    <div class="pad" style="display:flex;flex-direction:column;gap:8px">${mostrar.map(grupo).join('') || '<div class="muted" style="font-size:12.5px">No hay gente en el proyecto todavía: invitala con ✉ Invitar.</div>'}</div>`;
 }
 function borrarTarea(id){
   const py = getPy(), i = tareasDe(py).findIndex(x => x.id === id); if(i < 0) return;
@@ -6682,6 +6796,7 @@ function vistaPanel(pr, py){
   const prox = (d.jornadas || []).find(j => !yaPaso(j));
   const accesos = (SOLAPAS_DE[u.rol] || []).filter(k => QUE_HACE[k]);
   let extra = '';
+  if(u.rol === 'equipo') extra += bloque('Lo que más se pregunta', tarjetasEquipoHTML(py, u));
   if(u.rol === 'asistdir'){
     const A = avisosPlanPresupuesto(py, versionRodaje(py)).filter(x => x.k !== 'sobra');
     extra += bloque('El plan contra el presupuesto', A.length
@@ -6694,14 +6809,15 @@ function vistaPanel(pr, py){
     const porEst = {}; cs.forEach(c => { porEst[c.estado] = (porEst[c.estado] || 0) + 1; });
     const chs = chequesDe(py).filter(c => chequeMio(c, u));
     extra += bloque('Tus comprobantes', `<div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      ${cs.length ? Object.entries(porEst).map(([k, x]) => `<span class="chip d-par">${x} ${esc(EST(k).l.toLowerCase())}</span>`).join('') : '<span class="muted" style="font-size:12.5px">Todavía no cargaste ninguno.</span>'}
+      ${cs.length ? Object.entries(porEst).map(([k, x]) => `<span class="chip d-par">${x} ${esc(plural(x, EST(k).l.toLowerCase()))}</span>`).join('') : '<span class="muted" style="font-size:12.5px">Todavía no cargaste ninguno.</span>'}
       <span style="flex:1"></span><button class="btn sm pri" onclick="setTab('gastos');cargarComprobante()">+ Cargar comprobante</button></div>`);
     /* la plata que le dieron para trabajar, y en qué anda cada rendición */
     const rends = getCajas().filter(cj => rendMia(cj, u)).sort((a, b) => (estadoRend(a) === 'cerrada') - (estadoRend(b) === 'cerrada'));
-    extra += bloque('Tus rendiciones', rends.length ? `<div class="pad" style="display:flex;flex-direction:column;gap:6px">${rends.map(cj => { const T = totalesRend(py, cj), e = estadoRend(cj);
+    /* los fondos son para los asistentes de producción y de arte: al equipo no se le muestra si no tiene */
+    if(rends.length || u.rol !== 'equipo') extra += bloque('Tus rendiciones', rends.length ? `<div class="pad" style="display:flex;flex-direction:column;gap:6px">${rends.map(cj => { const T = totalesRend(py, cj), e = estadoRend(cj);
         return `<button class="pendfila ${e === 'observada' ? 'urg' : ''}" onclick="abrirRend('${cj.id}')"><span class="pendn">${T.cant}</span>
           <span><b>${esc(cj.nombre || 'Fondo')}</b> · ${chipRend(cj)} · recibiste ${fmt(T.entregado, cj.moneda)}, rendiste ${fmt(T.gastado, cj.moneda)}
-          <span class="muted">· ${esc(saldoTxt(T.saldo, true).toLowerCase())} ${fmt(Math.abs(T.saldo), cj.moneda)}</span>${e === 'observada' ? ' · <b style="color:var(--bad)">volvió con un comentario</b>' : ''}</span>
+          <span class="muted">· ${e === 'cerrada' ? esc((cierreTxt(cj, true) || 'cerró justo').toLowerCase()) : `${esc(saldoTxt(T.saldo, true).toLowerCase())} ${fmt(Math.abs(T.saldo), cj.moneda)}`}</span>${e === 'observada' ? ' · <b style="color:var(--bad)">volvió con un comentario</b>' : ''}</span>
           <span class="pendir">→</span></button>`; }).join('')}</div>`
       : `<div class="pad muted" style="font-size:12.5px">No tenés plata para rendir. Cuando te den un fondo para gastos, te aparece acá para cargar los tickets.</div>`);
     /* el asistente de producción revisa lo de arte antes que el jefe */
@@ -6725,6 +6841,78 @@ function vistaPanel(pr, py){
   </div>`;
 }
 
+
+/* ¿esta fila de gente (callsheet, altas) es este usuario? Por el nombre, el mail o el teléfono. */
+const telDig = t => String(t || '').replace(/\D/g, '').slice(-8);
+function esLaPersona(g, u){
+  if(!g || !u) return false;
+  if(u.nombre && g.nombre && norm(g.nombre) === norm(u.nombre)) return true;
+  if(u.email && g.email && norm(g.email) === norm(u.email)) return true;
+  return !!(telDig(u.tel) && telDig(u.tel).length >= 8 && telDig(g.tel) === telDig(u.tel));
+}
+/* a quién del proyecto se le pide algo (con su WhatsApp, si tiene teléfono) */
+function contactoDeRol(py, roles){
+  return genteParaTareas(py).filter(x => roles.includes(x.rol));
+}
+const waDe = (tel, txt) => { const d = telWhatsapp(tel); return d ? `https://wa.me/${d}?text=${encodeURIComponent(txt)}` : ''; };
+/* Las tres preguntas que más se hace alguien del equipo, con lo que la app ya
+   sabe: su citación (y si cambió), los cheques de garantía y sus datos para el
+   pago. Nada inventado: si no figura, lo dice. */
+function tarjetasEquipoHTML(py, u){
+  const pr = getPr(), vr = versionRodaje(py), d = py.desglose || {jornadas: []};
+  const yaPaso = j => /^\d{4}-\d\d-\d\d$/.test(j.fecha || '') && j.fecha < hoy();
+  const fecha = f => /^\d{4}-\d\d-\d\d$/.test(f || '') ? `${diaSemana(f)} ${f.split('-').reverse().join('/')}` : '';
+  const prod = contactoDeRol(py, ['asistprod']), quienProd = prod[0] || contactoDeRol(py, ['produccion'])[0] || null;
+  const linkA = (x, txt) => x && waDe(x.tel, txt) ? `<a class="btn sm" target="_blank" rel="noopener" href="${esc(waDe(x.tel, txt))}">WhatsApp a ${esc(x.nombre.split(' ')[0])}</a>` : '';
+  /* 1. la hora */
+  const filas = [];
+  (d.jornadas || []).filter(j => !yaPaso(j)).forEach(j => {
+    normalizarJornada(j);
+    let g = null; try{ g = gentePorJornada(py, vr, j.numero).gente.find(x => esLaPersona(x, u)); }catch(e){}
+    if(!g) return;
+    const hora = horaCitada(j, g.clave), ec = estadoCitado(j, g.clave), cf = estadoConfirmacion(j, g.clave);
+    const estado = ec.k === 'cambio' ? `<span class="pc-mal">Cambió: era a las ${esc(ec.antes)}, ahora a las <b>${esc(ec.ahora)}</b>. Te la vuelven a mandar.</span>`
+      : ec.k === 'si' ? 'Ya te mandaron la citación.' : 'Todavía no te mandaron la citación.';
+    const conf = cf.k === 'si' ? `<span class="pc-ok">Confirmaste las ${esc(cf.hora || hora)}.</span>`
+      : cf.k === 'vieja' ? `<span class="pc-mal">Habías confirmado las ${esc(cf.hora)}: volvé a confirmar con tu link.</span>`
+      : cf.k === 'nopuede' ? `Avisaste que no podés${cf.respuesta ? `: «${esc(cf.respuesta)}»` : ''}.` : '';
+    filas.push(`<div class="pc-l"><b>J${j.numero}${j.fecha ? ' · ' + esc(fecha(j.fecha)) : ''} · ${esc(hora || '—')}</b>${g.rol ? ` <span class="muted">(${esc(g.rol)})</span>` : ''}<br>${estado}${conf ? ' ' + conf : ''}</div>`);
+  });
+  const primera = (d.jornadas || []).find(j => !yaPaso(j));
+  const cHora = `<div class="panel-card"><h5>¿Cambió tu hora?</h5>
+    ${filas.length ? filas.join('') : `<div class="pc-l muted">No figurás en las citaciones de las próximas jornadas. Si te parece un error, avisale a producción.</div>`}
+    <div class="pc-l muted">Si te cambian la hora, te llega un mensaje nuevo con el mismo link: confirmá otra vez.</div>
+    ${primera ? `<button class="btn sm" onclick="DB.ui.jornada=${primera.numero};setTab('callsheet')">Ver el callsheet</button>` : ''}</div>`;
+  /* 2. los cheques */
+  const chs = chequesDe(py).filter(c => chequeMio(c, u));
+  const quienCheque = contactoDeRol(py, ['asistprod', 'arte']);
+  const cCheque = `<div class="panel-card"><h5>¿Un cheque de garantía?</h5>
+    ${puede(u, 'cheque') ? `<div class="pc-l">Lo pedís vos: lo aprueba el Productor Ejecutivo y lo entrega Administración.</div>
+      ${chs.length ? `<div class="pc-l">${chs.map(c => `${esc(c.a)} · ${esc((EST_CHEQUE[c.estado] || {}).l || c.estado)}`).join('<br>')}</div>` : ''}
+      <button class="btn sm pri" onclick="setTab('gastos');setSubGasto('cheques');pedirCheque()">+ Pedir cheque</button>`
+    : `<div class="pc-l">Los pide el asistente de producción o el de arte; los aprueba el Productor Ejecutivo y los entrega Administración.
+      ${quienCheque.length ? `Pedíselo a ${quienCheque.map(x => `<b>${esc(x.nombre)}</b> (${esc(ROL(x.rol).l.toLowerCase())})`).join(' o ')}, con a nombre de quién, el monto y cuándo vuelve.` : 'Pedíselo a producción.'}</div>
+      ${linkA(quienCheque[0], `Hola ${(quienCheque[0] || {nombre: ''}).nombre.split(' ')[0]}! Para ${py.nombre} necesito un cheque de garantía: a nombre de ___, por $ ___, vuelve el ___. ¿Lo pedís en CLAP? Gracias!`)}`}
+  </div>`;
+  /* 3. los datos para el pago y el seguro */
+  let g = null; try{ g = vr ? genteDelProyecto(py, vr).find(x => esLaPersona(x, u)) : null; }catch(e){}
+  const F = g ? faltaDe(g) : null, A = g ? (altaDe(py)[g.clave] || {}) : {};
+  const con = typeof sbConectado === 'function' && sbConectado();
+  let estadoDatos;
+  if(F && !F.sinFicha){
+    estadoDatos = `<div class="pc-l">Para el pago: ${F.pago.length ? `<span class="pc-mal">falta ${esc(F.pago.join(', '))}</span>` : '<span class="pc-ok">está</span>'}<br>
+      Para el seguro: ${F.seguro.length ? `<span class="pc-mal">falta ${esc(F.seguro.join(', '))}</span>` : '<span class="pc-ok">está todo</span>'}</div>`;
+  } else estadoDatos = `<div class="pc-l muted">No encontré tu ficha en el alta del proyecto: ${g ? 'producción todavía no te cargó los datos' : 'producción todavía no te sumó al equipo del presupuesto'}. Mandá tu alias o CBU, DNI, CUIL y fecha de nacimiento.</div>`;
+  const faltaAlgo = !F || F.sinFicha || F.pago.length || F.seguro.length;
+  const p = (g && g.persona) || {};
+  const msgDatos = `Hola${quienProd ? ' ' + quienProd.nombre.split(' ')[0] : ''}! Te paso mis datos para el alta y el pago de ${py.nombre}:\n• Nombre y apellido: ${u.nombre || ''}\n• DNI: ${p.dni || ''}\n• CUIL / CUIT: ${p.cuit || ''}\n• Fecha de nacimiento: ${p.fechaNac ? p.fechaNac.split('-').reverse().join('/') : ''}\n• Alias o CBU: ${p.alias || p.cbu || ''}\n• Banco: ${p.banco || ''}`;
+  const cDatos = `<div class="panel-card"><h5>¿Tus datos para el pago?</h5>
+    ${estadoDatos}
+    ${A.pedidoEl ? `<div class="pc-l muted">Te los pidieron el ${esc(String(A.pedidoEl).split('-').reverse().join('/'))}.</div>` : ''}
+    <div class="pc-l">${faltaAlgo ? 'Cómo mandarlos: ' : 'Si cambió algo: '}${con ? 'cargalos en <b>Mis datos</b> (queda en tu ficha y no te los vuelven a pedir)' : ''}${con && quienProd ? ', o ' : ''}${quienProd ? `mandáselos a <b>${esc(quienProd.nombre)}</b> (${esc(ROL(quienProd.rol).l.toLowerCase())})` : ''}.</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${con ? `<button class="btn sm ${faltaAlgo ? 'pri' : ''}" onclick="editarMiFicha()">Mis datos</button>` : ''}${linkA(quienProd, msgDatos)}</div></div>`;
+  return `<div class="pad panel-cards">${cHora}${cCheque}${cDatos}</div>`;
+}
 
 /* =====================  CONFIRMAR LA CITACIÓN CON UN TOQUE  ===============
    Cada mensaje de citación lleva un link personal (?cit=…). El que lo abre no
@@ -7101,8 +7289,8 @@ function rubroHTML(r,v,filtro,piezaSel,RL){
       <span class="caret">${r.abierto?'▾':'▸'}</span>
       <span class="rcode">${esc(r.codigo)}</span>
       <span class="rname">${esc(r.nombre)}</span>
-      ${!r.aplicaFee?'<span class="chip c-otr" title="No se le aplica fee de producción">s/fee</span>':''}
-      ${r.aplicaIva===false?'<span class="chip c-otr" title="Este rubro no paga IVA">s/IVA</span>':''}
+      ${!r.aplicaFee && veMargen()?'<span class="chip c-otr" title="No se le aplica fee de producción">s/fee</span>':''}
+      ${r.aplicaIva===false && veMargen()?'<span class="chip c-otr" title="Este rubro no paga IVA">s/IVA</span>':''}
       <span class="muted" style="font-size:11px">${ls.length}</span>
       <span class="rtot">${fmt(tot, v.monedaBase)}</span>
       ${(()=>{ const real = RL && RL.porRubro[r.codigo];
@@ -7123,10 +7311,10 @@ function rubroHTML(r,v,filtro,piezaSel,RL){
         <button class="btn sm" onclick="pickFuncion('${r.id}')">+ Del catálogo de funciones</button>
         <button class="btn sm" onclick="pickPersona('${r.id}')">+ Persona / proveedor</button>
         <div class="spacer" style="flex:1"></div>
-        <button class="btn sm" onclick="upRubro('${r.id}','aplicaFee',${!r.aplicaFee})"
+        ${veMargen() ? `<button class="btn sm" onclick="upRubro('${r.id}','aplicaFee',${!r.aplicaFee})"
           title="Si este rubro entra en la base del fee de producción">${r.aplicaFee?'Quitar del fee':'Incluir en el fee'}</button>
         <button class="btn sm" onclick="upRubro('${r.id}','aplicaIva',${r.aplicaIva===false})"
-          title="Si este rubro paga IVA">${r.aplicaIva===false?'Gravar con IVA':'Marcar exento de IVA'}</button>
+          title="Si este rubro paga IVA">${r.aplicaIva===false?'Gravar con IVA':'Marcar exento de IVA'}</button>` : ''}
         <button class="btn sm dgr" onclick="delRubro('${r.id}')">Eliminar rubro</button>
       </div>
     </div>`:''}
@@ -7310,7 +7498,7 @@ function panelTotales(v,R,piezaNom){
     <div class="tot sub" style="border:none;padding-top:6px">
       <span class="muted">Equivalente en ${otra} · TC ${esc(v.tcNombre)} ${fmtC(v.tc)}</span>
       <b class="muted">${fmt(conv(R.subtotal + R.contingencia,v.monedaBase,otra,n(v.tc)), otra)}</b></div>
-    <div class="muted" style="font-size:11px;margin-top:6px">Sin fee ni impuestos: el precio al cliente lo ven Administración y el Productor Ejecutivo.</div>
+    <div class="muted" style="font-size:11px;margin-top:6px">Es el costo: el precio al cliente lo arman Administración y el Productor Ejecutivo.</div>
   </div></div>`;
   return `<div class="card"><h3>Totales${piezaNom?` — ${esc(piezaNom)} <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400">(propio + compartido)</span>`:''}</h3><div class="pad">
     ${verCargas || verElenco ? `<div class="tot sub"><span>Líneas del presupuesto</span><b>${fmt(R.subtotalLineas,v.monedaBase)}</b></div>` : ''}
@@ -7360,6 +7548,8 @@ Producto: a cargo del cliente.`,
   };
 }
 function panelCondiciones(py, v, cli){
+  /* las condiciones son para el cliente (precio, pago, validez): no son del jefe */
+  if(!veMargen()) return '';
   const c = v.condiciones || {};
   if(cli){
     const llenas = COND_CAMPOS.filter(x => String(c[x.k]||'').trim());
@@ -8149,7 +8339,7 @@ function vistaResumen(pr,py,v){
     const falta = g.length - citadosAlDia(prox, g);
     const camb = g.filter(x => estadoCitado(prox, x.clave).k === 'cambio').length;
     const noPueden = g.filter(x => estadoConfirmacion(prox, x.clave).k === 'nopuede').length;
-    if(noPueden) pend.push({n:noPueden, t:`avisaron que no pueden ir a la jornada ${prox.numero}`, urg:true,
+    if(noPueden) pend.push({n:noPueden, t:`${plural(noPueden, 'avisó que no puede', 'avisaron que no pueden')} ir a la jornada ${prox.numero}`, urg:true,
       ir:`DB.ui.jornada=${prox.numero};setTab('rodaje');setSubRodaje('citaciones')`});
     if(falta) pend.push({n:falta, t:`sin citar para la jornada ${prox.numero}${camb ? ` (${camb} con la hora vieja)` : ''}`, urg: !!camb,
       ir:`DB.ui.jornada=${prox.numero};setTab('rodaje');setSubRodaje('citaciones')`}); }
@@ -8226,9 +8416,7 @@ function vistaResumen(pr,py,v){
         para.length ? `<div class="pad" style="display:flex;flex-direction:column;gap:6px">${para.map(cj => rendFilaBandeja(py, cj, u)).join('')}</div>`
           : `<div class="pad muted" style="font-size:12.5px">No hay rendiciones esperándote. <button class="btn sm" onclick="setTab('gastos');setSubGasto('rend')">Ver todas</button></div>`)}</div>` : ''; })()}
 
-    ${tareasDe(py).length || puedeEncargar(u) ? `<div id="res-tareas">${bloque('Tareas encargadas', tareasHTML(py, [...tareasDe(py)].sort((a, b) => (a.estado === 'hecha') - (b.estado === 'hecha')))
-      + (puedeEncargar(u) ? `<div class="pad noprint" style="padding-top:0"><button class="btn sm" onclick="editTarea()">+ Encargar una tarea</button>
-        <span class="muted" style="font-size:11.5px;margin-left:6px">o desde una línea del presupuesto (＋ tarea)</span></div>` : ''))}</div>` : ''}
+    ${tareasDe(py).length || puedeEncargar(u) ? `<div id="res-tareas">${bloque('Tareas del equipo', tareasEquipoHTML(py, u))}</div>` : ''}
 
     ${(()=>{const ch = tagsChipsHTML(py); return ch ? bloque('Qué tiene este proyecto',
       `<div class="pad">${ch}
@@ -8264,7 +8452,7 @@ function vistaResumen(pr,py,v){
       </div>
       <div>
         <div class="resl">Equipo</div>
-        <div class="resd">${(pr.usuarios||[]).filter(x=>x.activo).length} persona(s) con acceso ·
+        <div class="resd">${(k => `${k} ${plural(k, 'persona')} con acceso`)((pr.usuarios||[]).filter(x=>x.activo).length)} ·
           ${DB.catalogo.personas.length} en el catálogo</div>
         <div class="resd muted">${u?'Estás como <b>'+esc(u.nombre)+'</b> · '+esc(ROL(u.rol).l):'Sin sesión'}</div>
         <button class="btn sm" onclick="setTab('equipo')" style="margin-top:6px">Ir al equipo</button>
@@ -8296,7 +8484,8 @@ const GUIA = [
     <ol class="pasos-guia">
       <li><b>Productoras</b> — creá tu productora con su CUIT y condición de IVA. Podés tener
         todas las que manejes; cada una está aislada de las otras.</li>
-      <li><b>Equipo y roles</b> — cargá a las personas con su rol. Sin esto no funciona el circuito de gastos.</li>
+      <li><b>Invitá al equipo</b> — con <b>✉ Invitar</b> mandás un link por WhatsApp: cada uno entra con
+        su mail y su contraseña, con el rol que elegiste. En <b>Equipo y roles</b> ves quién está y a qué proyecto entra.</li>
       <li><b>Desglose</b> — soltá lo que mandó la agencia: guion, guion técnico (Excel) o storyboard.
         De ahí salen los bloques o escenas, el elenco, las locaciones y los elementos.</li>
       <li><b>Presupuesto</b> — armalo desde una plantilla, a mano, o mandá el desglose con <i>→ Presupuesto</i>.</li>
@@ -8313,21 +8502,24 @@ const GUIA = [
     <p class="tip">La solapa <b>Resumen</b> es la portada: te dice cómo viene la plata y qué está
     esperando algo tuyo. Todo lo que aparece ahí es clickeable y te lleva al lugar.</p>`},
 
-  {t:'Presupuesto', c:`
+  /* el jefe de producción no ve nada del margen: su sección habla del costo */
+  {t:'Presupuesto', get c(){ return `
     <p>Se arma por <b>rubros</b> (17) y cada rubro tiene sus <b>subrubros</b> (234 en total).
     Al agregar una línea podés elegir del catálogo de funciones o traer una persona del catálogo,
     que arrastra su tarifa.</p>
     <p><b>Multi-moneda:</b> cada línea puede ir en pesos o en dólares. El total se expresa en la
     moneda base usando el tipo de cambio de la versión. <b>Guardá la fecha de la cotización</b>:
     es lo que después te permite reclamar el reajuste por diferencia de cambio.</p>
-    <p><b>Las capas van en este orden:</b></p>
+    ${veMargen() ? `<p><b>Las capas van en este orden:</b></p>
     <pre>subtotal → fee → contingencia → IIBB → IVA → TOTAL</pre>
     <p>El fee se aplica sólo sobre los rubros marcados. Elenco y seguros van sin fee por defecto,
-    que es como se presupuesta en publicidad.</p>
+    que es como se presupuesta en publicidad.</p>` : `<p><b>Lo que ves es el costo de producción:</b></p>
+    <pre>líneas + cargas sociales = costo directo → + contingencia = COSTO DE PRODUCCIÓN</pre>
+    <p>El precio al cliente y los impuestos los arman Administración y el Productor Ejecutivo.</p>`}
     <p><b>Versiones:</b> cuando el cliente pide bajar, tocá <i>Duplicar v.</i> La anterior queda
     intacta y las podés comparar.</p>
-    <p><b>Vista Cliente / Interna:</b> la del cliente muestra sólo el resumen por rubro, sin el
-    detalle de líneas ni el circuito de pago.</p>`},
+    ${veMargen() ? `<p><b>Interna / Cotización:</b> la cotización es lo que se le manda a la agencia: el
+    resumen por rubro, sin el detalle de líneas ni el circuito de pago.</p>` : ''}`; }},
 
   {t:'Desglose', c:`
     <p><b>Soltá en la caja lo que mandó la agencia</b>, uno o varios archivos a la vez:</p>
@@ -8416,13 +8608,14 @@ const GUIA = [
     <p><b>Tablero</b> — <code>Disponible = presupuestado − comprometido − real</code>, rubro por rubro.</p>`},
 
   {t:'Rendiciones: la plata para trabajar', c:`
-    <p>Al asistente (de producción, de arte, o a alguien del equipo) le dan plata en mano para
-    gastar. Después rinde: los tickets, una planilla por rubros y una carátula. En CLAP es así:</p>
+    <p>Al asistente de producción o al de arte le dan plata en mano para gastar (los fondos son
+    sólo para ellos: el resto del equipo carga sus comprobantes sueltos). Después rinde: los tickets,
+    una planilla por rubros y una carátula. En CLAP es así:</p>
     <pre>el jefe da el fondo desde el presupuesto → el asistente sube los tickets y la manda
   → el jefe la revisa: la devuelve con un comentario, o la eleva → Administración la cierra
 
-arte (y el equipo) la mandan a producción → el asistente de producción la revisa
-  y se la pasa al jefe → el jefe la eleva → Administración la cierra</pre>
+arte la manda a producción → el asistente de producción la chequea
+  y se la pasa al jefe → el jefe la revisa y la eleva → Administración la cierra</pre>
     <ul>
       <li><b>Dar el fondo</b> — sale del <b>presupuesto</b>: en la línea de caja chica de producción
         (o la que marques como fondo) tocá <b>💵 Dar fondo</b>: cuánto, cuándo y a quién
@@ -8445,9 +8638,11 @@ arte (y el equipo) la mandan a producción → el asistente de producción la re
         pegados en hojas, de a cuatro, como se entrega en papel.</li>
       <li><b>La charla</b> — cada rendición tiene comentarios, y cada gasto el suyo (💬). Si algo no
         cierra, el jefe la <b>devuelve con un comentario</b>; el asistente corrige y la reenvía.</li>
-      <li><b>Arte pasa por producción</b> — la rendición de arte (o de alguien del equipo) va primero
-        al asistente de producción, que la revisa, la charla, la devuelve o se la <b>pasa al jefe</b>.
-        Sólo el jefe la eleva (si el proyecto no tiene jefe de producción, el PE): Administración nunca recibe una que se salteó producción.</li>
+      <li><b>Arte pasa por producción</b> — la rendición de arte la chequea
+        primero el asistente de producción, que la revisa, la charla, la devuelve o se la <b>pasa al jefe</b>.
+        Mientras tanto el jefe la ve, pero no la toca; cuando se la pasan, la vuelve a mirar y la eleva
+        (si el proyecto no tiene asistente de producción, la revisa el jefe directo; si no tiene jefe, el PE).
+        Administración nunca recibe una que se salteó producción. Lo mismo con un comprobante suelto de arte.</li>
       <li><b>Cerrar</b> — Administración anota la plata que vuelve: <b>«Le sobró $ X: lo devuelve»</b>
         (o «Gastó $ X de más: hay que reintegrárselo»), con el monto puesto (se puede cambiar) y la fecha.
         Lo devuelto no es gasto: en el presupuesto y el tablero
@@ -8476,38 +8671,40 @@ arte (y el equipo) la mandan a producción → el asistente de producción la re
       <tbody>${ROLES.map(r=>`<tr><td><b>${esc(r.l)}</b></td>
         <td class="mono" style="font-size:11px">${r.puede.filter(x=>x!=='equipo').join(' · ')}</td>
         <td class="muted">${esc(r.d)}</td></tr>`).join('')}</tbody></table></div>
-    <p style="margin-top:11px">Los permisos son <b>acumulativos</b>: administración puede todo lo
-    que puede producción, más pagar.</p>
-    <div class="avisomodo"><b>Ojo: esto todavía no es seguridad.</b> Sin servidor no hay
-    contraseñas. El selector <b>Soy</b> de arriba simula quién sos para que cada uno vea su bandeja,
-    pero cualquiera que abra el archivo puede cambiarse de rol y ver todo. El circuito y los datos
-    ya son los definitivos: cuando haya backend se reemplaza el selector por un login de verdad y
-    no cambia nada más.</div>`},
+    <p style="margin-top:11px">Los permisos son <b>acumulativos</b> de abajo hacia arriba: el jefe de
+    producción puede lo de los asistentes más revisar y encargar tareas; Administración y el Productor
+    Ejecutivo pueden todo (aprobar y pagar). La diferencia entre esos dos es de qué se ocupa cada uno:
+    el PE aprueba y controla, Administración paga.</p>
+    <p><b>Quién invita:</b> Administración y el PE, a cualquiera (también a Administración); el jefe de
+    producción, a su equipo (no a Administración ni al PE). Los asistentes y el equipo no invitan.</p>
+    <div class="avisomodo"><b>Lo controla la base, no la pantalla.</b> Cada uno entra con su mail y su
+    contraseña, con el rol que le dio la invitación. A la compu de un asistente no llegan los montos
+    del presupuesto ni los gastos de los demás, y lo que su rol no puede hacer la base lo rechaza
+    aunque alguien toque el archivo. El jefe de producción ve el costo, no el margen ni el precio al cliente.</div>`},
 
   {t:'Tus datos: dónde están y cómo no perderlos', c:`
-    <p>Todo se guarda <b>en este navegador</b>, en esta computadora. No hay servidor todavía.
-    Eso significa tres cosas:</p>
+    <p>Con tu sesión iniciada (☁), todo vive <b>en la base del equipo</b>: el presupuesto, el desglose,
+    el plan, el pedido de luces, los gastos, los partes y las tareas viajan por partes y se guardan
+    solos. Lo que cambia otro te aparece con un aviso («‹quién› cambió ‹qué›: ya está acá»).</p>
     <ul>
-      <li>Si borrás los datos del navegador o usás el modo incógnito, <b>se pierde</b>.</li>
-      <li>Otra persona con el mismo archivo tiene <b>sus propios datos</b>, no los tuyos.</li>
-      <li>El espacio es de unos <b>5 MB</b>. Las fotos de comprobantes son lo que más ocupa; se
-        achican solas al cargarlas. Hay un medidor en la solapa <b>Equipo y roles</b>.</li>
+      <li>Si se corta la señal, seguís trabajando: queda en esta compu y sube cuando vuelve. Si la nube
+        muestra un <b>!</b>, no se pudo guardar: revisá la conexión antes de cerrar.</li>
+      <li>Cada uno recibe sólo lo suyo: un asistente no tiene en su compu los montos del presupuesto
+        ni los gastos de los demás.</li>
+      <li>Sin sesión, CLAP es una copia de prueba que vive sólo en este navegador (unos <b>5 MB</b>;
+        las fotos de comprobantes son lo que más ocupa y se achican solas).</li>
     </ul>
-    <p class="tip"><b>Exportá el respaldo seguido</b> desde <i>Datos → Exportar todo</i> (lo ven
-    Administración y el PE: lleva precios y fee). Ese
-    <code>.json</code> es tu copia de seguridad <b>y</b> la forma de pasarle el trabajo a otra
-    persona, hasta que montemos el backend.</p>
-    <p>Para arrancar un proyecto real: <i>Datos → Borrar todo y volver al ejemplo</i>, o creá una
-    productora nueva desde <b>Productoras</b>. Si no, tus números conviven con los de mentira.</p>`},
+    <p class="tip">Un respaldo aparte: <i>Datos → Exportar todo</i> baja un <code>.json</code> con todo
+    (lo ven Administración y el PE, porque lleva todos los precios). Sirve como copia de seguridad y
+    para llevar un proyecto a otra base.</p>
+    <p>Para probar sin tocar nada real: <i>Datos → Borrar todo y volver al ejemplo</i> (sin sesión), o
+    creá una productora nueva desde <b>Productoras</b>.</p>`},
 
   {t:'Lo que todavía no hace', c:`
     <p>Para que no te lleves sorpresas:</p>
     <ul>
-      <li><b>No todo se comparte todavía.</b> Por la base (con tu usuario y contraseña) se comparten
-        las productoras, los datos de cada proyecto, el catálogo de gente y proveedores, el equipo y
-        las invitaciones. <b>El presupuesto, el desglose, el plan de rodaje, el pedido de luces, los
-        gastos y los partes viven en el navegador de cada uno</b>: para pasarlos se usa
-        <i>Datos → Exportar</i> e <i>Importar</i>.</li>
+      <li><b>No edita a la vez la misma cosa.</b> Si dos personas cambian la misma parte al mismo
+        tiempo, CLAP junta los cambios y avisa; de un mismo dato queda lo último que se guardó.</li>
       <li><b>Crear una cuenta no alcanza para entrar.</b> Sin tu mail y tu contraseña no se ve
         nada, y una cuenta sola tampoco ve nada: a una productora se entra con el link de
         <b>✉ Invitar</b> que te manda alguien de adentro, o creando la tuya. Nadie aprueba a mano.</li>
@@ -9361,7 +9558,7 @@ function tableroHTML(py,v){
       <div><b style="color:var(--ac)">${fmt(P.comp,P.base)}</b><span>Comprometido (OC y fondos)</span></div>
       <div><b>${fmt(P.real,P.base)}</b><span>Real cargado</span></div>
       <div><b style="color:var(--ok)">${fmt(P.pagado,P.base)}</b><span>Pagado</span></div>
-      <div><b style="color:${P.desvio>0?'var(--bad)':'var(--tx)'}">${P.desvio>0?'+':''}${fmt(P.desvio,P.base)}</b><span>Desvío</span></div>
+      <div><b style="color:${P.disponible<0?'var(--bad)':'var(--ok)'}">${fmt(Math.abs(P.disponible),P.base)}</b><span>${P.disponible<0?'Se pasó del presupuesto':'Disponible'}</span></div>
     </div>
     <div class="scrollx"><table class="tbl cst">
       <thead><tr><th style="width:44px">Cód.</th><th>Rubro</th>
@@ -9448,7 +9645,7 @@ function bandejaCuerpo(lista, u, R, sub, pr, filtros){
     <div class="pad noprint" style="display:flex;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);font-size:11.5px">
       ${ESTADOS.filter(e=>R.porEstado[e.k]?.cant).map(e=>
         `<span><span class="estdot" style="background:${e.c}"></span>
-         <b>${R.porEstado[e.k].cant}</b> ${esc(e.l.toLowerCase())}
+         <b>${R.porEstado[e.k].cant}</b> ${esc(plural(R.porEstado[e.k].cant, e.l.toLowerCase()))}
          <span class="muted">${fmt(R.porEstado[e.k].total, R.base)}</span></span>`).join('')
         || '<span class="muted">Todavía no se cargó ningún comprobante.</span>'}
     </div>
@@ -9536,22 +9733,26 @@ function controlHTML(R, v){
 }
 
 /* ---------- vista equipo ---------- */
+/* a quién de la lista puede tocar quien mira: Administración y el PE, a
+   todos; el jefe de producción, a su equipo (no a Administración ni al PE) */
+const gestionaUsuario = (x, yo = getUsuario()) => !yo || veTodo(yo) || (yo.rol === 'produccion' && !yo.pendiente && puedoInvitarRol(x.rol));
 function vistaEquipo(pr){
   const us = pr.usuarios || [];
   const esp = espacioUsado();
+  const con = typeof sbConectado === 'function' && sbConectado();
+  const yo = getUsuario();
   return `<div class="card"><h3>Equipo de ${esc(pr.nombre)}
     <span class="spacer"></span>
-    <button class="btn sm pri" onclick="editUsuario()">+ Persona</button></h3>
+    ${con ? (getPy() && rolesQuePuedoInvitar().length ? `<button class="btn sm pri" onclick="invitarAlProyecto()">✉ Invitar</button>` : '')
+      : `<button class="btn sm pri" onclick="editUsuario()">+ Persona</button>`}</h3>
     <div class="pad muted" style="font-size:12px;line-height:1.6;border-bottom:1px solid var(--line)">
-      Cada persona carga los comprobantes de su área y el circuito los va moviendo:
-      <b>carga</b> el departamento → <b>revisa</b> producción → <b>aprueba</b> el ejecutivo →
-      <b>paga</b> administración. Cada paso queda firmado con quién y cuándo.
-      <div class="avisomodo" style="margin:10px 0 0">
-        <b>Esto todavía no es seguridad.</b> Sin servidor no hay contraseñas: el selector de arriba
-        simula quién sos para que cada uno vea su bandeja, pero cualquiera que abra el archivo puede
-        cambiarse de rol. Los datos y el circuito ya son los definitivos — cuando haya backend se
-        reemplaza el selector por un login y no cambia nada más.
-      </div>
+      Cada persona entra con su mail y su contraseña, con el rol que le dio la invitación
+      (<b>✉ Invitar</b>). Lo que ve y lo que puede hacer cada uno lo controla la base, no la
+      pantalla: un asistente no recibe los montos del presupuesto ni los gastos de los demás.
+      El circuito de un comprobante: <b>carga</b> el departamento → <b>revisa</b> producción →
+      <b>aprueba</b> el ejecutivo → <b>paga</b> administración. Cada paso queda firmado con quién y cuándo.
+      ${con ? '' : `<div class="avisomodo" style="margin:10px 0 0">Estás sin sesión: es una copia de prueba
+        en esta compu, sin la base. «Ver como» muestra la app como la ve esa persona.</div>`}
     </div>
     ${us.length?`<div class="scrollx"><table class="tbl">
       <thead><tr><th>Nombre</th><th>Rol</th><th>Departamento</th><th>Puede</th>
@@ -9563,20 +9764,20 @@ function vistaEquipo(pr){
         <td class="muted" style="font-size:11px">${ROL(u.rol).puede.filter(x=>x!=='equipo').map(x=>esc(LBL_PUEDE[x]||x)).join(' · ')}</td>
         <td class="muted" style="font-size:11px">${esc(u.email||'')}${u.email&&u.tel?'<br>':''}${esc(u.tel||'')}</td>
         <td style="text-align:right;white-space:nowrap">
-          <button class="btn sm" onclick="setUsuario('${u.id}')">Entrar como</button>
-          <button class="btn sm" onclick="editUsuario('${u.id}')">Editar</button>
-          <button class="btn sm dgr" onclick="delUsuario('${u.id}')">×</button></td>
+          ${con ? '' : `<button class="btn sm" onclick="setUsuario('${u.id}')">Ver como</button>`}
+          ${gestionaUsuario(u, yo) ? `<button class="btn sm" onclick="editUsuario('${u.id}')">Editar</button>
+          <button class="btn sm dgr" onclick="delUsuario('${u.id}')">×</button>` : ''}</td>
       </tr>`).join('')}</tbody></table></div>`
       :'<div class="empty">Sin nadie cargado. Empezá por vos.</div>'}
     ${bloqueInvitaciones(pr)}
-    <div class="pad" style="border-top:1px solid var(--line)">
-      <div class="tot sub"><span>Espacio usado en este navegador</span>
+    ${con ? '' : `<div class="pad" style="border-top:1px solid var(--line)">
+      <div class="tot sub"><span>Espacio usado en esta compu (copia sin sesión)</span>
         <b>${esp.mb.toFixed(2)} MB <span class="muted">de ~5 MB</span></b></div>
       <span class="barra" style="margin-top:6px"><i style="width:${esp.pct}%;background:${esp.pct>80?'var(--bad)':esp.pct>55?'var(--warn)':'var(--ok)'}"></i></span>
       <div class="muted" style="font-size:11px;margin-top:6px;line-height:1.5">
         Las fotos de los comprobantes son lo que más ocupa; se achican al cargarlas.
-        Si esto se llena, exportá el respaldo desde <b>Datos</b> y borrá proyectos cerrados.</div>
-    </div></div>`;
+        Con sesión, todo vive en la base del equipo y esto deja de importar.</div>
+    </div>`}</div>`;
 }
 const LBL_PUEDE = {cargar:'cargar', revisar:'revisar', aprobar:'aprobar', pagar:'pagar'};
 
@@ -9592,7 +9793,10 @@ function bloqueInvitaciones(pr){
   const gente = (pr.usuarios || []).filter(u => u.activo && !veTodo(u));
   if(!pys.length) return '';
   const yo = getUsuario();
-  const puedoInvitar = veTodo(yo);
+  /* la misma regla que el link: Administración y el PE, a cualquiera; el
+     jefe de producción, a su equipo */
+  const puedoInvitar = rolesQuePuedoInvitar().length > 0;
+  const puedoA = u => puedoInvitarRol(u.rol);
 
   return `<div class="pad" style="border-top:1px solid var(--line)">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
@@ -9620,12 +9824,12 @@ function bloqueInvitaciones(pr){
               (py.invitados||[]).filter(id=>gente.some(g=>g.id===id)).length} de ${gente.length} invitados</span></td>
           ${gente.map(u=>`<td style="text-align:center">
             <input type="checkbox" ${(py.invitados||[]).includes(u.id)?'checked':''}
-              ${puedoInvitar?'':'disabled'}
+              ${puedoA(u)?'':'disabled'}
               onchange="invitar('${py.id}','${u.id}',this.checked)"
               title="${esc(u.nombre)} en ${esc(py.nombre)}"></td>`).join('')}
         </tr>`).join('')}</tbody></table></div>
-        ${puedoInvitar?'':`<div class="avisomodo" style="margin-top:9px">Sólo Administración
-          o el Productor Ejecutivo pueden invitar.</div>`}`}
+        ${puedoInvitar?'':`<div class="avisomodo" style="margin-top:9px">Invitan Administración, el
+          Productor Ejecutivo y el jefe de producción (a su equipo).</div>`}`}
   </div>`;
 }
 
@@ -9634,6 +9838,7 @@ function invitar(proyectoId, usuarioId, si){
   const py = pr.proyectos.find(p => p.id === proyectoId); if(!py) return;
   py.invitados ||= [];
   const u = (pr.usuarios||[]).find(x => x.id === usuarioId);
+  if(u && getUsuario() && !puedoInvitarRol(u.rol)){ toast('A esa persona la invitan Administración o el Productor Ejecutivo'); R(); return; }
   if(si){ if(!py.invitados.includes(usuarioId)) py.invitados.push(usuarioId); }
   else py.invitados = py.invitados.filter(x => x !== usuarioId);
   /* Si me saco a mí mismo del proyecto que estoy mirando, quedo sin nada
@@ -9730,7 +9935,7 @@ function citacionesHTML(pr,py,j,C,gente,cfg){
         <div class="cssub">${esc(py.nombre)}${j.fecha?' · '+esc(j.fecha)+' ('+diaSemana(j.fecha)+')':''}
           · citación general ${esc(j.citacion||'—')}</div></div>
       <div style="text-align:right"><div class="csj">${citados}<span> de ${gente.length}</span></div>
-        <div class="cssub">avisados${conLinks ? ` · <b>${confirmaron}</b> confirmaron${noPueden ? ` · <b style="color:var(--bad)">${noPueden} no pueden</b>` : ''}` : ''}</div></div>
+        <div class="cssub">avisados${conLinks ? ` · <b>${confirmaron}</b> confirmaron${noPueden ? ` · <b style="color:var(--bad)">${noPueden} no ${plural(noPueden, 'puede', 'pueden')}</b>` : ''}` : ''}</div></div>
     </div>
     <div class="pad noprint" style="display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--line)">
       ${cambiaron ? `<button class="btn sm pri" onclick="copiarCambiadas()" title="El plan cambió después de citarlos: copia el mensaje con el cambio para esos ${cambiaron}">Re-citar a ${cambiaron == 1 ? 'el que cambió' : `los ${cambiaron} que cambiaron`}</button>` : ''}
@@ -10026,7 +10231,7 @@ function hojaCitacionHTML(pr,py,v){
         ${d.jornadas.map(x=>`<option value="${x.numero}" ${x.numero===num?'selected':''}>Jornada ${x.numero}${x.fecha?' · '+x.fecha:''}</option>`).join('')}
       </select></div>
       <div style="flex:1"></div>
-      <button class="btn" onclick="setTab('plan')">Editar el plan</button>
+      ${puedeSolapa('plan') ? `<button class="btn" onclick="setTab('plan')">${editaSolapa('plan') ? 'Editar el plan' : 'Ver el plan'}</button>` : ''}
       <button class="btn pri" onclick="window.print()">Imprimir / PDF</button>
     </div>
 
@@ -12499,7 +12704,7 @@ function plSelBorrar(){
   const py = getPy(), p = planDe(py), sel = plSeleccion();
   if(!sel.length) return;
   const escenas = sel.filter(x => x.tipo === 'escena'), resto = sel.filter(x => x.tipo !== 'escena');
-  const txt = [resto.length && `se borran ${resto.length} renglón${resto.length == 1 ? '' : 'es'}`,
+  const txt = [resto.length && `se borran ${resto.length} ${resto.length == 1 ? 'renglón' : 'renglones'}`,
     escenas.length && `${escenas.length} escena${escenas.length == 1 ? '' : 's'} vuelve${escenas.length == 1 ? '' : 'n'} a quedar sin jornada`].filter(Boolean).join(' y ');
   if(!confirm(`¿Seguro? ${txt.charAt(0).toUpperCase() + txt.slice(1)}.`)) return;
   plFoto(py, 'borrar');
@@ -13356,7 +13561,7 @@ function vistaLuces(pr, py, v){
       <div><div class="csttl">Pedido de luces</div>
         <div class="cssub">${esc(py.nombre)} · ${esc(pr.nombre)} · ${js.length} jornada${js.length == 1 ? '' : 's'}${js.map(fechaJ).filter(Boolean).length ? ' (' + js.map(fechaJ).filter(Boolean).join(', ') + ')' : ''}</div></div>
       <div style="text-align:right"><div class="csj">${C.total ? fmtM(C.total) : '—'}<span> total</span></div>
-        <div class="cssub">${P.items.length} renglón${P.items.length == 1 ? '' : 'es'}${C.sinPrecio ? ` · <b style="color:var(--warn)">${C.sinPrecio} sin precio</b>` : ''}</div></div>
+        <div class="cssub">${P.items.length} ${P.items.length == 1 ? 'renglón' : 'renglones'}${C.sinPrecio ? ` · <b style="color:var(--warn)">${C.sinPrecio} sin precio</b>` : ''}</div></div>
     </div>
     <div class="pad grid2 lz-cab">
       <label class="f"><span>Rental</span><select onchange="lzRental(this.value)">
@@ -13879,7 +14084,7 @@ function lzRevisarImportado(filas, origen){
   const reconocidos = filas.filter(f => f.k).length;
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:780px">
     <h3>Lo que entendí del pedido</h3><div class="mbody">
-      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">De ${esc(origen)}: ${filas.length} renglón${filas.length == 1 ? '' : 'es'},
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:10px">De ${esc(origen)}: ${filas.length} ${filas.length == 1 ? 'renglón' : 'renglones'},
         ${reconocidos} reconocido${reconocidos == 1 ? '' : 's'}${filas.length - reconocidos ? ` y <b style="color:var(--warn)">${filas.length - reconocidos} para elegir a mano</b>` : ''}.
         Revisá, corregí lo que haga falta y sumalo. Si un equipo ya está en el pedido, se suma la cantidad.</div>
       <div class="scrollx"><table class="tbl cst lz-imptab">
@@ -13911,7 +14116,7 @@ function lzSumarImportado(){
     k++;
   });
   _lzImp = null; cerrar();
-  toast(`${k} renglón${k == 1 ? '' : 'es'} sumado${k == 1 ? '' : 's'} al pedido`); R();
+  toast(`${k} ${k == 1 ? 'renglón' : 'renglones'} sumado${k == 1 ? '' : 's'} al pedido`); R();
 }
 
 /* ---------- mandarlo, pasarlo al presupuesto, bajarlo ---------- */
@@ -14347,11 +14552,11 @@ function lzRespuestaGuardar(){
   if(P.estado === 'borrador' || P.estado === 'enviado') P.estado = 'cotizado';
   _lzResp = null; cerrar();
   const ok = Object.values(x.items).filter(c => c.estado === 'ok').length;
-  toast(`${r ? r.nombre : 'Rental'}: ${ok} renglón${ok == 1 ? '' : 'es'} OK`); R();
+  toast(`${r ? r.nombre : 'Rental'}: ${ok} ${ok == 1 ? 'renglón' : 'renglones'} OK`); R();
 }
 function lzReparto(modo){
   const py = getPy(), x = proponerReparto(py, modo);
-  toast(`${x.asignados} renglón${x.asignados == 1 ? '' : 'es'} con ${x.rentals.length} rental${x.rentals.length == 1 ? '' : 's'}${x.faltan.length ? ` · ${x.faltan.length} sin conseguir` : ''}`);
+  toast(`${x.asignados} ${x.asignados == 1 ? 'renglón' : 'renglones'} con ${x.rentals.length} rental${x.rentals.length == 1 ? '' : 's'}${x.faltan.length ? ` · ${x.faltan.length} sin conseguir` : ''}`);
   R();
 }
 function lzAsignar(itemId, rid){
@@ -14413,7 +14618,7 @@ function lzRentalesHTML(pr, py){
       </tbody></table></div>
       ${Object.keys(rep).filter(k => k).length ? `<div class="lz-porrental">${Object.entries(rep).filter(([k]) => k).map(([rid, x]) => { const r = rentalPorId(rid), c = C[rid] || {};
           const m = mailRental(pr, py, rid, 'confirmar');
-          return `<div class="lz-pr"><b>${esc(r ? r.nombre : '?')}</b><span>${x.items.length} renglón${x.items.length == 1 ? '' : 'es'}${x.total ? ' · ' + fmtM(x.total) : ''}</span>
+          return `<div class="lz-pr"><b>${esc(r ? r.nombre : '?')}</b><span>${x.items.length} ${x.items.length == 1 ? 'renglón' : 'renglones'}${x.total ? ' · ' + fmtM(x.total) : ''}</span>
             ${r && r.email ? `<a class="btn sm ${c.confirmado ? '' : 'pri'}" href="${esc(linkMail(m))}" target="_blank" rel="noopener" onclick="lzConfirmarRental('${rid}')">${c.confirmado ? 'Confirmado ' + fc(c.confirmado) : 'Confirmar por mail'}</a>` : ''}</div>`; }).join('')}
         ${rep[''] ? `<div class="lz-pr lz-falta"><b>Sin conseguir</b><span>${rep[''].items.map(it => esc(it.nombre)).join(', ')}</span></div>` : ''}</div>` : ''}` : ''}
   </div></div>`;
@@ -14771,7 +14976,7 @@ function importarPresupuesto(){
     <h3>Importar un presupuesto en Excel</h3><div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">Sirve el AICP de siempre, el .xls viejo o cualquier
         planilla con conceptos y montos. CLAP lee cada línea (cantidad, días, valor y total), la ubica en su rubro por el puesto o
-        la sección y te muestra todo antes de cargar nada. Los subtotales, el fee, el IVA y los impuestos no se importan: los
+        la sección y te muestra todo antes de cargar nada. ${veMargen() ? 'Los subtotales, el fee, el IVA y los impuestos' : 'Los subtotales y los totales'} no se importan: los
         calcula CLAP.</div>
       <div id="ipdrop" class="dropz dgdrop" ondragover="event.preventDefault();this.classList.add('sobre')"
         ondragleave="this.classList.remove('sobre')" ondrop="leerPresupuestoArchivo(event)"
@@ -15049,6 +15254,8 @@ function barraSICA(py, v){
 }
 function upRubro(id, campo, val){
   const r = getV().rubros.find(x=>x.id===id); if(!r) return;
+  /* el fee y el IVA son del precio al cliente: los tocan Administración y el PE */
+  if(['aplicaFee', 'aplicaIva'].includes(campo) && !veMargen()) return;
   r[campo] = val; R(); }
 
 /* ---------- piezas: spots, episodios, videos ---------- */
@@ -15124,7 +15331,7 @@ function addRubro(){
   const v=getV(); const cod = String(v.rubros.length+1).padStart(2,'0');
   v.rubros.push({id:uid('rb'), codigo:cod, nombre:nom, aplicaFee:true, lineas:[], abierto:true}); R(); }
 function delRubro(id){ const v=getV(); const r=v.rubros.find(x=>x.id===id);
-  if(r.lineas.length && !confirm(`Eliminar "${r.nombre}" con ${r.lineas.length} línea(s)?`)) return;
+  if(r.lineas.length && !confirm(`Eliminar "${r.nombre}" con ${r.lineas.length} ${plural(r.lineas.length, 'línea')}?`)) return;
   v.rubros = v.rubros.filter(x=>x.id!==id); R(); }
 
 /* Derivar el presupuesto de producción del real, recortando un %. Nadie va a
@@ -15285,7 +15492,7 @@ function saveProductora(id){
     .catch(e => toast('Guardado acá, pero no pude subirlo: ' + e.message));
 }
 function delProductora(id){ const p=DB.productoras.find(x=>x.id===id);
-  if(!confirm(`Eliminar "${p.nombre}" y sus ${p.proyectos.length} proyecto(s)? No se puede deshacer.`)) return;
+  if(!confirm(`Eliminar "${p.nombre}" y sus ${p.proyectos.length} ${plural(p.proyectos.length, 'proyecto')}? No se puede deshacer.`)) return;
   DB.productoras = DB.productoras.filter(x=>x.id!==id);
   if(DB.ui.productoraId===id){ DB.ui.productoraId=DB.productoras[0]?.id||null; DB.ui.proyectoId=null; }
   R(); }
@@ -15495,7 +15702,8 @@ async function subirCatalogoEntero(){
 /* Elegir función del catálogo maestro (carga rápida de líneas) */
 function pickFuncion(rid){
   const r = getV().rubros.find(x=>x.id===rid);
-  const fs = FUNCIONES[r.codigo] || [];
+  /* el fee de la productora no es una línea que arme el jefe */
+  const fs = (FUNCIONES[r.codigo] || []).filter(f => veMargen() || !/^fee de producci/i.test(f));
   /* El número que se muestra acá tiene que ser EXACTAMENTE el que se va a
      cargar: la escala de la fecha del rodaje y la jornada del proyecto. Antes
      mostraba la escala de hoy y siempre 12 h, y no coincidía con la línea. */
@@ -15989,7 +16197,7 @@ function reDetectar(){
     detectar(e);
     nuevos += Math.max(0, Object.values(e.elementos).reduce((s,v)=>s+v.length,0) - antes);
   });
-  toast(nuevos?`+${nuevos} elemento(s) nuevo(s)`:'Sin cambios'); R();
+  toast(nuevos?`+${nuevos} ${plural(nuevos, 'elemento nuevo', 'elementos nuevos')}`:'Sin cambios'); R();
 }
 function delEl(eid, dep, val){
   const e = getD().escenas.find(x=>x.id===eid);
@@ -16082,17 +16290,19 @@ function setUsuario(id){
 function editUsuario(id){
   const pr = getPr(); pr.usuarios ||= [];
   const u = id ? pr.usuarios.find(x=>x.id===id) : nuevoUsuario();
+  if(id && !gestionaUsuario(u)){ toast('A esa persona la manejan Administración o el Productor Ejecutivo'); return; }
+  const rolesOk = getUsuario() ? rolesQuePuedoInvitar() : ROLES;
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>${id?'Editar':'Nueva'} persona del equipo</h3><div class="mbody">
       <div class="grid2">
         ${campo('Nombre','nombre',u.nombre)}
-        ${sel('Rol','rol',u.rol,ROLES.map(r=>({v:r.k,l:r.l})))}
+        ${sel('Rol','rol',u.rol,rolesOk.map(r=>({v:r.k,l:r.l})))}
         ${campo('Departamento / área','depto',u.depto,'text','placeholder="Arte, Cámara, Producción…"')}
         ${campo('Email','email',u.email,'email')}
         ${campo('Teléfono','tel',u.tel)}
       </div>
       <div class="sicabox" style="margin-top:14px">
-        ${ROLES.map(r=>`<div style="margin-bottom:5px"><b>${esc(r.l)}</b> — ${esc(r.d)}
+        ${rolesOk.map(r=>`<div style="margin-bottom:5px"><b>${esc(r.l)}</b> — ${esc(r.d)}
           <span class="muted" style="font-size:10.5px">(${r.puede.filter(x=>x!=='equipo').join(', ')})</span></div>`).join('')}
       </div>
       <label style="display:flex;gap:8px;align-items:center;margin-top:12px;cursor:pointer">
@@ -16107,6 +16317,7 @@ function saveUsuario(id){
   const d = datos(); const pr = getPr(); pr.usuarios ||= [];
   const chk = document.querySelector('.mod [name=activo]');
   let u = id ? pr.usuarios.find(x=>x.id===id) : nuevoUsuario();
+  if((id && !gestionaUsuario(u)) || (getUsuario() && d.rol && !puedoInvitarRol(d.rol))){ toast('Ese rol lo dan Administración o el Productor Ejecutivo'); return; }
   Object.assign(u, {nombre:d.nombre||'Sin nombre', rol:d.rol, depto:d.depto,
     email:d.email, tel:d.tel, activo: chk?chk.checked:true});
   if(!id){ pr.usuarios.push(u); if(!DB.ui.usuarioId) DB.ui.usuarioId = u.id; }
@@ -16114,8 +16325,9 @@ function saveUsuario(id){
 }
 function delUsuario(id){
   const pr = getPr(); const u = pr.usuarios.find(x=>x.id===id);
+  if(!u || !gestionaUsuario(u)){ toast('A esa persona la manejan Administración o el Productor Ejecutivo'); return; }
   const cargo = getComprobantes().filter(c=>c.cargadoPor===id).length;
-  if(cargo){ if(!confirm(`${u.nombre} cargó ${cargo} comprobante(s). Si lo borrás se pierde de quién fueron.\n\nMejor marcalo como inactivo. ¿Borrar igual?`)) return; }
+  if(cargo){ if(!confirm(`${u.nombre} cargó ${cargo} ${plural(cargo, 'comprobante')}. Si lo borrás se pierde de quién fueron.\n\nMejor marcalo como inactivo. ¿Borrar igual?`)) return; }
   else if(!confirm(`Eliminar a ${u.nombre} del equipo?`)) return;
   pr.usuarios = pr.usuarios.filter(x=>x.id!==id);
   if(DB.ui.usuarioId===id) DB.ui.usuarioId = pr.usuarios[0]?.id || null;
@@ -16154,7 +16366,7 @@ function expGastosCSV(){
     (getCajas().find(x=>x.id===c.cajaId)||{nombre:''}).nombre,
     c.jornada||'', c.notas].map(q0).join(',')));
   bajar(`gastos-${py.nombre}.csv`, '﻿'+L.join('\n'), 'text/csv;charset=utf-8');
-  toast(`${cs.length} comprobante(s) exportado(s)`);
+  toast(`${cs.length} ${plural(cs.length, 'comprobante exportado', 'comprobantes exportados')}`);
 }
 
 /* ---------- órdenes de compra ---------- */
@@ -16226,7 +16438,7 @@ function delOC(id){
   if(!vePlata()){ toast('Las órdenes de compra las maneja el jefe de producción o Administración'); return; }
   const py = getPy(); const o = py.ocs.find(x=>x.id===id);
   const imputados = (py.comprobantes||[]).filter(c=>c.ocId===id).length;
-  if(imputados){ if(!confirm(`${o.numero} tiene ${imputados} comprobante(s) imputado(s). Se van a quedar sin OC. ¿Seguir?`)) return;
+  if(imputados){ if(!confirm(`${o.numero} tiene ${imputados} ${plural(imputados, 'comprobante imputado', 'comprobantes imputados')}. Se van a quedar sin OC. ¿Seguir?`)) return;
     py.comprobantes.forEach(c=>{ if(c.ocId===id) c.ocId = null; }); }
   else if(!confirm(`Eliminar ${o.numero}?`)) return;
   py.ocs = py.ocs.filter(x=>x.id!==id); R();
@@ -16276,7 +16488,7 @@ function darFondo(lineaId, persona, cajaId, pre = {}){
         ${campo('Fecha', 'fecha', pre.fecha || hoy(), 'date')}
         ${campo('Nota', 'nota', pre.nota || '', 'text', 'placeholder="Para el scouting, la jornada 2…"').replace('<label class="f">', '<label class="f" style="grid-column:1/-1">')}
       </div>
-      ${nadie ? `<div class="avisomodo" style="margin-top:10px">No hay asistentes de producción ni de arte en este proyecto. Invitalos desde <b>Equipo</b> y vuelvé.</div>` : ''}
+      ${nadie ? `<div class="avisomodo" style="margin-top:10px">No hay asistentes de producción ni de arte en este proyecto. Invitalos desde <b>Equipo y roles</b> y volvé.</div>` : ''}
       <div class="muted" style="font-size:11.5px;margin-top:9px">${fija ? 'Se suma a su rendición abierta.' : 'Si ya tiene un fondo abierto de esa línea, se le suma; si no, le aparece uno nuevo en <b>Gastos → Rendiciones</b> para cargar los tickets.'}
         En el presupuesto queda en la línea; en el tablero, comprometido hasta que rinda.</div>
     </div>
@@ -16487,7 +16699,7 @@ function delCaja(id){
   if(!daFondos()){ toast('El fondo lo da de baja quien lo dio'); return; }
   const py = getPy(), cj = py.cajas.find(x=>x.id===id);
   const gastos = (py.comprobantes||[]).filter(c=>c.cajaId===id).length;
-  if(gastos){ if(!confirm(`${cj.nombre} tiene ${gastos} gasto(s). Se van a quedar sin caja. ¿Seguir?`)) return;
+  if(gastos){ if(!confirm(`${cj.nombre} tiene ${gastos} ${plural(gastos, 'gasto')}. Se van a quedar sin caja. ¿Seguir?`)) return;
     py.comprobantes.forEach(c=>{ if(c.cajaId===id) c.cajaId = null; }); }
   else if(!confirm(`Eliminar ${cj.nombre}?`)) return;
   py.cajas = py.cajas.filter(x=>x.id!==id);
@@ -16639,10 +16851,11 @@ function rendDetalleHTML(py, cj, u, pr){
   const faltante = faltanteRend(py, cj);
   const aviso = {
     borrador: mia ? `Subí las fotos o los PDF de los tickets: cada uno es una fila. Completá lo que falte y mandala ${aQuien}.` : `La está armando ${esc(nombreUsuario(cj.responsable))}.`,
-    aProduccion: mia ? `La tiene producción para revisar: el asistente de producción (o el jefe). Si la devuelven con un comentario, la corregís y la reenviás.`
+    aProduccion: mia ? `La tiene producción: primero la chequea el asistente de producción y después el jefe. Si la devuelven con un comentario, la corregís y la reenviás.`
       : asistRevisa(cj, u) ? `La mandó ${esc(nombreUsuario(cj.responsable))} a producción. Revisala: si está bien, pasásela al jefe; si no, devolvela con un comentario.`
-      : jefeDeArte(u) ? `La mandó ${esc(nombreUsuario(cj.responsable))} a producción: la puede revisar el asistente de producción, o vos directamente.`
-      : `La está revisando producción (el asistente de producción o el jefe). Llega a Administración cuando el jefe la eleve.`,
+      : jefeDirecto(u) ? `La mandó ${esc(nombreUsuario(cj.responsable))} a producción. El proyecto no tiene asistente de producción: revisala vos. Si está bien, elevala a Administración; si no, devolvela con un comentario.`
+      : jefeDeArte(u) ? `La mandó ${esc(nombreUsuario(cj.responsable))} a producción: primero la chequea el asistente de producción. La podés mirar; cuando te la pase, la revisás y la elevás.`
+      : `La está chequeando el asistente de producción. Después la revisa el jefe, y llega a Administración cuando la eleve.`,
     enviada: mia ? `La tiene el jefe de producción para revisar. Si la devuelve con un comentario, la corregís y la reenviás.`
       : elevaRend(cj, u) ? `${via && pasada && pasada.quienId !== cj.responsable ? `${esc(pasada.quien)} la revisó y te la pasó.` : `La mandó ${esc(nombreUsuario(cj.responsable))}.`} Revisala: si está bien, elevala a Administración; si no, devolvela con un comentario.`
       : `La tiene el jefe de producción para revisar.`,
@@ -16655,7 +16868,7 @@ function rendDetalleHTML(py, cj, u, pr){
     acc.push(`<button class="btn pri" onclick="pasarJefeRend('${cj.id}')">Pasar al jefe ✓</button>`);
     acc.push(`<button class="btn" onclick="devolverRend('${cj.id}')">Devolver a ${esc(nombreUsuario(cj.responsable).split(' ')[0])} con comentario</button>`);
   }
-  if((e === 'enviada' || (e === 'aProduccion' && jefeDeArte(u))) && elevaRend(cj, u) && !mia){
+  if((e === 'enviada' || (e === 'aProduccion' && jefeDirecto(u))) && elevaRend(cj, u) && !mia){
     acc.push(`<button class="btn pri" onclick="elevarRend('${cj.id}')">Elevar a Administración ✓</button>`);
     acc.push(`<button class="btn" onclick="devolverRend('${cj.id}')">Devolver con comentario</button>`);
   }
@@ -16906,7 +17119,7 @@ function pasarJefeRend(id){
 }
 function devolverRend(id){
   const py = getPy(), cj = cajaPorId(id), e = estadoRend(cj);
-  if(!cj || rendMia(cj) || !((e === 'aProduccion' && (asistRevisa(cj) || jefeDeArte(getUsuario()))) || (e === 'enviada' && elevaRend(cj)) || (e === 'aprobada' && cierraRend()))) return;
+  if(!cj || rendMia(cj) || !((e === 'aProduccion' && (asistRevisa(cj) || jefeDirecto(getUsuario()))) || (e === 'enviada' && elevaRend(cj)) || (e === 'aprobada' && cierraRend()))) return;
   const nota = prompt(`¿Qué hay que corregir? (lo lee ${nombreUsuario(cj.responsable)})`, '');
   if(nota === null) return;
   if(!String(nota).trim()){ toast('Escribí qué hay que corregir, si no no sirve'); return; }
@@ -16917,8 +17130,9 @@ function devolverRend(id){
 }
 function elevarRend(id){
   const py = getPy(), cj = cajaPorId(id), e = estadoRend(cj), u = getUsuario();
-  /* lo de arte lo eleva sólo el jefe (desde producción o cuando el asistente se la pasó); sin jefe en el proyecto, el PE */
-  if(!cj || rendMia(cj) || !(e === 'enviada' || (e === 'aProduccion' && (!u || jefeDeArte(u)))) || !elevaRend(cj)) return;
+  /* lo de arte lo eleva sólo el jefe cuando el asistente de producción se la pasó (sin asistente
+     en el proyecto, directo desde producción); sin jefe en el proyecto, el PE */
+  if(!cj || rendMia(cj) || !(e === 'enviada' || (e === 'aProduccion' && (!u || jefeDirecto(u)))) || !elevaRend(cj)) return;
   const T = totalesRend(py, cj);
   if(!confirm(`¿Elevar a Administración la rendición de ${nombreUsuario(cj.responsable)}?\n\n${T.cant} ${plural(T.cant, 'gasto')} por ${fmt(T.gastado, cj.moneda)} · ${saldoTxt(T.saldo).toLowerCase()} ${fmt(Math.abs(T.saldo), cj.moneda)}`)) return;
   const foto = fotoRend(py, cj);
@@ -17657,7 +17871,7 @@ function areaOpts(sel0){
     AREAS.map(a=>`<option value="${a.k}" ${a.k===sel0?'selected':''}>${esc(a.l)}</option>`).join('');
 }
 function subrubroOpts(rubro, sel0){
-  const xs = FUNCIONES[rubro] || [];
+  const xs = (FUNCIONES[rubro] || []).filter(x => x === sel0 || veMargen() || !/^fee de producci/i.test(x));
   return `<option value="">${xs.length?'— elegir —':'— elegí primero el rubro —'}</option>` +
     xs.map(x=>`<option ${x===sel0?'selected':''}>${esc(x)}</option>`).join('');
 }
@@ -17895,7 +18109,7 @@ function pintarCandidatos(leidos, fallados){
   cont.innerHTML = `
     <div class="diag" style="margin-bottom:11px">
       ${leidos.map(l=>`<div class="diagf si"><i>✓</i><span>${esc(l.nombre)}
-        <span class="muted" style="display:block;font-size:11px">${l.cant} línea(s) con datos de contacto</span></span></div>`).join('')}
+        <span class="muted" style="display:block;font-size:11px">${l.cant} ${plural(l.cant, 'línea')} con datos de contacto</span></span></div>`).join('')}
       ${fallados.map(l=>`<div class="diagf no"><i>✕</i><span>${esc(l.nombre)}
         <span class="muted" style="display:block;font-size:11px">${esc(l.error)}</span></span></div>`).join('')}
     </div>
@@ -17960,7 +18174,7 @@ function importarCandidatos(){
     return pe;
   });
   cerrar();
-  toast(`${marcados.length} contacto(s) agregado(s) al catálogo`);
+  toast(`${marcados.length} ${plural(marcados.length, 'contacto agregado', 'contactos agregados')} al catálogo`);
   /* el catálogo es del equipo: sube ya, de a uno, sin trabar la pantalla */
   if(sbConectado()) (async () => {
     let ok = 0, mal = 0;
@@ -18612,7 +18826,7 @@ function confirmarAPresupuesto(){
   });
   if(setj) getPy().jornadas = jornadas;
   cerrar(); DB.ui.tab='presu';
-  toast(`${creadas} línea(s) creada(s) — cargá los valores`); R();
+  toast(`${creadas} ${plural(creadas, 'línea creada', 'líneas creadas')} — cargá los valores`); R();
 }
 function expDesgloseCSV(){
   const d=getD(), py=getPy();
@@ -18823,12 +19037,13 @@ function invitarAlProyecto(){
       </div>
       ${sel('Entra como','rol','produccion',rolesQuePuedoInvitar().map(r=>({v:r.k,l:r.l})))}
       <div class="sicabox" style="margin-top:10px">
-        ${ROLES.map(r=>`<div style="margin-bottom:4px"><b>${esc(r.l)}</b> — ${esc(r.d)}</div>`).join('')}
+        ${rolesQuePuedoInvitar().map(r=>`<div style="margin-bottom:4px"><b>${esc(r.l)}</b> — ${esc(r.d)}</div>`).join('')}
       </div>
       <div class="muted" style="font-size:11.5px;line-height:1.55;margin-top:8px">
-        El link de <b>Administración</b> o <b>Productor Ejecutivo</b> sirve para una sola
-        persona y dura 7 días. El de <b>Producción</b> o <b>Equipo</b> se puede mandar a un
-        grupo y dura 30 días.</div>
+        ${puedoInvitarRol('admin') ? `El link de <b>Administración</b> o <b>Productor Ejecutivo</b> sirve para una sola
+        persona y dura 7 días. El de los demás roles se puede mandar a un grupo y dura 30 días.`
+        : `El link se puede mandar a un grupo y dura 30 días. Vos invitás a tu equipo: a
+        <b>Administración</b> y al <b>Productor Ejecutivo</b> los invitan ellos.`}</div>
       <div id="invout" style="margin-top:14px"></div>
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button>
@@ -18837,14 +19052,20 @@ function invitarAlProyecto(){
   </div></div>`);
 }
 
-/* Se invita con un rol igual o más bajo que el propio; Equipo no invita.
-   La base controla lo mismo: esto es sólo para no ofrecer lo que va a rechazar. */
+/* Quién invita a quién: Administración y el PE, a cualquiera (también a
+   Administración); el jefe de producción, a su equipo (no a Administración
+   ni al PE); los asistentes y el equipo no invitan. La base controla lo
+   mismo (crear_invitacion): esto es sólo para no ofrecer lo que va a rechazar. */
+const INVITA_A = {admin: ORDEN_ROLES, ejecutivo: ORDEN_ROLES,
+  produccion: ORDEN_ROLES.filter(k => !['ejecutivo', 'admin'].includes(k))};
 function rolesQuePuedoInvitar(){
   const yo = getUsuario(), orden = ORDEN_ROLES;
   const mio = (_miFicha && _miFicha.rol) || (yo && yo.rol) || 'admin';
-  if(!VE_PLATA.includes(mio)) return [];
-  return ROLES.filter(r => orden.indexOf(r.k) <= orden.indexOf(mio)).sort((a, b) => orden.indexOf(a.k) - orden.indexOf(b.k));
+  if(yo && yo.pendiente) return [];
+  const ks = INVITA_A[mio] || [];
+  return ROLES.filter(r => ks.includes(r.k)).sort((a, b) => orden.indexOf(a.k) - orden.indexOf(b.k));
 }
+const puedoInvitarRol = rol => rolesQuePuedoInvitar().some(r => r.k === rol);
 
 /* El mensaje va corto a propósito: se manda por WhatsApp. */
 function textoInvitacion(py, pr, link){
@@ -19792,16 +20013,15 @@ function menuDatos(){
   const todo = manejaDatos(), presu = vePlata() && !!getV();
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:430px">
     <h3>Datos</h3><div class="mbody" style="display:flex;flex-direction:column;gap:7px">
-      <button class="btn pri" onclick="cerrar();menuNube()">☁ Conectar con Supabase</button>
+      <button class="btn pri" onclick="cerrar();menuNube()">${sbConectado() ? '☁ Mi sesión' : '☁ Entrar'}</button>
       ${todo ? `<button class="btn" onclick="expJSON()">⬇ Exportar todo (.json) — respaldo completo</button>
       <button class="btn" onclick="document.getElementById('imp').click()">⬆ Importar respaldo (.json)</button>` : ''}
       ${presu ? `<button class="btn" onclick="expCSV()">⬇ Exportar presupuesto actual (.csv)</button>` : ''}
       ${todo ? `<input type="file" id="imp" accept=".json" style="display:none" onchange="impJSON(this)">
       <div class="muted" style="font-size:11.5px;line-height:1.5;margin:8px 0">
-        Todo se guarda en este navegador (localStorage). Exportá el .json seguido:
-        es tu respaldo y también la forma de pasarle el trabajo a la otra persona
-        hasta que montemos el backend.</div>
-      <button class="btn dgr" onclick="resetDB()">Borrar todo y volver al ejemplo</button>`
+        ${sbConectado() ? 'Con la sesión iniciada todo se guarda solo en la base del equipo. El .json es un respaldo aparte, con todos los precios.'
+          : 'Sin sesión, todo queda en este navegador: es una copia de prueba. Para trabajar con el equipo, entrá con ☁.'}</div>
+      ${sbConectado() ? '' : `<button class="btn dgr" onclick="resetDB()">Borrar todo y volver al ejemplo</button>`}`
       : `<div class="muted" style="font-size:11.5px;line-height:1.5;margin:8px 0">
         Tus datos se guardan solos en la base del equipo. El respaldo completo lo baja Administración.</div>`}
     </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div>

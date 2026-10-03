@@ -10,7 +10,7 @@
 let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
 
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const PR = getPr();
 const [uArte, uProd, uEjec, uAdmin] = PR.usuarios;
 
@@ -83,15 +83,19 @@ ok('explica por qué no están', /entran a todo/i.test(html));
 ok('tiene casillas para marcar', /type="checkbox"/.test(html));
 ok('dice cuántos van invitados', /de \d+ invitados/.test(html));
 
-console.log('\n--- 8. SOLO PUEDE INVITAR QUIEN LLEVA LA CASA ---');
+console.log('\n--- 8. INVITAN ADMINISTRACIÓN, EL PE Y EL JEFE (A SU EQUIPO) ---');
 DB.ui.usuarioId = uArte.id;
 html = bloqueInvitaciones(PR);
 ok('al de arte le aparecen deshabilitadas', /disabled/.test(html));
-ok('y se lo dice', /Sólo Administración/.test(html));
+ok('y se lo dice: invitan Administración, el PE y el jefe (a su equipo)', /Invitan Administración/.test(html) && /jefe de producción \(a su equipo\)/.test(html));
 DB.ui.usuarioId = uProd.id;
-ok('a producción también', /disabled/.test(bloqueInvitaciones(PR)));
+ok('el jefe de producción invita a su equipo (como dice el botón ✉ Invitar)', !/disabled/.test(bloqueInvitaciones(PR)));
+ok('pero no a Administración ni al PE', rolesQuePuedoInvitar().map(r => r.k).join() === 'equipo,arte,asistprod,asistdir,produccion' && !puedoInvitarRol('admin') && !puedoInvitarRol('ejecutivo'));
 DB.ui.usuarioId = uEjec.id;
 ok('al ejecutivo no', !/disabled/.test(bloqueInvitaciones(PR)));
+ok('el PE invita también a Administración', puedoInvitarRol('admin') && rolesQuePuedoInvitar().length === ROLES.length);
+DB.ui.usuarioId = uArte.id;
+ok('los asistentes y el equipo no invitan', rolesQuePuedoInvitar().length === 0);
 
 console.log('\n--- 9. SI ME SACO DEL PROYECTO QUE ESTOY MIRANDO ---');
 DB.ui.usuarioId = uAdmin.id;

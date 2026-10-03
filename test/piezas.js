@@ -15,7 +15,7 @@ let fallos = 0;
 const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? '  -> ' + x : '')); if (!c) fallos++; };
 const casi = (a, b, tol = 1) => Math.abs(a - b) < tol;
 
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const pr = getPr(), py = getPy(), v = getV();
 py.tipo = 'publicidad'; py.piezas = []; DB.ui.pieza = null;
 /* presupuesto limpio, para contar sin ruido */

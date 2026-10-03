@@ -63,7 +63,7 @@ ok('el texto de la escala se lee', escalaTexto(cfgEsc) === '+50% / +100% / +200%
   escalaTexto(cfgEsc));
 
 console.log('\n--- 5. EN LA LIQUIDACION DE UNA JORNADA ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const py = getPy(), v = getV();
 const cfg = py.configRodaje = nuevaConfigRodaje({horasJornada: 8, tramosHE: TRAMOS_HE_ESCALADO.map(t => ({...t}))});
 const j = {numero: 1, parte: {fichadas: {'l:x': {entrada: '08:00', salida: '21:00'}}, comidaIn: '', comidaOut: ''}};
@@ -82,7 +82,7 @@ ok('existe y arranca en 8 h', nuevaConfigRodaje().horasScouting === 8);
 ok('se puede poner distinta', nuevaConfigRodaje({horasScouting: 6}).horasScouting === 6);
 
 console.log('\n--- 7. ESTIMADO VS ACTUAL ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const py7 = getPy(), v7 = getV();
 const rb = c => v7.rubros.find(r => r.codigo === c);
 const linea = rb('04').lineas[0];
@@ -119,7 +119,7 @@ py7.comprobantes = []; render();
 ok('sin gastos muestra un guión', /class="vacio"/.test(app.innerHTML));
 
 console.log('\n--- 8. LA MIGRACION ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const cr = getPy().configRodaje; delete cr.tramosHE; cr.recargoHE = 75;
 migrar();
 ok('a los proyectos viejos les arma un tramo con SU recargo',

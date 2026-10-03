@@ -103,8 +103,10 @@ create policy parte_ver     on proyecto_parte for select using (puedo_parte(proy
 -- (sale de una línea del presupuesto), más los tickets que rinde. Pasa por:
 --   borrador (la arma quien rinde)
 --   -> enviada (al jefe de producción)  ·  arte y el equipo: aProduccion
---      (a producción: la revisa el asistente de producción, que se la pasa
---      al jefe -> enviada; o el jefe directamente)
+--      (a producción: la chequea primero el asistente de producción, que se
+--      la pasa al jefe -> enviada. El jefe la ve, pero no la toca mientras
+--      está en producción; sólo si el proyecto no tiene asistente de
+--      producción la revisa él directo)
 --   -> observada (vuelve con comentario)
 --   -> aprobada (la eleva el jefe)  ->  cerrada (Administración o el PE,
 --      que anotan lo que devolvió o lo que se le reintegra).
@@ -148,6 +150,16 @@ language sql stable security definer set search_path = public as $$
                       where pp.proyecto_id = p_proyecto and u.rol::text = 'produccion' and u.activo and not u.pendiente)
 $$;
 revoke all on function proyecto_sin_jefe(uuid) from public, anon, authenticated;
+
+-- ¿el proyecto NO tiene asistente de producción? (invitado, activo y aprobado).
+-- Entonces lo de arte "en producción" lo revisa el jefe directo; si hay
+-- asistente, el jefe actúa recién cuando el asistente se lo pasó.
+create or replace function proyecto_sin_asist(p_proyecto uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select not exists (select 1 from proyecto_persona pp join usuario u on u.id = pp.usuario_id
+                      where pp.proyecto_id = p_proyecto and u.rol::text = 'asistprod' and u.activo and not u.pendiente)
+$$;
+revoke all on function proyecto_sin_asist(uuid) from public, anon, authenticated;
 
 -- Lo que le toca ver a cada uno de los gastos
 create or replace function gastos_visibles(p jsonb, p_yo text, p_rol text, p_arte text[])
@@ -223,12 +235,15 @@ end $$;
 -- Las versiones de antes (4 y 5 parámetros) quedan reemplazadas por la de abajo
 drop function if exists gastos_permitidos(jsonb, jsonb, text, text);
 drop function if exists gastos_permitidos(jsonb, jsonb, text, text, text[]);
+drop function if exists gastos_permitidos(jsonb, jsonb, text, text, text[], boolean);
 
 -- null si el cambio está permitido; si no, el motivo (en castellano).
 -- A un asistente se le pasa lo que ve de antes y lo que manda. p_sin_jefe:
 -- el proyecto no tiene jefe de producción (lo de arte lo eleva el PE).
+-- p_sin_asist: el proyecto no tiene asistente de producción (lo de arte "en
+-- producción" lo toca el jefe directo; si hay asistente, lo chequea él antes).
 create or replace function gastos_permitidos(p_viejo jsonb, p_nuevo jsonb, p_yo text, p_rol text, p_arte text[],
-                                             p_sin_jefe boolean default false)
+                                             p_sin_jefe boolean default false, p_sin_asist boolean default false)
 returns text
 language plpgsql immutable set search_path = public as $$
 declare
@@ -254,6 +269,13 @@ begin
          and (not (p_rol = 'produccion' or (p_rol = 'ejecutivo' and coalesce(p_sin_jefe, false))) or e_v not in ('aProduccion', 'enviada')) then
         return 'Lo de arte lo eleva el jefe de producción, después de pasar por producción.';
       end if;
+      -- "en producción" la chequea primero el asistente de producción: nadie más
+      -- la mueve (salvo quien la mandó, que la puede retirar) hasta que él se la
+      -- pase al jefe. Sin asistente en el proyecto, el jefe la toma directo.
+      if e_n <> e_v and e_v = 'aProduccion' and p_rol <> 'asistprod'
+         and c->>'responsable' is distinct from p_yo and not coalesce(p_sin_asist, false) then
+        return 'Lo de arte lo chequea primero el asistente de producción: el jefe lo revisa cuando se lo pasa.';
+      end if;
       if e_n <> e_v and e_n = 'cerrada' and e_v <> 'aprobada' then
         return 'Lo de arte se cierra cuando el jefe de producción ya lo elevó.';
       end if;
@@ -270,7 +292,20 @@ begin
           end if;
         elsif not (p_rol = 'produccion' or (p_rol = 'ejecutivo' and coalesce(p_sin_jefe, false))) then
           return 'Los gastos de arte los revisa primero producción (el asistente y el jefe).';
+        elsif v->>'vistoProd' is null and not coalesce(p_sin_asist, false) then
+          return 'Los gastos de arte los chequea primero el asistente de producción: el jefe los revisa cuando se los pasa.';
         end if;
+      end if;
+    end if;
+  end loop;
+  -- devolver (rechazar) un gasto suelto de arte que todavía no pasó por el
+  -- asistente de producción: sólo él (o el jefe, si no hay asistente)
+  for c in select * from jsonb_array_elements(np) loop
+    if c->>'cargadoPor' = any(p_arte) and c->>'cajaId' is null and c->>'estado' = 'rechazado'
+       and c->>'cargadoPor' is distinct from p_yo and p_rol <> 'asistprod' and not coalesce(p_sin_asist, false) then
+      select x into v from jsonb_array_elements(vp) x where x->>'id' = c->>'id' limit 1;
+      if coalesce(v->>'estado', 'cargado') = 'cargado' and v->>'vistoProd' is null then
+        return 'Los gastos de arte los chequea primero el asistente de producción: el jefe los revisa cuando se los pasa.';
       end if;
     end if;
   end loop;
@@ -418,7 +453,7 @@ returns json
 language plpgsql security definer set search_path = public as $$
 declare
   v_prod uuid; v_yo uuid; v_nom text; v_rol text; v_hay boolean; v_err text;
-  v_arte text[]; v_filtra boolean; v_sin_jefe boolean := false;
+  v_arte text[]; v_filtra boolean; v_sin_jefe boolean := false; v_sin_asist boolean := false;
   r proyecto_parte%rowtype;
 begin
   if auth.uid() is null then raise exception 'Hay que iniciar sesión.'; end if;
@@ -434,7 +469,9 @@ begin
    where auth_uid = auth.uid() and productora_id = v_prod limit 1;
   v_rol := mi_rol_en_proyecto(p_proyecto)::text;
   v_filtra := p_parte = 'gastos' and v_rol not in ('admin', 'ejecutivo', 'produccion');
-  if p_parte = 'gastos' then v_arte := gastos_arte(v_prod); v_sin_jefe := proyecto_sin_jefe(p_proyecto); end if;
+  if p_parte = 'gastos' then
+    v_arte := gastos_arte(v_prod); v_sin_jefe := proyecto_sin_jefe(p_proyecto); v_sin_asist := proyecto_sin_asist(p_proyecto);
+  end if;
   select * into r from proyecto_parte where proyecto_id = p_proyecto and parte = p_parte for update;
   v_hay := found;
   if v_hay and p_base is distinct from r.version then
@@ -449,12 +486,12 @@ begin
   if p_parte = 'gastos' then
     if v_filtra then
       v_err := gastos_permitidos(case when v_hay then gastos_visibles(r.datos, v_yo::text, v_rol, v_arte) else null end,
-                                 p_datos, v_yo::text, v_rol, v_arte, v_sin_jefe);
+                                 p_datos, v_yo::text, v_rol, v_arte, v_sin_jefe, v_sin_asist);
       if v_err is not null then raise exception '%', v_err; end if;
       -- lo suyo, metido en lo de todos (las órdenes de compra y lo ajeno quedan como estaban)
       p_datos := gastos_juntar(case when v_hay then r.datos else '{}'::jsonb end, p_datos, v_yo::text, v_rol, v_arte);
     else
-      v_err := gastos_permitidos(case when v_hay then r.datos else null end, p_datos, v_yo::text, v_rol, v_arte, v_sin_jefe);
+      v_err := gastos_permitidos(case when v_hay then r.datos else null end, p_datos, v_yo::text, v_rol, v_arte, v_sin_jefe, v_sin_asist);
       if v_err is not null then raise exception '%', v_err; end if;
     end if;
   end if;
@@ -513,7 +550,9 @@ create trigger tr_fee_a_privado after insert on productora
   for each row execute function fee_a_privado();
 
 -- ---------------------------------------------------------------------------
--- 2. INVITAR: los asistentes y el equipo no invitan
+-- 2. INVITAR: Administración y el PE invitan a cualquiera (también a
+--    Administración); el jefe de producción invita a su equipo (no a
+--    Administración ni al PE); los asistentes y el equipo no invitan.
 -- ---------------------------------------------------------------------------
 create or replace function crear_invitacion(p_proyecto uuid, p_rol rol_usuario default 'produccion')
 returns text
@@ -535,8 +574,8 @@ begin
   if v_mi::text not in ('produccion','ejecutivo','admin') then
     raise exception 'Con tu rol no se puede invitar: pedíselo al jefe de producción o a Administración.';
   end if;
-  if p_rol > v_mi then
-    raise exception 'No podés invitar con un rol más alto que el tuyo.';
+  if v_mi::text = 'produccion' and p_rol::text in ('ejecutivo','admin') then
+    raise exception 'El jefe de producción invita a su equipo: a Administración y al Productor Ejecutivo los invitan Administración o el PE.';
   end if;
   select id into v_yo from usuario where auth_uid = v_uid and productora_id = v_prod limit 1;
   v_tok := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');

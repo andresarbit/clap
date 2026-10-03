@@ -51,7 +51,7 @@ ok('los alquileres traen la referencia de precio en la nota',
   /USD/.test((med.find(x => x.c === 'Paquete cámara + ópticas') || {}).nota || ''));
 
 console.log('\n--- 2. APLICAR UNA PLANTILLA A UN PROYECTO NUEVO ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const pr = getPr();
 const py = nuevoProyecto({nombre: 'Prueba plantilla', tipo: 'publicidad'});
 py.desglose.jornadas = [nuevaJornada({numero: 1, fecha: '2026-10-08'})];
@@ -196,7 +196,7 @@ ok('un presupuesto vacío invita a elegir plantilla',
   tarjetaVacia(nuevoProyecto()).includes('Elegir plantilla'));
 
 console.log('\n--- 8. MIGRACIÓN ---');
-const viejo = dbVacia(); DB = viejo; sembrar();
+const viejo = dbVacia(); DB = viejo; sembrarChico();
 getV().capas = {fee: 15, contingencia: 5, iibb: 0, iva: 21}; delete getV().condiciones;
 const tot = calcular(getV()).total;
 migrar();
@@ -204,7 +204,7 @@ ok('versión vieja: cargas en 0 y condiciones vacías', getV().capas.cargas === 
 ok('y el total no cambia', calcular(getV()).total === tot, fmt(tot));
 /* el ejemplo trae la caja chica de producción (03, $ 300.000): con contingencia 5 % y fee 15 %
    (300.000 × 1,20 = 360.000) más IVA 21 % suma $ 435.600 a los $ 12.291.906 de antes */
-ok('el ejemplo sigue dando $12.727.506', Math.round(calcular(getV()).total) === 12291906 + 435600, fmt(calcular(getV()).total));
+ok('el ejemplo chico de las pruebas sigue dando $12.727.506', Math.round(calcular(getV()).total) === 12291906 + 435600, fmt(calcular(getV()).total));
 
 console.log('\n--- 9. CATÁLOGO: EXCEL Y CATÁLOGO PREPARADO ---');
 (async () => {
@@ -226,7 +226,7 @@ console.log('\n--- 9. CATÁLOGO: EXCEL Y CATÁLOGO PREPARADO ---');
   catch(e){ err = e.message; }
   ok('un .xls viejo avisa cómo convertirlo', /guardalo como \.xlsx/.test(err));
 
-  DB = dbVacia(); sembrar();
+  DB = dbVacia(); sembrarChico();
   const prep = catalogoPreparado({clap: 'catalogo', personas: [
     {nombre: 'Zoe Inventada', funcion: 'Gaffer', rubro: '05', tipo: 'persona', tel: '11 5000-0000',
      email: 'ZOE@EJEMPLO.COM', notas: 'Proyecto A (2026) · Proyecto B (2021)'},

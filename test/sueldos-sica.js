@@ -83,7 +83,7 @@ ok('la elección a mano manda', cargoSICA('Cualquier cosa', oct, {d: 'Sonido', c
 ok('"no lleva convenio" también', cargoSICA('Gaffer', oct, 'ninguno') === null);
 
 console.log('\n--- 4. SE COMPLETA SOLO AL AGREGAR ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const py = getPy(), v = getV();
 py.configRodaje = nuevaConfigRodaje({horasJornada: 12});
 py.desglose.jornadas = [nuevaJornada({numero: 1, fecha: '2026-10-08'})];   /* rodaje en octubre */
@@ -206,7 +206,7 @@ ok('con link al PDF oficial', /sicacine\.org\.ar\/docs\/Escala%20Salarial%20Publ
 ok('con jornada del proyecto cuando no es 8 ni 12', /Tu jornada \(10 h\)/.test(h));
 
 console.log('\n--- 12. NO LE CAMBIA NADA A LO QUE YA ESTABA ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const totalAntes = calcular(getV()).total;
 render(); DB.ui.tab = 'presu'; render();
 ok('el presupuesto del ejemplo da lo mismo', calcular(getV()).total === totalAntes, fmt(totalAntes));

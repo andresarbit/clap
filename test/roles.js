@@ -7,7 +7,7 @@ const ok = (t, c, x = '') => { console.log((c ? '  OK  ' : 'FALLA ') + t + (x ? 
 global.confirm = () => true;
 global.prompt = () => 'listo';
 
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const pr = getPr(), py = getPy();
 const quien = rol => pr.usuarios.find(u => u.rol === rol);
 const como = rol => { DB.ui.usuarioId = quien(rol).id; };
@@ -181,7 +181,7 @@ const r = importarRespaldo(otro);
 ok('importar no borra todo: reemplaza el proyecto del archivo', r && r.pisa === 1 && getPr().proyectos.length === 1 && getPy().nombre === 'Del archivo');
 
 console.log('\n--- 10. EL MARGEN: SÓLO ADMINISTRACIÓN Y EL PE ---');
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const pr3 = getPr(), py3 = getPy(), q3 = rol => pr3.usuarios.find(u => u.rol === rol);
 DB.ui.usuarioId = q3('ejecutivo').id;
 const R3 = calcular(getV()), tot3 = fmt(R3.total, 'ARS'), fee3 = fmt(R3.fee, 'ARS');
@@ -199,7 +199,7 @@ ok('ni le llega: el Real y el Cliente viajan en la parte que no lee', PARTES_PY.
 ok('el presupuesto viaja sin el fee; el fee, en la parte del PE', !canon(PARTES_PY.presupuesto.lee(py3)).includes('"fee"') && canon(PARTES_PY.presupuesto_real.lee(py3)).includes('"fees"'));
 
 console.log('\n--- 11. LOS FONDOS Y LAS RENDICIONES, ROL POR ROL ---');
-DB = dbVacia(); sembrar(); DB.ui.vista = 'interna';
+DB = dbVacia(); sembrarChico(); DB.ui.vista = 'interna';
 const pr4 = getPr(), py4 = getPy(), q4 = rol => pr4.usuarios.find(u => u.rol === rol);
 const r034 = versionRodaje(py4).rubros.find(r => r.codigo === '03');
 /* el ejemplo trae la caja chica de producción en el 03 */
@@ -221,22 +221,29 @@ ok('quien espera aprobación no recibe fondos', A4.arte.length === 0); q4('arte'
 const cjA = nuevaCaja({nombre: 'Compras', responsable: q4('arte').id}); cjA.rendicion = {estado: 'aProduccion', pasos: [], charla: []}; py4.cajas.push(cjA);
 const cjP = py4.cajas.find(c => c.responsable === q4('asistprod').id);
 const espera = rol => esperaDe(cjA, q4(rol));
-ok('la de arte "en producción" la esperan el asistente de producción y el jefe; nadie más', espera('asistprod') && espera('produccion') && !espera('admin') && !espera('ejecutivo') && !espera('equipo') && !espera('arte'));
+ok('la de arte "en producción" la espera el asistente de producción: el jefe la ve, pero actúa cuando se la pasa', espera('asistprod') && !espera('produccion') && veRend(cjA, q4('produccion')) && !espera('admin') && !espera('ejecutivo') && !espera('equipo') && !espera('arte'));
 ok('la del asistente de producción va directo al jefe (y la puede elevar Administración o el PE, como siempre)', destinoRend(cjP) === 'enviada' && destinoRend(cjA) === 'aProduccion' && elevaRend(cjP, q4('admin')));
 ok('lo de arte lo eleva sólo el jefe', elevaRend(cjA, q4('produccion')) && !elevaRend(cjA, q4('admin')) && !elevaRend(cjA, q4('ejecutivo')) && !elevaRend(cjA, q4('asistprod')));
 ok('la del asistente de producción la elevan el jefe, Administración y el PE; los asistentes no', hayJefeProd(py4) && ['produccion', 'admin', 'ejecutivo'].every(r => elevaRend(cjP, q4(r))) && !elevaRend(cjP, q4('asistprod')) && !elevaRend(cjP, q4('arte')));
 /* si el proyecto no tiene jefe de producción (casi nunca), el PE hace de jefe con lo de arte */
 const jefe4 = q4('produccion');
 py4.invitados = py4.invitados.filter(id => id !== jefe4.id);
-ok('sin jefe en el proyecto, lo de arte lo eleva el PE (y le llega para revisar)', !hayJefeProd(py4) && elevaRend(cjA, q4('ejecutivo')) && espera('ejecutivo'));
+ok('sin jefe en el proyecto, lo de arte lo eleva el PE (cuando el asistente de producción se la pasa)', !hayJefeProd(py4) && elevaRend(cjA, q4('ejecutivo')) && !espera('ejecutivo') && espera('asistprod'));
 ok('Administración y el asistente de producción siguen sin elevarla', !elevaRend(cjA, q4('admin')) && !espera('admin') && !elevaRend(cjA, q4('asistprod')));
 ok('la del asistente de producción, como siempre: Administración y el PE', elevaRend(cjP, q4('admin')) && elevaRend(cjP, q4('ejecutivo')));
 const sueltoA = nuevoComprobante({rubro: '06', proveedor: 'Telas de prueba', importe: 9000, tipo: 'facBC', cargadoPor: q4('arte').id, estado: 'cargado'});
-ok('un gasto suelto de arte, también: lo revisa el PE; Administración no', accionesDe(sueltoA, q4('ejecutivo')).length > 0 && accionesDe(sueltoA, q4('admin')).length === 0);
-const cjA2 = nuevaCaja({nombre: 'Compras 2', responsable: q4('arte').id}); cjA2.rendicion = {estado: 'aProduccion', pasos: [], charla: []}; py4.cajas.push(cjA2);
+ok('un gasto suelto de arte, también: el PE lo revisa cuando el asistente se lo pasó; Administración no', accionesDe(sueltoA, q4('ejecutivo')).length === 0
+  && (sueltoA.vistoProd = {quien: 'Diego Sosa'}, accionesDe(sueltoA, q4('ejecutivo')).length > 0) && accionesDe(sueltoA, q4('admin')).length === 0);
+delete sueltoA.vistoProd;
+const cjA2 = nuevaCaja({nombre: 'Compras 2', responsable: q4('arte').id}); cjA2.rendicion = {estado: 'enviada', pasos: [], charla: []}; py4.cajas.push(cjA2);
 DB.ui.usuarioId = q4('ejecutivo').id; abrirRend(cjA2.id);
-ok('el PE la abre con el botón de elevar, y la eleva', app.innerHTML.includes(`elevarRend('${cjA2.id}')`) && (elevarRend(cjA2.id), estadoRend(cjA2) === 'aprobada'));
+ok('el PE la abre (ya pasada por el asistente) con el botón de elevar, y la eleva', app.innerHTML.includes(`elevarRend('${cjA2.id}')`) && (elevarRend(cjA2.id), estadoRend(cjA2) === 'aprobada'));
 DB.ui.rendId = null;
+/* sin jefe y sin asistente de producción: el PE la toma directo desde producción */
+const asis4 = q4('asistprod');
+py4.invitados = py4.invitados.filter(id => id !== asis4.id);
+ok('sin jefe ni asistente de producción, el PE la revisa directo (y el gasto suelto)', !hayAsistProd(py4) && espera('ejecutivo') && accionesDe(sueltoA, q4('ejecutivo')).length > 0);
+py4.invitados.push(asis4.id);
 py4.invitados.push(jefe4.id);
 ok('con jefe otra vez, el PE ya no eleva lo de arte', hayJefeProd(py4) && !elevaRend(cjA, q4('ejecutivo')) && !espera('ejecutivo') && accionesDe(sueltoA, q4('ejecutivo')).length === 0);
 jefe4.pendiente = true; ok('y si el jefe está pendiente de aprobación, hace de jefe el PE', !hayJefeProd(py4) && elevaRend(cjA, q4('ejecutivo'))); jefe4.pendiente = false;

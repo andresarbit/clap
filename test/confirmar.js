@@ -9,7 +9,7 @@ global.setTimeout = fn => { fn(); return 0; };
 /* que termine el arranque de la app antes de conectarse de mentira */
 for (let i = 0; i < 5; i++) await new Promise(r => setImmediate(r));
 sbSesionViva = async () => true; revisarAlta = async () => {};
-DB = dbVacia(); sembrar();
+DB = dbVacia(); sembrarChico();
 const pr = getPr(), py = getPy();
 const jefe = pr.usuarios.find(u => u.rol === 'produccion');
 py.desglose ||= nuevoDesglose(); if(!py.desglose.jornadas.length) nuevaJornadaPlan(py);
@@ -52,9 +52,9 @@ ok('avisó que no puede, con su mensaje', estadoConfirmacion(j, gente[1].clave).
 upCitacion(g0.clave, 'citacion', '06:15');
 ok('si después cambia la hora, queda que confirmó la vieja', estadoConfirmacion(j, g0.clave).k === 'vieja');
 DB.ui.usuarioId = jefe.id; DB.ui.tab = 'rodaje'; DB.ui.subRodaje = 'citaciones'; render();
-ok('la pantalla lo muestra', /confirmaron/.test(app.innerHTML) && /no pueden/.test(app.innerHTML) && /Tengo otro rodaje/.test(app.innerHTML) && /refrescarConfirmaciones\(\)/.test(app.innerHTML));
+ok('la pantalla lo muestra', /confirmaron/.test(app.innerHTML) && /1 no puede</.test(app.innerHTML) && !/1 no pueden/.test(app.innerHTML) && /Tengo otro rodaje/.test(app.innerHTML) && /refrescarConfirmaciones\(\)/.test(app.innerHTML));
 DB.ui.tab = 'resumen'; render();
-ok('el Resumen avisa que alguien no puede ir', /avisaron que no pueden ir a la jornada/.test(app.innerHTML));
+ok('el Resumen avisa que alguien no puede ir (en singular: es uno)', /avisó que no puede ir a la jornada/.test(app.innerHTML));
 
 console.log('\n--- 3. LA PÁGINA DEL QUE ABRE EL LINK ---');
 _cit = {token: 'b'.repeat(40), estado: 'cargando'};
