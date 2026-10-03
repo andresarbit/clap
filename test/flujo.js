@@ -505,6 +505,8 @@ ok('la caja lleva el saldo', sc.saldo === 150000 - 60000, fmt(sc.saldo));
 ok('marca lo que no tiene comprobante', sc.sinComprobante === 22000, fmt(sc.sinComprobante));
 DB.ui.usuarioId = uAdm.id;
 global.document.querySelectorAll = sel => String(sel).includes('[name]') ? [{ name: 'notas', value: 'Devolvió en efectivo' }] : [];
+/* es del equipo: llega a Administración elevada por el jefe (pasó por producción) */
+caja.rendicion = { estado: 'aprobada', pasos: [], charla: [] };
 confirmarRendicion(caja.id);
 ok('rendida, con lo que devuelve', caja.estado === 'rendida' && caja.devuelto === 90000, fmt(caja.devuelto));
 

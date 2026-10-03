@@ -152,6 +152,34 @@ nuevo (se puede correr las veces que haga falta, no borra nada):
   el **!** rojo en la nube (la base vieja no conoce esa parte); lo demás anda.
   Probado contra un Postgres armado como esta base (PGlite): 26 pruebas de
   quién puede guardar qué.
+- **(03/10) Cada asistente RECIBE sólo sus gastos, y lo de arte pasa por
+  producción** (sección 1a: `leer_gastos`, `gastos_visibles`,
+  `gastos_juntar`, `gastos_permitidos` nueva, y `guardar_parte` y
+  `puedo_parte` cambiadas):
+  - Hasta ahora la base le mandaba a cada asistente (y al equipo) los gastos
+    de todos dentro de la parte "gastos"; la pantalla los escondía, pero los
+    datos llegaban a su compu. Ahora la parte "gastos" de la tabla la leen
+    sólo Administración, el PE y el jefe. Los demás la reciben con
+    `leer_gastos`, que les da sólo lo suyo (sus comprobantes, sus
+    rendiciones, sus cheques); el asistente de producción, además, lo de arte
+    y el equipo, que revisa. Cuando un asistente guarda, manda sólo lo suyo y
+    la base lo junta con lo de los demás (que nunca vio). No hay que mover
+    datos: quedan donde estaban. La primera vez que un asistente abre CLAP
+    después de correr el SQL, se le borran de su compu los gastos ajenos que
+    le habían llegado antes.
+  - Nadie escribe la tabla de partes directo: sólo con `guardar_parte` (antes
+    se podía escribir la tabla salteando los controles).
+  - Lo de arte (y el equipo) va "a producción": lo revisa el asistente de
+    producción, que lo comenta, lo devuelve o se lo pasa al jefe. Sólo el jefe
+    lo eleva; la base no deja que Administración o el PE lo aprueben salteando
+    producción, ni que lo cierren antes de que el jefe lo eleve.
+  - Hasta que lo corras, CLAP sigue andando como antes (si la base no tiene
+    `leer_gastos`, lee los gastos como siempre), pero los gastos ajenos
+    siguen llegando a la compu de los asistentes. Y un CLAP viejo (abierto
+    desde antes, sin recargar) en la compu de un asistente va a mostrar el
+    **!** rojo al guardar gastos: alcanza con recargar la página.
+  - Probado contra un Postgres armado como esta base (PGlite) con la app de
+    verdad arriba: `node test/sql-gastos.mjs` (51 pruebas).
 
 Hace dos cosas:
 

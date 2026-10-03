@@ -198,4 +198,34 @@ ok('ni le llega: el Real y el Cliente viajan en la parte que no lee', PARTES_PY.
 
 ok('el presupuesto viaja sin el fee; el fee, en la parte del PE', !canon(PARTES_PY.presupuesto.lee(py3)).includes('"fee"') && canon(PARTES_PY.presupuesto_real.lee(py3)).includes('"fees"'));
 
+console.log('\n--- 11. LOS FONDOS Y LAS RENDICIONES, ROL POR ROL ---');
+DB = dbVacia(); sembrar(); DB.ui.vista = 'interna';
+const pr4 = getPr(), py4 = getPy(), q4 = rol => pr4.usuarios.find(u => u.rol === rol);
+const r034 = versionRodaje(py4).rubros.find(r => r.codigo === '03');
+const lc4 = nuevaLinea({concepto: 'Caja chica de producción', valorUnit: 300000, unidad: 'global'}); r034.lineas.push(lc4);
+['admin', 'ejecutivo', 'produccion'].forEach(rol => { DB.ui.usuarioId = q4(rol).id; setTab('presu');
+  ok(`${ROL(rol).l}: da fondos desde la línea del presupuesto`, app.innerHTML.includes(`darFondo('${lc4.id}')`)); });
+['asistprod', 'arte', 'equipo', 'asistdir'].forEach(rol => { DB.ui.usuarioId = q4(rol).id; modal = null; darFondo(lc4.id);
+  ok(`${ROL(rol).l}: no da fondos (ni ve la línea)`, modal === null && !daFondos() && !puedeSolapa('presu')); });
+/* el dropdown sale del equipo del proyecto */
+py4.invitados = py4.invitados.filter(id => id !== q4('arte').id);
+let A4 = asistentesParaFondo(py4);
+ok('a quién: sólo los asistentes de producción y de arte que están en el proyecto', A4.prod.map(u => u.nombre).join() === 'Diego Sosa' && A4.arte.length === 0);
+py4.invitados.push(q4('arte').id); A4 = asistentesParaFondo(py4);
+ok('si invitan a Carla, aparece abajo, con los de arte', A4.arte.map(u => u.nombre).join() === 'Carla Méndez');
+q4('arte').pendiente = true; A4 = asistentesParaFondo(py4);
+ok('quien espera aprobación no recibe fondos', A4.arte.length === 0); q4('arte').pendiente = false;
+/* quién revisa qué */
+const cjA = nuevaCaja({nombre: 'Compras', responsable: q4('arte').id}); cjA.rendicion = {estado: 'aProduccion', pasos: [], charla: []}; py4.cajas.push(cjA);
+const cjP = py4.cajas.find(c => c.responsable === q4('asistprod').id);
+const espera = rol => esperaDe(cjA, q4(rol));
+ok('la de arte "en producción" la esperan el asistente de producción y el jefe; nadie más', espera('asistprod') && espera('produccion') && !espera('admin') && !espera('ejecutivo') && !espera('equipo') && !espera('arte'));
+ok('la del asistente de producción va directo al jefe (y la puede elevar Administración o el PE, como siempre)', destinoRend(cjP) === 'enviada' && destinoRend(cjA) === 'aProduccion' && elevaRend(cjP, q4('admin')));
+ok('lo de arte lo eleva sólo el jefe', elevaRend(cjA, q4('produccion')) && !elevaRend(cjA, q4('admin')) && !elevaRend(cjA, q4('ejecutivo')) && !elevaRend(cjA, q4('asistprod')));
+ok('el asistente de producción ve la de arte, pero no la de otro asistente de producción ni la de dirección', veRend(cjA, q4('asistprod')) && !veRend(cjP, q4('arte')) && !veRend(cjA, q4('asistdir')));
+DB.ui.usuarioId = q4('asistprod').id; setTab('resumen');
+ok('en el panel del asistente de producción: "Rendiciones de arte para revisar", y sus tareas siguen', /Rendiciones de arte para revisar/.test(app.innerHTML) && app.innerHTML.includes(`abrirRend('${cjA.id}')`) && /Tus tareas/.test(app.innerHTML));
+DB.ui.usuarioId = q4('arte').id; setTab('resumen');
+ok('arte no tiene ese bloque', !/Rendiciones de arte para revisar/.test(app.innerHTML));
+
 console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');

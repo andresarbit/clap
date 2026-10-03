@@ -111,6 +111,10 @@ ok('un segundo adelanto suma', saldoCaja(py, cj).entregado === 250000);
 /* rendición con saldo a favor de la productora */
 DB.ui.usuarioId = admi.id;
 global.document.querySelectorAll = sel => String(sel).includes('[name]') ? [{ name: 'notas', value: 'Devolvió en efectivo' }] : [];
+/* es de arte: Administración no la cierra si no pasó por producción y el jefe no la elevó */
+confirmarRendicion(cj.id);
+ok('lo de arte no se cierra sin pasar por producción', cj.estado !== 'rendida' && estadoRend(cj) === 'borrador');
+cj.rendicion = { estado: 'aprobada', pasos: [{ id: 'p1', de: 'enviada', a: 'aprobada', quien: 'el jefe', rol: 'produccion' }], charla: [] };
 confirmarRendicion(cj.id);
 ok('queda rendida', cj.estado === 'rendida' && cj.rendidaEl === hoy());
 ok('calcula lo que tiene que devolver', cj.devuelto === 175000 && cj.reintegro === 0, fmt(cj.devuelto));

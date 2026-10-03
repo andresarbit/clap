@@ -33,6 +33,11 @@
 --   Administración, el PE y el jefe de producción: llevan montos del
 --   presupuesto. En los gastos, cada asistente cambia sólo lo suyo: sus
 --   comprobantes, su rendición mientras la arma, sus cheques (ver 1a).
+--   Y RECIBE sólo lo suyo: los gastos de los demás no llegan a su compu
+--   (leer_gastos). El asistente de producción recibe además lo de arte y
+--   el equipo, que revisa antes que el jefe. Lo de arte llega a
+--   Administración sólo elevado por el jefe.
+--   Las partes se escriben sólo con guardar_parte (no directo en la tabla).
 -- ===========================================================================
 
 -- Los roles nuevos van entre Equipo y Producción: para invitar, nadie puede
@@ -57,11 +62,18 @@ create table if not exists proyecto_parte (
   primary key (proyecto_id, parte)
 );
 alter table proyecto_parte enable row level security;
-grant select, insert, update on proyecto_parte to authenticated;
+-- Se lee directo; se escribe SÓLO con guardar_parte (más abajo), que es la
+-- que hace cumplir quién toca qué. Antes también se podía escribir la tabla
+-- directo, y eso salteaba los controles: ya no.
+grant select on proyecto_parte to authenticated;
+revoke insert, update, delete on proyecto_parte from authenticated, anon;
 
 -- ¿Puedo leer (o escribir) esta parte de este proyecto? Compara el rol como
 -- texto a propósito: así sirve en la misma corrida en que se agregan los
 -- roles nuevos.
+-- Los gastos: los asistentes y el equipo los ESCRIBEN (con guardar_parte),
+-- pero no los leen enteros: cada uno recibe sólo lo suyo con leer_gastos
+-- (sección 1a). Así a su compu no llegan los comprobantes de los demás.
 create or replace function puedo_parte(p_proyecto uuid, p_parte text, p_escribir boolean)
 returns boolean
 language sql stable security definer set search_path = public as $$
@@ -73,7 +85,7 @@ language sql stable security definer set search_path = public as $$
         when 'asistdir'  then p_parte in ('plan','tareas')
         when 'asistprod' then p_parte in ('rodaje','luces','alta','gastos','tareas','contactos')
         else                  p_parte in ('gastos','tareas') end
-    else p_parte in ('gente','plan','rodaje','luces','alta','gastos','tareas','contactos','extra') end, false)
+    else p_parte in ('gente','plan','rodaje','luces','alta','tareas','contactos','extra') end, false)
   from (select mi_rol_en_proyecto(p_proyecto)::text as r) x
 $$;
 revoke all on function puedo_parte(uuid, text, boolean) from public, anon;
@@ -83,28 +95,35 @@ drop policy if exists parte_ver     on proyecto_parte;
 drop policy if exists parte_crear   on proyecto_parte;
 drop policy if exists parte_cambiar on proyecto_parte;
 create policy parte_ver     on proyecto_parte for select using (puedo_parte(proyecto_id, parte, false));
-create policy parte_crear   on proyecto_parte for insert with check (puedo_parte(proyecto_id, parte, true));
-create policy parte_cambiar on proyecto_parte for update
-  using (puedo_parte(proyecto_id, parte, true)) with check (puedo_parte(proyecto_id, parte, true));
 
 -- ---------------------------------------------------------------------------
--- 1a. RENDICIONES Y GASTOS: quién cambia qué adentro de la parte "gastos"
+-- 1a. RENDICIONES Y GASTOS: quién ve y quién cambia qué en la parte "gastos"
 --
--- Una rendición es una caja: la plata que se le da a alguien para gastar,
--- más los tickets que rinde. Pasa por: borrador (la arma quien rinde) ->
--- enviada (al jefe de producción) -> observada (vuelve con comentario) ->
--- aprobada (el jefe la eleva) -> cerrada (Administración).
+-- Una rendición es una caja: la plata que se le da a alguien para gastar
+-- (sale de una línea del presupuesto), más los tickets que rinde. Pasa por:
+--   borrador (la arma quien rinde)
+--   -> enviada (al jefe de producción)  ·  arte y el equipo: aProduccion
+--      (a producción: la revisa el asistente de producción, que se la pasa
+--      al jefe -> enviada; o el jefe directamente)
+--   -> observada (vuelve con comentario)
+--   -> aprobada (la eleva el jefe)  ->  cerrada (Administración o el PE,
+--      que anotan lo que devolvió o lo que se le reintegra).
 --
--- Los asistentes y el equipo escriben la parte "gastos" (sus comprobantes,
--- sus rendiciones, sus cheques), pero NO pueden:
---   · tocar lo que cargó otra persona (comprobantes, rendiciones, cheques);
+-- QUIÉN VE: Administración, el PE y el jefe de producción, todo. Los
+-- asistentes y el equipo reciben sólo lo suyo (sus comprobantes, sus
+-- rendiciones y sus cheques); el asistente de producción, además, lo de arte
+-- y el equipo, que revisa. Se lee con leer_gastos(), no de la tabla.
+--
+-- QUIÉN CAMBIA: los asistentes y el equipo escriben lo suyo, pero NO pueden:
+--   · tocar lo que cargó otra persona (salvo el asistente de producción, que
+--     a lo de arte lo comenta, lo devuelve o se lo pasa al jefe);
 --   · dar fondos ni anotar adelantos: eso lo hace quien da la plata;
---   · cambiar los gastos de una rendición ya enviada;
+--   · cambiar los gastos de una rendición ya mandada;
 --   · aprobar ni cerrar nada;
---   · tocar las órdenes de compra (desde ahora van en su propia parte,
---     "compras", que no leen; si quedaron en "gastos", la base las conserva).
--- El jefe de producción revisa y eleva, pero no cierra: cerrar es de
--- Administración (o del PE).
+--   · tocar las órdenes de compra (van en la parte "compras", que no leen).
+-- El jefe revisa y eleva, pero no cierra. Y lo de arte llega a
+-- Administración sólo elevado por el jefe: nadie lo aprueba salteando
+-- producción, ni Administración lo cierra antes.
 -- ---------------------------------------------------------------------------
 create or replace function rend_estado(c jsonb) returns text
 language sql immutable as $$
@@ -112,12 +131,95 @@ language sql immutable as $$
               else coalesce(nullif(c#>>'{rendicion,estado}', ''), 'borrador') end
 $$;
 
--- null si el cambio está permitido; si no, el motivo (en castellano)
-create or replace function gastos_permitidos(p_viejo jsonb, p_nuevo jsonb, p_yo text, p_rol text)
+-- los de arte y el equipo de una productora (los que rinden "a producción")
+create or replace function gastos_arte(p_prod uuid) returns text[]
+language sql stable security definer set search_path = public as $$
+  select coalesce(array_agg(id::text), '{}'::text[]) from usuario
+   where productora_id = p_prod and rol::text in ('arte', 'equipo')
+$$;
+revoke all on function gastos_arte(uuid) from public, anon, authenticated;
+
+-- Lo que le toca ver a cada uno de los gastos
+create or replace function gastos_visibles(p jsonb, p_yo text, p_rol text, p_arte text[])
+returns jsonb
+language plpgsql immutable set search_path = public as $$
+declare v_cajas jsonb; v_ids text[];
+begin
+  if p is null then return null; end if;
+  if p_rol in ('admin', 'ejecutivo', 'produccion') then return p; end if;
+  select coalesce(jsonb_agg(x order by i), '[]'::jsonb) into v_cajas
+    from jsonb_array_elements(coalesce(p->'cajas', '[]'::jsonb)) with ordinality t(x, i)
+   where x->>'responsable' = p_yo or (p_rol = 'asistprod' and x->>'responsable' = any(p_arte));
+  v_ids := array(select x->>'id' from jsonb_array_elements(v_cajas) x);
+  return jsonb_build_object(
+    'cajas', v_cajas,
+    'comprobantes', (select coalesce(jsonb_agg(x order by i), '[]'::jsonb)
+                       from jsonb_array_elements(coalesce(p->'comprobantes', '[]'::jsonb)) with ordinality t(x, i)
+                      where x->>'cargadoPor' = p_yo or x->>'cajaId' = any(v_ids)
+                         or (p_rol = 'asistprod' and x->>'cargadoPor' = any(p_arte))),
+    'cheques', (select coalesce(jsonb_agg(x order by i), '[]'::jsonb)
+                  from jsonb_array_elements(coalesce(p->'cheques', '[]'::jsonb)) with ordinality t(x, i)
+                 where x->>'pedidoPor' = p_yo));
+end $$;
+
+-- Una lista de lo que guarda un asistente, metida en la lista entera: lo que
+-- no ve queda como estaba y en su lugar; lo suyo, como lo mandó.
+create or replace function gastos_juntar_lista(p_viejo jsonb, p_mios jsonb, p_vis text[])
+returns jsonb
+language plpgsql immutable set search_path = public as $$
+declare x jsonb; m jsonb; v_out jsonb := '[]'::jsonb; v_puse text[] := '{}'::text[];
+begin
+  for x in select * from jsonb_array_elements(coalesce(p_viejo, '[]'::jsonb)) loop
+    if (x->>'id') = any(p_vis) then
+      select y into m from jsonb_array_elements(coalesce(p_mios, '[]'::jsonb)) y where y->>'id' = x->>'id' limit 1;
+      if m is not null then v_out := v_out || jsonb_build_array(m); v_puse := v_puse || (x->>'id'); end if;
+    else
+      v_out := v_out || jsonb_build_array(x);
+    end if;
+  end loop;
+  for m in select * from jsonb_array_elements(coalesce(p_mios, '[]'::jsonb)) loop
+    if not ((m->>'id') = any(v_puse)) then v_out := v_out || jsonb_build_array(m); end if;
+  end loop;
+  return v_out;
+end $$;
+
+create or replace function gastos_juntar(p_todo jsonb, p_mio jsonb, p_yo text, p_rol text, p_arte text[])
+returns jsonb
+language plpgsql immutable set search_path = public as $$
+declare v_vis jsonb; v_out jsonb; k text; v_ids text[]; v_ocultos text[]; v_nvis jsonb;
+begin
+  p_todo := coalesce(p_todo, '{}'::jsonb);
+  v_vis := gastos_visibles(p_todo, p_yo, p_rol, p_arte);
+  v_out := p_todo;
+  foreach k in array array['cajas', 'comprobantes', 'cheques'] loop
+    v_ids := array(select x->>'id' from jsonb_array_elements(coalesce(v_vis->k, '[]'::jsonb)) x);
+    v_ocultos := array(select x->>'id' from jsonb_array_elements(coalesce(p_todo->k, '[]'::jsonb)) x
+                        where not ((x->>'id') = any(v_ids)));
+    if exists (select 1 from jsonb_array_elements(coalesce(p_mio->k, '[]'::jsonb)) y where (y->>'id') = any(v_ocultos)) then
+      raise exception 'Eso no es tuyo: no se puede guardar.';
+    end if;
+    v_out := jsonb_set(v_out, array[k], gastos_juntar_lista(p_todo->k, p_mio->k, v_ids));
+  end loop;
+  -- todo lo que mandó tiene que seguir siendo suyo (no se le pasa nada a otro)
+  v_nvis := gastos_visibles(v_out, p_yo, p_rol, p_arte);
+  foreach k in array array['cajas', 'comprobantes', 'cheques'] loop
+    if jsonb_array_length(coalesce(v_nvis->k, '[]'::jsonb)) <> jsonb_array_length(coalesce(p_mio->k, '[]'::jsonb)) then
+      raise exception 'Sólo podés guardar lo tuyo: algo quedaría a nombre de otra persona.';
+    end if;
+  end loop;
+  return v_out;
+end $$;
+
+-- La versión de antes (4 parámetros) queda reemplazada por la de abajo
+drop function if exists gastos_permitidos(jsonb, jsonb, text, text);
+
+-- null si el cambio está permitido; si no, el motivo (en castellano).
+-- A un asistente se le pasa lo que ve de antes y lo que manda.
+create or replace function gastos_permitidos(p_viejo jsonb, p_nuevo jsonb, p_yo text, p_rol text, p_arte text[])
 returns text
 language plpgsql immutable set search_path = public as $$
 declare
-  c jsonb; v jsonb; e_v text; e_n text;
+  c jsonb; v jsonb; e_v text; e_n text; v_dest text;
   trabadas text[]; mias text[];
   vc jsonb := coalesce(p_viejo->'cajas', '[]'::jsonb);
   nc jsonb := coalesce(p_nuevo->'cajas', '[]'::jsonb);
@@ -126,6 +228,38 @@ declare
   vq jsonb := coalesce(p_viejo->'cheques', '[]'::jsonb);
   nq jsonb := coalesce(p_nuevo->'cheques', '[]'::jsonb);
 begin
+  p_arte := coalesce(p_arte, '{}'::text[]);
+  -- 0. Para todos: lo de arte y el equipo pasa por producción. Lo eleva sólo
+  --    el jefe (desde producción), y Administración lo cierra recién elevado.
+  for c in select * from jsonb_array_elements(nc) loop
+    if c->>'responsable' = any(p_arte) then
+      select x into v from jsonb_array_elements(vc) x where x->>'id' = c->>'id' limit 1;
+      e_n := rend_estado(c);
+      e_v := case when v is null then 'borrador' else rend_estado(v) end;
+      if e_n <> e_v and e_n = 'aprobada' and (p_rol <> 'produccion' or e_v not in ('aProduccion', 'enviada')) then
+        return 'Lo de arte lo eleva el jefe de producción, después de pasar por producción.';
+      end if;
+      if e_n <> e_v and e_n = 'cerrada' and e_v <> 'aprobada' then
+        return 'Lo de arte se cierra cuando el jefe de producción ya lo elevó.';
+      end if;
+    end if;
+  end loop;
+  for c in select * from jsonb_array_elements(np) loop
+    if c->>'cargadoPor' = any(p_arte) and coalesce(c->>'estado', 'cargado') not in ('cargado', 'rechazado') then
+      select x into v from jsonb_array_elements(vp) x where x->>'id' = c->>'id' limit 1;
+      if coalesce(v->>'estado', 'cargado') = 'cargado' then
+        if c->>'cajaId' is not null then
+          if not exists (select 1 from jsonb_array_elements(nc) x
+                          where x->>'id' = c->>'cajaId' and rend_estado(x) in ('aprobada', 'cerrada')) then
+            return 'Los gastos de arte van con su rendición: primero la revisa producción.';
+          end if;
+        elsif p_rol <> 'produccion' then
+          return 'Los gastos de arte los revisa primero producción (el asistente y el jefe).';
+        end if;
+      end if;
+    end if;
+  end loop;
+
   if p_rol in ('admin', 'ejecutivo') then return null; end if;
   if p_rol = 'produccion' then
     for c in select * from jsonb_array_elements(nc) loop
@@ -139,18 +273,30 @@ begin
 
   -- asistentes y equipo
   -- 1. las rendiciones (cajas)
+  v_dest := case when p_yo = any(p_arte) then 'aProduccion' else 'enviada' end;
   for v in select * from jsonb_array_elements(vc) loop
     select x into c from jsonb_array_elements(nc) x where x->>'id' = v->>'id' limit 1;
     if c is null then return 'Un fondo para rendir lo da de baja quien lo dio.'; end if;
+    e_v := rend_estado(v); e_n := rend_estado(c);
     if v->>'responsable' is distinct from p_yo then
-      if c is distinct from v then return 'No podés cambiar la rendición de otra persona.'; end if;
+      if p_rol = 'asistprod' and v->>'responsable' = any(p_arte) then
+        -- el asistente de producción revisa lo de arte: comenta, la devuelve o se la pasa al jefe
+        if (c - 'rendicion') is distinct from (v - 'rendicion') then
+          return 'De la rendición de arte sólo podés comentar, devolverla o pasársela al jefe.';
+        end if;
+        if e_n <> e_v and not ((e_v = 'aProduccion' and e_n in ('observada', 'enviada'))
+                               or (e_v in ('observada', 'enviada') and e_n = 'aProduccion')) then
+          return 'Eso lo hace el jefe de producción.';
+        end if;
+      elsif c is distinct from v then
+        return 'No podés cambiar la rendición de otra persona.';
+      end if;
     else
       if (c - 'rendicion') is distinct from (v - 'rendicion') then
         return 'Lo entregado (el fondo y los adelantos) lo anota quien da la plata.';
       end if;
-      e_v := rend_estado(v); e_n := rend_estado(c);
-      if e_n <> e_v and not ((e_v in ('borrador', 'observada') and e_n = 'enviada')
-                             or (e_v = 'enviada' and e_n = 'borrador')) then
+      if e_n <> e_v and not ((e_v in ('borrador', 'observada') and e_n = v_dest)
+                             or (e_v = v_dest and e_n in ('borrador', 'observada'))) then
         return 'No podés pasar tu rendición a "' || e_n || '": eso lo hace quien la revisa.';
       end if;
     end if;
@@ -161,14 +307,23 @@ begin
     end if;
   end loop;
   trabadas := array(select x->>'id' from jsonb_array_elements(vc) x
-                     where rend_estado(x) in ('enviada', 'aprobada', 'cerrada'));
+                     where rend_estado(x) in ('aProduccion', 'enviada', 'aprobada', 'cerrada'));
   mias := array(select x->>'id' from jsonb_array_elements(nc) x where x->>'responsable' = p_yo);
 
   -- 2. los comprobantes
   for v in select * from jsonb_array_elements(vp) loop
     select x into c from jsonb_array_elements(np) x where x->>'id' = v->>'id' limit 1;
     if v->>'cargadoPor' is distinct from p_yo then
-      if c is null or (c - 'cargadoPor' - 'historial') is distinct from (v - 'cargadoPor' - 'historial') then
+      if p_rol = 'asistprod' and v->>'cargadoPor' = any(p_arte) and v->>'cajaId' is null then
+        -- un gasto suelto de arte: el asistente de producción se lo pasa al jefe o lo devuelve
+        if c is null then return 'No podés borrar comprobantes que cargó otra persona.'; end if;
+        if (c - 'vistoProd' - 'historial' - 'estado') is distinct from (v - 'vistoProd' - 'historial' - 'estado') then
+          return 'De los gastos de arte sólo podés pasárselos al jefe o devolverlos.';
+        end if;
+        if c->>'estado' is distinct from v->>'estado' and not (v->>'estado' = 'cargado' and c->>'estado' = 'rechazado') then
+          return 'Eso lo hace el jefe de producción.';
+        end if;
+      elsif c is null or (c - 'cargadoPor' - 'historial') is distinct from (v - 'cargadoPor' - 'historial') then
         return 'No podés cambiar comprobantes que cargó otra persona.';
       end if;
     else
@@ -178,6 +333,9 @@ begin
       end if;
       if c is not null and c->>'estado' is distinct from v->>'estado' then
         return 'El estado de un comprobante lo cambia quien lo revisa.';
+      end if;
+      if c is not null and c->>'cargadoPor' is distinct from v->>'cargadoPor' then
+        return 'Un comprobante queda a nombre de quien lo cargó.';
       end if;
       if c is not null and c->>'cajaId' is not null and c->>'cajaId' is distinct from v->>'cajaId'
          and (c->>'cajaId' = any(trabadas) or not (c->>'cajaId' = any(mias))) then
@@ -215,14 +373,37 @@ begin
   return null;
 end $$;
 
+-- Los gastos que le tocan a quien pregunta: enteros para Administración, el
+-- PE y el jefe; filtrados (lo suyo) para los asistentes y el equipo. Con
+-- p_con_datos = false trae sólo la versión, para ver si cambió algo.
+create or replace function leer_gastos(p_proyecto uuid, p_con_datos boolean default true)
+returns json
+language plpgsql stable security definer set search_path = public as $$
+declare v_rol text; v_prod uuid; v_yo text; r proyecto_parte%rowtype;
+begin
+  if auth.uid() is null then return null; end if;
+  v_rol := mi_rol_en_proyecto(p_proyecto)::text;
+  if v_rol is null then return null; end if;
+  select productora_id into v_prod from proyecto where id = p_proyecto;
+  select id::text into v_yo from usuario where auth_uid = auth.uid() and productora_id = v_prod limit 1;
+  select * into r from proyecto_parte where proyecto_id = p_proyecto and parte = 'gastos';
+  if not found then return json_build_object('version', null); end if;
+  return json_build_object('version', r.version, 'cambiado_nombre', r.cambiado_nombre, 'cambiado_el', r.cambiado_el,
+    'datos', case when p_con_datos then gastos_visibles(r.datos, v_yo, v_rol, gastos_arte(v_prod)) else null end);
+end $$;
+revoke all on function leer_gastos(uuid, boolean) from public, anon;
+grant execute on function leer_gastos(uuid, boolean) to authenticated;
+
 -- Guardar una parte. Se manda la versión sobre la que se trabajó: si
 -- mientras tanto alguien guardó otra, no se pisa; vuelve lo que hay en la
--- base para juntar los cambios y probar de nuevo.
+-- base para juntar los cambios y probar de nuevo. Un asistente manda sólo
+-- lo suyo de los gastos y la base lo junta con lo de los demás.
 create or replace function guardar_parte(p_proyecto uuid, p_parte text, p_datos jsonb, p_base int)
 returns json
 language plpgsql security definer set search_path = public as $$
 declare
   v_prod uuid; v_yo uuid; v_nom text; v_rol text; v_hay boolean; v_err text;
+  v_arte text[]; v_filtra boolean;
   r proyecto_parte%rowtype;
 begin
   if auth.uid() is null then raise exception 'Hay que iniciar sesión.'; end if;
@@ -231,16 +412,19 @@ begin
     raise exception 'Esa parte del proyecto no existe: %', p_parte;
   end if;
   if not puedo_parte(p_proyecto, p_parte, true) then
-    raise exception 'Con tu rol no podés guardar "%" en este proyecto.', p_parte;
+    raise exception 'Con tu rol no podés cambiar % en este proyecto.', p_parte;
   end if;
   select productora_id into v_prod from proyecto where id = p_proyecto;
   select id, nombre into v_yo, v_nom from usuario
    where auth_uid = auth.uid() and productora_id = v_prod limit 1;
   v_rol := mi_rol_en_proyecto(p_proyecto)::text;
+  v_filtra := p_parte = 'gastos' and v_rol not in ('admin', 'ejecutivo', 'produccion');
+  if p_parte = 'gastos' then v_arte := gastos_arte(v_prod); end if;
   select * into r from proyecto_parte where proyecto_id = p_proyecto and parte = p_parte for update;
   v_hay := found;
   if v_hay and p_base is distinct from r.version then
-    return json_build_object('ok', false, 'version', r.version, 'datos', r.datos,
+    return json_build_object('ok', false, 'version', r.version,
+                             'datos', case when v_filtra then gastos_visibles(r.datos, v_yo::text, v_rol, v_arte) else r.datos end,
                              'quien', r.cambiado_nombre, 'cuando', r.cambiado_el);
   end if;
   if not v_hay and p_base is not null then
@@ -248,12 +432,15 @@ begin
     return json_build_object('ok', false, 'version', null, 'datos', null);
   end if;
   if p_parte = 'gastos' then
-    v_err := gastos_permitidos(case when v_hay then r.datos else null end, p_datos, v_yo::text, v_rol);
-    if v_err is not null then raise exception '%', v_err; end if;
-    if v_rol not in ('admin', 'ejecutivo', 'produccion') then
-      -- las órdenes de compra no las tocan: quedan las que había
-      p_datos := (p_datos - 'ocs') || case when v_hay and r.datos ? 'ocs'
-                                           then jsonb_build_object('ocs', r.datos->'ocs') else '{}'::jsonb end;
+    if v_filtra then
+      v_err := gastos_permitidos(case when v_hay then gastos_visibles(r.datos, v_yo::text, v_rol, v_arte) else null end,
+                                 p_datos, v_yo::text, v_rol, v_arte);
+      if v_err is not null then raise exception '%', v_err; end if;
+      -- lo suyo, metido en lo de todos (las órdenes de compra y lo ajeno quedan como estaban)
+      p_datos := gastos_juntar(case when v_hay then r.datos else '{}'::jsonb end, p_datos, v_yo::text, v_rol, v_arte);
+    else
+      v_err := gastos_permitidos(case when v_hay then r.datos else null end, p_datos, v_yo::text, v_rol, v_arte);
+      if v_err is not null then raise exception '%', v_err; end if;
     end if;
   end if;
   if v_hay then
@@ -446,4 +633,4 @@ grant execute on function confirmar_citacion(text, boolean, text) to anon, authe
 
 commit;
 
-select 'Listo: los proyectos se guardan completos, hay roles de asistente, el fee es sólo de Administración y el PE, las citaciones se confirman con un toque y cada asistente cambia sólo sus gastos y su rendición. Volvé a CLAP y tocá ☁ → Sincronizar todo.' as "Resultado";
+select 'Listo: los proyectos se guardan completos, hay roles de asistente, el fee es sólo de Administración y el PE, las citaciones se confirman con un toque, cada asistente cambia y recibe sólo sus gastos y su rendición, y lo de arte pasa por producción. Volvé a CLAP y tocá ☁ → Sincronizar todo.' as "Resultado";
