@@ -77,7 +77,11 @@ global.document.getElementById = id => id==='setj' ? {checked:true} : {value:'',
 confirmarAPresupuesto();
 const despues=v.rubros.reduce((s,r)=>s+r.lineas.length,0);
 ok('crea las lineas en el presupuesto', despues===antesTot+p.lineas.length, antesTot+' -> '+despues);
-ok('las crea en valor 0', v.rubros.find(r=>r.codigo==='09').lineas.slice(-2).every(l=>l.valorUnit===0));
+/* en cero, salvo las que son un cargo del convenio (la chaperona): esas las completa el SICA */
+ok('las crea en valor 0 (salvo los cargos del convenio SICA)', v.rubros.find(r=>r.codigo==='09').lineas.slice(-3).every(l=>l.valorUnit===0 || (l.sica && l.valorOrigen==='sica')));
+/* lo que pide el guion sin ser un personaje: el menor (y su permiso y su chaperona) y el permiso de la calle */
+ok('propone el menor, su chaperona y el permiso', ['Actor o actriz menor de edad','Chaperona','Permiso de trabajo de menores'].every(t => p.lineas.some(l => l.dep==='tag' && l.concepto.startsWith(t))), p.lineas.filter(l=>l.dep==='tag').map(l=>l.concepto).join(' / '));
+ok('y el permiso de vía pública', p.lineas.some(l => l.dep==='tag' && /vía pública/.test(l.concepto)));
 ok('actualiza jornadas del proyecto', getPy().jornadas===p.jornadas, getPy().jornadas);
 ok('el total sigue calculando', isFinite(calcular(v).total), Math.round(calcular(v).total));
 

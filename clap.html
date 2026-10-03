@@ -77,12 +77,18 @@ select{cursor:pointer;appearance:none;background-image:linear-gradient(45deg,tra
 /* en pantallas angostas los botones del título bajan de renglón en vez de
    quedar cortados fuera de la tarjeta */
 .card>h3{flex-wrap:wrap;row-gap:6px}
+/* "Saltar al contenido": fuera de la vista hasta que llega el foco del teclado */
+.saltar{position:absolute;left:-9999px;top:6px;z-index:600;background:var(--ac);color:#fff;border-radius:6px;padding:8px 12px;font-weight:700;font-size:12.5px}
+.saltar:focus{left:8px}
+#vista:focus,.mod:focus{outline:none}
 /* foco de teclado visible en todo lo que se puede activar */
 button:focus-visible,a:focus-visible,[role=button]:focus-visible,summary:focus-visible,.tab:focus-visible{
   outline:2px solid var(--ac);outline-offset:2px;border-radius:4px}
 @media (pointer:coarse){
   /* con el dedo: todo lo que se toca, de al menos 44 px; las casillas, de 24 */
   .btn,.btn.sm,.pl-acc .btn.sm,.lz-acc .btn.sm,.elmas{min-height:44px;min-width:44px}
+  /* las solapas y los botones de sección también se tocan con el dedo */
+  .tab,.seg button{min-height:44px}
   .pl-acc{gap:8px}
   input[type=checkbox],input[type=radio],.pl-selcb{width:24px!important;height:24px!important}
 }
@@ -317,6 +323,8 @@ tr.csdep td{background:var(--bg3);font-size:9.5px;text-transform:uppercase;lette
 .cnom{display:inline-flex;align-items:center;gap:4px;font-weight:600;font-size:12.5px}
 .clink{font-style:normal;font-size:9px;color:var(--ac);opacity:.75}
 .ctab input{width:100%}
+/* en el celu la tabla de citaciones se corre de costado antes que cortar la hora (se leía "06:3") */
+@media (max-width:760px){ .ctab-cit{min-width:600px} .ctab-cit input{min-width:66px} }
 .ctab input[type=email]{font-size:11.5px}
 .csblock>h4 .btn{font-weight:600;letter-spacing:0;text-transform:none}
 /* conexión con el backend */
@@ -610,7 +618,8 @@ a.btn{display:inline-block;text-decoration:none}
 a.btn.wa{border-color:rgba(63,178,127,.5);color:#1f5f1a}
 a.btn.wa:hover{background:rgba(63,178,127,.14);border-color:var(--ok);color:#8fdcb8}
 tr.yacitado td:first-child{box-shadow:inset 3px 0 0 var(--ok)}
-tr.yacitado{opacity:.62}
+/* ya citado: la barra verde y el texto en gris (no con transparencia: los botones de la fila quedaban ilegibles) */
+tr.yacitado td{color:var(--tx2)}tr.yacitado .crol{color:var(--tx2)}
 tr.filmada td{background:rgba(63,178,127,.07)}
 tr.filmada .enum{color:var(--ok)}
 td.conhe,tr.conhe .num{color:var(--warn)}
@@ -952,7 +961,14 @@ header{background:var(--bg);border-bottom:1px solid var(--line)}
 .pl-av-pasa .pl-av-k,.pl-av-falta .pl-av-k{background:#fde8e8;color:#8a1c1c}
 .pl-av-sobra .pl-av-k{background:#fdf3d8;color:#7a5600}
 .tarea{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-.tarea.hecha{opacity:.75}.tarea.vencida{border-color:#c0392b}
+.tarea.hecha{background:var(--bg3)}
+.mod .leido{background:#fff4cc;border-color:#d9a92e}
+.solo-dedo{display:none}
+@media (hover:none) and (pointer:coarse){ .solo-dedo{display:inline} .solo-mouse{display:none} }
+.rd-acc-pie{align-items:center;border-top:1px solid var(--line)}
+.f-fecha{margin-top:10px;font-size:12px}
+.f-fecha summary{cursor:pointer;color:var(--tx2);padding:6px 0;min-height:24px}
+.rech-mot{display:block;font-size:11px;color:var(--bad);margin-top:2px;font-weight:500}.tarea.hecha b{color:var(--tx2)}.tarea.vencida{border-color:#c0392b}
 .te-grupo{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
 .te-grupo.yo{border-color:var(--ac)}
 .te-cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -3084,6 +3100,12 @@ function accionesDe(c, u){
   return out;
 }
 
+/* por qué se rechazó un comprobante (el último rechazo del historial) */
+function motivoRechazo(c){
+  if(!c || c.estado !== 'rechazado') return null;
+  const h = [...(c.historial || [])].reverse().find(x => x.a === 'rechazado');
+  return h ? {quien: h.usuario || '', nota: h.nota || '', fecha: h.fecha || ''} : {quien: '', nota: '', fecha: ''};
+}
 function moverComprobante(id, accion, nota){
   const c = getComprobantes().find(x=>x.id===id); if(!c) return;
   const u = getUsuario();
@@ -6303,10 +6325,12 @@ function render(){
   app.innerHTML = `<div class="app">
     ${avisoAlta()}
     ${header(pr,py,v)}
-    <main><div class="wrap" id="vista">${cuerpo(pr,py,v)}${siguientePasoHTML()}</div></main>
+    <main><div class="wrap" id="vista" tabindex="-1">${cuerpo(pr,py,v)}${siguientePasoHTML()}</div></main>
     ${v && DB.ui.tab==='presu' ? barraTotal(v) : ''}
   </div>`;
   if(modal) app.insertAdjacentHTML('beforeend', modal);
+  /* con una ventana abierta, lo de atrás no se toca ni con el teclado */
+  try{ const fondo = app.querySelector('.app'); if(fondo && modal && fondo.setAttribute) fondo.setAttribute('inert', ''); }catch(e){}
   restaurarPantalla(antes);
   mejorarAccesibilidad(app);
   try{ app.querySelectorAll('input[data-indet]').forEach(x => x.indeterminate = true); }catch(e){}
@@ -6553,9 +6577,14 @@ function restaurarPantalla(c){
       el = todos[c.foco.i] && firmaFoco(todos[c.foco.i]) === c.foco.firma ? todos[c.foco.i]
          : todos.find(x => firmaFoco(x) === c.foco.firma) || null;
     }
-    if(!el && document.querySelector('.mod') && !c.modal){
-      const mm = document.querySelector('.mod');
-      el = mm.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=file]),select,textarea') || mm.querySelector('button');
+    /* con una ventana abierta el foco va adentro: el botón que la abrió
+       sigue en la pantalla de atrás y quedarse ahí dejaba el teclado afuera */
+    const mm = document.querySelector('.mod');
+    if(mm && (!el || !mm.contains(el))){
+      /* con el dedo, la ventana misma: enfocar un campo abre el teclado y tapa media pantalla */
+      const dedo = (() => { try{ return window.matchMedia('(pointer:coarse)').matches; }catch(e){ return false; } })();
+      if(dedo){ mm.setAttribute('tabindex', '-1'); el = mm; }
+      else el = mm.querySelector('input:not([type=hidden]):not([type=checkbox]):not([type=file]):not([disabled]),select:not([disabled]),textarea') || mm.querySelector('button');
     }
     if(el && el.focus){
       el.focus({preventScroll: true});
@@ -6713,6 +6742,7 @@ function header(pr,py,v){
   const plata = vePlata();
   const MIOS = TABS.map(g => g.filter(([k]) => puedeSolapa(k)).map(([k, l, t]) => k === 'resumen' && !plata ? [k, 'Mi panel', 'Tus tareas y lo que te toca'] : [k, l, t])).filter(g => g.length);
   return `<header>
+    <button type="button" class="saltar" onclick="saltarAlContenido()">Saltar al contenido</button>
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
       ${menuProductoras(pr)}
@@ -6887,7 +6917,7 @@ function avisosPlanPresupuesto(py, v){
         const rb = v.rubros.find(r => r.codigo === x.rubro);
         const cubre = CUBRE_DESGLOSE[x.dep];
         const ya = rb && rb.lineas.some(l => (norm(l.concepto) === norm(x.concepto) && (l.piezaId || null) === (x.piezaId || null))
-          || (cubre && cubre.test(norm(l.concepto || ''))));
+          || (cubre && cubre.test(norm(l.concepto || '')))) || (x.dep === 'tag' && !!lineaParecida(v, x));
         if(!ya) A('falta', `Falta en el presupuesto: ${x.concepto}`, x.nota || '');
       });
     }catch(e){}
@@ -6908,7 +6938,7 @@ function planPresuHTML(py, v){
   return `<div class="cs">
     <div class="cshead"><div><div class="csttl">El plan contra el presupuesto</div>
       <div class="cssub">Versión de rodaje ${esc(v ? v.nombre : '—')} · el plan no cambia el presupuesto: avisa</div></div>
-      <div style="text-align:right"><div class="csj">${A.filter(x => x.k !== 'sobra').length}<span> ${plural(A.filter(x => x.k !== 'sobra').length, 'aviso')}</span></div></div></div>
+      <div style="text-align:right"><div class="csj">${A.length}<span> ${plural(A.length, 'aviso')}</span></div></div></div>
     ${A.length ? `<div class="pad" style="display:flex;flex-direction:column;gap:8px">
       ${A.map(x => `<div class="pl-av ${AV_PRESU[x.k].c}"><span class="pl-av-k">${AV_PRESU[x.k].l}</span>
         <div><b>${esc(x.t)}</b>${x.det ? `<div class="muted" style="font-size:12px;margin-top:2px">${esc(x.det)}</div>` : ''}</div></div>`).join('')}
@@ -7090,7 +7120,8 @@ function terminarTarea(id){
 }
 function reabrirTarea(id){
   const t = tareasDe(getPy()).find(x => x.id === id); if(!t) return;
-  Object.assign(t, {estado: 'pendiente', hechaEl: null, hechaPor: null}); cerrar(); R();
+  Object.assign(t, {estado: 'pendiente', hechaEl: null, hechaPor: null}); cerrar();
+  toast(`"${t.titulo}" volvió a pendiente`); R();
 }
 function tareasHTML(py, lista, {mias = false} = {}){
   if(!lista.length) return `<div class="pad muted" style="font-size:12.5px">${mias ? 'No tenés tareas pendientes.' : 'No hay tareas.'}</div>`;
@@ -7148,12 +7179,14 @@ function avanzarCheque(id){
   const c = chequesDe(getPy()).find(x => x.id === id), u = getUsuario(); if(!c) return;
   const e = EST_CHEQUE[c.estado]; if(!e || !e.sig || (u && !puede(u, e.puede))) return;
   if(!confirm(`${e.b}: cheque a ${c.a} por ${fmt(c.monto, c.moneda)}. ¿Seguir?`)) return;
-  c.estado = e.sig; c.historial.push({a: e.sig, quien: u ? u.nombre : '', cuando: hoy()}); R();
+  c.estado = e.sig; c.historial.push({a: e.sig, quien: u ? u.nombre : '', cuando: hoy()});
+  toast(`Cheque a ${c.a}: ${String((EST_CHEQUE[e.sig] || {}).l || e.sig).toLowerCase()}`); R();
 }
 function rechazarCheque(id){
   const c = chequesDe(getPy()).find(x => x.id === id), u = getUsuario(); if(!c) return;
   const nota = prompt('¿Por qué se rechaza? (le llega a quien lo pidió)', ''); if(nota === null) return;
-  c.estado = 'rechazado'; c.historial.push({a: 'rechazado', quien: u ? u.nombre : '', cuando: hoy(), nota}); R();
+  c.estado = 'rechazado'; c.historial.push({a: 'rechazado', quien: u ? u.nombre : '', cuando: hoy(), nota});
+  toast(`Cheque a ${c.a} rechazado: le llega a ${nombreUsuario(c.pedidoPor)}`); R();
 }
 function chequesHTML(py, u){
   const todos = chequesDe(py), lista = vePlata(u) ? todos : todos.filter(c => chequeMio(c, u));
@@ -7198,10 +7231,12 @@ function vistaPanel(pr, py){
   const yaPaso = j => /^\d{4}-\d\d-\d\d$/.test(j.fecha || '') && j.fecha < hoy();
   const prox = (d.jornadas || []).find(j => !yaPaso(j));
   const accesos = (SOLAPAS_DE[u.rol] || []).filter(k => QUE_HACE[k]);
-  let extra = '';
+  /* lo que espera algo de quien mira va arriba, pegado a sus tareas */
+  let extra = '', revisar = '';
   if(u.rol === 'equipo') extra += bloque('Lo que más se pregunta', tarjetasEquipoHTML(py, u));
   if(u.rol === 'asistdir'){
-    const A = avisosPlanPresupuesto(py, versionRodaje(py)).filter(x => x.k !== 'sobra');
+    /* los mismos avisos que la solapa del plan (también lo que sobra), así el número coincide */
+    const A = avisosPlanPresupuesto(py, versionRodaje(py));
     extra += bloque('El plan contra el presupuesto', A.length
       ? `<div class="pad" style="display:flex;flex-direction:column;gap:6px">${A.slice(0, 5).map(x => `<div class="pl-av ${AV_PRESU[x.k].c}"><span class="pl-av-k">${AV_PRESU[x.k].l}</span><div>${esc(x.t)}</div></div>`).join('')}
          <button class="btn sm" style="align-self:flex-start" onclick="setTab('plan');setSubPlan('presu')">Ver todo${A.length > 5 ? ` (${A.length})` : ''}</button></div>`
@@ -7213,7 +7248,10 @@ function vistaPanel(pr, py){
     const chs = chequesDe(py).filter(c => chequeMio(c, u));
     extra += bloque('Tus comprobantes', `<div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       ${cs.length ? Object.entries(porEst).map(([k, x]) => `<span class="chip d-par">${x} ${esc(plural(x, EST(k).l.toLowerCase()))}</span>`).join('') : '<span class="muted" style="font-size:12.5px">Todavía no cargaste ninguno.</span>'}
-      <span style="flex:1"></span><button class="btn sm pri" onclick="setTab('gastos');cargarComprobante()">+ Cargar comprobante</button></div>`);
+      <span style="flex:1"></span><button class="btn sm pri" onclick="setTab('gastos');cargarComprobante()">+ Cargar comprobante</button></div>
+      ${cs.filter(c => c.estado === 'rechazado').map(c => { const m = motivoRechazo(c);
+        return `<div class="pad" style="padding-top:0"><button class="pendfila urg" onclick="verComprobante('${c.id}')"><span class="pendn">!</span>
+          <span><b>${esc(c.concepto || c.subrubro || c.proveedor || 'Comprobante')}</b> · ${fmt(c.importe, c.moneda)} · rechazado${m && m.quien ? ' por ' + esc(m.quien) : ''}${m && m.nota ? `<span class="rech-mot">«${esc(m.nota)}»</span>` : ''}</span><span class="pendir">→</span></button></div>`; }).join('')}`);
     /* la plata que le dieron para trabajar, y en qué anda cada rendición */
     const rends = getCajas().filter(cj => rendMia(cj, u)).sort((a, b) => (estadoRend(a) === 'cerrada') - (estadoRend(b) === 'cerrada'));
     /* los fondos son para los asistentes de producción y de arte: al equipo no se le muestra si no tiene */
@@ -7226,9 +7264,14 @@ function vistaPanel(pr, py){
     /* el asistente de producción revisa lo de arte antes que el jefe */
     if(u.rol === 'asistprod'){
       const nA = getCajas().filter(cj => asistRevisa(cj, u) && estadoRend(cj) === 'aProduccion').length;
-      const cA = getComprobantes().filter(c => accionesDe(c, u).includes('pasar')).length;
-      extra += bloque(`Rendiciones de arte para revisar${nA ? ' · ' + nA : ''}`, rendArteHTML(py, u, true)
-        + (cA ? `<div class="pad" style="padding-top:0"><button class="pendfila" onclick="setTab('gastos');setSubGasto('bandeja')"><span class="pendn">${cA}</span><span>${plural(cA, 'comprobante suelto', 'comprobantes sueltos')} de arte para revisar</span><span class="pendir">→</span></button></div>` : ''));
+      const sueltos = getComprobantes().filter(c => accionesDe(c, u).includes('pasar')), cA = sueltos.length;
+      /* de quién son: arte, el equipo (vestuario, maquillaje…) o los dos */
+      const rolesS = new Set(sueltos.map(c => rolDeUsuario(c.cargadoPor)));
+      const deQuien = rolesS.has('arte') && rolesS.has('equipo') ? 'de arte y del equipo' : rolesS.has('equipo') ? 'del equipo' : 'de arte';
+      const blq = bloque(`Rendiciones de arte para revisar${nA ? ' · ' + nA : ''}`, rendArteHTML(py, u, true)
+        + (cA ? `<div class="pad" style="padding-top:0"><button class="pendfila" onclick="setTab('gastos');setSubGasto('bandeja')"><span class="pendn">${cA}</span><span>${plural(cA, 'comprobante suelto', 'comprobantes sueltos')} ${deQuien} para revisar</span><span class="pendir">→</span></button></div>` : ''));
+      /* arriba sólo si hay algo para revisar; si no, abajo, como dato */
+      if(nA || cA) revisar = blq; else extra += blq;
     }
     if(puede(u, 'cheque')) extra += bloque('Tus cheques de garantía', `<div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       ${chs.length ? chs.map(c => `<span class="chip ${c.estado === 'devuelto' ? 'd-si' : c.estado === 'rechazado' ? 'sica-bajo' : 'd-par'}">${esc(c.a)} · ${esc((EST_CHEQUE[c.estado] || {}).l || c.estado)}</span>`).join('') : '<span class="muted" style="font-size:12.5px">No pediste ninguno.</span>'}
@@ -7239,6 +7282,7 @@ function vistaPanel(pr, py){
       <div class="cssub">${esc(ROL(u.rol).l)} · ${esc(py.nombre)}${prox ? ` · próxima jornada: J${prox.numero}${prox.fecha ? ' (' + esc(prox.fecha.split('-').reverse().join('/')) + ')' : ''}${prox.citacion ? ', citación ' + esc(prox.citacion) : ''}` : ''}</div></div>
       <div style="text-align:right"><div class="csj">${pend.length}<span> ${plural(pend.length, 'tarea')}</span></div><div class="cssub">pendiente${pend.length == 1 ? '' : 's'}</div></div></div>
     ${bloque('Tus tareas', tareasHTML(py, pend, {mias: true}) + (hechas.length ? `<details class="pad" style="padding-top:0"><summary class="muted" style="font-size:12px;cursor:pointer">${hechas.length} hecha${hechas.length == 1 ? '' : 's'}</summary>${tareasHTML(py, hechas, {mias: true})}</details>` : ''))}
+    ${revisar}
     ${extra}
     ${bloque('Lo tuyo en CLAP', `<div class="pad panel-accesos">${accesos.map(k => `<button class="panel-acc" onclick="setTab('${k}')"><b>${esc(QUE_HACE[k][0])}</b><span>${esc(QUE_HACE[k][1])}${editaSolapa(k) ? '' : ' · para mirar'}</span></button>`).join('')}</div>`)}
   </div>`;
@@ -7279,7 +7323,11 @@ function tarjetasEquipoHTML(py, u){
     const conf = cf.k === 'si' ? `<span class="pc-ok">Confirmaste las ${esc(cf.hora || hora)}.</span>`
       : cf.k === 'vieja' ? `<span class="pc-mal">Habías confirmado las ${esc(cf.hora)}: volvé a confirmar con tu link.</span>`
       : cf.k === 'nopuede' ? `Avisaste que no podés${cf.respuesta ? `: «${esc(cf.respuesta)}»` : ''}.` : '';
-    filas.push(`<div class="pc-l"><b>J${j.numero}${j.fecha ? ' · ' + esc(fecha(j.fecha)) : ''} · ${esc(hora || '—')}</b>${g.rol ? ` <span class="muted">(${esc(g.rol)})</span>` : ''}<br>${estado}${conf ? ' ' + conf : ''}</div>`);
+    /* si ya está el link de su citación, confirmar es un toque desde acá (sin buscar el mensaje) */
+    const tok = (((j.parte || {}).links) || {})[g.clave];
+    const btnConf = tok && cf.k !== 'si' && cf.k !== 'nopuede' && (ec.k === 'si' || ec.k === 'cambio')
+      ? `<br><a class="btn sm pri" style="margin-top:6px;display:inline-block" href="${esc(linkCitacion(tok))}" target="_blank" rel="noopener">Confirmar las ${esc(hora || '')}</a>` : '';
+    filas.push(`<div class="pc-l"><b>J${j.numero}${j.fecha ? ' · ' + esc(fecha(j.fecha)) : ''} · ${esc(hora || '—')}</b>${g.rol ? ` <span class="muted">(${esc(g.rol)})</span>` : ''}<br>${estado}${conf ? ' ' + conf : ''}${btnConf}</div>`);
   });
   const primera = (d.jornadas || []).find(j => !yaPaso(j));
   const cHora = `<div class="panel-card"><h5>¿Cambió tu hora?</h5>
@@ -7538,13 +7586,14 @@ function solapasPiezas(py, v, sel, cli){
       <button class="btn sm pri" onclick="addPiezaPreguntando()">+ ${esc(u)}</button>
     </div>`;
   }
+  /* el monto de cada solapa: el total para quien ve el margen; para el jefe, el costo de producción (sin fee ni IVA) */
   const tab = (id, txt, tot) => `<button class="pztab${sel===id?' on':''}" onclick="setPieza(${id?`'${id}'`:'null'})">
     <span>${esc(txt)}</span><b>${fmt(tot, v.monedaBase)}</b></button>`;
   const C = costoPorPieza(py, v);
   return `<div class="pzbar">
     <div class="pztabs">
-      ${tab(null, 'General', C.total)}
-      ${C.filas.map(f => tab(f.id, f.nombre, calcular(v, filtroPieza(f.id)).total)).join('')}
+      ${tab(null, 'General', totalVisible(calcular(v)))}
+      ${C.filas.map(f => tab(f.id, f.nombre, totalVisible(calcular(v, filtroPieza(f.id))))).join('')}
     </div>
     ${cli?'':`<button class="btn sm" onclick="addPiezaPreguntando()" title="Agregar ${esc(u.toLowerCase())}">+ ${esc(u)}</button>`}
   </div>`;
@@ -8492,14 +8541,14 @@ function escHTML(e,d,py){
         <span class="dlbl" style="color:${DEPTO('elenco').c}"><i class="ddot" style="background:${DEPTO('elenco').c}"></i>Elenco</span>
         <span class="dels">${e.personajes.map(p=>elHTML(e.id,'personajes',p,DEPTO('elenco').c,false)).join('')
           || `<span class="muted" style="font-size:11.5px;padding-top:4px">${planPorEscenas(py) ? 'sin diálogo' : 'sin elenco'}</span>`}
-          <button class="elmas noprint" onclick="addEl('${e.id}','personajes')">+</button></span>
+          <button class="elmas noprint" onclick="addEl('${e.id}','personajes')" aria-label="Agregar al elenco">+</button></span>
       </div>
       ${deps.map(dp=>{
         const vals = e.elementos[dp.k]||[]; if(!vals.length) return '';
         return `<div class="drow">
           <span class="dlbl" style="color:${dp.c}"><i class="ddot" style="background:${dp.c}"></i>${esc(dp.l)}</span>
           <span class="dels">${vals.map(v=>elHTML(e.id,dp.k,v,dp.c,(e.auto[dp.k]||[]).includes(v))).join('')}
-            <button class="elmas noprint" onclick="addEl('${e.id}','${dp.k}')">+</button></span></div>`;
+            <button class="elmas noprint" onclick="addEl('${e.id}','${dp.k}')" aria-label="Agregar a ${esc(dp.l)}">+</button></span></div>`;
       }).join('')}
       <div class="drow noprint">
         <span class="dlbl"></span>
@@ -8767,8 +8816,8 @@ function vistaResumen(pr,py,v){
   /* tareas encargadas y avisos del plan, para quien maneja el presupuesto */
   const tPend = tareasDe(py).filter(t => t.estado !== 'hecha');
   if(tPend.length && puedeEncargar(u)) pend.push({n:tPend.length, t:`tarea${tPend.length == 1 ? '' : 's'} encargada${tPend.length == 1 ? '' : 's'} sin terminar${tPend.some(tareaVencida) ? ` (${tPend.filter(tareaVencida).length} vencida${tPend.filter(tareaVencida).length == 1 ? '' : 's'})` : ''}`,
-    ir:"document.getElementById('res-tareas')?.scrollIntoView({behavior:'smooth'})", urg: tPend.some(tareaVencida)});
-  const avP = avisosPlanPresupuesto(py, versionRodaje(py)).filter(x => x.k !== 'sobra').length;
+    ir:"document.getElementById('res-tareas')?.scrollIntoView({behavior:suave()})", urg: tPend.some(tareaVencida)});
+  const avP = avisosPlanPresupuesto(py, versionRodaje(py)).length;
   if(avP) pend.push({n:avP, t:`aviso${avP == 1 ? '' : 's'} del plan contra el presupuesto`, ir:"setTab('plan');setSubPlan('presu')", urg:true});
   const sinDatos = armarContactos(py, v).sinDatos;
   if(sinDatos) pend.push({n:sinDatos, t:'contactos sin teléfono ni mail',
@@ -8798,7 +8847,7 @@ function vistaResumen(pr,py,v){
         <div class="cssub">${veMargen() ? 'presupuesto' : 'costo de producción'} ${esc(v?v.nombre:'')} · ${esc(v?v.estado:'')}</div></div>
     </div>
 
-    ${u && ['ejecutivo','admin'].includes(u.rol) ? pendHTML : ''}
+    ${u && ['ejecutivo','admin','produccion'].includes(u.rol) ? pendHTML : ''}
 
     ${v ? tcPanel(v, R) : ''}
 
@@ -8812,7 +8861,7 @@ function vistaResumen(pr,py,v){
 
     ${listaProyectosHTML(pr, py)}
 
-    ${u && ['ejecutivo','admin'].includes(u.rol) ? '' : pendHTML}
+    ${u && ['ejecutivo','admin','produccion'].includes(u.rol) ? '' : pendHTML}
 
     ${(() => { const para = getCajas().filter(cj => esperaDe(cj, u));
       return u && (para.length || (u.rol === 'produccion' && getCajas().length)) ? `<div id="res-rend">${bloque(cierraRend(u) && !puede(u, 'tareas') ? 'Rendiciones para cerrar' : u.rol === 'produccion' ? 'Rendiciones para revisar' : 'Rendiciones que esperan algo tuyo',
@@ -10043,7 +10092,7 @@ function bandejaCuerpo(lista, u, R, sub, pr, filtros){
         <div class="cssub">Estás como <b>${esc(u.nombre)}</b> · ${esc(ROL(u.rol).l)}
           <span class="muted">— ${esc(ROL(u.rol).d)}</span></div></div>
       <div style="text-align:right"><div class="csj">${lista.length}</div>
-        <div class="cssub">${sub==='bandeja'?'para vos':'en total'}</div></div>
+        <div class="cssub">${sub==='bandeja'?(puede(u,'revisar') || u.rol === 'asistprod' ? 'para vos' : 'cargados'):'en total'}</div></div>
     </div>
     <div class="pad noprint" style="display:flex;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);font-size:11.5px">
       ${ESTADOS.filter(e=>R.porEstado[e.k]?.cant).map(e=>
@@ -10065,7 +10114,8 @@ function bandejaCuerpo(lista, u, R, sub, pr, filtros){
           <td><b>${esc(c.subrubro||c.concepto||'—')}</b>
             ${c.concepto&&c.subrubro?`<span class="muted" style="display:block;font-size:10.5px">${esc(c.concepto)}</span>`:''}
             ${c.adjunto?'<span class="clip" title="Tiene foto adjunta">📎</span>':''}
-            ${c.vistoProd && c.estado==='cargado'?`<span class="muted" style="display:block;font-size:10.5px">visto por ${esc(c.vistoProd.quien)} (producción)</span>`:''}</td>
+            ${c.vistoProd && c.estado==='cargado'?`<span class="muted" style="display:block;font-size:10.5px">visto por ${esc(c.vistoProd.quien)} (producción)</span>`:''}
+            ${(m => m ? `<span class="rech-mot">Lo rechazó ${esc(m.quien || 'producción')}${m.nota ? ': «' + esc(m.nota) + '»' : ''}${c.cargadoPor === u.id ? ' · cargalo de nuevo cuando lo tengas' : ''}</span>` : '')(motivoRechazo(c))}</td>
           <td class="muted">${esc(c.proveedor||'—')}
             ${c.tipo?`<span class="muted" style="display:block;font-size:10px">${esc(TIPO_CBTE(c.tipo))}${c.numero?' '+esc(c.numero):''}</span>`:''}</td>
           <td><span class="rcode">${esc(c.rubro)}</span>
@@ -10182,7 +10232,7 @@ function vistaEquipo(pr){
         Con sesión, todo vive en la base del equipo y esto deja de importar.</div>
     </div>`}</div>`;
 }
-const LBL_PUEDE = {cargar:'cargar', revisar:'revisar', aprobar:'aprobar', pagar:'pagar'};
+const LBL_PUEDE = {cargar:'cargar', revisar:'revisar', aprobar:'aprobar', pagar:'pagar', tareas:'repartir tareas', cheque:'pedir cheques'};
 
 /* ---------- quién entra a qué proyecto ----------
    Un técnico puede tener anotadas varias productoras: son las que labura. Eso
@@ -10341,7 +10391,7 @@ function citacionesHTML(pr,py,j,C,gente,cfg){
         <div class="cssub">avisados${conLinks ? ` · <b>${confirmaron}</b> confirmaron${noPueden ? ` · <b style="color:var(--bad)">${noPueden} no ${plural(noPueden, 'puede', 'pueden')}</b>` : ''}` : ''}</div></div>
     </div>
     <div class="pad noprint" style="display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--line)">
-      ${cambiaron ? `<button class="btn sm pri" onclick="copiarCambiadas()" title="El plan cambió después de citarlos: copia el mensaje con el cambio para esos ${cambiaron}">Re-citar a ${cambiaron == 1 ? 'el que cambió' : `los ${cambiaron} que cambiaron`}</button>` : ''}
+      ${cambiaron ? `<button class="btn sm pri" onclick="copiarCambiadas()" title="El plan cambió después de citarlos: copia el mensaje con el cambio para esos ${cambiaron}">Re-citar ${cambiaron == 1 ? 'al que cambió' : `a los ${cambiaron} que cambiaron`}</button>` : ''}
       <button class="btn sm ${cambiaron ? '' : 'pri'}" onclick="copiarTodasCitaciones()">Copiar todas las citaciones</button>
       <button class="btn sm" onclick="marcarTodos(true)">Marcar todos como citados</button>
       <button class="btn sm" onclick="marcarTodos(false)">Limpiar marcas</button>
@@ -10351,7 +10401,7 @@ function citacionesHTML(pr,py,j,C,gente,cfg){
         ${conTel} de ${gente.length} tienen teléfono cargado · el mensaje se abre en tu WhatsApp o tu mail, lo mandás vos${conLinks ? ' · cada mensaje lleva un link para confirmar con un toque' : sbConectado() ? '' : ' · con la web conectada, cada mensaje lleva un link para confirmar con un toque'}</span>
     </div>
     ${Object.entries(grupos).map(([g,ps])=>`<div class="csblock"><h4>${esc(g)}</h4>
-      <div class="scrollx"><table class="tbl cst ctab">
+      <div class="scrollx"><table class="tbl cst ctab ctab-cit">
         <thead><tr><th style="width:26%">Rol</th><th style="width:24%">Nombre</th>
           <th style="width:82px">Citación</th><th class="noprint">Avisar</th>
           <th class="noprint" style="width:44px">Listo</th><th class="noprint" style="width:110px">Confirmó</th></tr></thead>
@@ -11503,7 +11553,7 @@ function vistaPlan(pr, py, v){
   const S = [['dia','Día por día'],['planilla','Planilla para mandar'],['jornadas','Todas las jornadas']];
   if(d.escenas.length || p.items.some(x => x.tipo === 'plano' && x.elenco)) S.push(['elenco','Elenco por jornada']);
   /* contra el presupuesto: lo ven el jefe de producción y el asistente de dirección */
-  const avP = veAvisosPresu() ? avisosPlanPresupuesto(py, v).filter(x => x.k !== 'sobra').length : 0;
+  const avP = veAvisosPresu() ? avisosPlanPresupuesto(py, v).length : 0;
   if(veAvisosPresu()) S.push(['presu', `Contra el presupuesto${avP ? ' · ' + avP : ''}`]);
   const sub = S.some(s => s[0] === DB.ui.subPlan) ? DB.ui.subPlan : 'dia';
   const tabs = `<div class="noprint pl-subs">
@@ -11687,7 +11737,7 @@ function plChipsJornadas(py, num){
         ${mal ? '<i class="pl-dot" title="Tiene avisos"></i>' : ''}
       </button>`; }).join('')}
     <button class="pl-chip pl-mas" onclick="plJornadaNueva()">+ Jornada</button>
-    <button class="pl-chip pl-banco ${banco?'':'vacio'}" onclick="document.getElementById('pl-banco')?.scrollIntoView({behavior:'smooth'})"
+    <button class="pl-chip pl-banco ${banco?'':'vacio'}" onclick="document.getElementById('pl-banco')?.scrollIntoView({behavior:suave()})"
       data-pl-j="0" title="Los planos sin jornada">
       <b>Banco</b><span>${banco} plano${banco==1?'':'s'} sin jornada</span></button>
   </div>`;
@@ -13199,7 +13249,11 @@ function ubicarAlmuerzo(py, num){
     alm.orden = orden;
     const D = calcularDia(py, num), f = D.filas.find(r => r.it === alm); if(!f) return;
     const desde = f.inicio - D.inicio;
-    const puntos = (desde <= hasta && desde >= 180 ? 0 : 1e6 + Math.abs(desde - hasta)) + (cambia ? 0 : 5000) + Math.abs(desde - 300);
+    /* lo ideal: partir el día en dos mitades parecidas, sin pasarse de las
+       horas hasta la comida (comer a las 4 h de la citación y después
+       filmar ocho seguidas no lo hace nadie); en un día corto, no antes de 4 h */
+    const objetivo = Math.min(hasta, Math.max(240, (D.fin - D.inicio - f.dur) / 2));
+    const puntos = (desde <= hasta && desde >= 180 ? 0 : 1e6 + Math.abs(desde - hasta)) + (cambia ? 0 : 5000) + Math.abs(desde - objetivo);
     if(!mejor || puntos < mejor.puntos) mejor = {puntos, orden, inicio: f.inicio};
   };
   for(let i = 1; i < films.length; i++) probar(films[i].orden - 0.5, claveGrupo(py, films[i - 1]) !== claveGrupo(py, films[i]));
@@ -13963,8 +14017,8 @@ function vistaLuces(pr, py, v){
     <div class="cshead">
       <div><div class="csttl">Pedido de luces</div>
         <div class="cssub">${esc(py.nombre)} · ${esc(pr.nombre)} · ${js.length} jornada${js.length == 1 ? '' : 's'}${js.map(fechaJ).filter(Boolean).length ? ' (' + js.map(fechaJ).filter(Boolean).join(', ') + ')' : ''}</div></div>
-      <div style="text-align:right"><div class="csj">${C.total ? fmtM(C.total) : '—'}<span> total</span></div>
-        <div class="cssub">${P.items.length} ${P.items.length == 1 ? 'renglón' : 'renglones'}${C.sinPrecio ? ` · <b style="color:var(--warn)">${C.sinPrecio} sin precio</b>` : ''}</div></div>
+      <div style="text-align:right"><div class="csj">${C.total ? fmtM(C.total) : '—'}<span> total ${P.iva ? 'con IVA' : 'sin IVA'}</span></div>
+        <div class="cssub">${P.iva && C.total ? `neto sin IVA ${fmtM(C.neto)} · ` : ''}${P.items.length} ${P.items.length == 1 ? 'renglón' : 'renglones'}${C.sinPrecio ? ` · <b style="color:var(--warn)">${C.sinPrecio} sin precio</b>` : ''}</div></div>
     </div>
     <div class="pad grid2 lz-cab">
       <label class="f"><span>Rental</span><select onchange="lzRental(this.value)">
@@ -14019,8 +14073,9 @@ function vistaLuces(pr, py, v){
       <div><span>Subtotal</span><b>${fmtM(C.subtotal)}</b></div>
       <div><span>Descuento del rental <input type="number" min="0" max="100" step="any" value="${n(P.descuento)}" class="lz-num"
         onchange="lzCampo('descuento', this.value)"> %</span><b>− ${fmtM(C.descuento)}</b></div>
+      <div><span>Neto, sin IVA</span><b>${fmtM(C.neto)}</b></div>
       <div><span><label><input type="checkbox" ${P.iva ? 'checked' : ''} onchange="lzCampo('iva', this.checked)" style="width:auto"> IVA 21%</label></span><b>${fmtM(C.iva)}</b></div>
-      <div class="lz-gran"><span>Total</span><b>${fmtM(C.total)}</b></div>
+      <div class="lz-gran"><span>Total ${P.iva ? 'con IVA' : 'sin IVA'}</span><b>${fmtM(C.total)}</b></div>
       ${hayPresu ? `<div><span>Presupuestado (rubro 11: luces, grip, generador, camión)</span><b>${fmtM(C.presu)}</b></div>
         <div><span>Diferencia</span><b class="${C.neto > C.presu ? 'pl-rojo' : ''}">${C.neto > C.presu ? '+ ' : '− '}${fmtM(Math.abs(C.neto - C.presu))}</b></div>` : ''}
     </div>
@@ -15836,8 +15891,14 @@ function abrir(html){
 function cerrar(){
   modal = null; render();
   const a = _abridor; _abridor = null;
-  if(a) try{ const el = [...document.querySelectorAll('[onclick]')].find(e => e.getAttribute('onclick') === a); if(el) el.focus(); }catch(e){}
+  try{ const el = a && [...document.querySelectorAll('[onclick]')].find(e => e.getAttribute('onclick') === a);
+    /* si el botón que la abrió ya no está, el foco vuelve al contenido y no se pierde */
+    if(el) el.focus(); else if(a){ const v = document.getElementById('vista'); if(v && v.focus) v.focus({preventScroll: true}); } }catch(e){}
 }
+/* el primer botón de la página (visible sólo con el teclado): salta el encabezado y las solapas */
+/* el desplazamiento suave, salvo para quien pidió menos movimiento */
+const suave = () => { try{ return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'; }catch(e){ return 'auto'; } };
+function saltarAlContenido(){ try{ const v = document.getElementById('vista'); if(v){ v.focus(); v.scrollIntoView && v.scrollIntoView({block: 'start'}); } }catch(e){} }
 /* ¿hay algo escrito en la ventana que no se guardó? */
 function modalSucio(){
   const m = typeof document !== 'undefined' && document.querySelector('.ov .mod');
@@ -15852,6 +15913,12 @@ function cerrarAfuera(ev, el){
   if(ev && el && ev.target !== el) return;
   if(modalSucio() && !confirm('Hay cosas escritas que no se guardaron. ¿Cerrar igual?')) return;
   cerrar();
+}
+/* La fecha de un movimiento de plata: es hoy casi siempre. Va plegada, con
+   "hoy" puesto, y se abre sólo si fue otro día (el dato sigue guardándose). */
+function fechaOpcional(val, txt){
+  return `<details class="f-fecha"><summary>${esc(txt)} <span class="muted">· ${esc(fFecha(val) || val)}</span></summary>
+    <div style="margin-top:6px;max-width:220px">${campo('Fecha', 'fecha', val, 'date')}</div></details>`;
 }
 function campo(l,name,val,tipo='text',extra=''){
   return `<label class="f"><span>${l}</span>
@@ -16665,7 +16732,7 @@ function editUsuario(id){
       </div>
       <div class="sicabox" style="margin-top:14px">
         ${rolesOk.map(r=>`<div style="margin-bottom:5px"><b>${esc(r.l)}</b> — ${esc(r.d)}
-          <span class="muted" style="font-size:10.5px">(${r.puede.filter(x=>x!=='equipo').join(', ')})</span></div>`).join('')}
+          <span class="muted" style="font-size:10.5px">(${r.puede.filter(x=>x!=='equipo').map(x=>LBL_PUEDE[x]||x).join(', ')})</span></div>`).join('')}
       </div>
       <label style="display:flex;gap:8px;align-items:center;margin-top:12px;cursor:pointer">
         <input type="checkbox" name="activo" ${u.activo?'checked':''} style="width:auto;flex:none">
@@ -16847,9 +16914,9 @@ function darFondo(lineaId, persona, cajaId, pre = {}){
             ${extra.map(opP).join('')}
           </select></label>
         ${campo('Cuánto', 'monto', pre.monto || '', 'number', 'step="any" min="0" inputmode="decimal" placeholder="0"')}
-        ${campo('Fecha', 'fecha', pre.fecha || hoy(), 'date')}
-        ${campo('Nota', 'nota', pre.nota || '', 'text', 'placeholder="Para el scouting, la jornada 2…"').replace('<label class="f">', '<label class="f" style="grid-column:1/-1">')}
+        ${campo('Nota', 'nota', pre.nota || '', 'text', 'placeholder="Para el scouting, la jornada 2…"')}
       </div>
+      ${fechaOpcional(pre.fecha || hoy(), 'Se lo diste otro día')}
       ${nadie ? `<div class="avisomodo" style="margin-top:10px">No hay asistentes de producción ni de arte en este proyecto. Invitalos desde <b>Equipo y roles</b> y volvé.</div>` : ''}
       <div class="muted" style="font-size:11.5px;margin-top:9px">${fija ? 'Se suma a su rendición abierta.' : 'Si ya tiene un fondo abierto de esa línea, se le suma; si no, le aparece uno nuevo en <b>Gastos → Rendiciones</b> para cargar los tickets.'}
         En el presupuesto queda en la línea; en el tablero, comprometido hasta que rinda.</div>
@@ -16983,10 +17050,10 @@ function rendirCaja(id){
       ${s.sinComprobante>0?`<div class="avisomodo"><b>${fmt(s.sinComprobante, cj.moneda)} sin comprobante.</b>
         Se puede cerrar igual: queda anotado en la carátula.</div>`:''}
       <div class="sicabox">${queda}.</div>
-      ${s.saldo ? `<div class="rd-cierre">
+      ${s.saldo ? `<div>
         ${campo(s.saldo > 0 ? 'Cuánto devolvió' : 'Cuánto se le reintegra', 'monto', Math.abs(s.saldo), 'number', 'step="any" min="0" inputmode="decimal"')}
-        ${campo('Fecha', 'fecha', hoy(), 'date')}
       </div>
+      ${fechaOpcional(hoy(), s.saldo > 0 ? 'Lo devolvió otro día' : 'Se le reintegró otro día')}
       <div class="muted" style="font-size:11.5px;margin-top:6px">${s.saldo > 0 ? 'Lo que devuelve no es gasto: en el presupuesto y el tablero queda gastado lo entregado menos lo devuelto.' : 'El reintegro es gasto: en el presupuesto y el tablero queda gastado lo entregado más el reintegro.'}</div>` : ''}
       <label class="f" style="margin-top:12px"><span>Notas del cierre</span>
         <textarea name="notas" rows="3" placeholder="Algo que haya que anotar del cierre…">${esc(cj.notas)}</textarea></label>
@@ -17165,7 +17232,7 @@ function rendListaHTML(py, u, pr){
   return `<div class="cs">
     <div class="cshead"><div><div class="csttl">Rendiciones</div>
       <div class="cssub">La plata que se le dio a cada uno para gastar y lo que rinde. Todas juntas, del proyecto entero</div></div>
-      <div style="text-align:right"><div class="csj">${fmt(enMano)}</div><div class="cssub">en mano, sin rendir</div></div></div>
+      <div style="text-align:right"><div class="csj">${fmt(enMano)}</div><div class="cssub">en mano, sin cerrar</div></div></div>
     ${daFondos(u) ? `<div class="pad noprint muted" style="font-size:11.5px;border-bottom:1px solid var(--line)">Los fondos salen del presupuesto: de la caja chica de producción (💵 Dar fondo, en la línea) o de la línea que marques como fondo. El botón de arriba abre lo mismo.</div>` : ''}
     ${para.length ? `<div class="csblock"><h4>${cierraRend(u) && !puede(u, 'revisar') ? 'Para cerrar' : revisaRend(u) && !cierraRend(u) ? 'Para revisar' : 'Esperan algo tuyo'} · ${para.length}</h4>
       <div class="pad" style="display:flex;flex-direction:column;gap:6px">${para.map(cj => rendFilaBandeja(py, cj, u)).join('')}</div></div>` : ''}
@@ -17225,7 +17292,8 @@ function rendDetalleHTML(py, cj, u, pr){
     aprobada: `La elevó ${esc((firmaRend(cj, 'aprobada') || {}).quien || 'el jefe de producción')}. ${cierraRend(u) ? 'Anotá la devolución o el reintegro y cerrala.' : 'La cierra Administración.'}`,
     cerrada: `<b>Cerrada.</b> ${esc(cierreTxt(cj) || '')}${(cj.cierre || {}).quien ? ` · lo anotó ${esc(cj.cierre.quien)}` : ''}.${faltante ? ` <b style="color:var(--bad)">Faltan ${fmt(faltante, cj.moneda)}</b> (no se devolvieron: cuentan como gastados).` : ''}${cj.notas ? ' ' + esc(cj.notas) : ''}`}[e];
   const acc = [];
-  if(edita && (mia || !u)) acc.push(`<button class="btn pri" onclick="enviarRend('${cj.id}')">${e === 'observada' ? 'Reenviar ' + aQuien : 'Mandar ' + aQuien}</button>`);
+  const btnMandar = edita && (mia || !u) ? `<button class="btn pri" onclick="enviarRend('${cj.id}')">${e === 'observada' ? 'Reenviar ' + aQuien : 'Mandar ' + aQuien}</button>` : '';
+  if(btnMandar) acc.push(btnMandar);
   if(e === 'aProduccion' && asistRevisa(cj, u)){
     acc.push(`<button class="btn pri" onclick="pasarJefeRend('${cj.id}')">Pasar al jefe ✓</button>`);
     acc.push(`<button class="btn" onclick="devolverRend('${cj.id}')">Devolver a ${esc(nombreUsuario(cj.responsable).split(' ')[0])} con comentario</button>`);
@@ -17255,7 +17323,8 @@ function rendDetalleHTML(py, cj, u, pr){
         <span class="muted">· ${devueltoDe(cj) ? 'devolvió' : 'se le reintegró'}${(cj.cierre || {}).quien ? ' · lo anotó ' + esc(cj.cierre.quien) : ''}</span></span>
         <b style="color:var(--ok)">${devueltoDe(cj) ? '−' : '+'} ${fmt(devueltoDe(cj) || reintegroDe(cj), cj.moneda)}</b></div></div>` : ''}</div></div>
     ${edita ? `<div class="csblock noprint"><h4>Subir tickets</h4><div class="pad">${zonaRendHTML(cj)}</div></div>` : ''}
-    <div class="csblock"><h4>Los gastos · ${T.cant}${T.faltan.length && edita ? ` <span class="rd-falta-n">${T.faltan.length} con datos por completar</span>` : ''}</h4>${filasRendHTML(py, cj, T, edita, u)}</div>
+    <div class="csblock"><h4>Los gastos · ${T.cant}${T.faltan.length && edita ? ` <span class="rd-falta-n">${T.faltan.length} con datos por completar</span>` : ''}</h4>${filasRendHTML(py, cj, T, edita, u)}
+      ${btnMandar && T.cant ? `<div class="pad noprint rd-acc-bar rd-acc-pie">${btnMandar}<span class="muted" style="font-size:11.5px">${T.cant} ${plural(T.cant, 'gasto')} por ${fmt(T.gastado, cj.moneda)} de ${fmt(T.entregado, cj.moneda)}</span></div>` : ''}</div>
     <div class="csblock"><h4>La planilla, por rubro</h4>${planillaRendHTML(T, cj)}</div>
     <div class="csblock"><h4>Charla${charlaRend(cj).length ? ' · ' + charlaRend(cj).length : ''}</h4>${charlaRendHTML(cj, u)}</div>
     ${pasosRend(cj).length ? `<div class="csblock"><h4>Recorrido</h4><div class="pad"><div class="linea-tiempo">${pasosRend(cj).map(p => `<div class="hito">
@@ -17267,7 +17336,8 @@ function rendDetalleHTML(py, cj, u, pr){
 function zonaRendHTML(cj){
   return `<div class="rd-drop" ondragover="event.preventDefault();this.classList.add('sobre')" ondragleave="this.classList.remove('sobre')"
       ondrop="soltarRend(event,'${cj.id}')">
-    <b>Soltá acá las fotos de los tickets o los PDF de las facturas</b>
+    <b class="solo-mouse">Soltá acá las fotos de los tickets o los PDF de las facturas</b>
+    <b class="solo-dedo">Sacale una foto a cada ticket, o subí las fotos y los PDF que ya tenés</b>
     <span class="muted" style="font-size:12px">JPG, PNG, HEIC, PDF… varios a la vez. Cada archivo es una fila: CLAP lee el QR de AFIP o el texto y pre-llena lo que puede; vos lo confirmás.</span>
     <div class="rd-btns">
       <button class="btn pri" onclick="document.getElementById('rdfile').click()">Subir archivos</button>
@@ -17286,10 +17356,32 @@ function miniAdj(a){
   return `<span class="rd-th rd-th-doc">${esc(esPdfAdj(a) ? 'PDF' : ext)}</span>`;
 }
 const RD_CAMPOS = ['fecha','proveedor','concepto','rubro','tipo','numero','importe'];
+/* Un mismo ticket subido dos veces (la foto y el PDF, o dos fotos) se cuenta
+   dos veces. No se borra solo: se avisa en la fila, al mandar y al elevar.
+   Mismo archivo, o mismo número de comprobante (y mismo CUIT, si lo tienen),
+   o mismo importe, fecha y proveedor. Devuelve {id: n° de la fila igual}.   */
+function repetidosRend(cs){
+  const out = {}, dig = x => String(x || '').replace(/\D/g, '');
+  /* 0003-00012345 y 00003-00012345 son el mismo comprobante: punto de venta y número, sin ceros adelante */
+  const nro = x => String(x || '').split(/\D+/).filter(Boolean).map(p => String(parseInt(p, 10))).join('-');
+  cs.forEach((c, i) => {
+    for(let k = 0; k < i; k++){
+      const o = cs[k];
+      const mismoArchivo = !!(c.adjunto && o.adjunto && c.adjunto.dataUrl && c.adjunto.dataUrl === o.adjunto.dataUrl);
+      const mismoNumero = dig(c.numero).length >= 4 && nro(c.numero) === nro(o.numero) && (!c.cuit || !o.cuit || dig(c.cuit) === dig(o.cuit));
+      const mismoGasto = n(c.importe) > 0 && n(c.importe) === n(o.importe) && !!c.fecha && c.fecha === o.fecha &&
+        !!norm(c.proveedor || '').trim() && norm(c.proveedor || '').trim() === norm(o.proveedor || '').trim();
+      if(mismoArchivo || mismoNumero || mismoGasto){ out[c.id] = k + 1; break; }
+    }
+  });
+  return out;
+}
 function filasRendHTML(py, cj, T, edita, u){
   const cs = T.comprobantes;
   if(!cs.length) return `<div class="pad muted" style="font-size:12.5px">${edita ? 'Todavía no hay gastos. Subí los tickets arriba.' : 'No tiene gastos cargados.'}</div>`;
   const notas = id => charlaRend(cj).filter(m => m.gastoId === id).length;
+  const rep = repetidosRend(cs);
+  const repTxt = c => rep[c.id] ? `<span class="rd-sub rd-falta-t">¿Repetido? Es igual al ticket ${rep[c.id]}: si es el mismo, borrá uno.</span>` : '';
   const cab = `<div class="rd-f rd-cab" aria-hidden="true"><span>Ticket</span><span>Fecha</span><span>Proveedor · CUIT</span><span>Concepto</span><span>Rubro</span><span>Comprobante</span><span>Número</span><span style="text-align:right">Importe</span><span></span></div>`;
   return `<div class="rd-filas">${cab}${cs.map((c, i) => {
     const falta = edita ? faltaEnGasto(c) : [], auto = c.aConfirmar || [];
@@ -17309,6 +17401,7 @@ function filasRendHTML(py, cj, T, edita, u){
       <span class="rd-c rd-c-num"><span class="rd-l">Número</span>${esc(c.numero || '—')}</span>
       <span class="rd-c rd-c-imp"><span class="rd-l">Importe</span><b>${fmt(c.importe, c.moneda)}</b></span>
       <span class="rd-c rd-c-acc">${veRend(cj, u) && estadoRend(cj) !== 'cerrada' ? `<button class="btn sm" onclick="notaGastoRend('${c.id}')" aria-label="Comentar este gasto">💬${notas(c.id) ? ' ' + notas(c.id) : ''}</button>` : notas(c.id) ? `<span class="muted">💬 ${notas(c.id)}</span>` : ''}</span>
+      ${rep[c.id] && estadoRend(cj) !== 'cerrada' ? `<span class="rd-c rd-c-est">${repTxt(c)}</span>` : ''}
     </div>`;
     const inp = (k, tipo, val, extra = '') => `<input class="${cls(k).trim()}" type="${tipo}" value="${esc(val ?? '')}" onchange="upGastoRend('${c.id}','${k}',this.value)" onkeydown="rdTecla(event)" ${extra}>`;
     return `<div class="rd-f${falta.length ? ' rd-f-falta' : ''}">
@@ -17327,7 +17420,7 @@ function filasRendHTML(py, cj, T, edita, u){
         ${auto.length ? `<button class="btn sm" onclick="confirmarFilaRend('${c.id}')" title="Está todo bien leído">✓</button>` : ''}
         <button class="btn sm" onclick="notaGastoRend('${c.id}')" aria-label="Comentar este gasto">💬${notas(c.id) ? ' ' + notas(c.id) : ''}</button>
         <button class="btn sm dgr" onclick="borrarGastoRend('${c.id}')" aria-label="Borrar este gasto">×</button></span>
-      ${estado ? `<span class="rd-c rd-c-est">${estado}</span>` : ''}
+      ${estado || rep[c.id] ? `<span class="rd-c rd-c-est">${estado}${repTxt(c)}</span>` : ''}
     </div>`; }).join('')}</div>
     <datalist id="dlprov">${[...new Set([...DB.catalogo.personas.map(x => x.nombre), ...(py.comprobantes || []).map(c => c.proveedor)].filter(Boolean))].sort().map(x => `<option value="${esc(x)}">`).join('')}</datalist>`;
 }
@@ -17458,10 +17551,12 @@ function enviarRend(id){
   const sinImporte = T.comprobantes.filter(c => !(n(c.importe) > 0) || !c.rubro);
   if(sinImporte.length){ toast(`Hay ${sinImporte.length} ${plural(sinImporte.length, 'gasto')} sin importe o sin rubro: completalos antes de mandar`); return; }
   const faltan = T.faltan.length, auto = T.comprobantes.filter(c => (c.aConfirmar || []).length).length;
+  const nRep = Object.keys(repetidosRend(T.comprobantes)).length;
   const via = viaProduccion(cj), aQuien = via ? 'a producción' : 'al jefe de producción';
   const msj = `¿Mandar la rendición ${aQuien}?\n\n${T.cant} ${plural(T.cant, 'gasto')} por ${fmt(T.gastado, cj.moneda)} · recibiste ${fmt(T.entregado, cj.moneda)} · ${saldoTxt(T.saldo, true).toLowerCase()} ${fmt(Math.abs(T.saldo), cj.moneda)}`
     + (faltan ? `\n\nOjo: ${faltan} ${plural(faltan, 'gasto')} con algún dato sin completar.` : '')
     + (auto ? `\n${auto} con datos leídos solos que no confirmaste.` : '')
+    + (nRep ? `\n${nRep} ${plural(nRep, 'gasto parece repetido', 'gastos parecen repetidos')} (el mismo ticket dos veces): fijate antes de mandar.` : '')
     + '\n\nMientras la revisa no se puede cambiar.';
   if(!confirm(msj)) return;
   const foto = fotoRend(py, cj);
@@ -17496,7 +17591,9 @@ function elevarRend(id){
      en el proyecto, directo desde producción); sin jefe en el proyecto, el PE */
   if(!cj || rendMia(cj) || !(e === 'enviada' || (e === 'aProduccion' && (!u || jefeDirecto(u)))) || !elevaRend(cj)) return;
   const T = totalesRend(py, cj);
-  if(!confirm(`¿Elevar a Administración la rendición de ${nombreUsuario(cj.responsable)}?\n\n${T.cant} ${plural(T.cant, 'gasto')} por ${fmt(T.gastado, cj.moneda)} · ${saldoTxt(T.saldo).toLowerCase()} ${fmt(Math.abs(T.saldo), cj.moneda)}`)) return;
+  const nRep = Object.keys(repetidosRend(T.comprobantes)).length;
+  if(!confirm(`¿Elevar a Administración la rendición de ${nombreUsuario(cj.responsable)}?\n\n${T.cant} ${plural(T.cant, 'gasto')} por ${fmt(T.gastado, cj.moneda)} · ${saldoTxt(T.saldo).toLowerCase()} ${fmt(Math.abs(T.saldo), cj.moneda)}`
+    + (nRep ? `\n\nOjo: ${nRep} ${plural(nRep, 'gasto parece repetido', 'gastos parecen repetidos')} (el mismo ticket dos veces).` : ''))) return;
   const foto = fotoRend(py, cj);
   pasoRend(cj, 'aprobada');
   T.comprobantes.forEach(c => { if(c.estado === 'cargado') moverGastoRend(c, 'revisado', 'revisar', 'con la rendición'); });
@@ -17819,8 +17916,8 @@ async function paginaPdfACanvas(pdf, num, ancho){
   return cv;
 }
 const excluirCuitPropio = () => (getPr() || {}).cuit || '';
-async function reconocerComprobante(id, file){
-  const marcar = t => { _leyendo[id] = t; const el = document.getElementById('rdl-' + id); if(el) el.textContent = t; };
+/* lo que se lee de un archivo (QR de AFIP, texto del PDF u OCR de la foto); null si no se pudo */
+async function leerDatosComprobante(file, marcar = () => {}){
   let d = null;
   try{
     if(esPdfArchivo(file)){
@@ -17853,6 +17950,11 @@ async function reconocerComprobante(id, file){
       }
     }
   }catch(e){ d = null; }
+  return d;
+}
+async function reconocerComprobante(id, file){
+  const marcar = t => { _leyendo[id] = t; const el = document.getElementById('rdl-' + id); if(el) el.textContent = t; };
+  const d = await leerDatosComprobante(file, marcar);
   delete _leyendo[id];
   const c = gastoPorId(id);
   if(c && d && editaGastoRend(c)) aplicarReconocido(id, d);
@@ -18015,7 +18117,7 @@ function hojasRendicion(py, cj){
     {nombre: 'Detalle', filas: detalle, anchos: [5, 12, 28, 15, 30, 10, 30, 16, 18, 14, 8, 26, 30]}];
 }
 const xlsxRendicion = (py, cj) => libroXlsx(hojasRendicion(py, cj));
-const nombreArchivoRend = (py, cj) => `Rendicion-${String(nombreUsuario(cj.responsable)).replace(/\s+/g, '-')}-${String(py.nombre || 'proyecto').replace(/[^\wáéíóúñÁÉÍÓÚÑ-]+/g, '-').replace(/-+/g, '-').slice(0, 40)}`;
+const nombreArchivoRend = (py, cj) => `Rendicion-${String(nombreUsuario(cj.responsable)).replace(/\s+/g, '-')}-${String(py.nombre || 'proyecto').replace(/[^\wáéíóúñÁÉÍÓÚÑ-]+/g, '-').replace(/-+/g, '-').slice(0, 40).replace(/^-+|-+$/g, '')}`;
 function bajarExcelRend(id){
   const py = getPy(), cj = cajaPorId(id); if(!cj || !veRend(cj)) return;
   bajar(nombreArchivoRend(py, cj) + '.xlsx', xlsxRendicion(py, cj), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -18144,6 +18246,17 @@ function cargarComprobante(id, cajaId){
       <span class="spacer"></span>
       <span class="muted" style="font-size:11px;text-transform:none;letter-spacing:0">como ${esc(u.nombre)}</span></h3>
     <div class="mbody">
+      <div style="margin-bottom:14px">
+        <span class="f" style="display:block"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700">Foto o PDF del comprobante</span></span>
+        <div id="cadj" style="margin-top:6px">${adjuntoHTML(c.adjunto)}</div>
+        <input type="file" id="cfile" accept="${ACEPTA_ADJ}" style="display:none" onchange="subirAdjunto(this)">
+        <input type="file" id="ccam" accept="image/*" capture="environment" style="display:none" onchange="subirAdjunto(this)">
+        <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:7px">
+          <button class="btn" onclick="document.getElementById('cfile').click()">${c.adjunto?'Cambiar el archivo':'Subir archivo'}</button>
+          <button class="btn" onclick="document.getElementById('ccam').click()">Sacar foto</button>
+          <span class="muted" style="font-size:10.5px">foto (JPG, PNG, HEIC…) o PDF · CLAP lee lo que puede y completa los campos vacíos</span></div>
+        <div id="cleer" class="muted" style="font-size:11.5px;margin-top:6px" role="status"></div>
+      </div>
       <div class="grid2">
         <label class="f"><span>Rubro</span>
           <select name="rubro" onchange="alCambiarRubro(this.value)">
@@ -18180,16 +18293,6 @@ function cargarComprobante(id, cajaId){
       </div>
       <label class="f" style="margin-top:12px"><span>Notas</span>
         <textarea name="notas" rows="2" placeholder="Lo que producción necesite saber para revisarlo">${esc(c.notas)}</textarea></label>
-      <div style="margin-top:14px">
-        <span class="f" style="display:block"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700">Foto o PDF del comprobante</span></span>
-        <div id="cadj" style="margin-top:6px">${adjuntoHTML(c.adjunto)}</div>
-        <input type="file" id="cfile" accept="${ACEPTA_ADJ}" style="display:none" onchange="subirAdjunto(this)">
-        <input type="file" id="ccam" accept="image/*" capture="environment" style="display:none" onchange="subirAdjunto(this)">
-        <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:7px">
-          <button class="btn" onclick="document.getElementById('cfile').click()">${c.adjunto?'Cambiar el archivo':'Subir archivo'}</button>
-          <button class="btn" onclick="document.getElementById('ccam').click()">Sacar foto</button>
-          <span class="muted" style="font-size:10.5px">foto (JPG, PNG, HEIC…) o PDF · las fotos se achican solas</span></div>
-      </div>
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
       <button class="btn pri" onclick="saveComprobante('${id||''}')">${id?'Guardar':'Cargar'}</button></div>
@@ -18258,7 +18361,35 @@ async function subirAdjunto(inp){
     if(cont) cont.innerHTML = adjuntoHTML(_adjTmp);
     if(r.aviso) toast(r.aviso, {error: true});
     else toast(`${esImagenAdj(_adjTmp) ? 'Foto lista' : 'Archivo listo'} · ${Math.round((_adjTmp.bytes || 0)/1024)} KB`);
-  }catch(e){ alert('No pude leer ese archivo.\n\n'+e.message); }
+  }catch(e){ alert('No pude leer ese archivo.\n\n'+e.message); return; }
+  completarDesdeArchivo(f);
+}
+/* Como en la rendición: del archivo se lee lo que se puede (QR de AFIP, PDF o
+   la foto) y se completa en los campos vacíos del formulario, en amarillo,
+   para que quien carga lo revise. Lo que ya escribió no se toca. */
+async function completarDesdeArchivo(f){
+  const decir = t => { const el = document.getElementById('cleer'); if(el) el.textContent = t; };
+  decir('Leyendo el comprobante…');
+  const d = await leerDatosComprobante(f, decir);
+  const m = document.querySelector('.ov .mod'); if(!m || !document.getElementById('cleer')) return;
+  if(!d){ decir('No pude leer los datos del archivo: completalos a mano.'); return; }
+  const puestos = [];
+  const poner = (k, val) => {
+    const el = m.querySelector(`[name="${k}"]`); if(!el || val == null || val === '' || (k === 'importe' && !(n(val) > 0))) return;
+    /* la fecha viene puesta en hoy: si nadie la tocó, manda la del comprobante */
+    const intacta = k === 'fecha' && el.value === el.defaultValue;
+    if(!intacta && (k === 'importe' ? n(el.value) > 0 : String(el.value || '').trim())) return;
+    if(el.tagName === 'SELECT' && ![...el.options].some(o => o.value === String(val))) return;
+    el.value = String(val); el.classList.add('leido'); puestos.push(k);
+  };
+  poner('fecha', d.fecha); poner('cuit', d.cuit); poner('tipo', d.tipo); poner('numero', d.numero); poner('importe', d.importe);
+  const cuit = (m.querySelector('[name="cuit"]') || {}).value || '';
+  const p = proveedorPorCuit(cuit); poner('proveedor', p ? p.nombre : d.proveedor);
+  const rub = m.querySelector('[name="rubro"]');
+  if(rub && !rub.value){ const rb = rubroSugerido(cuit, (m.querySelector('[name="proveedor"]') || {}).value || '', null);
+    if(rb){ poner('rubro', rb); if(rub.value) alCambiarRubro(rub.value); } }
+  const de = d.fuente === 'qr' ? 'del QR de AFIP' : d.fuente === 'pdf' ? 'del PDF' : 'de la foto';
+  decir(puestos.length ? `Leído ${de}: revisá lo amarillo antes de cargar.` : 'Leí el archivo, pero no encontré datos nuevos para completar.');
 }
 function saveComprobante(id){
   const d = datos(); const py = getPy(); const u = getUsuario();
@@ -19081,9 +19212,34 @@ function propuestaPresupuesto(){
   const v = getV();
   if(v) res.lineas.forEach(l => {
     const rb = v.rubros.find(x => x.codigo === l.rubro);
-    l.ya = !!(rb && rb.lineas.some(x => norm(x.concepto) === norm(l.concepto) && (x.piezaId || null) === (l.piezaId || null)));
+    const igual = rb && rb.lineas.find(x => norm(x.concepto) === norm(l.concepto) && (x.piezaId || null) === (l.piezaId || null));
+    const parecida = igual ? null : lineaParecida(v, l);
+    l.ya = !!(igual || parecida);
+    if(parecida) l.parecida = parecida.concepto;
   });
   return res;
+}
+/* Una línea del presupuesto que ya cubre lo que propone el desglose aunque
+   no se llame igual: "CAMI" ya está en "Actriz principal" (personaje Cami),
+   "Locación — COSTANERA" en "Locación — Costanera y plaza". Se marca
+   destildada y se dice cuál es: mandarla igual la duplicaría.             */
+const NO_CLAVE = new Set(['locacion', 'escena', 'escenas', 'elemento', 'elementos', 'casa', 'interior', 'exterior', 'para', 'desde', 'hasta']);
+function lineaParecida(v, l){
+  const texto = x => norm([x.concepto, x.personaje, x.notas].filter(Boolean).join(' '));
+  const en = l.claveRubros ? v.rubros : v.rubros.filter(r => r.codigo === l.rubro);
+  const lineas = en.flatMap(r => r.lineas.filter(x => String(x.concepto || '').trim()));
+  if(l.dep === 'elenco'){
+    const nom = norm(l.concepto).trim();
+    return lineas.find(x => norm(x.personaje || '').trim() === nom || texto(x).split(/[^a-z0-9ñ]+/).includes(nom)) || null;
+  }
+  if(l.claves) return lineas.find(x => l.claves.some(k => texto(x).includes(norm(k)))) || null;
+  /* lo que va agrupado (utilería, extras, sonido…): el mismo criterio que los avisos del plan */
+  if(CUBRE_DESGLOSE[l.dep]) return lineas.find(x => CUBRE_DESGLOSE[l.dep].test(norm(x.concepto || ''))) || null;
+  if(l.dep === 'locacion'){
+    const pal = norm(l.concepto.replace(/^Locación —\s*/i, '')).split(/[^a-z0-9ñ]+/).filter(w => w.length >= 4 && !NO_CLAVE.has(w));
+    return lineas.find(x => /^locaci/.test(norm(x.concepto)) && pal.some(w => texto(x).split(/[^a-z0-9ñ]+/).includes(w))) || null;
+  }
+  return null;
 }
 function propuestaPresupuestoBase(){
   const d=getD(), r=resumenDesglose(d), out=[];
@@ -19133,6 +19289,28 @@ function propuestaPresupuestoBase(){
       });
     }
   });
+  /* lo que el guion pide aunque no sea un personaje con diálogo ni un elemento:
+     el menor (y su permiso y su chaperona) y el permiso de filmar en la calle */
+  try{
+    const py = getPy(), det = tagsDetectados(py), tags = tagsDelProyecto(py).map(t => t.k);
+    const escTag = k => det[k] ? [...det[k].escenas] : [];
+    const dias = k => new Set(d.escenas.filter(e => escTag(k).includes(e.numero)).map(e => e.jornada || 1)).size || 1;
+    if(tags.includes('menores')){
+      const quien = det.menores ? [...det.menores.motivos].filter(Boolean)[0] || '' : '';
+      const nota = (escTag('menores').length ? 'escenas ' + escTag('menores').join(', ') : 'menores de edad') + (quien ? ' · «' + quien + '»' : '');
+      out.push({dep:'tag', rubro:'09', area:'elenco', concepto:'Actor o actriz menor de edad' + (quien ? ' — ' + quien : ''), cantidad:1, dias:dias('menores'), unidad:'jornada',
+        nota, claves: ['menor de edad', 'infantil', ...(quien ? [quien] : [])], claveRubros: true});
+      out.push({dep:'tag', rubro:'09', area:'elenco', concepto:'Chaperona / adulto responsable', cantidad:1, dias:dias('menores'), unidad:'jornada',
+        nota, claves: ['chaperon', 'adulto responsable', 'tutor'], claveRubros: true});
+      out.push({dep:'tag', rubro:'09', area:'elenco', concepto:'Permiso de trabajo de menores', cantidad:1, dias:1, unidad:'global',
+        nota, claves: ['permiso de menores', 'trabajo de menores'], claveRubros: true});
+    }
+    if(tags.includes('viaPublica')){
+      const lugares = det.viaPublica ? [...det.viaPublica.motivos].filter(Boolean) : [];
+      out.push({dep:'tag', rubro:'10', area:'locaciones', concepto:'Permiso de filmación en vía pública', cantidad:1, dias:dias('viaPublica'), unidad:'jornada',
+        nota: lugares.length ? lugares.join(', ') : 'vía pública', claves: ['via publica', 'permiso municipal', 'permiso de filmacion'], claveRubros: true});
+    }
+  }catch(e){}
   return {lineas:out, jornadas:jorn, resumen:r};
 }
 function aPresupuesto(){
@@ -19146,7 +19324,7 @@ function aPresupuesto(){
     <h3>Enviar el desglose al presupuesto</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">
         Se crean <b>${lineas.length} líneas</b> en <b>${esc(v.nombre)}</b> con el concepto, la cantidad
-        y los días ya calculados desde el desglose. <b>Los valores quedan en cero</b> — los ponés vos.
+        y los días ya calculados desde el desglose. <b>Los valores quedan en cero</b> (salvo los cargos del convenio SICA, que se completan solos) — los ponés vos.
         Destildá lo que no quieras.${yaEstan ? ` <b>${yaEstan} ya están en el presupuesto</b> y vienen destildadas: mandarlas de nuevo las duplica.` : ''}</div>
       ${Object.keys(porRubro).sort().map(cod=>{
         const rb = v.rubros.find(x=>x.codigo===cod);
@@ -19156,7 +19334,7 @@ function aPresupuesto(){
           ${porRubro[cod].map(l=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:3px 0;cursor:pointer">
             <input type="checkbox" data-i="${l.i}" ${l.ya ? '' : 'checked'} style="width:auto;margin-top:3px;flex:none">
             <span style="flex:1;min-width:0">
-              <span style="font-size:12.5px">${esc(l.concepto)}</span>${l.ya ? ' <span class="chip c-otr">ya está</span>' : ''}
+              <span style="font-size:12.5px">${esc(l.concepto)}</span>${l.ya ? ` <span class="chip c-otr" ${l.parecida ? `title="Parece la línea «${esc(l.parecida)}»"` : ''}>ya está${l.parecida ? ': ' + esc(l.parecida) : ''}</span>` : ''}
               <span class="muted" style="font-size:10.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
                 ${l.cantidad} × ${l.dias} ${esc(l.unidad)}${l.nota?' · '+esc(l.nota):''}</span>
               ${piezasDe(getPy()).length?`<span class="chip ${l.piezaId?'pz-si':'pz-com'}" style="margin-top:2px;display:inline-block">${
@@ -19397,7 +19575,7 @@ function invitarAlProyecto(){
         Elegí con qué rol entra y mandale el link. Si no tiene cuenta, la va a poder
         crear ahí mismo antes de aceptar.
       </div>
-      ${sel('Entra como','rol','produccion',rolesQuePuedoInvitar().map(r=>({v:r.k,l:r.l})))}
+      ${sel('Entra como','rol',(getUsuario() || {}).rol === 'produccion' ? 'asistprod' : 'produccion',rolesQuePuedoInvitar().map(r=>({v:r.k,l:r.l})))}
       <div class="sicabox" style="margin-top:10px">
         ${rolesQuePuedoInvitar().map(r=>`<div style="margin-bottom:4px"><b>${esc(r.l)}</b> — ${esc(r.d)}</div>`).join('')}
       </div>
