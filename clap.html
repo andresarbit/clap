@@ -1117,6 +1117,123 @@ tr.csdep td{background:#f3f3f1;color:#171717}
 .puerta-mas summary{cursor:pointer;font-size:12.5px;color:var(--tx2)}
 .puerta-mas[open]{display:flex;flex-direction:column;gap:10px}
 
+/* ---------- rendiciones ---------- */
+.rd-aviso{font-size:12.5px;line-height:1.5;padding:9px 11px;border-radius:var(--r);background:var(--bg3);border-left:3px solid var(--info)}
+.rd-aviso.mal{border-left-color:var(--bad);background:#fdf1f0}
+.rd-acc-bar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:11px}
+.rd-fondos .tot{font-size:12px}
+.rd-drop{border:2px dashed var(--line2);border-radius:var(--r2);padding:18px 14px;text-align:center;background:var(--bg3);display:flex;flex-direction:column;gap:8px;align-items:center}
+.rd-drop.sobre{border-color:var(--ac);background:var(--bg4)}
+.rd-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.rd-filas{display:flex;flex-direction:column}
+.rd-f{display:grid;grid-template-columns:60px 132px minmax(0,1.4fr) minmax(0,1.2fr) minmax(0,1.3fr) minmax(0,1fr) minmax(0,1fr) 108px 122px;gap:6px;align-items:start;padding:8px 13px;border-bottom:1px solid var(--line)}
+.rd-f.rd-cab{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700;padding-top:7px;padding-bottom:7px;background:var(--bg3)}
+.rd-f.rd-ro{align-items:center;font-size:12.5px}
+.rd-f.rd-f-falta{background:#fffafa}
+.rd-c{display:flex;flex-direction:column;gap:3px;min-width:0}
+.rd-c-th{flex-direction:row;align-items:center;gap:5px}
+.rd-c-acc{flex-direction:row;gap:4px;justify-content:flex-end;flex-wrap:nowrap}
+.rd-c-est{grid-column:2 / -1;margin-top:-2px}
+.rd-f input,.rd-f select{width:100%;border:1px solid var(--line);border-radius:5px;background:var(--bg2);padding:6px 7px;font-size:12.5px;min-height:34px}
+.rd-f input:focus,.rd-f select:focus{outline:2px solid var(--info);outline-offset:0;border-color:var(--info)}
+.rd-f .rd-cuit{font-size:11.5px;min-height:28px;padding:4px 7px;color:var(--tx2)}
+.rd-f .rd-falta{border-color:var(--bad);background:#fff5f4}
+.rd-f .rd-auto{background:#fff4cc;border-color:#d9a92e}
+.rd-l{display:none}
+.rd-n{font-size:10.5px;color:var(--tx3);font-weight:700}
+.rd-thb{padding:0;border-radius:6px}
+.rd-thb:disabled{cursor:default}
+.rd-th{width:46px;height:46px;border-radius:6px;border:1px solid var(--line);background:var(--bg3);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--tx2)}
+.rd-th img{width:100%;height:100%;object-fit:cover;display:block}
+.rd-th-doc{background:#fbe9e7;color:#9c2b20;border-color:#efc4bd}
+.rd-th-vacia{color:var(--tx3);font-weight:400}
+.rd-sub{font-size:10.5px;color:var(--tx3)}
+.rd-auto-t{color:#8a6100}
+.rd-falta-t{color:var(--bad)}
+.rd-leyendo{font-size:11px;color:var(--info);font-weight:600}
+.rd-falta-n{color:var(--bad);text-transform:none;letter-spacing:0;font-weight:700;margin-left:6px}
+.rd-plan tr.rd-subt td{border-bottom:2px solid var(--line2);font-size:11.5px;color:var(--tx2)}
+.rd-plan tfoot td{padding:5px 8px}
+.rd-plan tr.rd-tot td{border-top:2px solid var(--tx);font-size:13px}
+.rd-charla{display:flex;flex-direction:column;gap:8px}
+.rd-msg{background:var(--bg3);border-radius:10px;padding:8px 11px;max-width:620px;font-size:13px;line-height:1.45}
+.rd-msg.mio{align-self:flex-end;background:#eef3fb}
+.rd-msg-q{font-size:11.5px;margin-bottom:2px}
+.rd-msg-g{font-size:11px;color:var(--tx2);margin-bottom:3px}
+.rd-escribir{display:flex;gap:8px;align-items:flex-end}
+.rd-escribir textarea{flex:1;border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;resize:vertical;background:var(--bg2)}
+.rd-visor{max-width:860px}
+.rd-visor-img{max-width:100%;max-height:72vh;display:block;margin:0 auto;border-radius:6px}
+.rd-visor-pdf{width:100%;height:72vh;border:1px solid var(--line);border-radius:6px}
+@media (max-width:760px){
+  .rd-f{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+  .rd-f.rd-cab{display:none}
+  .rd-l{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700}
+  .rd-c-th{order:0}
+  .rd-c-acc{order:1;align-self:center}
+  .rd-c-est{order:2;grid-column:1 / -1;margin-top:0}
+  .rd-c-fecha{order:3}
+  .rd-c-imp{order:4}
+  .rd-c-prov{order:5;grid-column:1 / -1}
+  .rd-c-conc{order:6;grid-column:1 / -1}
+  .rd-c-rub{order:7;grid-column:1 / -1}
+  .rd-c-tipo{order:8}
+  .rd-c-num{order:9}
+  .rd-f input,.rd-f select{min-height:44px;font-size:16px}
+  .rd-f .rd-cuit{min-height:40px;font-size:15px}
+  .rd-c-acc .btn{min-height:44px;min-width:44px}
+  .rd-th{width:56px;height:56px}
+  .rd-drop .btn{min-height:44px}
+  .rd-acc-bar .btn{min-height:44px}
+  .rd-escribir{flex-direction:column;align-items:stretch}
+}
+/* la vista para imprimir: hojas A4 en pantalla, y sólo ellas en el papel */
+.rdimp{position:fixed;inset:0;z-index:300;background:#5f5f5f;overflow:auto}
+.rdimp-barra{position:sticky;top:0;z-index:2;display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--bg2);border-bottom:1px solid var(--line);padding:10px 16px;font-size:13px}
+.rdimp-hojas{display:flex;flex-direction:column;align-items:center;gap:18px;padding:18px 10px 60px}
+.ri-hoja{background:#fff;color:#111;width:210mm;max-width:100%;min-height:297mm;padding:14mm 13mm 18mm;position:relative;box-shadow:0 2px 14px rgba(0,0,0,.35);font-size:11.5px;line-height:1.4}
+.ri-tit{font-size:24px;font-weight:800;letter-spacing:-.01em}
+.ri-tit2{font-size:16px;font-weight:800;margin-bottom:10px}
+.ri-sub{font-size:13px;color:#444;margin-bottom:14px}
+.ri-datos{border-collapse:collapse;margin-bottom:14px;font-size:12.5px}
+.ri-datos th{text-align:left;color:#555;font-weight:600;padding:3px 18px 3px 0;vertical-align:top}
+.ri-datos td{padding:3px 0;font-weight:600}
+.ri-num{display:grid;grid-template-columns:repeat(3,1fr);border:1.5px solid #111;margin-bottom:14px}
+.ri-num>div{padding:8px 10px;display:flex;flex-direction:column;gap:2px}
+.ri-num>div+div{border-left:1px solid #111}
+.ri-num span{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#555}
+.ri-num b{font-size:17px}
+.ri-tabla{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px}
+.ri-tabla th{text-align:left;border-bottom:1.5px solid #111;padding:4px 5px;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.ri-tabla td{border-bottom:1px solid #ddd;padding:4px 5px;vertical-align:top}
+.ri-tabla tfoot td{font-weight:800;border-bottom:none;border-top:1.5px solid #111}
+.ri-tabla small{color:#555}
+.ri-rub td{background:#efefef;font-weight:800;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.ri-subt td{font-weight:700;color:#333}
+.ri-cbtes{font-size:12px;margin:8px 0 0}
+.ri-firmas{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;position:absolute;left:13mm;right:13mm;bottom:22mm}
+.ri-firma{display:flex;flex-direction:column;gap:2px;font-size:11px}
+.ri-firma span{color:#555;font-size:10px}
+.ri-linea{border-bottom:1px solid #111;height:34px;margin-bottom:4px}
+.ri-pie{position:absolute;left:13mm;right:13mm;bottom:8mm;font-size:9px;color:#777;text-align:center}
+.ri-pegados{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:8mm;height:245mm}
+.ri-pegado{margin:0;border:1px dashed #bbb;padding:4mm;display:flex;flex-direction:column;gap:3mm;min-height:0;overflow:hidden}
+.ri-pegado img{flex:1;min-height:0;width:100%;object-fit:contain;transform:rotate(-.6deg)}
+.ri-pegado:nth-child(2n) img{transform:rotate(.7deg)}
+.ri-pegado figcaption{font-size:10px;color:#333}
+.ri-pdf{flex:1;display:flex;align-items:center;justify-content:center;background:#fbe9e7;color:#9c2b20;font-weight:800;text-align:center;padding:10px}
+@media print{
+  body.con-rdimp > *:not(.rdimp){display:none!important}
+  body.con-rdimp{background:#fff;padding:0!important;margin:0!important;height:auto}
+  .rdimp{position:static;background:#fff;overflow:visible;inset:auto}
+  .rdimp-hojas{display:block;padding:0}
+  .ri-hoja{box-shadow:none;width:auto;min-height:0;height:270mm;padding:0;margin:0;break-after:page;page-break-after:always;overflow:hidden}
+  .ri-hoja:last-child{break-after:auto;page-break-after:auto}
+  .ri-firmas{left:0;right:0;bottom:16mm}
+  .ri-pie{left:0;right:0;bottom:2mm}
+  .ri-pegados{height:240mm}
+}
+
 /* ---------- impresión ---------- */
 @page{size:A4;margin:11mm 10mm}
 @media print{
@@ -2703,6 +2820,78 @@ function saldoCaja(py, caja){
     conComprobante, sinComprobante: gastado - conComprobante, comprobantes: cs};
 }
 
+/* --- Rendiciones ----------------------------------------------------------
+   Una rendición ES una caja: la plata que se le dio a alguien (los
+   adelantos) más los gastos que rinde (los comprobantes con ese cajaId).
+   Encima va el circuito:
+     borrador (la arma quien rinde) → enviada (al jefe de producción)
+       → observada (vuelve con comentario; se corrige y se reenvía)
+       → aprobada (el jefe la eleva a Administración)
+       → cerrada (Administración registra la devolución o el reintegro).
+   Lo nuevo vive en caja.rendicion = {estado, pasos:[], charla:[]}, y las
+   cajas viejas no lo tienen: se lee con valores por defecto, sin tocar el
+   objeto (una caja "rendida" de antes es una rendición cerrada). Pasos y
+   comentarios llevan id, así lo que escriben a la vez el asistente y el
+   jefe se junta (fusionar3) en vez de pisarse.                            */
+const EST_REND = {
+  borrador:  {l:'Cargando',  d:'La está armando quien rinde', c:'#56565a'},
+  enviada:   {l:'Enviada',   d:'Espera la revisión del jefe de producción', c:'#1f5fa8'},
+  observada: {l:'Observada', d:'Volvió con un comentario: hay que corregir y reenviar', c:'#b3261e'},
+  aprobada:  {l:'Aprobada',  d:'El jefe la elevó: la cierra Administración', c:'#8a6100'},
+  cerrada:   {l:'Cerrada',   d:'Administración registró la devolución o el reintegro', c:'#1f6b3e'},
+};
+const estadoRend = cj => !cj ? 'borrador' : cj.estado === 'rendida' ? 'cerrada' : (((cj.rendicion || {}).estado) || 'borrador');
+const pasosRend = cj => ((cj && cj.rendicion) || {}).pasos || [];
+const charlaRend = cj => ((cj && cj.rendicion) || {}).charla || [];
+/* quién: el que rinde ve y arma lo suyo; el jefe revisa; Administración (y el PE) cierran */
+const rendMia = (cj, u = getUsuario()) => !!u && !!cj && cj.responsable === u.id;
+const veRend = (cj, u = getUsuario()) => !u || vePlata(u) || rendMia(cj, u);
+const cargaRend = (cj, u = getUsuario()) => ['borrador','observada'].includes(estadoRend(cj)) && (!u || (!u.pendiente && (rendMia(cj, u) || veTodo(u))));
+const revisaRend = (u = getUsuario()) => !u || puede(u, 'revisar');
+const cierraRend = (u = getUsuario()) => !u || puede(u, 'pagar');
+const daFondos = (u = getUsuario()) => !u || vePlata(u);
+const cajaDe = (py, c) => c && c.cajaId ? ((py && py.cajas) || []).find(x => x.id === c.cajaId) || null : null;
+/* un gasto de una rendición que todavía no se cerró se revisa con la rendición, no suelto */
+const enRendicion = (py, c) => { const cj = cajaDe(py, c); return !!cj && estadoRend(cj) !== 'cerrada'; };
+/* lo que le falta a una fila para poder mandarla */
+const FACTURAS = ['facA','facBC','reciboX'];
+function faltaEnGasto(c){
+  const f = [];
+  if(!/^\d{4}-\d\d-\d\d$/.test(c.fecha || '')) f.push('fecha');
+  if(!String(c.proveedor || '').trim() && c.tipo !== 'ninguno') f.push('proveedor');
+  if(c.tipo === 'ninguno' && !String(c.concepto || '').trim()) f.push('concepto');
+  if(!c.rubro) f.push('rubro');
+  if(!c.tipo) f.push('tipo');
+  if(FACTURAS.includes(c.tipo) && !String(c.numero || '').trim()) f.push('numero');
+  if(!(n(c.importe) > 0)) f.push('importe');
+  return f;
+}
+/* Todo lo que va en la planilla y en la carátula. */
+function totalesRend(py, cj){
+  const s = saldoCaja(py, cj);
+  const orden = [...s.comprobantes].sort((a, b) => String(a.fecha || '9').localeCompare(String(b.fecha || '9')));
+  const por = {};
+  orden.forEach(c => { const k = c.rubro || '';
+    (por[k] ||= {codigo: k, nombre: k ? (RUBRO(k).nombre || k) : 'Sin rubro', total: 0, cant: 0, gastos: []});
+    por[k].total += n(c.importe); por[k].cant++; por[k].gastos.push(c); });
+  const rubros = Object.values(por).sort((a, b) => (a.codigo || '99').localeCompare(b.codigo || '99'));
+  const fechas = [...(cj.adelantos || []).map(a => a.fecha), ...orden.map(c => c.fecha)].filter(f => /^\d{4}-\d\d-\d\d$/.test(f || '')).sort();
+  const cantCon = orden.filter(c => c.tipo && c.tipo !== 'ninguno').length;
+  return {...s, comprobantes: orden, rubros, desde: fechas[0] || '', hasta: fechas[fechas.length - 1] || '',
+    cantCon, cantSin: orden.length - cantCon, faltan: orden.filter(c => faltaEnGasto(c).length)};
+}
+const ahoraTxt = () => { const d = new Date(); return hoy() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+/* cada paso queda firmado: quién, con qué rol y cuándo */
+function pasoRend(cj, a, nota){
+  const u = getUsuario(), de = estadoRend(cj);
+  cj.rendicion ||= {};
+  cj.rendicion.estado = a;
+  (cj.rendicion.pasos ||= []).push({id: uid('rp'), de, a, quienId: u ? u.id : null, quien: u ? u.nombre : '—',
+    rol: u ? u.rol : null, cuando: ahoraTxt(), nota: nota || ''});
+}
+/* el último paso que llevó a un estado: para las firmas de la carátula */
+const firmaRend = (cj, a) => [...pasosRend(cj)].reverse().find(p => p.a === a) || null;
+
 /* --- El tablero de plata --------------------------------------------------
    Presupuestado / Comprometido / Real / Pagado / Disponible, rubro por rubro.
    Es la vista que mira un productor todos los días.                          */
@@ -2760,6 +2949,8 @@ const getComprobantes = () => { const py=getPy(); if(!py) return [];
 /* Qué puede hacer este usuario con este comprobante, ahora. */
 function accionesDe(c, u){
   if(!u || c.estado==='pagado' || c.estado==='rechazado') return [];
+  /* los gastos de una rendición se revisan con la rendición entera */
+  if(enRendicion(getPy(), c)) return [];
   const est = EST(c.estado);
   const out = [];
   if(est.sig && puede(u, est.sig)) out.push(est.sig);
@@ -4589,6 +4780,7 @@ function ponerFees(py, fees){
     else if(v.capas.fee == null) v.capas.fee = n((prDe(py) || {}).feeDefault);
   });
 }
+const ocsEnGastos = py => !(py && SYNC[py.id] && SYNC[py.id].compras);
 const PARTES_PY = {
   presupuesto: {
     lee: py => ({versiones: (py.versiones || []).filter(v => !ES_REAL(v)).map(sinFee), versionRodaje: py.versionRodaje || null, piezas: py.piezas || [], plantilla: py.plantilla || null}),
@@ -4622,8 +4814,20 @@ const PARTES_PY = {
   luces:       {lee: py => ({pedidoLuces: py.pedidoLuces || null}), pone: (py, d) => { py.pedidoLuces = d.pedidoLuces || null; },
                 algo: d => !!(d.pedidoLuces && (d.pedidoLuces.items || []).length)},
   alta:        {lee: py => ({alta: py.alta || {}}), pone: (py, d) => { py.alta = d.alta || {}; }},
-  gastos:      {lee: py => ({comprobantes: py.comprobantes || [], ocs: py.ocs || [], cajas: py.cajas || [], cheques: py.cheques || []}),
-                pone: (py, d) => { py.comprobantes = d.comprobantes || []; py.ocs = d.ocs || []; py.cajas = d.cajas || []; py.cheques = d.cheques || []; }},
+  /* las órdenes de compra llevan montos del presupuesto: van aparte, en
+     "compras", que los asistentes y el equipo no leen. Las que todavía
+     estén en "gastos" (de antes) las adopta quien ve la plata. */
+  /* Mientras esta compu no guardó (o bajó) nunca "compras" —la base todavía
+     no corrió el SQL nuevo, o es la primera vez— las OC siguen viajando
+     también en "gastos", como antes, para no perder ninguna en el cambio. */
+  gastos:      {lee: py => ({comprobantes: py.comprobantes || [], cajas: py.cajas || [], cheques: py.cheques || [],
+                  ...(ocsEnGastos(py) ? {ocs: py.ocs || []} : {})}),
+                pone: (py, d) => { py.comprobantes = d.comprobantes || []; py.cajas = d.cajas || []; py.cheques = d.cheques || [];
+                  if(!Array.isArray(d.ocs)) return;
+                  if(ocsEnGastos(py)) py.ocs = d.ocs;
+                  else if(d.ocs.length && vePlata() && !(py.ocs || []).length) py.ocs = d.ocs; }},
+  compras:     {lee: py => ({ocs: py.ocs || []}), pone: (py, d) => { py.ocs = d.ocs || []; },
+                algo: d => (d.ocs || []).length > 0},
   liquidacion: {lee: py => ({liquidacion: py.liquidacion || {}}), pone: (py, d) => { py.liquidacion = d.liquidacion || {}; }},
   tareas:      {lee: py => ({tareas: py.tareas || []}), pone: (py, d) => { py.tareas = d.tareas || []; }},
   contactos:   {lee: py => ({contactos: py.contactos || {porLinea: {}, extra: []}}), pone: (py, d) => { py.contactos = d.contactos || {porLinea: {}, extra: []}; }},
@@ -4684,7 +4888,7 @@ function respaldarParte(py, parte, datos){
   try{ localStorage.setItem(`clap.respaldo.${py.id}.${parte}`, JSON.stringify({cuando: new Date().toISOString(), datos})); }catch(e){}
 }
 const NOMBRE_PARTE = {presupuesto: 'el presupuesto', presupuesto_real: 'el presupuesto Real', gente: 'el equipo', plan: 'el plan',
-  rodaje: 'el rodaje', luces: 'el pedido de luces', alta: 'las altas', gastos: 'los gastos', liquidacion: 'la liquidación',
+  rodaje: 'el rodaje', luces: 'el pedido de luces', alta: 'las altas', gastos: 'los gastos', compras: 'las órdenes de compra', liquidacion: 'la liquidación',
   tareas: 'las tareas', contactos: 'los contactos', extra: 'las condiciones'};
 async function sincronizarPartes(py){
   if(!py || !py.enServidor || typeof sbConectado !== 'function' || !sbConectado()) return null;
@@ -4709,13 +4913,15 @@ async function sincronizarPartes(py){
       });
     }
     /* 2. lo mío que cambió */
+    /* una parte que la base rechaza no frena a las demás */
+    let errParte = null;
     for(const parte of Object.keys(PARTES_PY)){
       if(!puedeParte(parte, true)) continue;
       const P = PARTES_PY[parte];
       let datos = P.lee(py), b = S[parte];
       if(b && b.h === canon(datos)) continue;
       if(!b && P.algo && !P.algo(datos)) continue;
-      for(let i = 0; i < 3; i++){
+      try{ for(let i = 0; i < 3; i++){
         const r = await sbGuardarParte(py.id, parte, datos, b ? b.v : null);
         if(r && r.ok){ S[parte] = {v: r.version, h: canon(datos)}; break; }
         /* alguien guardó antes: se junta con lo suyo y se prueba otra vez */
@@ -4725,10 +4931,10 @@ async function sincronizarPartes(py){
         b = S[parte] = {v: srv.version, h: canon(srv.datos)};
         datos = P.lee(py);
         if(srv.quien && srv.quien !== yo) otros.push({parte, quien: srv.quien});
-      }
+      } }catch(e){ errParte ||= `${NOMBRE_PARTE[parte] || parte}: ${e.message}`; }
     }
     guardarSync();
-    _sync.cuando = new Date(); _sync.error = null;
+    _sync.cuando = new Date(); _sync.error = errParte;
     if(otros.length){
       const q = [...new Set(otros.map(x => x.quien))].join(' y '), qu = [...new Set(otros.map(x => NOMBRE_PARTE[x.parte] || x.parte))].join(', ');
       toast(`${q} cambió ${qu}: ya está acá`);
@@ -5065,6 +5271,24 @@ function guardar(){
   try{ programarSync(); }catch(e){}
 }
 
+/* una fecha a tantos días de hoy (negativo: para atrás) */
+function hoyMas(dias){
+  const d = new Date(); d.setDate(d.getDate() + dias);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+/* El dibujo de un ticket de ejemplo (un SVG chiquito), para la rendición de muestra. */
+function ticketDeEjemplo(o){
+  const x = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[m]));
+  const filas = [[String(o.proveedor || '').replace(/\s*\(ejemplo\)/, '').toUpperCase(), 13, 700], ['C.U.I.T. ' + (o.cuit || ''), 11, 400],
+    [(TIPO_CBTE(o.tipo) || 'Ticket').toUpperCase() + ' N° ' + (o.numero || ''), 11, 700], ['Fecha ' + String(o.fecha || '').split('-').reverse().join('/'), 11, 400],
+    ['', 8, 400], [String(o.concepto || ''), 11, 400], ['', 8, 400],
+    ['TOTAL  $ ' + Math.round(n(o.importe)).toLocaleString('es-AR') + ',00', 15, 800], ['', 8, 400], ['*** EJEMPLO · NO VÁLIDO ***', 10, 400]];
+  let y = 34;
+  const txt = filas.map(([t, tam, peso]) => { y += tam + 9; return t ? `<text x="150" y="${y}" font-size="${tam}" font-weight="${peso}" text-anchor="middle">${x(t)}</text>` : ''; }).join('');
+  return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="${y + 40}" viewBox="0 0 300 ${y + 40}">` +
+    `<rect width="300" height="${y + 40}" fill="#fffdf6"/><path d="M0 ${y + 40} l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 l10 -8 l10 8 V${y + 40}Z" fill="#e8e3d3"/>` +
+    `<g font-family="Courier New, monospace" fill="#222">${txt}</g></svg>`);
+}
 /* Semilla: una productora con un proyecto de ejemplo, para que se entienda
    el modelo al abrirlo por primera vez.                                      */
 function sembrar(){
@@ -5151,6 +5375,31 @@ function sembrar(){
       historial:[paso(null,'cargado','cargar',uProd), paso('cargado','revisado','revisar',uProd),
         paso('revisado','aprobado','aprobar',uEjec), paso('aprobado','pagado','pagar',uAdmin)]}),
   ];
+
+  /* Una rendición de ejemplo, ya mandada al jefe: el asistente de producción
+     recibió $ 150.000 y rinde cinco tickets (todo inventado). */
+  const uJefe = uProd;
+  const fondo = nuevaCaja({nombre:'Fondo de producción', responsable:uAsistP.id, jornada:null,
+    adelantos:[{id:uid('ad'), fecha:hoyMas(-4), importe:150000, circuito:'efectivo', entregadoPor:uJefe.id, nota:'Para el scouting y la preproducción'}]});
+  fondo.rendicion = {estado:'enviada',
+    pasos:[{id:uid('rp'), de:'borrador', a:'enviada', quienId:uAsistP.id, quien:uAsistP.nombre, rol:uAsistP.rol, cuando:hoy()+' 18:40', nota:''}],
+    charla:[{id:uid('rm'), quienId:uAsistP.id, quien:uAsistP.nombre, rol:uAsistP.rol, cuando:hoy()+' 18:41', gastoId:null,
+      texto:'La descarga del camión fue sin comprobante: le pagué en mano al changarín.'}]};
+  py.cajas.push(fondo);
+  const tk = (o) => nuevoComprobante({moneda:'ARS', circuito:'efectivo', cajaId:fondo.id, estado:'cargado', cargadoPor:uAsistP.id,
+    area:'produccion', historial:[paso(null,'cargado','cargar',uAsistP)], ...o,
+    adjunto: o.tipo === 'ninguno' ? null : {nombre:`ticket-${norm(o.proveedor).replace(/[^a-z]+/g,'-').replace(/^-|-$/g,'')}.svg`, tipo:'image/svg+xml',
+      dataUrl:ticketDeEjemplo(o), bytes:1200, w:300, h:440}});
+  py.comprobantes.push(
+    tk({rubro:'12', concepto:'Nafta para el scouting', proveedor:'Estación de servicio Ruta 2 (ejemplo)', cuit:'30-71234567-1',
+        tipo:'facBC', numero:'00012-00004521', fecha:hoyMas(-4), importe:42000}),
+    tk({rubro:'12', concepto:'Peaje', proveedor:'Autopista del Sol (ejemplo)', cuit:'30-70999888-5',
+        tipo:'ticket', numero:'0003-00981234', fecha:hoyMas(-4), importe:3450}),
+    tk({rubro:'03', concepto:'Cinta, precintos y pilas', proveedor:'Ferretería del Centro (ejemplo)', cuit:'20-33444555-1',
+        tipo:'facBC', numero:'00002-00001877', fecha:hoyMas(-3), importe:18500}),
+    tk({rubro:'13', concepto:'Desayuno del equipo de scouting', proveedor:'Panadería La Espiga (ejemplo)', cuit:'30-71555666-5',
+        tipo:'ticket', numero:'0001-00045210', fecha:hoyMas(-3), importe:24300}),
+    tk({rubro:'03', concepto:'Descarga del camión (changarín)', proveedor:'', tipo:'ninguno', fecha:hoyMas(-2), importe:50000}));
 }
 
 /* Accesores de contexto ---------------------------------------------------- */
@@ -5531,6 +5780,8 @@ function hashDeUI(){
   const t = DB.ui.tab || 'resumen';
   const partes = [t === 'personal' ? (DB.ui.subPersonal === 'liquidacion' ? 'liquidacion' : 'altas') : t];
   if(SUBS[t] && DB.ui[SUBS[t]]) partes.push(DB.ui[SUBS[t]]);
+  /* una rendición abierta: #/gastos/rend/r-<id> */
+  if(t === 'gastos' && DB.ui.subGasto === 'rend' && DB.ui.rendId) partes.push('r-' + DB.ui.rendId);
   if(['plan','callsheet','rodaje'].includes(t) && DB.ui.jornada) partes.push('j' + DB.ui.jornada);
   return '#/' + partes.join('/');
 }
@@ -5542,7 +5793,10 @@ function aplicarHash(h){
   if(!validas.includes(t)) return false;
   DB.ui.tab = t;
   if(t === 'personal') DB.ui.subPersonal = t0 === 'liquidacion' ? 'liquidacion' : 'alta';
-  resto.forEach(x => { const j = /^j(\d+)$/.exec(x); if(j) DB.ui.jornada = +j[1]; else if(SUBS[t]) DB.ui[SUBS[t]] = x; });
+  if(t === 'gastos') DB.ui.rendId = null;
+  resto.forEach(x => { const j = /^j(\d+)$/.exec(x); if(j) DB.ui.jornada = +j[1];
+    else if(t === 'gastos' && /^r-/.test(x)) DB.ui.rendId = x.slice(2);
+    else if(SUBS[t]) DB.ui[SUBS[t]] = x; });
   return true;
 }
 let _hashPush = false;
@@ -5677,7 +5931,7 @@ let _pantallaPrevia = '';
 const ENFOCABLES = 'button,input,select,textarea,a[href],[tabindex]';
 function clavePantalla(){
   const u = DB.ui || {};
-  return [u.tab, u.proyectoId, u.versionId, u.subDesglose, u.subPlan, u.subCall, u.subRodaje, u.subGasto, u.subPersonal, u.jornada].join('|');
+  return [u.tab, u.proyectoId, u.versionId, u.subDesglose, u.subPlan, u.subCall, u.subRodaje, u.subGasto, u.subPersonal, u.jornada, u.rendId].join('|');
 }
 function capturarPantalla(){
   const c = {vista: clavePantalla(), modal: !!document.querySelector?.('.mod')};
@@ -6249,7 +6503,7 @@ const QUE_HACE = {
   'personal:alta': ['Altas y seguro', 'Datos de la gente, seguro y contratos'],
   callsheet: ['Callsheet', 'La hoja de citación de cada jornada'],
   rodaje: ['Rodaje', 'En el set: citaciones, llegadas, liberaciones y el parte'],
-  gastos: ['Gastos', 'Tus comprobantes y cheques de garantía']};
+  gastos: ['Gastos', 'Tus comprobantes, tus rendiciones y los cheques de garantía']};
 function vistaPanel(pr, py){
   const u = getUsuario();
   if(!py) return `<div class="card"><div class="empty">Todavía no te sumaron a ningún proyecto de ${esc(pr ? pr.nombre : 'la productora')}.<br>
@@ -6277,6 +6531,14 @@ function vistaPanel(pr, py){
     extra += bloque('Tus comprobantes', `<div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       ${cs.length ? Object.entries(porEst).map(([k, x]) => `<span class="chip d-par">${x} ${esc(EST(k).l.toLowerCase())}</span>`).join('') : '<span class="muted" style="font-size:12.5px">Todavía no cargaste ninguno.</span>'}
       <span style="flex:1"></span><button class="btn sm pri" onclick="setTab('gastos');cargarComprobante()">+ Cargar comprobante</button></div>`);
+    /* la plata que le dieron para trabajar, y en qué anda cada rendición */
+    const rends = getCajas().filter(cj => rendMia(cj, u)).sort((a, b) => (estadoRend(a) === 'cerrada') - (estadoRend(b) === 'cerrada'));
+    extra += bloque('Tus rendiciones', rends.length ? `<div class="pad" style="display:flex;flex-direction:column;gap:6px">${rends.map(cj => { const T = totalesRend(py, cj), e = estadoRend(cj);
+        return `<button class="pendfila ${e === 'observada' ? 'urg' : ''}" onclick="abrirRend('${cj.id}')"><span class="pendn">${T.cant}</span>
+          <span><b>${esc(cj.nombre || 'Fondo')}</b> · ${chipRend(cj)} · recibiste ${fmt(T.entregado, cj.moneda)}, rendiste ${fmt(T.gastado, cj.moneda)}
+          <span class="muted">· ${esc(saldoTxt(T.saldo, true).toLowerCase())} ${fmt(Math.abs(T.saldo), cj.moneda)}</span>${e === 'observada' ? ' · <b style="color:var(--bad)">volvió con un comentario</b>' : ''}</span>
+          <span class="pendir">→</span></button>`; }).join('')}</div>`
+      : `<div class="pad muted" style="font-size:12.5px">No tenés plata para rendir. Cuando te den un fondo para gastos, te aparece acá para cargar los tickets.</div>`);
     if(puede(u, 'cheque')) extra += bloque('Tus cheques de garantía', `<div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       ${chs.length ? chs.map(c => `<span class="chip ${c.estado === 'devuelto' ? 'd-si' : c.estado === 'rechazado' ? 'sica-bajo' : 'd-par'}">${esc(c.a)} · ${esc((EST_CHEQUE[c.estado] || {}).l || c.estado)}</span>`).join('') : '<span class="muted" style="font-size:12.5px">No pediste ninguno.</span>'}
       <span style="flex:1"></span><button class="btn sm" onclick="setTab('gastos');setSubGasto('cheques');pedirCheque()">+ Pedir cheque</button></div>`);
@@ -7691,10 +7953,14 @@ function vistaResumen(pr,py,v){
     pend.push({n:mios.length, t:`comprobante${mios.length==1?'':'s'} ${que}`,
       ir:"setTab('gastos');setSubGasto('bandeja')", urg:true});
   }
-  const cajasAb = getCajas().filter(x=>x.estado==='abierta');
-  if(cajasAb.length){ const enMano = cajasAb.reduce((s,x)=>s+saldoCaja(py,x).saldo, 0);
-    pend.push({n:cajasAb.length, t:`caja${cajasAb.length==1?'':'s'} sin rendir · ${fmt(enMano)} en mano`,
-      ir:"setTab('gastos');setSubGasto('caja')"}); }
+  /* las rendiciones: las que esperan a quien mira, y la plata que anda en mano */
+  const rRev = getCajas().filter(x => estadoRend(x) === 'enviada'), rCer = getCajas().filter(x => estadoRend(x) === 'aprobada');
+  if(rRev.length && revisaRend(u)) pend.push({n:rRev.length, t:`rendici${rRev.length==1?'ón':'ones'} para revisar`, ir:"setTab('gastos');setSubGasto('rend')", urg:true});
+  if(rCer.length && cierraRend(u)) pend.push({n:rCer.length, t:`rendici${rCer.length==1?'ón':'ones'} para cerrar`, ir:"setTab('gastos');setSubGasto('rend')", urg:true});
+  const cajasAb = getCajas().filter(x=>['borrador','observada'].includes(estadoRend(x)));
+  if(cajasAb.length){ const enMano = cajasAb.reduce((s,x)=>s+Math.max(0, saldoCaja(py,x).saldo), 0);
+    pend.push({n:cajasAb.length, t:`fondo${cajasAb.length==1?'':'s'} sin rendir · ${fmt(enMano)} en mano`,
+      ir:"setTab('gastos');setSubGasto('rend')"}); }
   const ocBorr = getOCs().filter(o=>o.estado==='borrador');
   if(ocBorr.length) pend.push({n:ocBorr.length, t:`orden${ocBorr.length==1?'':'es'} de compra sin emitir`,
     ir:"setTab('gastos');setSubGasto('oc')"});
@@ -7780,6 +8046,11 @@ function vistaResumen(pr,py,v){
     ${listaProyectosHTML(pr, py)}
 
     ${u && ['ejecutivo','admin'].includes(u.rol) ? '' : pendHTML}
+
+    ${(() => { const para = getCajas().filter(cj => (revisaRend(u) && estadoRend(cj) === 'enviada') || (cierraRend(u) && estadoRend(cj) === 'aprobada'));
+      return u && (para.length || (u.rol === 'produccion' && getCajas().length)) ? `<div id="res-rend">${bloque(cierraRend(u) && !puede(u, 'tareas') ? 'Rendiciones para cerrar' : u.rol === 'produccion' ? 'Rendiciones para revisar' : 'Rendiciones que esperan algo tuyo',
+        para.length ? `<div class="pad" style="display:flex;flex-direction:column;gap:6px">${para.map(cj => rendFilaBandeja(py, cj, u)).join('')}</div>`
+          : `<div class="pad muted" style="font-size:12.5px">No hay rendiciones esperándote. <button class="btn sm" onclick="setTab('gastos');setSubGasto('rend')">Ver todas</button></div>`)}</div>` : ''; })()}
 
     ${tareasDe(py).length || puedeEncargar(u) ? `<div id="res-tareas">${bloque('Tareas encargadas', tareasHTML(py, [...tareasDe(py)].sort((a, b) => (a.estado === 'hecha') - (b.estado === 'hecha')))
       + (puedeEncargar(u) ? `<div class="pad noprint" style="padding-top:0"><button class="btn sm" onclick="editTarea()">+ Encargar una tarea</button>
@@ -7965,10 +8236,39 @@ const GUIA = [
     miente, porque te muestra disponible plata que ya cerraste. Una OC emitida reserva; cuando
     llegan facturas imputadas a ella, el comprometido baja y el real sube.
     <b>La misma plata no se cuenta dos veces.</b></p>
-    <p><b>Caja chica</b> — le adelantás plata a alguien, esa persona gasta y después rinde. Te
-    muestra entregado, gastado, saldo en mano y cuánto <b>no tiene comprobante</b>. Al rendir
-    calcula si tiene que devolver o si hay que reintegrarle.</p>
+    <p><b>Caja chica</b> — le adelantás plata a alguien, esa persona gasta y después rinde. Ahora
+    se llama <b>Rendiciones</b> (ver la sección que sigue): muestra entregado, rendido, saldo y cuánto
+    <b>no tiene comprobante</b>, y al cerrar calcula si tiene que devolver o si hay que reintegrarle.</p>
     <p><b>Tablero</b> — <code>Disponible = presupuestado − comprometido − real</code>, rubro por rubro.</p>`},
+
+  {t:'Rendiciones: la plata para trabajar', c:`
+    <p>Al asistente (de producción, de arte, o a alguien del equipo) le dan plata en mano para
+    gastar. Después rinde: los tickets, una planilla por rubros y una carátula. En CLAP es así:</p>
+    <pre>el jefe (o Administración) da el fondo → el asistente sube los tickets y la manda
+  → el jefe la revisa: la devuelve con un comentario, o la eleva → Administración la cierra</pre>
+    <ul>
+      <li><b>Dar el fondo</b> — Gastos → Rendiciones → <b>+ Dar un fondo</b>: para quién, cuánto
+        y cómo se entrega. Lo anota quien da la plata, no quien la recibe.</li>
+      <li><b>Subir los tickets</b> — el asistente abre su rendición (en su panel o en Gastos →
+        Rendiciones) y suelta las fotos o los PDF, varios a la vez. En el celu, <b>Sacar foto</b>
+        abre la cámara. Cada archivo es una fila.</li>
+      <li><b>CLAP lee lo que puede</b> — si la factura tiene el <b>QR de AFIP</b>, los datos salen
+        de ahí y son exactos. Si es un PDF digital, lee el texto (CUIT, fecha, tipo, número y total).
+        Si es la foto de un ticket de papel, lo intenta leer, pero <b>a ojo</b>: los térmicos
+        borrosos o arrugados salen mal. Lo leído queda en <b>amarillo</b> hasta que lo confirmás;
+        lo que falta queda en <b>rojo</b>.</li>
+      <li><b>La planilla</b> se arma sola, por rubro y con subtotales, contra lo recibido: dice
+        si hay que devolver o reintegrar.</li>
+      <li><b>Excel y PDF</b> — <b>⬇ Excel</b> baja la planilla para editar (Carátula, Por rubro y
+        Detalle). <b>PDF para imprimir</b> arma la carátula con las firmas, la planilla y los tickets
+        pegados en hojas, de a cuatro, como se entrega en papel.</li>
+      <li><b>La charla</b> — cada rendición tiene comentarios, y cada gasto el suyo (💬). Si algo no
+        cierra, el jefe la <b>devuelve con un comentario</b>; el asistente corrige y la reenvía.</li>
+      <li><b>Cerrar</b> — Administración registra si devolvió o si se le reintegra. Los gastos quedan
+        pagados (salieron del fondo) y la rendición, guardada con todas las del proyecto.</li>
+    </ul>
+    <p class="tip">Mientras la revisan no se puede cambiar. Cada uno ve y arma sólo la suya; el jefe,
+    el PE y Administración ven todas, filtradas por persona o por estado.</p>`},
 
   {t:'Plata en blanco y en efectivo', c:`
     <p>Cada línea y cada comprobante llevan <b>dos campos separados</b>:</p>
@@ -8007,7 +8307,8 @@ const GUIA = [
       <li>El espacio es de unos <b>5 MB</b>. Las fotos de comprobantes son lo que más ocupa; se
         achican solas al cargarlas. Hay un medidor en la solapa <b>Equipo y roles</b>.</li>
     </ul>
-    <p class="tip"><b>Exportá el respaldo seguido</b> desde <i>Datos → Exportar todo</i>. Ese
+    <p class="tip"><b>Exportá el respaldo seguido</b> desde <i>Datos → Exportar todo</i> (lo ven
+    Administración y el PE: lleva precios y fee). Ese
     <code>.json</code> es tu copia de seguridad <b>y</b> la forma de pasarle el trabajo a otra
     persona, hasta que montemos el backend.</p>
     <p>Para arrancar un proyecto real: <i>Datos → Borrar todo y volver al ejemplo</i>, o creá una
@@ -8471,18 +8772,25 @@ function vistaGastos(pr,py,v){
 
   /* quien no ve la plata del proyecto ve sus propios comprobantes */
   const cs = vePlata() ? getComprobantes() : getComprobantes().filter(c => c.cargadoPor === u.id);
-  const R = resumenGastos(py, v);
+  /* y los totales, sólo de lo suyo */
+  const R = resumenGastos(vePlata() ? py : {...py, comprobantes: cs}, v);
   /* sin presupuesto a la vista (el rol Equipo) se cargan y siguen los
      comprobantes; el tablero y las áreas, que comparan con el presupuesto, no */
   let sub = DB.ui.subGasto || 'bandeja';
   if(!v && (sub === 'areas' || sub === 'control')) sub = 'bandeja';
+  /* la caja chica de antes ahora son las rendiciones */
+  if(sub === 'caja') sub = 'rend';
+  /* las órdenes de compra llevan montos del presupuesto: no son para quien no ve la plata */
+  if(sub === 'oc' && !vePlata(u)) sub = 'bandeja';
   const pend = cs.filter(c=>accionesDe(c,u).length);
   const mios = cs.filter(c=>c.cargadoPor===u.id);
-  const abiertas = getCajas().filter(x=>x.estado==='abierta').length;
+  const nRend = getCajas().filter(cj => vePlata(u)
+    ? (revisaRend(u) && estadoRend(cj) === 'enviada') || (cierraRend(u) && estadoRend(cj) === 'aprobada')
+    : rendMia(cj, u) && ['borrador','observada'].includes(estadoRend(cj))).length;
   const S = [['bandeja',`Mi bandeja${pend.length?' · '+pend.length:''}`],
              ['todos',`Comprobantes · ${cs.length}`],
-             ['oc',`Órdenes de compra${getOCs().length?' · '+getOCs().length:''}`],
-             ['caja',`Caja chica${abiertas?' · '+abiertas:''}`],
+             ...(vePlata(u) ? [['oc',`Órdenes de compra${getOCs().length?' · '+getOCs().length:''}`]] : []),
+             ['rend',`Rendiciones${nRend?' · '+nRend:''}`],
              ...(puede(u,'cheque') || puede(u,'aprobar') || puede(u,'pagar') ? [['cheques',`Cheques de garantía${chequesPend(u)?' · '+chequesPend(u):''}`]] : []),
              ...(v ? [['areas','Áreas'],['control','Tablero']] : [])];
   let lista = sub==='bandeja' ? (puede(u,'revisar') ? pend : mios) : cs;
@@ -8499,7 +8807,7 @@ function vistaGastos(pr,py,v){
   const nuevo = {bandeja:['+ Cargar comprobante','cargarComprobante()'],
                  todos:['+ Cargar comprobante','cargarComprobante()'],
                  oc:['+ Nueva orden de compra','editOC()'],
-                 caja:['+ Abrir caja chica','editCaja()'],
+                 rend: daFondos(u) && !DB.ui.rendId ? ['+ Dar un fondo','editCaja()'] : null,
                  cheques: puede(u,'cheque') ? ['+ Pedir cheque','pedirCheque()'] : ['+ Cargar comprobante','cargarComprobante()'],
                  areas:['+ Cargar comprobante','cargarComprobante()'],
                  control:['+ Cargar comprobante','cargarComprobante()']}[sub];
@@ -8508,12 +8816,12 @@ function vistaGastos(pr,py,v){
       <div class="seg">${S.map(([k,l])=>
         `<button class="${sub===k?'on':''}" onclick="setSubGasto('${k}')">${l}</button>`).join('')}</div>
       <div style="flex:1"></div>
-      <button class="btn pri" onclick="${nuevo[1]}">${nuevo[0]}</button>
+      ${nuevo ? `<button class="btn pri" onclick="${nuevo[1]}">${nuevo[0]}</button>` : ''}
     </div>
     ${sub==='control' ? tableroHTML(py,v)
     : sub==='areas'   ? areasHTML(py,v)
     : sub==='oc'      ? ocsHTML(py,v,u)
-    : sub==='caja'    ? cajasHTML(py,v,u,pr)
+    : sub==='rend'    ? rendicionesHTML(py,u,pr)
     : sub==='cheques' ? chequesHTML(py,u)
                       : bandejaHTML(lista, u, R, sub, pr, py, v, cs)}`;
 }
@@ -8561,64 +8869,6 @@ function ocsHTML(py,v,u){
             <button class="btn sm dgr" onclick="delOC('${o.id}')">×</button></td>
         </tr>`;}).join('') || '<tr><td colspan="8" class="empty">Sin órdenes de compra</td></tr>'}
       </tbody></table></div></div>`;
-}
-
-/* --- caja chica ---------------------------------------------------------- */
-function cajasHTML(py,v,u,pr){
-  const cajas = getCajas();
-  return `<div class="cs">
-    <div class="cshead">
-      <div><div class="csttl">Caja chica</div>
-        <div class="cssub">Plata adelantada a una persona, que después rinde</div></div>
-      <div style="text-align:right">
-        <div class="csj">${cajas.filter(c=>c.estado==='abierta').length}<span> abiertas</span></div>
-        <div class="cssub">${cajas.filter(c=>c.estado==='rendida').length} rendidas</div></div>
-    </div>
-    ${cajas.length ? cajas.map(cj=>{
-      const s = saldoCaja(py, cj);
-      const resp = (pr.usuarios||[]).find(x=>x.id===cj.responsable);
-      const rendida = cj.estado==='rendida';
-      return `<div class="csblock">
-        <h4>${esc(cj.nombre||'Caja')} ${rendida?'<span class="est" style="color:#1f6b3e;border-color:#3fb27f55;background:#3fb27f18">Rendida</span>':''}
-          <span style="float:right;font-weight:600;text-transform:none;letter-spacing:0;color:var(--tx2)">
-            ${esc(resp?resp.nombre:'sin responsable')}${cj.jornada?' · J'+cj.jornada:''}</span></h4>
-        <div class="pad">
-          <div class="cshoras" style="margin:-13px -13px 11px">
-            <div><b>${fmt(s.entregado, cj.moneda)}</b><span>Entregado</span></div>
-            <div><b>${fmt(s.gastado, cj.moneda)}</b><span>Gastado · ${s.cant} cbte${s.cant==1?'':'s'}</span></div>
-            <div><b style="color:${s.saldo<0?'var(--bad)':'var(--ok)'}">${fmt(s.saldo, cj.moneda)}</b><span>${s.saldo<0?'Le deben':'Saldo en mano'}</span></div>
-            ${s.sinComprobante?`<div><b style="color:var(--warn)">${fmt(s.sinComprobante, cj.moneda)}</b><span>Sin comprobante</span></div>`:''}
-          </div>
-          ${cj.adelantos.length?`<div style="font-size:11.5px;margin-bottom:8px">
-            ${cj.adelantos.map(a=>`<div class="tot sub"><span>Adelanto ${esc(a.fecha)}
-              <span class="muted">${esc((CIRCUITOS.find(x=>x.v===a.circuito)||{l:''}).l)}${a.nota?' · '+esc(a.nota):''}</span></span>
-              <b>${fmt(a.importe, cj.moneda)}</b></div>`).join('')}</div>`:''}
-          ${s.comprobantes.length?`<div class="scrollx"><table class="tbl cst">
-            <thead><tr><th>Gasto</th><th style="width:19%">Proveedor</th><th style="width:96px">Comprobante</th>
-              <th style="width:100px;text-align:right">Importe</th></tr></thead>
-            <tbody>${s.comprobantes.map(c=>`<tr>
-              <td>${esc(c.subrubro||c.concepto||'—')}</td>
-              <td class="muted">${esc(c.proveedor||'—')}</td>
-              <td class="${c.tipo&&c.tipo!=='ninguno'?'':'muted'}" style="font-size:11px">
-                ${c.tipo?esc(TIPO_CBTE(c.tipo)):'<span style="color:var(--warn)">sin definir</span>'}</td>
-              <td class="num" style="text-align:right">${fmt(c.importe, c.moneda)}</td></tr>`).join('')}
-            </tbody></table></div>`:'<div class="muted" style="font-size:12px">Todavía no se cargó ningún gasto a esta caja.</div>'}
-          ${rendida?`<div class="sicabox" style="margin-top:11px">
-            <b>Rendida el ${esc(cj.rendidaEl)}.</b>
-            ${cj.devuelto?` Devolvió ${fmt(cj.devuelto, cj.moneda)}.`:''}
-            ${cj.reintegro?` Se le reintegraron ${fmt(cj.reintegro, cj.moneda)}.`:''}
-            ${cj.notas?`<span style="display:block;margin-top:3px">${esc(cj.notas)}</span>`:''}</div>`
-          :`<div class="noprint" style="display:flex;gap:7px;flex-wrap:wrap;margin-top:11px">
-            <button class="btn sm" onclick="addAdelanto('${cj.id}')">+ Adelanto</button>
-            <button class="btn sm pri" onclick="cargarComprobante(null,'${cj.id}')">+ Gasto de esta caja</button>
-            <div style="flex:1"></div>
-            <button class="btn sm" onclick="rendirCaja('${cj.id}')">Rendir y cerrar</button>
-            <button class="btn sm" onclick="editCaja('${cj.id}')">Editar</button>
-            <button class="btn sm dgr" onclick="delCaja('${cj.id}')">×</button>
-          </div>`}
-        </div></div>`;
-    }).join('') : '<div class="empty">Sin cajas abiertas. Abrí una cuando le adelantes plata a alguien.</div>'}
-  </div>`;
 }
 
 /* Gasto por área, y el detalle de un subrubro repartido entre áreas.
@@ -15694,7 +15944,8 @@ function limpiarFiltros(){ DB.ui.fGasto = {rubro:'',estado:'',q:'',area:''}; R()
 function expGastosCSV(){
   const py = getPy(), pr = getPr();
   const F = DB.ui.fGasto || {rubro:'',estado:'',q:''};
-  let cs = getComprobantes();
+  /* quien no ve la plata baja sólo lo que cargó */
+  let cs = vePlata() ? getComprobantes() : getComprobantes().filter(c => c.cargadoPor === (getUsuario() || {}).id);
   if(F.rubro)  cs = cs.filter(c=>c.rubro===F.rubro);
   if(F.area)   cs = cs.filter(c=>F.area==='__sin' ? !c.area : c.area===F.area);
   if(F.estado) cs = cs.filter(c=>c.estado===F.estado);
@@ -15719,6 +15970,7 @@ function expGastosCSV(){
 
 /* ---------- órdenes de compra ---------- */
 function editOC(id){
+  if(!vePlata()){ toast('Las órdenes de compra las maneja el jefe de producción o Administración'); return; }
   const py = getPy(), v = getV();
   const o = id ? getOCs().find(x=>x.id===id)
               : nuevaOC({numero:proximoNumeroOC(py), moneda:v?v.monedaBase:'ARS'});
@@ -15752,6 +16004,7 @@ function editOC(id){
   </div></div>`);
 }
 function saveOC(id){
+  if(!vePlata()){ toast('Las órdenes de compra las maneja el jefe de producción o Administración'); return; }
   const d = datos(); const py = getPy(); py.ocs ||= [];
   let o = id ? py.ocs.find(x=>x.id===id) : nuevaOC();
   const nuevo = !id;
@@ -15766,6 +16019,7 @@ function saveOC(id){
   cerrar();
 }
 function emitirOC(id){
+  if(!vePlata()){ toast('Las órdenes de compra las maneja el jefe de producción o Administración'); return; }
   const o = getOCs().find(x=>x.id===id); const u = getUsuario();
   o.estado = 'emitida';
   o.emitidaPor = u?u.id:null;
@@ -15773,12 +16027,14 @@ function emitirOC(id){
   toast(`${o.numero} emitida — compromete ${fmt(o.importe, o.moneda)}`); R();
 }
 function cerrarOC(id){
+  if(!vePlata()){ toast('Las órdenes de compra las maneja el jefe de producción o Administración'); return; }
   const o = getOCs().find(x=>x.id===id); const u = getUsuario();
   o.estado = 'cumplida';
   o.historial.push({a:'cumplida', usuario:u?u.nombre:'—', fecha:hoy()});
   toast(`${o.numero} dada por cumplida — deja de comprometer`); R();
 }
 function delOC(id){
+  if(!vePlata()){ toast('Las órdenes de compra las maneja el jefe de producción o Administración'); return; }
   const py = getPy(); const o = py.ocs.find(x=>x.id===id);
   const imputados = (py.comprobantes||[]).filter(c=>c.ocId===id).length;
   if(imputados){ if(!confirm(`${o.numero} tiene ${imputados} comprobante(s) imputado(s). Se van a quedar sin OC. ¿Seguir?`)) return;
@@ -15788,49 +16044,55 @@ function delOC(id){
 }
 
 /* ---------- caja chica ---------- */
+/* El fondo (la caja) lo da quien da la plata: el jefe de producción, el PE o
+   Administración. El que lo recibe carga sus gastos y manda la rendición. */
 function editCaja(id){
+  if(!daFondos()){ toast('El fondo para rendir lo da el jefe de producción o Administración'); return; }
   const py = getPy(), pr = getPr(), v = getV();
   const cj = id ? getCajas().find(x=>x.id===id)
-                : nuevaCaja({nombre:'Caja '+((py.cajas||[]).length+1), moneda:v?v.monedaBase:'ARS',
-                             responsable:getUsuario()?.id||null});
+                : nuevaCaja({nombre:'Fondo '+((py.cajas||[]).length+1), moneda:v?v.monedaBase:'ARS', responsable:null});
   const jorn = (py.desglose?.jornadas)||[];
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:540px">
-    <h3>${id?'Editar caja':'Abrir caja chica'}</h3><div class="mbody">
+    <h3>${id?'Editar el fondo':'Dar un fondo para rendir'}</h3><div class="mbody">
       <div class="grid2">
-        ${campo('Nombre','nombre',cj.nombre,'text','placeholder="Caja de arte, Caja jornada 2…"')}
-        ${sel('Responsable','responsable',cj.responsable||'',
-          [{v:'',l:'— elegir —'},...(pr.usuarios||[]).filter(x=>x.activo).map(x=>({v:x.id,l:x.nombre+' · '+x.depto}))])}
+        ${sel('Para quién','responsable',cj.responsable||'',
+          [{v:'',l:'— elegir —'},...(pr.usuarios||[]).filter(x=>x.activo).map(x=>({v:x.id,l:x.nombre+' · '+ROL(x.rol).l}))])}
+        ${campo('Nombre','nombre',cj.nombre,'text','placeholder="Fondo de arte, Caja jornada 2…"')}
         ${sel('Moneda','moneda',cj.moneda,['ARS','USD'])}
         ${jorn.length?sel('Jornada','jornada',cj.jornada??'',[{v:'',l:'— sin jornada —'},...jorn.map(j=>({v:j.numero,l:'Jornada '+j.numero}))]):''}
       </div>
-      ${id?'':`<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Primer adelanto</div>
+      ${id?'':`<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Lo que se le entrega</div>
       <div class="grid2">
-        ${campo('Importe','adelanto',0,'number','step="any"')}
+        ${campo('Importe','adelanto',0,'number','step="any" min="0"')}
         ${sel('Cómo se entrega','circuito','efectivo',CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
-      </div>`}
+      </div>
+      <div class="muted" style="font-size:11.5px;margin-top:8px">Le aparece en <b>Gastos → Rendiciones</b> para cargar los tickets y mandarte la rendición.</div>`}
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
-      <button class="btn pri" onclick="saveCaja('${id||''}')">${id?'Guardar':'Abrir caja'}</button></div>
+      <button class="btn pri" onclick="saveCaja('${id||''}')">${id?'Guardar':'Dar el fondo'}</button></div>
   </div></div>`);
 }
 function saveCaja(id){
+  if(!daFondos()) return;
   const d = datos(); const py = getPy(); py.cajas ||= [];
+  if(!id && !d.responsable){ toast('Elegí para quién es el fondo'); return; }
   let cj = id ? py.cajas.find(x=>x.id===id) : nuevaCaja();
-  Object.assign(cj, {nombre:d.nombre||'Caja', responsable:d.responsable||null,
+  Object.assign(cj, {nombre:d.nombre||'Fondo', responsable:d.responsable||null,
     moneda:d.moneda, jornada: d.jornada ? parseInt(d.jornada,10) : null});
   if(!id){
     py.cajas.push(cj);
     if(n(d.adelanto) > 0) cj.adelantos.push({id:uid('ad'), fecha:hoy(), importe:n(d.adelanto),
       circuito:d.circuito, entregadoPor:getUsuario()?.id||null, nota:''});
-    toast(`${cj.nombre} abierta`);
+    toast(`Fondo para ${nombreUsuario(cj.responsable)}: le aparece para rendir`);
   }
   cerrar();
 }
 function addAdelanto(id){
   const cj = getCajas().find(x=>x.id===id);
+  if(!cj || !daFondos() || estadoRend(cj) === 'cerrada'){ toast('El adelanto lo anota quien da la plata'); return; }
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:440px">
-    <h3>Adelanto a ${esc(cj.nombre)}</h3><div class="mbody"><div class="grid2">
-      ${campo('Importe','importe',0,'number','step="any"')}
+    <h3>Más plata para ${esc(nombreUsuario(cj.responsable))} · ${esc(cj.nombre)}</h3><div class="mbody"><div class="grid2">
+      ${campo('Importe','importe',0,'number','step="any" min="0"')}
       ${sel('Cómo se entrega','circuito','efectivo',CIRCUITOS.map(x=>({v:x.v,l:x.l})))}
       ${campo('Fecha','fecha',hoy(),'date')}
       ${campo('Nota','nota','','text')}
@@ -15841,56 +16103,1083 @@ function addAdelanto(id){
 }
 function saveAdelanto(id){
   const d = datos(); const cj = getCajas().find(x=>x.id===id);
+  if(!cj || !daFondos()) return;
   if(n(d.importe) <= 0){ alert('Poné un importe.'); return; }
   cj.adelantos.push({id:uid('ad'), fecha:d.fecha||hoy(), importe:n(d.importe),
     circuito:d.circuito, entregadoPor:getUsuario()?.id||null, nota:d.nota||''});
   toast(`Adelanto de ${fmt(n(d.importe), cj.moneda)}`); cerrar();
 }
+/* Cerrar la rendición: Administración registra si devuelve o si hay que
+   reintegrarle. Es el último paso del circuito. */
 function rendirCaja(id){
   const py = getPy(), cj = getCajas().find(x=>x.id===id);
+  if(!cj || !cierraRend()){ toast('La rendición la cierra Administración'); return; }
   const s = saldoCaja(py, cj);
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
-    <h3>Rendir ${esc(cj.nombre)}</h3><div class="mbody">
+    <h3>Cerrar la rendición · ${esc(nombreUsuario(cj.responsable))}</h3><div class="mbody">
       <div class="cshoras" style="margin:-16px -16px 14px">
         <div><b>${fmt(s.entregado, cj.moneda)}</b><span>Entregado</span></div>
-        <div><b>${fmt(s.gastado, cj.moneda)}</b><span>Gastado</span></div>
+        <div><b>${fmt(s.gastado, cj.moneda)}</b><span>Rendido</span></div>
         <div><b style="color:${s.saldo<0?'var(--bad)':'var(--ok)'}">${fmt(Math.abs(s.saldo), cj.moneda)}</b>
           <span>${s.saldo<0?'A reintegrarle':'A devolver'}</span></div>
       </div>
-      ${s.sinComprobante>0?`<div class="avisomodo"><b>${fmt(s.sinComprobante, cj.moneda)} sin comprobante definido.</b>
-        Se puede rendir igual, pero conviene marcar de cada gasto qué respaldo tiene antes de cerrar.</div>`:''}
+      ${s.sinComprobante>0?`<div class="avisomodo"><b>${fmt(s.sinComprobante, cj.moneda)} sin comprobante.</b>
+        Se puede cerrar igual: queda anotado en la carátula.</div>`:''}
       ${s.saldo<0
-        ? `<div class="sicabox">Gastó <b>${fmt(-s.saldo, cj.moneda)}</b> más de lo que se le adelantó. Hay que reintegrárselo.</div>`
+        ? `<div class="sicabox">Gastó <b>${fmt(-s.saldo, cj.moneda)}</b> más de lo que se le dio. Hay que reintegrárselo.</div>`
         : s.saldo>0 ? `<div class="sicabox">Tiene que devolver <b>${fmt(s.saldo, cj.moneda)}</b>.</div>`
-        : `<div class="sicabox">La caja cierra justo.</div>`}
-      <label class="f" style="margin-top:12px"><span>Notas de la rendición</span>
-        <textarea name="notas" rows="3">${esc(cj.notas)}</textarea></label>
+        : `<div class="sicabox">Cierra justo.</div>`}
+      <label class="f" style="margin-top:12px"><span>Notas del cierre</span>
+        <textarea name="notas" rows="3" placeholder="Devolvió en efectivo, se le transfirió el reintegro…">${esc(cj.notas)}</textarea></label>
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
-      <button class="btn pri" onclick="confirmarRendicion('${id}')">Cerrar la caja</button></div>
+      <button class="btn pri" onclick="confirmarRendicion('${id}')">Cerrar la rendición</button></div>
   </div></div>`);
+}
+/* Una foto de la rendición y sus gastos, para poder deshacer un paso. */
+function fotoRend(py, cj){
+  return {cj: JSON.parse(JSON.stringify(cj)),
+    cs: (py.comprobantes || []).filter(c => c.cajaId === cj.id).map(c => JSON.parse(JSON.stringify(c)))};
+}
+function volverFotoRend(py, f){
+  const cj = (py.cajas || []).find(x => x.id === f.cj.id); if(!cj) return;
+  Object.keys(cj).forEach(k => { delete cj[k]; }); Object.assign(cj, f.cj);
+  f.cs.forEach(c0 => { const c = (py.comprobantes || []).find(x => x.id === c0.id);
+    if(c){ Object.keys(c).forEach(k => { delete c[k]; }); Object.assign(c, c0); } });
+}
+/* un comprobante salta al estado `a` con su paso firmado */
+function moverGastoRend(c, a, accion, nota){
+  const u = getUsuario();
+  if(c.estado === a || c.estado === 'rechazado') return;
+  c.historial ||= [];
+  c.historial.push({de: c.estado, a, accion, usuario: u ? u.nombre : '—', usuarioId: u ? u.id : null,
+    rol: u ? u.rol : null, fecha: hoy(), nota: nota || ''});
+  c.estado = a;
 }
 function confirmarRendicion(id){
   const d = datos(); const py = getPy(), cj = getCajas().find(x=>x.id===id);
+  if(!cj) return;
+  const foto = fotoRend(py, cj);
   const s = saldoCaja(py, cj);
   cj.estado = 'rendida'; cj.rendidaEl = hoy();
   cj.rendidaPor = getUsuario()?.id||null;
   cj.devuelto = s.saldo > 0 ? s.saldo : 0;
   cj.reintegro = s.saldo < 0 ? -s.saldo : 0;
   cj.notas = d.notas || '';
-  toast(`${cj.nombre} rendida`); cerrar();
+  pasoRend(cj, 'cerrada', cj.notas);
+  /* los gastos ya se pagaron con el fondo: quedan pagados */
+  s.comprobantes.forEach(c => {
+    if(c.estado === 'cargado') moverGastoRend(c, 'revisado', 'revisar', 'con la rendición');
+    if(c.estado === 'revisado') moverGastoRend(c, 'aprobado', 'aprobar', 'con la rendición');
+    moverGastoRend(c, 'pagado', 'pagar', 'pagado con el fondo de la rendición');
+  });
+  cerrar();
+  toast(`Rendición de ${nombreUsuario(cj.responsable)} cerrada`, {accion: 'Deshacer', fn: () => { volverFotoRend(py, foto); R(); }});
 }
 function delCaja(id){
+  if(!daFondos()){ toast('El fondo lo da de baja quien lo dio'); return; }
   const py = getPy(), cj = py.cajas.find(x=>x.id===id);
   const gastos = (py.comprobantes||[]).filter(c=>c.cajaId===id).length;
   if(gastos){ if(!confirm(`${cj.nombre} tiene ${gastos} gasto(s). Se van a quedar sin caja. ¿Seguir?`)) return;
     py.comprobantes.forEach(c=>{ if(c.cajaId===id) c.cajaId = null; }); }
   else if(!confirm(`Eliminar ${cj.nombre}?`)) return;
-  py.cajas = py.cajas.filter(x=>x.id!==id); R();
+  py.cajas = py.cajas.filter(x=>x.id!==id);
+  if(DB.ui.rendId === id) DB.ui.rendId = null;
+  R();
+}
+
+/* ============================  RENDICIONES  ===============================
+   La plata que le dan a alguien para trabajar y lo que rinde. Hoy se hace
+   pegando los tickets en hojas, con una planilla por rubros y una carátula;
+   acá el que rinde sube las fotos y los PDF, cada uno se vuelve una fila que
+   completa (CLAP la pre-llena leyendo el QR de AFIP, el texto del PDF o la
+   foto), y sale la planilla, el Excel y el PDF con los tickets pegados.
+   La manda al jefe de producción, que la charla, la devuelve o la eleva, y
+   Administración la cierra. Todas quedan juntas en Gastos → Rendiciones.  */
+const fFecha = f => /^\d{4}-\d\d-\d\d/.test(f || '') ? String(f).slice(0, 10).split('-').reverse().join('/') : '';
+const chipRend = cj => { const e = EST_REND[estadoRend(cj)];
+  return `<span class="est" style="color:${e.c};border-color:${e.c}55;background:${e.c}18">${e.l}</span>`; };
+const saldoTxt = (s, mia) => s > 0 ? 'A devolver' : s < 0 ? (mia ? 'A reintegrarte' : 'A reintegrarle') : 'Cierra justo';
+const periodoTxt = T => T.desde ? (T.desde === T.hasta ? fFecha(T.desde) : `${fFecha(T.desde)} al ${fFecha(T.hasta)}`) : '—';
+const cajaPorId = id => getCajas().find(x => x.id === id) || null;
+
+/* Gastos → Rendiciones: la lista (de cada uno, o de todo el proyecto) o una rendición abierta */
+function rendicionesHTML(py, u, pr){
+  const cj = DB.ui.rendId ? cajaPorId(DB.ui.rendId) : null;
+  if(cj && veRend(cj, u)) return rendDetalleHTML(py, cj, u, pr);
+  return vePlata(u) ? rendListaHTML(py, u, pr) : misRendHTML(py, u, pr);
+}
+/* La caja chica de antes es esta misma lista. */
+function cajasHTML(py, v, u, pr){ return vePlata(u) ? rendListaHTML(py, u, pr) : misRendHTML(py, u, pr); }
+
+function fondosHTML(cj){
+  if(!(cj.adelantos || []).length) return '<div class="muted" style="font-size:12px">Todavía no se anotó plata entregada.</div>';
+  return `<div class="rd-fondos">${cj.adelantos.map(a => `<div class="tot sub"><span>${esc(fFecha(a.fecha) || '—')}
+      <span class="muted">· lo dio ${esc(nombreUsuario(a.entregadoPor))}${a.circuito ? ' · ' + esc((CIRCUITOS.find(x => x.v === a.circuito) || {l: ''}).l) : ''}${a.nota ? ' · ' + esc(a.nota) : ''}</span></span>
+      <b>${fmt(a.importe, cj.moneda)}</b></div>`).join('')}</div>`;
+}
+function numerosRend(T, cj, mia){
+  return `<div class="cshoras">
+    <div><b>${fmt(T.entregado, cj.moneda)}</b><span>Entregado</span></div>
+    <div><b>${fmt(T.gastado, cj.moneda)}</b><span>Rendido · ${T.cant} ${plural(T.cant, 'gasto')}</span></div>
+    <div><b style="color:${T.saldo < 0 ? 'var(--bad)' : T.saldo > 0 ? 'var(--ok)' : 'var(--tx)'}">${fmt(Math.abs(T.saldo), cj.moneda)}</b><span>${saldoTxt(T.saldo, mia)}</span></div>
+    ${T.cantSin ? `<div><b style="color:var(--warn)">${T.cantSin}</b><span>sin comprobante</span></div>` : ''}
+  </div>`;
+}
+
+/* lo que ve quien rinde: sus fondos */
+function misRendHTML(py, u, pr){
+  const mias = getCajas().filter(cj => rendMia(cj, u))
+    .sort((a, b) => (estadoRend(a) === 'cerrada') - (estadoRend(b) === 'cerrada'));
+  return `<div class="cs">
+    <div class="cshead"><div><div class="csttl">Mis rendiciones</div>
+      <div class="cssub">La plata que te dieron para trabajar: subís los tickets, se arma la planilla y la mandás al jefe de producción</div></div>
+      <div style="text-align:right"><div class="csj">${mias.filter(x => ['borrador','observada'].includes(estadoRend(x))).length}<span> para cargar</span></div></div></div>
+    ${mias.length ? mias.map(cj => { const T = totalesRend(py, cj), e = estadoRend(cj);
+      return `<div class="csblock rd-card">
+        <h4>${esc(cj.nombre || 'Fondo')} ${chipRend(cj)}<span class="spacer"></span><span class="muted" style="text-transform:none;letter-spacing:0;font-weight:600">${esc(periodoTxt(T))}</span></h4>
+        ${numerosRend(T, cj, true)}
+        <div class="pad">${fondosHTML(cj)}
+          ${e === 'observada' ? `<div class="rd-aviso mal" style="margin-top:9px"><b>Volvió con un comentario.</b> ${esc((firmaRend(cj, 'observada') || {}).nota || '')}</div>` : ''}
+          <div class="noprint" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:11px">
+            <button class="btn ${cargaRend(cj, u) ? 'pri' : ''}" onclick="abrirRend('${cj.id}')">${cargaRend(cj, u) ? (T.cant ? 'Seguir cargando' : 'Cargar los tickets') : 'Ver la rendición'}</button>
+            <button class="btn" onclick="bajarExcelRend('${cj.id}')">⬇ Excel</button>
+            <button class="btn" onclick="imprimirRend('${cj.id}')">PDF para imprimir</button>
+          </div></div></div>`; }).join('')
+      : `<div class="empty">No tenés plata para rendir.<br><span style="font-size:12px">Cuando el jefe de producción o Administración te den un fondo para gastos, lo anotan y te aparece acá para cargar los tickets.</span></div>`}
+  </div>`;
+}
+
+/* lo que ven el jefe, el PE y Administración: la bandeja y todas las rendiciones del proyecto */
+function rendListaHTML(py, u, pr){
+  const todas = getCajas();
+  const F = DB.ui.fRend || {persona: '', estado: ''};
+  const para = todas.filter(cj => (revisaRend(u) && estadoRend(cj) === 'enviada') || (cierraRend(u) && estadoRend(cj) === 'aprobada'));
+  let lista = todas;
+  if(F.persona) lista = lista.filter(cj => cj.responsable === F.persona);
+  if(F.estado) lista = lista.filter(cj => estadoRend(cj) === F.estado);
+  const personas = [...new Set(todas.map(cj => cj.responsable).filter(Boolean))];
+  const enMano = todas.filter(cj => estadoRend(cj) !== 'cerrada').reduce((s, cj) => s + Math.max(0, saldoCaja(py, cj).saldo), 0);
+  return `<div class="cs">
+    <div class="cshead"><div><div class="csttl">Rendiciones</div>
+      <div class="cssub">La plata que se le dio a cada uno para gastar y lo que rinde. Todas juntas, del proyecto entero</div></div>
+      <div style="text-align:right"><div class="csj">${fmt(enMano)}</div><div class="cssub">en mano, sin rendir</div></div></div>
+    ${para.length ? `<div class="csblock"><h4>${cierraRend(u) && !puede(u, 'revisar') ? 'Para cerrar' : revisaRend(u) && !cierraRend(u) ? 'Para revisar' : 'Esperan algo tuyo'} · ${para.length}</h4>
+      <div class="pad" style="display:flex;flex-direction:column;gap:6px">${para.map(cj => rendFilaBandeja(py, cj, u)).join('')}</div></div>` : ''}
+    <div class="pad noprint filtros">
+      <select onchange="setFRend('persona',this.value)" aria-label="Filtrar por persona"><option value="">Todas las personas</option>
+        ${personas.map(id => `<option value="${id}" ${F.persona === id ? 'selected' : ''}>${esc(nombreUsuario(id))}</option>`).join('')}</select>
+      <select onchange="setFRend('estado',this.value)" aria-label="Filtrar por estado"><option value="">Todos los estados</option>
+        ${Object.entries(EST_REND).map(([k, e]) => `<option value="${k}" ${F.estado === k ? 'selected' : ''}>${esc(e.l)}</option>`).join('')}</select>
+      ${F.persona || F.estado ? `<button class="btn sm" onclick="DB.ui.fRend=null;R()">Limpiar</button>` : ''}
+    </div>
+    ${lista.length ? `<div class="scrollx"><table class="tbl cst rd-tabla">
+      <thead><tr><th>Quién</th><th>Fondo</th><th>Período</th><th style="text-align:right">Entregado</th><th style="text-align:right">Rendido</th>
+        <th style="text-align:right">Saldo</th><th>Estado</th><th class="noprint"></th></tr></thead>
+      <tbody>${lista.map(cj => { const T = totalesRend(py, cj);
+        return `<tr><td><b>${esc(nombreUsuario(cj.responsable))}</b></td><td>${esc(cj.nombre || 'Fondo')}</td>
+          <td style="font-size:11.5px">${esc(periodoTxt(T))}</td>
+          <td class="num" style="text-align:right">${fmt(T.entregado, cj.moneda)}</td>
+          <td class="num" style="text-align:right">${fmt(T.gastado, cj.moneda)}<span class="muted" style="display:block;font-size:10.5px">${T.cant} ${plural(T.cant, 'gasto')}</span></td>
+          <td class="num" style="text-align:right">${fmt(Math.abs(T.saldo), cj.moneda)}<span class="muted" style="display:block;font-size:10.5px">${saldoTxt(T.saldo)}</span></td>
+          <td>${chipRend(cj)}${cj.devuelto ? `<span class="muted" style="display:block;font-size:10.5px">Devolvió ${fmt(cj.devuelto, cj.moneda)}</span>` : ''}${cj.reintegro ? `<span class="muted" style="display:block;font-size:10.5px">Se le reintegraron ${fmt(cj.reintegro, cj.moneda)}</span>` : ''}</td>
+          <td class="noprint" style="white-space:nowrap"><button class="btn sm pri" onclick="abrirRend('${cj.id}')">Abrir</button>
+            <button class="btn sm" onclick="bajarExcelRend('${cj.id}')" title="Bajar la planilla en Excel">⬇ Excel</button>
+            <button class="btn sm" onclick="imprimirRend('${cj.id}')" title="La carátula, la planilla y los tickets, para imprimir o guardar en PDF">PDF</button></td></tr>`; }).join('')}
+      </tbody></table></div>`
+      : `<div class="empty">${todas.length ? 'Ninguna con ese filtro.' : 'Todavía no se dio ningún fondo para rendir.'}</div>`}
+  </div>`;
+}
+function rendFilaBandeja(py, cj, u){
+  const T = totalesRend(py, cj), e = estadoRend(cj), p = firmaRend(cj, e);
+  return `<button class="pendfila urg" onclick="abrirRend('${cj.id}')">
+    <span class="pendn">${T.cant}</span>
+    <span><b>${esc(nombreUsuario(cj.responsable))}</b> · ${esc(cj.nombre || 'Fondo')} · ${fmt(T.gastado, cj.moneda)} de ${fmt(T.entregado, cj.moneda)}
+      <span class="muted">· ${e === 'enviada' ? 'la mandó' : 'la elevó ' + esc(p ? p.quien : '')} ${esc(p ? fFecha(p.cuando) : '')}</span></span>
+    <span class="pendir">→</span></button>`;
+}
+function setFRend(k, val){ DB.ui.fRend = {...(DB.ui.fRend || {persona: '', estado: ''}), [k]: val}; R(); }
+
+/* Una rendición abierta */
+function rendDetalleHTML(py, cj, u, pr){
+  const T = totalesRend(py, cj), e = estadoRend(cj), mia = rendMia(cj, u), edita = cargaRend(cj, u);
+  const devuelta = firmaRend(cj, 'observada');
+  const aviso = {
+    borrador: mia ? `Subí las fotos o los PDF de los tickets: cada uno es una fila. Completá lo que falte y mandala al jefe de producción.` : `La está armando ${esc(nombreUsuario(cj.responsable))}.`,
+    enviada: mia ? `La tiene el jefe de producción para revisar. Si la devuelve con un comentario, la corregís y la reenviás.` : `La mandó ${esc(nombreUsuario(cj.responsable))}. Revisala: si está bien, elevala a Administración; si no, devolvela con un comentario.`,
+    observada: `<b>Volvió con un comentario${devuelta ? ' de ' + esc(devuelta.quien) : ''}:</b> “${esc(devuelta ? devuelta.nota : '')}”. ${mia ? 'Corregí y reenviala.' : 'La está corrigiendo quien rinde.'}`,
+    aprobada: `La elevó ${esc((firmaRend(cj, 'aprobada') || {}).quien || 'el jefe de producción')}. ${cierraRend(u) ? 'Revisá la devolución o el reintegro y cerrala.' : 'La cierra Administración.'}`,
+    cerrada: `Cerrada.${cj.devuelto ? ` Devolvió ${fmt(cj.devuelto, cj.moneda)}.` : ''}${cj.reintegro ? ` Se le reintegraron ${fmt(cj.reintegro, cj.moneda)}.` : ''}${cj.notas ? ' ' + esc(cj.notas) : ''}`}[e];
+  const acc = [];
+  if(edita && (mia || !u)) acc.push(`<button class="btn pri" onclick="enviarRend('${cj.id}')">${e === 'observada' ? 'Reenviar al jefe de producción' : 'Mandar al jefe de producción'}</button>`);
+  if(e === 'enviada' && revisaRend(u)){
+    acc.push(`<button class="btn pri" onclick="elevarRend('${cj.id}')">Elevar a Administración ✓</button>`);
+    acc.push(`<button class="btn" onclick="devolverRend('${cj.id}')">Devolver con comentario</button>`);
+  }
+  if(e === 'aprobada' && cierraRend(u)){
+    acc.push(`<button class="btn pri" onclick="rendirCaja('${cj.id}')">Cerrar la rendición</button>`);
+    acc.push(`<button class="btn" onclick="devolverRend('${cj.id}')">Devolver con comentario</button>`);
+  }
+  return `<div class="noprint" style="margin-bottom:10px"><button class="btn" onclick="volverRendLista()">← ${vePlata(u) ? 'Todas las rendiciones' : 'Mis rendiciones'}</button></div>
+  <div class="cs rd-det">
+    <div class="cshead"><div><div class="csttl">${esc(nombreUsuario(cj.responsable))} · ${esc(cj.nombre || 'Fondo')} ${chipRend(cj)}</div>
+      <div class="cssub">${esc(py.nombre)} · período ${esc(periodoTxt(T))}${cj.jornada ? ' · jornada ' + cj.jornada : ''}</div></div>
+      <div style="text-align:right"><div class="csj">${fmt(T.gastado, cj.moneda)}</div><div class="cssub">rendido de ${fmt(T.entregado, cj.moneda)}</div></div></div>
+    ${numerosRend(T, cj, mia)}
+    <div class="pad"><div class="rd-aviso ${e === 'observada' ? 'mal' : ''}">${aviso}</div>
+      <div class="noprint rd-acc-bar">${acc.join('')}<span style="flex:1"></span>
+        <button class="btn" onclick="bajarExcelRend('${cj.id}')" title="Carátula, por rubro y detalle, para editar en Excel">⬇ Excel</button>
+        <button class="btn" onclick="imprimirRend('${cj.id}')" title="La carátula, la planilla y los tickets pegados en hojas">PDF para imprimir</button>
+        ${daFondos(u) && e !== 'cerrada' ? `<button class="btn" onclick="addAdelanto('${cj.id}')">+ Más plata</button><button class="btn" onclick="editCaja('${cj.id}')">Editar el fondo</button>` : ''}
+      </div></div>
+    <div class="csblock"><h4>Lo que recibió</h4><div class="pad">${fondosHTML(cj)}</div></div>
+    ${edita ? `<div class="csblock noprint"><h4>Subir tickets</h4><div class="pad">${zonaRendHTML(cj)}</div></div>` : ''}
+    <div class="csblock"><h4>Los gastos · ${T.cant}${T.faltan.length && edita ? ` <span class="rd-falta-n">${T.faltan.length} con datos por completar</span>` : ''}</h4>${filasRendHTML(py, cj, T, edita, u)}</div>
+    <div class="csblock"><h4>La planilla, por rubro</h4>${planillaRendHTML(T, cj)}</div>
+    <div class="csblock"><h4>Charla${charlaRend(cj).length ? ' · ' + charlaRend(cj).length : ''}</h4>${charlaRendHTML(cj, u)}</div>
+    ${pasosRend(cj).length ? `<div class="csblock"><h4>Recorrido</h4><div class="pad"><div class="linea-tiempo">${pasosRend(cj).map(p => `<div class="hito">
+      <i style="background:${EST_REND[p.a] ? EST_REND[p.a].c : '#999'}"></i>
+      <div><b>${esc((EST_REND[p.a] || {l: p.a}).l)}</b> <span class="muted">· ${esc(p.quien)}${p.rol ? ' (' + esc(ROL(p.rol).l) + ')' : ''} · ${esc(fFecha(p.cuando))} ${esc(String(p.cuando || '').slice(11))}</span>
+      ${p.nota ? `<span style="display:block;font-size:11.5px">“${esc(p.nota)}”</span>` : ''}</div></div>`).join('')}</div></div></div>` : ''}
+  </div>`;
+}
+function zonaRendHTML(cj){
+  return `<div class="rd-drop" ondragover="event.preventDefault();this.classList.add('sobre')" ondragleave="this.classList.remove('sobre')"
+      ondrop="soltarRend(event,'${cj.id}')">
+    <b>Soltá acá las fotos de los tickets o los PDF de las facturas</b>
+    <span class="muted" style="font-size:12px">JPG, PNG, HEIC, PDF… varios a la vez. Cada archivo es una fila: CLAP lee el QR de AFIP o el texto y pre-llena lo que puede; vos lo confirmás.</span>
+    <div class="rd-btns">
+      <button class="btn pri" onclick="document.getElementById('rdfile').click()">Subir archivos</button>
+      <button class="btn" onclick="document.getElementById('rdcam').click()">Sacar foto</button>
+      <button class="btn" onclick="gastoSinArchivoRend('${cj.id}')">+ Gasto sin archivo</button>
+    </div>
+    <input type="file" id="rdfile" multiple accept="${ACEPTA_ADJ}" style="display:none" onchange="subirArchivosRend('${cj.id}',this)">
+    <input type="file" id="rdcam" accept="image/*" capture="environment" style="display:none" onchange="subirArchivosRend('${cj.id}',this)">
+  </div>`;
+}
+/* la miniatura de un adjunto */
+function miniAdj(a){
+  if(!a) return '<span class="rd-th rd-th-vacia" aria-hidden="true">—</span>';
+  if(esImagenAdj(a)) return `<span class="rd-th"><img src="${a.dataUrl}" alt=""></span>`;
+  const ext = String(a.nombre || '').split('.').pop().toUpperCase().slice(0, 4) || 'ARCH';
+  return `<span class="rd-th rd-th-doc">${esc(esPdfAdj(a) ? 'PDF' : ext)}</span>`;
+}
+const RD_CAMPOS = ['fecha','proveedor','concepto','rubro','tipo','numero','importe'];
+function filasRendHTML(py, cj, T, edita, u){
+  const cs = T.comprobantes;
+  if(!cs.length) return `<div class="pad muted" style="font-size:12.5px">${edita ? 'Todavía no hay gastos. Subí los tickets arriba.' : 'No tiene gastos cargados.'}</div>`;
+  const notas = id => charlaRend(cj).filter(m => m.gastoId === id).length;
+  const cab = `<div class="rd-f rd-cab" aria-hidden="true"><span>Ticket</span><span>Fecha</span><span>Proveedor · CUIT</span><span>Concepto</span><span>Rubro</span><span>Comprobante</span><span>Número</span><span style="text-align:right">Importe</span><span></span></div>`;
+  return `<div class="rd-filas">${cab}${cs.map((c, i) => {
+    const falta = edita ? faltaEnGasto(c) : [], auto = c.aConfirmar || [];
+    const cls = k => (falta.includes(k) ? ' rd-falta' : '') + (auto.includes(k) ? ' rd-auto' : '');
+    const ley = _leyendo[c.id];
+    const th = `<button type="button" class="rd-thb" onclick="verAdjuntoRend('${c.id}')" ${c.adjunto ? '' : 'disabled'} aria-label="Ver el ticket ${i + 1}">${miniAdj(c.adjunto)}</button>`;
+    const estado = ley ? `<span class="rd-leyendo" id="rdl-${c.id}">${esc(ley)}</span>`
+      : auto.length && edita ? `<span class="rd-sub rd-auto-t">Leído ${c.leido === 'qr' ? 'del QR de AFIP' : c.leido === 'pdf' ? 'del PDF' : 'de la foto'}: confirmá lo amarillo</span>`
+      : falta.length ? `<span class="rd-sub rd-falta-t">Falta: ${falta.map(k => ({fecha: 'fecha', proveedor: 'proveedor', concepto: 'concepto', rubro: 'rubro', tipo: 'comprobante', numero: 'número', importe: 'importe'})[k]).join(', ')}</span>` : '';
+    if(!edita) return `<div class="rd-f rd-ro">
+      <span class="rd-c rd-c-th">${th}<span class="rd-n">${i + 1}</span></span>
+      <span class="rd-c rd-c-fecha"><span class="rd-l">Fecha</span>${esc(fFecha(c.fecha) || '—')}</span>
+      <span class="rd-c rd-c-prov"><span class="rd-l">Proveedor</span><b>${esc(c.proveedor || '—')}</b>${c.cuit ? `<span class="rd-sub">${esc(c.cuit)}</span>` : ''}</span>
+      <span class="rd-c rd-c-conc"><span class="rd-l">Concepto</span>${esc(c.concepto || c.subrubro || '—')}</span>
+      <span class="rd-c rd-c-rub"><span class="rd-l">Rubro</span>${c.rubro ? esc(c.rubro + ' · ' + (RUBRO(c.rubro).nombre || '')) : '—'}</span>
+      <span class="rd-c rd-c-tipo"><span class="rd-l">Comprobante</span>${esc(TIPO_CBTE(c.tipo) || '—')}</span>
+      <span class="rd-c rd-c-num"><span class="rd-l">Número</span>${esc(c.numero || '—')}</span>
+      <span class="rd-c rd-c-imp"><span class="rd-l">Importe</span><b>${fmt(c.importe, c.moneda)}</b></span>
+      <span class="rd-c rd-c-acc">${veRend(cj, u) && estadoRend(cj) !== 'cerrada' ? `<button class="btn sm" onclick="notaGastoRend('${c.id}')" aria-label="Comentar este gasto">💬${notas(c.id) ? ' ' + notas(c.id) : ''}</button>` : notas(c.id) ? `<span class="muted">💬 ${notas(c.id)}</span>` : ''}</span>
+    </div>`;
+    const inp = (k, tipo, val, extra = '') => `<input class="${cls(k).trim()}" type="${tipo}" value="${esc(val ?? '')}" onchange="upGastoRend('${c.id}','${k}',this.value)" onkeydown="rdTecla(event)" ${extra}>`;
+    return `<div class="rd-f${falta.length ? ' rd-f-falta' : ''}">
+      <span class="rd-c rd-c-th">${th}<span class="rd-n">${i + 1}</span></span>
+      <label class="rd-c rd-c-fecha"><span class="rd-l">Fecha</span>${inp('fecha', 'date', c.fecha, 'aria-label="Fecha"')}</label>
+      <span class="rd-c rd-c-prov"><span class="rd-l">Proveedor</span>${inp('proveedor', 'text', c.proveedor, 'list="dlprov" placeholder="Quién lo cobró" aria-label="Proveedor"')}
+        <input class="rd-cuit${auto.includes('cuit') ? ' rd-auto' : ''}" type="text" inputmode="numeric" value="${esc(c.cuit || '')}" placeholder="CUIT" aria-label="CUIT" onchange="upGastoRend('${c.id}','cuit',this.value)" onkeydown="rdTecla(event)"></span>
+      <label class="rd-c rd-c-conc"><span class="rd-l">Concepto</span>${inp('concepto', 'text', c.concepto, 'placeholder="Qué se compró" aria-label="Concepto"')}</label>
+      <label class="rd-c rd-c-rub"><span class="rd-l">Rubro</span><select class="${cls('rubro').trim()}" onchange="upGastoRend('${c.id}','rubro',this.value)" onkeydown="rdTecla(event)" aria-label="Rubro">
+        <option value="">— rubro —</option>${RUBROS_BASE.map(r => `<option value="${r.codigo}" ${r.codigo === c.rubro ? 'selected' : ''}>${esc(r.codigo + ' · ' + r.nombre)}</option>`).join('')}</select></label>
+      <label class="rd-c rd-c-tipo"><span class="rd-l">Comprobante</span><select class="${cls('tipo').trim()}" onchange="upGastoRend('${c.id}','tipo',this.value)" onkeydown="rdTecla(event)" aria-label="Tipo de comprobante">
+        <option value="">— tipo —</option>${TIPOS_CBTE.map(t => `<option value="${t.v}" ${t.v === c.tipo ? 'selected' : ''}>${esc(t.l)}</option>`).join('')}</select></label>
+      <label class="rd-c rd-c-num"><span class="rd-l">Número</span>${inp('numero', 'text', c.numero, 'placeholder="0001-00001234" aria-label="Número"')}</label>
+      <label class="rd-c rd-c-imp"><span class="rd-l">Importe</span>${inp('importe', 'text', n(c.importe) ? n(c.importe).toLocaleString('es-AR', {maximumFractionDigits: 2}) : '', 'inputmode="decimal" placeholder="0" aria-label="Importe" style="text-align:right"')}</label>
+      <span class="rd-c rd-c-acc">
+        ${auto.length ? `<button class="btn sm" onclick="confirmarFilaRend('${c.id}')" title="Está todo bien leído">✓</button>` : ''}
+        <button class="btn sm" onclick="notaGastoRend('${c.id}')" aria-label="Comentar este gasto">💬${notas(c.id) ? ' ' + notas(c.id) : ''}</button>
+        <button class="btn sm dgr" onclick="borrarGastoRend('${c.id}')" aria-label="Borrar este gasto">×</button></span>
+      ${estado ? `<span class="rd-c rd-c-est">${estado}</span>` : ''}
+    </div>`; }).join('')}</div>
+    <datalist id="dlprov">${[...new Set([...DB.catalogo.personas.map(x => x.nombre), ...(py.comprobantes || []).map(c => c.proveedor)].filter(Boolean))].sort().map(x => `<option value="${esc(x)}">`).join('')}</datalist>`;
+}
+/* la planilla de siempre: por rubro, con subtotales, y el total contra el fondo */
+function planillaRendHTML(T, cj){
+  if(!T.cant) return '<div class="pad muted" style="font-size:12.5px">Se arma sola a medida que se cargan los gastos.</div>';
+  return `<div class="scrollx"><table class="tbl cst rd-plan">
+    <thead><tr><th style="width:84px">Fecha</th><th>Proveedor</th><th>Concepto</th><th style="width:120px">Comprobante</th><th style="width:110px;text-align:right">Importe</th></tr></thead>
+    <tbody>${T.rubros.map(r => `<tr class="csdep"><td colspan="5"><b>${esc(r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre)}</b></td></tr>
+      ${r.gastos.map(c => `<tr><td>${esc(fFecha(c.fecha) || '—')}</td><td>${esc(c.proveedor || '—')}</td><td>${esc(c.concepto || c.subrubro || '')}</td>
+        <td style="font-size:11px">${esc(TIPO_CBTE(c.tipo) || '—')}${c.numero ? ' ' + esc(c.numero) : ''}</td><td class="num" style="text-align:right">${fmt(c.importe, cj.moneda)}</td></tr>`).join('')}
+      <tr class="rd-subt"><td colspan="4" style="text-align:right">Subtotal ${esc(r.nombre)}</td><td class="num" style="text-align:right"><b>${fmt(r.total, cj.moneda)}</b></td></tr>`).join('')}
+    </tbody>
+    <tfoot><tr class="rd-tot"><td colspan="4" style="text-align:right">Total rendido</td><td class="num" style="text-align:right"><b>${fmt(T.gastado, cj.moneda)}</b></td></tr>
+      <tr><td colspan="4" style="text-align:right">Fondo recibido</td><td class="num" style="text-align:right">${fmt(T.entregado, cj.moneda)}</td></tr>
+      <tr><td colspan="4" style="text-align:right">${saldoTxt(T.saldo)}</td><td class="num" style="text-align:right"><b>${fmt(Math.abs(T.saldo), cj.moneda)}</b></td></tr></tfoot>
+  </table></div>`;
+}
+function charlaRendHTML(cj, u){
+  const ms = charlaRend(cj), cs = getComprobantes();
+  const puedeEscribir = veRend(cj, u) && estadoRend(cj) !== 'cerrada';
+  return `<div class="pad rd-charla">
+    ${ms.length ? ms.map(m => { const g = m.gastoId ? cs.find(c => c.id === m.gastoId) : null;
+      return `<div class="rd-msg ${u && m.quienId === u.id ? 'mio' : ''}"><div class="rd-msg-q"><b>${esc(m.quien)}</b> <span class="muted">${m.rol ? esc(ROL(m.rol).l) + ' · ' : ''}${esc(fFecha(m.cuando))} ${esc(String(m.cuando || '').slice(11))}</span></div>
+        ${g ? `<div class="rd-msg-g">Sobre el gasto: ${esc(g.proveedor || g.concepto || 'sin nombre')} · ${fmt(g.importe, g.moneda)}</div>` : ''}
+        <div>${esc(m.texto)}</div></div>`; }).join('')
+      : `<div class="muted" style="font-size:12.5px">${puedeEscribir ? 'Si hay algo para charlar sobre esta rendición, escribilo acá: lo ven quien rinde y el jefe de producción.' : 'Sin comentarios.'}</div>`}
+    ${puedeEscribir ? `<div class="rd-escribir noprint"><textarea id="rd-msg" rows="2" placeholder="Escribí un comentario…" aria-label="Comentario"></textarea>
+      <button class="btn" onclick="comentarRend('${cj.id}')">Mandar</button></div>` : ''}
+  </div>`;
+}
+
+/* --------------------------- rendiciones: acciones --------------------------- */
+function abrirRend(id){ DB.ui.subGasto = 'rend'; DB.ui.rendId = id; setTab('gastos'); }
+function volverRendLista(){ DB.ui.rendId = null; _hashPush = true; R(); }
+const gastoPorId = id => getComprobantes().find(x => x.id === id) || null;
+/* ¿puede este usuario cambiar este gasto de la rendición, ahora? */
+function editaGastoRend(c){ const cj = cajaDe(getPy(), c); return !!cj && cargaRend(cj); }
+
+function nuevoGastoRend(cj, o = {}){
+  const u = getUsuario(), py = getPy();
+  const c = nuevoComprobante({cajaId: cj.id, moneda: cj.moneda || 'ARS', circuito: 'efectivo', estado: 'cargado',
+    cargadoPor: u ? u.id : null, jornada: cj.jornada ?? null, ...o});
+  if(!o.fecha) c.fecha = '';
+  c.historial = [{de: null, a: 'cargado', accion: 'cargar', usuario: u ? u.nombre : '—', usuarioId: u ? u.id : null,
+    rol: u ? u.rol : null, fecha: hoy(), nota: 'en la rendición'}];
+  (py.comprobantes ||= []).push(c);
+  return c;
+}
+function gastoSinArchivoRend(cajaId){
+  const cj = cajaPorId(cajaId); if(!cj || !cargaRend(cj)) return;
+  nuevoGastoRend(cj); R();
+  try{ setTimeout(() => { const f = [...document.querySelectorAll('.rd-f:not(.rd-cab)')].pop(); const i = f && f.querySelector('input'); if(i) i.focus(); }, 0); }catch(e){}
+}
+/* el área sale del rubro, o del área de quien rinde en los rubros que gastan todos */
+function areaDelGasto(c, cj){
+  const r = areaDeRubro(c.rubro); if(r) return r;
+  const u = getUsuarios().find(x => x.id === (cj && cj.responsable));
+  const a = u && AREAS.find(x => norm(x.l) === norm(u.depto || ''));
+  return a ? a.k : '';
+}
+function upGastoRend(id, campo, val){
+  const c = gastoPorId(id); if(!c || !editaGastoRend(c)) return;
+  const cj = cajaDe(getPy(), c);
+  if(campo === 'importe') c.importe = parseImporte(val);
+  else if(campo === 'cuit'){
+    c.cuit = cuitValido(val) ? fmtCuit(val) : String(val || '').trim();
+    const p = proveedorPorCuit(c.cuit);
+    if(p && !String(c.proveedor || '').trim()) c.proveedor = p.nombre;
+    if(!c.rubro){ const rb = rubroSugerido(c.cuit, c.proveedor, c.id); if(rb){ c.rubro = rb; c.area = areaDelGasto(c, cj); } }
+  }
+  else c[campo] = String(val ?? '').trim();
+  if(campo === 'rubro') c.area = areaDelGasto(c, cj);
+  if(campo === 'proveedor' && !c.rubro){ const rb = rubroSugerido(c.cuit, c.proveedor, c.id); if(rb){ c.rubro = rb; c.area = areaDelGasto(c, cj); } }
+  if(c.aConfirmar) c.aConfirmar = c.aConfirmar.filter(k => k !== campo);
+  if(c.aConfirmar && !c.aConfirmar.length) delete c.aConfirmar;
+  guardar();
+  /* que el foco ya haya pasado al campo siguiente antes de redibujar */
+  setTimeout(() => render(), 0);
+}
+/* Enter pasa al campo que sigue, como en una planilla */
+function rdTecla(ev){
+  if(ev.key !== 'Enter' || ev.shiftKey) return;
+  ev.preventDefault();
+  const todos = [...document.querySelectorAll('.rd-f input, .rd-f select')];
+  const i = todos.indexOf(ev.target); const sig = todos[i + 1];
+  if(sig) sig.focus(); else ev.target.blur();
+}
+function confirmarFilaRend(id){
+  const c = gastoPorId(id); if(!c || !editaGastoRend(c)) return;
+  delete c.aConfirmar; R();
+}
+function borrarGastoRend(id){
+  const py = getPy(), i = (py.comprobantes || []).findIndex(x => x.id === id); if(i < 0) return;
+  const c = py.comprobantes[i]; if(!editaGastoRend(c)) return;
+  py.comprobantes.splice(i, 1);
+  toast('Gasto borrado', {accion: 'Deshacer', fn: () => { py.comprobantes.splice(i, 0, c); R(); }});
+  R();
+}
+function comentarRend(id, texto){
+  const cj = cajaPorId(id), u = getUsuario(); if(!cj || !veRend(cj) || estadoRend(cj) === 'cerrada') return;
+  let t = texto;
+  if(t == null){ const el = document.getElementById('rd-msg'); t = el ? el.value : ''; }
+  t = String(t || '').trim(); if(!t){ toast('Escribí algo primero'); return; }
+  cj.rendicion ||= {};
+  (cj.rendicion.charla ||= []).push({id: uid('rm'), quienId: u ? u.id : null, quien: u ? u.nombre : '—', rol: u ? u.rol : null,
+    cuando: ahoraTxt(), texto: t, gastoId: null});
+  R();
+}
+function notaGastoRend(gid){
+  const c = gastoPorId(gid), py = getPy(), cj = cajaDe(py, c), u = getUsuario();
+  if(!cj || !veRend(cj) || estadoRend(cj) === 'cerrada') return;
+  const t = prompt(`Comentario sobre el gasto de ${c.proveedor || c.concepto || 'este ticket'} (${fmt(c.importe, c.moneda)}):`, '');
+  if(t === null || !String(t).trim()) return;
+  cj.rendicion ||= {};
+  (cj.rendicion.charla ||= []).push({id: uid('rm'), quienId: u ? u.id : null, quien: u ? u.nombre : '—', rol: u ? u.rol : null,
+    cuando: ahoraTxt(), texto: String(t).trim(), gastoId: gid});
+  toast('Comentario anotado en la charla'); R();
+}
+/* el circuito */
+function enviarRend(id){
+  const py = getPy(), cj = cajaPorId(id); if(!cj || !cargaRend(cj)) return;
+  const T = totalesRend(py, cj);
+  if(!T.cant){ toast('Primero cargá los gastos'); return; }
+  if(_leyendoN()){ toast('Esperá a que termine de leer los tickets'); return; }
+  const sinImporte = T.comprobantes.filter(c => !(n(c.importe) > 0) || !c.rubro);
+  if(sinImporte.length){ toast(`Hay ${sinImporte.length} ${plural(sinImporte.length, 'gasto')} sin importe o sin rubro: completalos antes de mandar`); return; }
+  const faltan = T.faltan.length, auto = T.comprobantes.filter(c => (c.aConfirmar || []).length).length;
+  const msj = `¿Mandar la rendición al jefe de producción?\n\n${T.cant} ${plural(T.cant, 'gasto')} por ${fmt(T.gastado, cj.moneda)} · recibiste ${fmt(T.entregado, cj.moneda)} · ${saldoTxt(T.saldo, true).toLowerCase()} ${fmt(Math.abs(T.saldo), cj.moneda)}`
+    + (faltan ? `\n\nOjo: ${faltan} ${plural(faltan, 'gasto')} con algún dato sin completar.` : '')
+    + (auto ? `\n${auto} con datos leídos solos que no confirmaste.` : '')
+    + '\n\nMientras la revisa no se puede cambiar.';
+  if(!confirm(msj)) return;
+  const foto = fotoRend(py, cj);
+  pasoRend(cj, 'enviada');
+  toast('Rendición mandada al jefe de producción', {accion: 'Deshacer', fn: () => { volverFotoRend(py, foto); R(); }});
+  R();
+}
+function devolverRend(id){
+  const py = getPy(), cj = cajaPorId(id), e = estadoRend(cj);
+  if(!cj || !((e === 'enviada' && revisaRend()) || (e === 'aprobada' && cierraRend()))) return;
+  const nota = prompt(`¿Qué hay que corregir? (lo lee ${nombreUsuario(cj.responsable)})`, '');
+  if(nota === null) return;
+  if(!String(nota).trim()){ toast('Escribí qué hay que corregir, si no no sirve'); return; }
+  const foto = fotoRend(py, cj);
+  pasoRend(cj, 'observada', String(nota).trim());
+  toast(`Devuelta a ${nombreUsuario(cj.responsable)} con tu comentario`, {accion: 'Deshacer', fn: () => { volverFotoRend(py, foto); R(); }});
+  R();
+}
+function elevarRend(id){
+  const py = getPy(), cj = cajaPorId(id); if(!cj || estadoRend(cj) !== 'enviada' || !revisaRend()) return;
+  const T = totalesRend(py, cj);
+  if(!confirm(`¿Elevar a Administración la rendición de ${nombreUsuario(cj.responsable)}?\n\n${T.cant} ${plural(T.cant, 'gasto')} por ${fmt(T.gastado, cj.moneda)} · ${saldoTxt(T.saldo).toLowerCase()} ${fmt(Math.abs(T.saldo), cj.moneda)}`)) return;
+  const foto = fotoRend(py, cj);
+  pasoRend(cj, 'aprobada');
+  T.comprobantes.forEach(c => { if(c.estado === 'cargado') moverGastoRend(c, 'revisado', 'revisar', 'con la rendición'); });
+  toast('Elevada a Administración', {accion: 'Deshacer', fn: () => { volverFotoRend(py, foto); R(); }});
+  R();
+}
+const _leyendo = {};
+const _leyendoN = () => Object.keys(_leyendo).length;
+
+/* ------------------------ los archivos de los tickets ------------------------
+   Una factura llega como foto (JPG, PNG, WEBP, HEIC del iPhone…) o como PDF.
+   Lo que el navegador puede abrir como imagen se achica (achicarImagen);
+   lo demás (PDF, HEIC en Windows, TIFF) se guarda tal cual, si entra en el
+   lugar que queda. Nunca se rechaza un archivo válido: si no entra, la fila
+   se crea igual, sin el archivo, y se avisa.                                */
+const ACEPTA_ADJ = 'image/*,application/pdf,.pdf,.heic,.heif,.tif,.tiff,.webp';
+const TOPE_ADJ = 1.6 * 1048576;            /* un archivo que no se achica: hasta 1,6 MB */
+const LUGAR_LOCAL = 5 * 1048576;           /* lo que suele dar el navegador por sitio */
+const esImagenAdj = a => !!a && !!a.dataUrl && /^data:image\/(jpeg|png|webp|gif|bmp|svg\+xml)/.test(a.dataUrl);
+const esPdfAdj = a => !!a && (a.tipo === 'application/pdf' || /\.pdf$/i.test(a.nombre || ''));
+const esPdfArchivo = f => f.type === 'application/pdf' || /\.pdf$/i.test(f.name || '');
+const mb = b => (b / 1048576).toLocaleString('es-AR', {maximumFractionDigits: 1}) + ' MB';
+function leerComoDataUrl(file){
+  return new Promise((res, rej) => { const fr = new FileReader();
+    fr.onerror = () => rej(new Error('No pude leer el archivo')); fr.onload = () => res(fr.result); fr.readAsDataURL(file); });
+}
+/* El adjunto de un comprobante, venga como venga. Devuelve {adjunto, aviso}. */
+async function leerAdjunto(file){
+  const esImg = /^image\//.test(file.type || '') || /\.(jpe?g|png|webp|gif|bmp|heic|heif|tiff?)$/i.test(file.name || '');
+  if(esImg && !esPdfArchivo(file)){
+    try{ const a = await achicarImagen(file); return {adjunto: a, aviso: ''}; }
+    catch(e){ /* el navegador no la sabe abrir (HEIC, TIFF): se guarda el original */ }
+  }
+  const quedan = LUGAR_LOCAL - espacioUsado().bytes;
+  const pesa = Math.round(file.size * 4 / 3) + 200;
+  const base = {nombre: file.name || 'archivo', tipo: file.type || (esPdfArchivo(file) ? 'application/pdf' : 'application/octet-stream'), bytes: file.size};
+  if(file.size > TOPE_ADJ || pesa > quedan - 150000)
+    return {adjunto: {...base, sinArchivo: true},
+      aviso: `«${file.name}» pesa ${mb(file.size)} y no entra en el lugar que queda en este navegador (quedan ${mb(Math.max(0, quedan))}). La fila se cargó igual, sin el archivo: guardalo aparte.`};
+  return {adjunto: {...base, dataUrl: await leerComoDataUrl(file)}, aviso: ''};
+}
+function dataUrlABlob(u){
+  const [cab, datos] = String(u).split(','); const tipo = (cab.match(/data:([^;]+)/) || [])[1] || 'application/octet-stream';
+  const bin = atob(datos || ''); const b = new Uint8Array(bin.length); for(let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+  return new Blob([b], {type: tipo});
+}
+async function subirArchivosRend(cajaId, inp){
+  const files = [...((inp && inp.files) || inp || [])]; if(inp && inp.value !== undefined) try{ inp.value = ''; }catch(e){}
+  const cj = cajaPorId(cajaId); if(!cj || !cargaRend(cj) || !files.length) return;
+  toast(`Subiendo ${files.length} ${plural(files.length, 'archivo')}…`);
+  const avisos = [], nuevos = [];
+  for(const f of files){
+    let r;
+    try{ r = await leerAdjunto(f); }catch(e){ r = {adjunto: null, aviso: `No pude leer «${f.name}»: ${e.message}`}; }
+    if(r.aviso) avisos.push(r.aviso);
+    const c = nuevoGastoRend(cj, {adjunto: r.adjunto});
+    nuevos.push([c.id, f]);
+  }
+  guardar(); R();
+  if(avisos.length) toast(avisos.join(' '), {error: true});
+  else toast(`${files.length} ${plural(files.length, 'ticket')} ${files.length == 1 ? 'cargado' : 'cargados'}: CLAP los está leyendo`);
+  nuevos.forEach(([id, f]) => reconocerComprobante(id, f));
+}
+function soltarRend(ev, cajaId){
+  ev.preventDefault();
+  try{ ev.currentTarget.classList.remove('sobre'); }catch(e){}
+  const fs = ev.dataTransfer && ev.dataTransfer.files; if(fs && fs.length) subirArchivosRend(cajaId, fs);
+}
+/* el visor: la foto grande, o el PDF */
+function verAdjuntoRend(id){
+  const c = gastoPorId(id); if(!c || !c.adjunto) return;
+  const a = c.adjunto;
+  let cuerpo;
+  if(a.sinArchivo) cuerpo = `<div class="sicabox">El archivo «${esc(a.nombre)}» no se guardó porque no entraba (${mb(a.bytes || 0)}). Está en la compu de quien lo cargó.</div>`;
+  else if(esImagenAdj(a)) cuerpo = `<img src="${a.dataUrl}" alt="Ticket" class="rd-visor-img">`;
+  else if(esPdfAdj(a)) cuerpo = `<iframe class="rd-visor-pdf" title="PDF del comprobante" src="${(() => { try{ return URL.createObjectURL(dataUrlABlob(a.dataUrl)); }catch(e){ return ''; } })()}"></iframe>`;
+  else cuerpo = `<div class="sicabox">«${esc(a.nombre)}» no se puede mostrar acá (${esc(a.tipo || 'formato desconocido')}). Bajalo para abrirlo.</div>`;
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod rd-visor">
+    <h3>${esc(c.proveedor || c.concepto || a.nombre || 'Ticket')}<span class="spacer"></span><span class="muted" style="font-size:11px;text-transform:none;letter-spacing:0">${esc(fFecha(c.fecha))} · ${fmt(c.importe, c.moneda)}</span></h3>
+    <div class="mbody">${cuerpo}</div>
+    <div class="mfoot">${a.dataUrl ? `<button class="btn" onclick="bajarAdjunto('${c.id}')">⬇ Bajar el archivo</button>` : ''}<span style="flex:1"></span><button class="btn pri" onclick="cerrar()">Cerrar</button></div>
+  </div></div>`);
+}
+function bajarAdjunto(id){
+  const c = gastoPorId(id); if(!c || !c.adjunto || !c.adjunto.dataUrl) return;
+  try{ const a = document.createElement('a'); a.href = URL.createObjectURL(dataUrlABlob(c.adjunto.dataUrl)); a.download = c.adjunto.nombre || 'comprobante'; a.click(); }catch(e){ toast('No pude bajar el archivo'); }
+}
+
+/* ---------------------- leer los datos del comprobante ----------------------
+   Tres caminos, del más seguro al menos:
+   1. el QR de AFIP de la factura electrónica (exacto: si está, manda);
+   2. el texto de un PDF digital (CUIT, fecha, tipo, número, total);
+   3. la foto de un ticket en papel, con OCR (a ojo: hay que confirmarlo).
+   Todo en el navegador, gratis: jsQR, pdf.js y Tesseract se bajan de un CDN
+   público recién cuando hacen falta. Si algo falla, la fila queda vacía para
+   completar a mano: nunca frena la carga.                                  */
+const cuitDigitos = s => String(s || '').replace(/\D/g, '');
+function cuitValido(s){
+  const d = cuitDigitos(s); if(d.length !== 11 || !/^(20|23|24|25|26|27|30|33|34)/.test(d)) return false;
+  const w = [5, 4, 3, 2, 7, 6, 5, 4, 3, 2]; let t = 0;
+  for(let i = 0; i < 10; i++) t += +d[i] * w[i];
+  let v = 11 - (t % 11); if(v === 11) v = 0; if(v === 10) return false;
+  return v === +d[10];
+}
+const fmtCuit = s => { const d = cuitDigitos(s); return d.length === 11 ? `${d.slice(0, 2)}-${d.slice(2, 10)}-${d[10]}` : String(s || ''); };
+/* 12.345,67 · 12,345.67 · 12345,6 · $ 1.234 → número */
+function parseImporte(s){
+  let t = String(s ?? '').replace(/[^\d.,-]/g, '');
+  const neg = /^-/.test(t); t = t.replace(/-/g, '');
+  if(!/\d/.test(t)) return 0;
+  const i = Math.max(t.lastIndexOf(','), t.lastIndexOf('.'));
+  if(i >= 0){
+    const dec = t.slice(i + 1), ent = t.slice(0, i);
+    /* uno o dos dígitos después del último separador: son los centavos; tres: era de miles */
+    t = dec.length >= 1 && dec.length <= 2 ? ent.replace(/[.,]/g, '') + '.' + dec : t.replace(/[.,]/g, '');
+  }
+  const v = parseFloat(t); return isFinite(v) ? (neg ? -v : v) : 0;
+}
+/* tipos de comprobante de AFIP → los de CLAP */
+const TIPO_AFIP = {1: 'facA', 2: 'facA', 3: 'facA', 4: 'reciboX', 5: 'facA', 6: 'facBC', 7: 'facBC', 8: 'facBC', 9: 'reciboX', 10: 'facBC',
+  11: 'facBC', 12: 'facBC', 13: 'facBC', 15: 'reciboX', 51: 'facA', 52: 'facA', 53: 'facA', 54: 'reciboX',
+  81: 'facA', 82: 'facBC', 83: 'ticket', 111: 'facBC', 118: 'facA', 119: 'facBC', 120: 'facBC',
+  201: 'facA', 202: 'facA', 203: 'facA', 206: 'facBC', 207: 'facBC', 208: 'facBC', 211: 'facBC', 212: 'facBC', 213: 'facBC'};
+const NOTA_CREDITO_AFIP = [3, 8, 13, 53, 203, 208, 213];
+/* El QR de la factura electrónica: https://www.afip.gob.ar/fe/qr/?p=<JSON en base64> */
+function leerQrAfip(txt){
+  const s = String(txt || '').trim();
+  const m = /(?:afip|arca)\.gob\.ar\/fe\/qr\/?\?(?:[^#\s]*&)?p=([^&#\s]+)/i.exec(s);
+  if(!m) return null;
+  let b = m[1]; try{ b = decodeURIComponent(b); }catch(e){}
+  b = b.replace(/-/g, '+').replace(/_/g, '/').replace(/\s/g, '');
+  while(b.length % 4) b += '=';
+  let j = null;
+  try{ const bin = atob(b); try{ j = JSON.parse(decodeURIComponent(escape(bin))); }catch(e){ j = JSON.parse(bin); } }catch(e){ return null; }
+  if(!j || typeof j !== 'object' || !j.cuit) return null;
+  const tipoCmp = +j.tipoCmp || 0;
+  const pv = j.ptoVta != null && j.ptoVta !== '' ? String(j.ptoVta).replace(/\D/g, '') : '';
+  const nro = j.nroCmp != null && j.nroCmp !== '' ? String(j.nroCmp).replace(/\D/g, '') : '';
+  return {fecha: /^\d{4}-\d\d-\d\d/.test(String(j.fecha || '')) ? String(j.fecha).slice(0, 10) : '',
+    cuit: fmtCuit(j.cuit), tipo: TIPO_AFIP[tipoCmp] || '', tipoCmp, notaCredito: NOTA_CREDITO_AFIP.includes(tipoCmp),
+    numero: pv && nro ? pv.padStart(5, '0') + '-' + nro.padStart(8, '0') : '',
+    importe: Math.abs(n(j.importe)), moneda: j.moneda === 'DOL' ? 'USD' : 'ARS', cae: j.codAut ? String(j.codAut) : '', fuente: 'qr'};
+}
+/* Lo que se puede sacar del texto de una factura o un ticket. */
+function parsearTextoComprobante(txt, o = {}){
+  const crudo = String(txt || '').replace(/\r/g, '');
+  /* lo que el OCR suele confundir adentro de los números */
+  const arreglar = s => s.replace(/(?<=\d)[Oo](?=[\d.,])|(?<=[\d.,])[Oo](?=\d)/g, '0').replace(/(?<=\d)[lI|](?=\d)/g, '1');
+  const lineas = crudo.split('\n').map(x => arreglar(x.replace(/\s+/g, ' ').trim())).filter(Boolean);
+  const todo = lineas.join('\n');
+  const out = {cuit: '', fecha: '', tipo: '', numero: '', importe: 0, proveedor: ''};
+  /* CUIT: el primero con dígito verificador bueno (el del que emite va arriba), que no sea el nuestro */
+  const excluir = cuitDigitos(o.excluirCuit);
+  for(const m of todo.matchAll(/\b(20|23|24|25|26|27|30|33|34)[\s.\-–]?(\d{8})[\s.\-–]?(\d)\b/g)){
+    const d = m[1] + m[2] + m[3];
+    if(cuitValido(d) && d !== excluir){ out.cuit = fmtCuit(d); break; }
+  }
+  /* fecha: la de emisión; no la de vencimiento, inicio de actividades ni el período */
+  const malas = /vto|venc|inicio|activ|cae|per[ií]odo|desde|hasta|nacim/i;
+  let mejor = null;
+  lineas.forEach((l, i) => {
+    for(const m of l.matchAll(/\b(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4}|\d{2})\b|\b(20\d\d)-(\d\d)-(\d\d)\b/g)){
+      let d, me, a;
+      if(m[4]){ a = +m[4]; me = +m[5]; d = +m[6]; } else { d = +m[1]; me = +m[2]; a = +m[3]; if(a < 100) a += 2000; }
+      if(!(me >= 1 && me <= 12 && d >= 1 && d <= 31 && a >= 2000 && a <= 2099)) continue;
+      const iso = `${a}-${String(me).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const antes = l.slice(0, m.index);
+      const p = (/fecha/i.test(antes) ? 3 : /fecha/i.test(l) ? 2 : 0) + (/emisi[oó]n/i.test(l) ? 1 : 0) - (malas.test(antes.slice(-30)) || (malas.test(l) && !/fecha\s*(de\s*)?emisi/i.test(l)) ? 5 : 0);
+      if(!mejor || p > mejor.p) mejor = {p, iso, i};
+    }
+  });
+  if(mejor && mejor.p > -5) out.fecha = mejor.iso;
+  /* tipo de comprobante */
+  const cod = /c[oó]d(?:igo|\.)?\s*(?:n[°º.]?\s*)?:?\s*0*(\d{1,3})\b/i.exec(todo);
+  const letra = /(?:factura|tique\s*factura|ticket\s*factura)\s*(?:electr[oó]nica\s*)?(?:tipo\s*)?["'“”«]?\s*([ABCM])\b(?![a-z])/i.exec(todo)
+    || /^\s*([ABC])\s*$/m.exec(todo);
+  if(cod && TIPO_AFIP[+cod[1]] && /factura|recibo|tique|nota|cr[eé]dito|d[eé]bito/i.test(todo)) out.tipo = TIPO_AFIP[+cod[1]];
+  else if(letra && /factura/i.test(todo)) out.tipo = /[AM]/i.test(letra[1]) ? 'facA' : 'facBC';
+  else if(/recibo\s*["'“”]?\s*[ABC]\b|recibo\s+oficial/i.test(todo)) out.tipo = 'reciboX';
+  else if(/\brecibo\b/i.test(todo)) out.tipo = 'reciboS';
+  else if(/\btique\b|\bticket\b|no\s*v[aá]lido\s*como\s*factura|consumidor\s*final|\bdoc\.?\s*no\s*fiscal/i.test(todo)) out.tipo = 'ticket';
+  /* número: punto de venta y número */
+  const pvn = /punto\s*de\s*venta\s*:?\s*(\d{1,5})[\s\S]{0,60}?comp(?:robante)?\.?\s*n(?:ro|°|º|úmero)?\.?\s*:?\s*(\d{1,8})\b/i.exec(todo)
+    || /\bp\.?\s*v\.?\s*(?:n[°º]?)?\s*:?\s*(\d{1,5})[\s\S]{0,25}?n(?:ro|°|º)\.?\s*(?:t\.?)?\s*:?\s*(\d{1,8})\b/i.exec(todo)
+    || /\b(\d{4,5})\s*[-–]\s*(\d{8})\b/.exec(todo);
+  if(pvn) out.numero = pvn[1].padStart(5, '0') + '-' + pvn[2].padStart(8, '0');
+  /* el total: la línea de "total" (no subtotal, no neto, no IVA) y su número más grande */
+  const montos = s => [...s.matchAll(/(?:\$\s*)?(-?\d{1,3}(?:[.,\s]\d{3})+(?:[.,]\d{1,2})?|-?\d+(?:[.,]\d{1,2})?)(?![\d\/])/g)]
+    .map(m => m[1].replace(/\s/g, '')).filter(x => !/^\d{9,}$/.test(x.replace(/\D/g, ''))).map(parseImporte).filter(v => v > 0);
+  let cand = [];
+  lineas.forEach((l, i) => {
+    if(!/t[o0]ta[l1]/i.test(l) || /sub\s*-?\s*t[o0]ta[l1]|t[o0]ta[l1]\s*(neto|gravado|iva|exento|no\s*gravado|percep|tribut|items?|art|unid|cant)/i.test(l)) return;
+    const p = /importe\s*t[o0]ta[l1]/i.test(l) ? 3 : /^\s*t[o0]ta[l1]\b|t[o0]ta[l1]\s*[:$]/i.test(l) ? 2 : 1;
+    let xs = montos(l.replace(/.*t[o0]ta[l1]/i, ''));
+    if(!xs.length && lineas[i + 1]) xs = montos(lineas[i + 1]);
+    if(xs.length) cand.push({p, v: Math.max(...xs)});
+  });
+  if(cand.length){ const pmax = Math.max(...cand.map(x => x.p)); out.importe = Math.max(...cand.filter(x => x.p === pmax).map(x => x.v)); }
+  /* el proveedor, sólo si lo dice */
+  const rs = /raz[oó]n\s*social\s*:?[ \t]*([^\n]+)/i.exec(crudo);
+  if(rs) out.proveedor = rs[1].split(/\s{2,}|\t|fecha|domicilio|c\.?u\.?i\.?t|condici[oó]n|punto\s*de\s*venta|comp\.?\s*n/i)[0].replace(/[:|]+$/, '').trim().slice(0, 80);
+  return out;
+}
+/* el proveedor por CUIT: el catálogo, o lo que ya se cargó antes con ese CUIT */
+function proveedorPorCuit(cuit){
+  const d = cuitDigitos(cuit); if(d.length !== 11) return null;
+  const p = (DB.catalogo.personas || []).find(x => cuitDigitos(x.cuit) === d);
+  if(p) return {nombre: p.nombre, rubro: p.rubro || ''};
+  const c = [...((getPy() || {}).comprobantes || [])].reverse().find(x => cuitDigitos(x.cuit) === d && String(x.proveedor || '').trim());
+  return c ? {nombre: c.proveedor, rubro: c.rubro || ''} : null;
+}
+/* el rubro de la última vez con ese proveedor */
+function rubroSugerido(cuit, nombre, salvo){
+  const d = cuitDigitos(cuit), nn = norm(nombre || '').trim();
+  const c = [...((getPy() || {}).comprobantes || [])].reverse().find(x => x.id !== salvo && x.rubro &&
+    ((d.length === 11 && cuitDigitos(x.cuit) === d) || (nn && norm(x.proveedor || '').trim() === nn)));
+  if(c) return c.rubro;
+  const p = proveedorPorCuit(cuit); return p && RUBRO(p.rubro).codigo ? p.rubro : '';
+}
+/* pone lo leído en los campos vacíos y los marca "a confirmar" */
+function aplicarReconocido(id, d){
+  const c = gastoPorId(id); if(!c || !d) return false;
+  let algo = false;
+  const poner = (k, val) => {
+    if(val == null || val === '' || (k === 'importe' && !(n(val) > 0))) return;
+    if(k === 'importe' ? n(c.importe) > 0 : String(c[k] || '').trim()) return;
+    c[k] = val; algo = true;
+    (c.aConfirmar ||= []).includes(k) || c.aConfirmar.push(k);
+  };
+  poner('fecha', d.fecha); poner('cuit', d.cuit); poner('tipo', d.tipo); poner('numero', d.numero); poner('importe', d.importe);
+  const p = proveedorPorCuit(c.cuit);
+  poner('proveedor', p ? p.nombre : d.proveedor);
+  poner('rubro', rubroSugerido(c.cuit, c.proveedor, c.id));
+  if(c.rubro && !c.area) c.area = areaDelGasto(c, cajaDe(getPy(), c));
+  if(d.notaCredito) c.notas = [c.notas, 'Es una nota de crédito: revisá el signo'].filter(Boolean).join(' · ');
+  if(d.moneda && d.moneda !== (c.moneda || 'ARS')) c.notas = [c.notas, `El comprobante está en ${d.moneda}`].filter(Boolean).join(' · ');
+  if(algo) c.leido = d.fuente || 'foto';
+  return algo;
+}
+function cargarScript(url, global){
+  if(window[global]) return Promise.resolve(window[global]);
+  return new Promise((res, rej) => {
+    const s = document.createElement('script'); s.src = url; s.async = true;
+    s.onload = () => window[global] ? res(window[global]) : rej(new Error('No se pudo abrir ' + global));
+    s.onerror = () => rej(new Error('No se pudo bajar ' + global + ' (¿sin internet?)'));
+    document.head.appendChild(s);
+  });
+}
+async function imagenACanvas(src, maxLado){
+  let bmp;
+  if(typeof createImageBitmap === 'function' && src instanceof Blob) bmp = await createImageBitmap(src);
+  else bmp = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('No pude abrir la imagen'));
+    im.src = src instanceof Blob ? URL.createObjectURL(src) : src; });
+  const w0 = bmp.width, h0 = bmp.height, k = Math.min(1, maxLado / Math.max(w0, h0));
+  const cv = document.createElement('canvas'); cv.width = Math.max(1, Math.round(w0 * k)); cv.height = Math.max(1, Math.round(h0 * k));
+  const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(bmp, 0, 0, cv.width, cv.height);
+  return cv;
+}
+async function qrDeCanvas(cv){
+  if(typeof BarcodeDetector !== 'undefined'){
+    try{ const bd = new BarcodeDetector({formats: ['qr_code']}); const r = await bd.detect(cv); if(r && r[0] && r[0].rawValue) return r[0].rawValue; }catch(e){}
+  }
+  const jsQR = await cargarScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js', 'jsQR');
+  const intentar = c => { const im = c.getContext('2d').getImageData(0, 0, c.width, c.height);
+    const r = jsQR(im.data, im.width, im.height, {inversionAttempts: 'attemptBoth'}); return r ? r.data : null; };
+  let t = intentar(cv); if(t) return t;
+  /* las fotos grandes a veces se leen mejor más chicas */
+  if(Math.max(cv.width, cv.height) > 1000){
+    const k = 900 / Math.max(cv.width, cv.height), c2 = document.createElement('canvas');
+    c2.width = Math.round(cv.width * k); c2.height = Math.round(cv.height * k);
+    c2.getContext('2d').drawImage(cv, 0, 0, c2.width, c2.height); t = intentar(c2);
+  }
+  return t;
+}
+/* OCR: de a uno por vez, en un worker (la página no se congela) */
+let _tess = null, _tessAvance = null, _colaOcr = Promise.resolve();
+function ocrCanvas(cv, avance){
+  const tarea = _colaOcr.then(async () => {
+    const T = await cargarScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js', 'Tesseract');
+    _tess ||= T.createWorker('spa', 1, {logger: m => { if(m && m.status === 'recognizing text' && _tessAvance) _tessAvance(Math.round((m.progress || 0) * 100)); }});
+    const w = await _tess;
+    _tessAvance = avance;
+    try{ const {data} = await w.recognize(cv); return {texto: data.text || '', conf: data.confidence || 0}; }
+    finally{ _tessAvance = null; }
+  });
+  _colaOcr = tarea.catch(() => {});
+  return tarea;
+}
+/* gris, contraste y tamaño parejo antes del OCR */
+function prepararParaOcr(cv){
+  const k = Math.min(1, 1800 / Math.max(cv.width, cv.height)), o = document.createElement('canvas');
+  o.width = Math.round(cv.width * k); o.height = Math.round(cv.height * k);
+  const cx = o.getContext('2d'); cx.drawImage(cv, 0, 0, o.width, o.height);
+  try{
+    const im = cx.getImageData(0, 0, o.width, o.height), p = im.data; let lo = 255, hi = 0;
+    for(let i = 0; i < p.length; i += 4){ const g = p[i] * 0.299 + p[i + 1] * 0.587 + p[i + 2] * 0.114; p[i] = g; if(g < lo) lo = g; if(g > hi) hi = g; }
+    const r = Math.max(1, hi - lo);
+    for(let i = 0; i < p.length; i += 4){ const g = (p[i] - lo) * 255 / r; p[i] = p[i + 1] = p[i + 2] = g; }
+    cx.putImageData(im, 0, 0);
+  }catch(e){}
+  return o;
+}
+async function textoDePdf(pdf, hasta = 2){
+  let texto = '';
+  for(let i = 1; i <= Math.min(hasta, pdf.numPages); i++){
+    const pg = await pdf.getPage(i), tc = await pg.getTextContent();
+    const filas = {};
+    tc.items.forEach(it => { const y = Math.round(it.transform[5] / 3); (filas[y] ||= []).push(it); });
+    texto += Object.keys(filas).map(Number).sort((a, b) => b - a)
+      .map(y => filas[y].sort((a, b) => a.transform[4] - b.transform[4]).map(it => it.str).join(' ')).join('\n') + '\n';
+  }
+  return texto;
+}
+async function paginaPdfACanvas(pdf, num, ancho){
+  const pg = await pdf.getPage(num), vp0 = pg.getViewport({scale: 1});
+  const vp = pg.getViewport({scale: Math.min(3, ancho / vp0.width)});
+  const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+  const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
+  await pg.render({canvasContext: cx, viewport: vp}).promise;
+  return cv;
+}
+const excluirCuitPropio = () => (getPr() || {}).cuit || '';
+async function reconocerComprobante(id, file){
+  const marcar = t => { _leyendo[id] = t; const el = document.getElementById('rdl-' + id); if(el) el.textContent = t; };
+  let d = null;
+  try{
+    if(esPdfArchivo(file)){
+      marcar('Leyendo el PDF…');
+      const L = await cargarPdfjs();
+      const pdf = await L.getDocument({data: new Uint8Array(await file.arrayBuffer())}).promise;
+      const texto = await textoDePdf(pdf);
+      const cv = await paginaPdfACanvas(pdf, 1, 1700);
+      let qr = null; try{ qr = leerQrAfip(await qrDeCanvas(cv)); }catch(e){}
+      let deTexto = texto.replace(/\s/g, '').length > 40 ? parsearTextoComprobante(texto, {excluirCuit: excluirCuitPropio()}) : null;
+      if(!deTexto && !qr){
+        marcar('Leyendo el PDF escaneado… 0%');
+        const r = await ocrCanvas(prepararParaOcr(cv), p => marcar(`Leyendo el PDF escaneado… ${p}%`));
+        if(r.conf >= 45) deTexto = parsearTextoComprobante(r.texto, {excluirCuit: excluirCuitPropio()});
+      }
+      d = qr ? {...(deTexto || {}), ...Object.fromEntries(Object.entries(qr).filter(([, v]) => v !== '' && v != null && v !== 0)), fuente: 'qr'}
+        : deTexto ? {...deTexto, fuente: 'pdf'} : null;
+    } else {
+      marcar('Buscando el QR…');
+      let cv = null;
+      try{ cv = await imagenACanvas(file, 1600); }catch(e){ cv = null; }
+      if(cv){
+        let qr = null; try{ qr = leerQrAfip(await qrDeCanvas(cv)); }catch(e){}
+        if(qr) d = qr;
+        else {
+          marcar('Leyendo el ticket… 0%');
+          const r = await ocrCanvas(prepararParaOcr(cv), p => marcar(`Leyendo el ticket… ${p}%`));
+          if(r.conf >= 45) d = {...parsearTextoComprobante(r.texto, {excluirCuit: excluirCuitPropio()}), fuente: 'foto'};
+        }
+      }
+    }
+  }catch(e){ d = null; }
+  delete _leyendo[id];
+  const c = gastoPorId(id);
+  if(c && d && editaGastoRend(c)) aplicarReconocido(id, d);
+  guardar(); render();
+}
+
+/* ------------------------ rendiciones: el Excel y el PDF ------------------------
+   El Excel es un .xlsx de verdad, armado acá (un ZIP sin comprimir con las
+   hojas en XML): abre en Excel, LibreOffice y Google Sheets, con números
+   como números, fechas como fechas y los subtotales como fórmulas, para
+   que se pueda seguir editando.                                           */
+const CRC_T = (() => { const t = new Uint32Array(256);
+  for(let i = 0; i < 256; i++){ let c = i; for(let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[i] = c >>> 0; }
+  return t; })();
+function crc32(b){ let c = 0xFFFFFFFF; for(let i = 0; i < b.length; i++) c = CRC_T[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+/* un ZIP "guardado" (sin comprimir): [{nombre, datos: string | Uint8Array}] */
+function zipGuardado(archivos){
+  const enc = new TextEncoder(), partes = [], central = [];
+  let off = 0;
+  const d = new Date(), fecha = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(), hora = (d.getHours() << 11) | (d.getMinutes() << 5);
+  archivos.forEach(f => {
+    const nom = enc.encode(f.nombre), dat = typeof f.datos === 'string' ? enc.encode(f.datos) : f.datos, crc = crc32(dat);
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true);
+    lh.setUint16(10, hora, true); lh.setUint16(12, fecha, true); lh.setUint32(14, crc, true);
+    lh.setUint32(18, dat.length, true); lh.setUint32(22, dat.length, true); lh.setUint16(26, nom.length, true); lh.setUint16(28, 0, true);
+    partes.push(new Uint8Array(lh.buffer), nom, dat);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true);
+    ch.setUint16(12, hora, true); ch.setUint16(14, fecha, true); ch.setUint32(16, crc, true);
+    ch.setUint32(20, dat.length, true); ch.setUint32(24, dat.length, true); ch.setUint16(28, nom.length, true);
+    ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), nom);
+    off += 30 + nom.length + dat.length;
+  });
+  const tamC = central.reduce((s, x) => s + x.length, 0);
+  const fin = new DataView(new ArrayBuffer(22));
+  fin.setUint32(0, 0x06054b50, true); fin.setUint16(8, archivos.length, true); fin.setUint16(10, archivos.length, true);
+  fin.setUint32(12, tamC, true); fin.setUint32(16, off, true);
+  const todo = [...partes, ...central, new Uint8Array(fin.buffer)], out = new Uint8Array(todo.reduce((s, x) => s + x.length, 0));
+  let p = 0; todo.forEach(x => { out.set(x, p); p += x.length; });
+  return out;
+}
+const xmlEsc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[m])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
+const colLetra = i => { let s = ''; i++; while(i){ const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+const serialFecha = iso => { const [a, m, d] = iso.split('-').map(Number); return Math.round((Date.UTC(a, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000); };
+/* estilos: 0 normal · 1 negrita · 2 plata · 3 fecha · 4 plata en negrita · 5 título · 6 encabezado */
+const XLSX_ESTILOS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy"/></numFmts>
+<fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="15"/><name val="Calibri"/></font></fonts>
+<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEDEDED"/><bgColor indexed="64"/></patternFill></fill></fills>
+<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
+<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+<cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
+<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>
+<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>
+<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`;
+/* Una hoja: filas de celdas. Celda = string | number | null | {v, s, f, fecha}. */
+function hojaXlsx(filas, anchos){
+  const celda = (x, r, c) => {
+    if(x == null || x === '') return '';
+    const ref = colLetra(c) + (r + 1);
+    const o = typeof x === 'object' ? x : {v: x};
+    if(o.fecha){ if(!/^\d{4}-\d\d-\d\d$/.test(o.fecha)) return ''; return `<c r="${ref}" s="3"><v>${serialFecha(o.fecha)}</v></c>`; }
+    if(o.f) return `<c r="${ref}" s="${o.s ?? 2}"><f>${xmlEsc(o.f)}</f><v>${n(o.v)}</v></c>`;
+    if(typeof o.v === 'number') return `<c r="${ref}"${o.s ? ` s="${o.s}"` : ''}><v>${isFinite(o.v) ? o.v : 0}</v></c>`;
+    return `<c r="${ref}" t="inlineStr"${o.s ? ` s="${o.s}"` : ''}><is><t xml:space="preserve">${xmlEsc(o.v)}</t></is></c>`;
+  };
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+${anchos ? `<cols>${anchos.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>` : ''}
+<sheetData>${filas.map((f, r) => `<row r="${r + 1}">${(f || []).map((x, c) => celda(x, r, c)).join('')}</row>`).join('')}</sheetData>
+</worksheet>`;
+}
+function libroXlsx(hojas){
+  const ns = 'http://schemas.openxmlformats.org';
+  return zipGuardado([
+    {nombre: '[Content_Types].xml', datos: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="${ns}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+${hojas.map((h, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>`},
+    {nombre: '_rels/.rels', datos: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="${ns}/package/2006/relationships"><Relationship Id="rId1" Type="${ns}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`},
+    {nombre: 'xl/workbook.xml', datos: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="${ns}/spreadsheetml/2006/main" xmlns:r="${ns}/officeDocument/2006/relationships"><sheets>${hojas.map((h, i) => `<sheet name="${xmlEsc(h.nombre.slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>`},
+    {nombre: 'xl/_rels/workbook.xml.rels', datos: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="${ns}/package/2006/relationships">${hojas.map((h, i) => `<Relationship Id="rId${i + 1}" Type="${ns}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${hojas.length + 1}" Type="${ns}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`},
+    {nombre: 'xl/styles.xml', datos: XLSX_ESTILOS},
+    ...hojas.map((h, i) => ({nombre: `xl/worksheets/sheet${i + 1}.xml`, datos: hojaXlsx(h.filas, h.anchos)}))]);
+}
+/* Las tres hojas de la rendición: Carátula, Por rubro y Detalle */
+function hojasRendicion(py, cj){
+  const T = totalesRend(py, cj), pr = prDe(py) || getPr() || {}, mon = cj.moneda || 'ARS';
+  const B = v => ({v, s: 1}), P = v => ({v: n(v), s: 2}), PB = v => ({v: n(v), s: 4}), H = v => ({v, s: 6});
+  const fEnv = firmaRend(cj, 'enviada'), fApr = firmaRend(cj, 'aprobada'), fCer = firmaRend(cj, 'cerrada');
+  const caratula = [
+    [{v: 'Rendición de gastos', s: 5}],
+    [],
+    [B('Proyecto'), py.nombre || ''],
+    [B('Productora'), pr.nombre || ''],
+    [B('Responsable'), nombreUsuario(cj.responsable)],
+    [B('Fondo'), cj.nombre || ''],
+    [B('Período'), T.desde ? {fecha: T.desde} : '', T.hasta ? {fecha: T.hasta} : ''],
+    [B('Moneda'), mon],
+    [B('Estado'), EST_REND[estadoRend(cj)].l],
+    [],
+    [B('Fondo recibido'), PB(T.entregado)],
+    [B('Total rendido'), PB(T.gastado)],
+    [B(T.saldo >= 0 ? 'Saldo a devolver' : 'Saldo a reintegrar'), PB(Math.abs(T.saldo))],
+    [],
+    [H('Por rubro'), H('Gastos'), H('Total')],
+    ...T.rubros.map(r => [r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre, r.cant, P(r.total)]),
+    [B('Total'), {v: T.cant, s: 1}, PB(T.gastado)],
+    [],
+    [B('Con comprobante'), T.cantCon],
+    [B('Sin comprobante'), T.cantSin],
+    [],
+    [H('Fondos recibidos'), H('Fecha'), H('Importe'), H('Lo dio')],
+    ...(cj.adelantos || []).map(a => ['', a.fecha ? {fecha: a.fecha} : '', P(a.importe), nombreUsuario(a.entregadoPor)]),
+    [],
+    [H('Firmas'), H('Nombre'), H('Fecha')],
+    ['Rindió', fEnv ? fEnv.quien : nombreUsuario(cj.responsable), fEnv ? {fecha: String(fEnv.cuando).slice(0, 10)} : ''],
+    ['Revisó (jefe de producción)', fApr ? fApr.quien : '', fApr ? {fecha: String(fApr.cuando).slice(0, 10)} : ''],
+    ['Recibió (administración)', fCer ? fCer.quien : '', fCer ? {fecha: String(fCer.cuando).slice(0, 10)} : '']];
+  /* por rubro, con subtotales que son fórmulas */
+  const porRubro = [[H('Rubro'), H('Fecha'), H('Proveedor'), H('CUIT'), H('Concepto'), H('Comprobante'), H('Número'), H('Importe')]];
+  const subt = [];
+  T.rubros.forEach(r => {
+    porRubro.push([B(r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre)]);
+    const ini = porRubro.length + 1;
+    r.gastos.forEach(c => porRubro.push(['', c.fecha ? {fecha: c.fecha} : '', c.proveedor || '', c.cuit || '', c.concepto || c.subrubro || '', TIPO_CBTE(c.tipo) || '', c.numero || '', P(c.importe)]));
+    const fin = porRubro.length;
+    porRubro.push(['', '', '', '', '', '', B('Subtotal'), {v: r.total, s: 4, f: `SUM(H${ini}:H${fin})`}]);
+    subt.push('H' + porRubro.length);
+    porRubro.push([]);
+  });
+  porRubro.push(['', '', '', '', '', '', B('Total rendido'), {v: T.gastado, s: 4, f: subt.length ? subt.join('+') : '0'}]);
+  const filaTot = porRubro.length;
+  porRubro.push(['', '', '', '', '', '', B('Fondo recibido'), PB(T.entregado)]);
+  porRubro.push(['', '', '', '', '', '', B('Saldo (fondo − rendido)'), {v: T.saldo, s: 4, f: `H${filaTot + 1}-H${filaTot}`}]);
+  const detalle = [[H('N°'), H('Fecha'), H('Proveedor'), H('CUIT'), H('Concepto'), H('Cód. rubro'), H('Rubro'), H('Comprobante'), H('Número'), H('Importe'), H('Moneda'), H('Archivo'), H('Notas')],
+    ...T.comprobantes.map((c, i) => [i + 1, c.fecha ? {fecha: c.fecha} : '', c.proveedor || '', c.cuit || '', c.concepto || c.subrubro || '',
+      c.rubro || '', c.rubro ? RUBRO(c.rubro).nombre || '' : '', TIPO_CBTE(c.tipo) || '', c.numero || '', P(c.importe), c.moneda || mon,
+      c.adjunto ? c.adjunto.nombre || '' : '', c.notas || ''])];
+  return [{nombre: 'Carátula', filas: caratula, anchos: [30, 26, 16, 22]},
+    {nombre: 'Por rubro', filas: porRubro, anchos: [34, 12, 28, 15, 30, 16, 18, 15]},
+    {nombre: 'Detalle', filas: detalle, anchos: [5, 12, 28, 15, 30, 10, 30, 16, 18, 14, 8, 26, 30]}];
+}
+const xlsxRendicion = (py, cj) => libroXlsx(hojasRendicion(py, cj));
+const nombreArchivoRend = (py, cj) => `Rendicion-${String(nombreUsuario(cj.responsable)).replace(/\s+/g, '-')}-${String(py.nombre || 'proyecto').replace(/[^\wáéíóúñÁÉÍÓÚÑ-]+/g, '-').replace(/-+/g, '-').slice(0, 40)}`;
+function bajarExcelRend(id){
+  const py = getPy(), cj = cajaPorId(id); if(!cj || !veRend(cj)) return;
+  bajar(nombreArchivoRend(py, cj) + '.xlsx', xlsxRendicion(py, cj), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  toast('Planilla bajada: Carátula, Por rubro y Detalle');
+}
+
+/* El PDF: una vista para imprimir (o "Guardar como PDF") con la carátula, la
+   planilla y los tickets pegados en hojas, de a cuatro, como se entrega en
+   papel. Los PDF adjuntos van con su primera página, si se puede dibujar. */
+const _vistaPdfRend = {};
+function rendImpresionHTML(py, cj){
+  const T = totalesRend(py, cj), pr = prDe(py) || getPr() || {}, mon = cj.moneda || 'ARS';
+  const firma = (t, p) => `<div class="ri-firma"><div class="ri-linea"></div><b>${esc(t)}</b><span>${p ? esc(p.quien) + ' · ' + esc(fFecha(p.cuando)) : 'Aclaración y fecha'}</span></div>`;
+  const conImg = T.comprobantes.filter(c => c.adjunto && (esImagenAdj(c.adjunto) || (esPdfAdj(c.adjunto) && c.adjunto.dataUrl)));
+  const pdfs = T.comprobantes.filter(c => c.adjunto && esPdfAdj(c.adjunto));
+  const otros = T.comprobantes.filter(c => c.adjunto && !esImagenAdj(c.adjunto) && !esPdfAdj(c.adjunto));
+  const hojasTk = []; for(let i = 0; i < conImg.length; i += 4) hojasTk.push(conImg.slice(i, i + 4));
+  const num = c => T.comprobantes.indexOf(c) + 1;
+  const pie = (k, de) => `<div class="ri-pie">${esc(py.nombre)} · Rendición de ${esc(nombreUsuario(cj.responsable))} · hoja ${k} de ${de}</div>`;
+  const total = 2 + hojasTk.length + (pdfs.length || otros.length ? 1 : 0);
+  return `<div class="ri-hoja">
+      <div class="ri-tit">Rendición de gastos</div>
+      <div class="ri-sub">${esc(pr.nombre || '')}</div>
+      <table class="ri-datos"><tbody>
+        <tr><th>Proyecto</th><td>${esc(py.nombre || '')}</td></tr>
+        <tr><th>Productora</th><td>${esc(pr.nombre || '')}</td></tr>
+        <tr><th>Responsable</th><td>${esc(nombreUsuario(cj.responsable))}</td></tr>
+        <tr><th>Fondo</th><td>${esc(cj.nombre || '')}</td></tr>
+        <tr><th>Período</th><td>${esc(periodoTxt(T))}</td></tr>
+        <tr><th>Estado</th><td>${esc(EST_REND[estadoRend(cj)].l)}</td></tr>
+      </tbody></table>
+      <div class="ri-num">
+        <div><span>Fondo recibido</span><b>${fmt(T.entregado, mon)}</b></div>
+        <div><span>Total rendido</span><b>${fmt(T.gastado, mon)}</b></div>
+        <div><span>${T.saldo >= 0 ? 'Saldo a devolver' : 'Saldo a reintegrar'}</span><b>${fmt(Math.abs(T.saldo), mon)}</b></div>
+      </div>
+      <table class="ri-tabla"><thead><tr><th>Rubro</th><th style="text-align:right">Gastos</th><th style="text-align:right">Total</th></tr></thead>
+        <tbody>${T.rubros.map(r => `<tr><td>${esc(r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre)}</td><td style="text-align:right">${r.cant}</td><td style="text-align:right">${fmt(r.total, mon)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td>Total</td><td style="text-align:right">${T.cant}</td><td style="text-align:right">${fmt(T.gastado, mon)}</td></tr></tfoot></table>
+      <div class="ri-cbtes">Comprobantes: <b>${T.cantCon}</b> con comprobante · <b>${T.cantSin}</b> sin comprobante</div>
+      <div class="ri-firmas">${firma('Rindió', firmaRend(cj, 'enviada'))}${firma('Revisó · jefe de producción', firmaRend(cj, 'aprobada'))}${firma('Recibió · administración', firmaRend(cj, 'cerrada'))}</div>
+      ${pie(1, total)}
+    </div>
+    <div class="ri-hoja">
+      <div class="ri-tit2">Planilla por rubro</div>
+      <table class="ri-tabla ri-plan"><thead><tr><th>N°</th><th>Fecha</th><th>Proveedor</th><th>Concepto</th><th>Comprobante</th><th style="text-align:right">Importe</th></tr></thead>
+        <tbody>${T.rubros.map(r => `<tr class="ri-rub"><td colspan="6">${esc(r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre)}</td></tr>
+          ${r.gastos.map(c => `<tr><td>${num(c)}</td><td>${esc(fFecha(c.fecha))}</td><td>${esc(c.proveedor || '')}${c.cuit ? `<br><small>${esc(c.cuit)}</small>` : ''}</td><td>${esc(c.concepto || c.subrubro || '')}</td>
+            <td>${esc(TIPO_CBTE(c.tipo) || '—')}${c.numero ? '<br><small>' + esc(c.numero) + '</small>' : ''}</td><td style="text-align:right">${fmt(c.importe, mon)}</td></tr>`).join('')}
+          <tr class="ri-subt"><td colspan="5" style="text-align:right">Subtotal</td><td style="text-align:right">${fmt(r.total, mon)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td colspan="5" style="text-align:right">Total rendido</td><td style="text-align:right">${fmt(T.gastado, mon)}</td></tr>
+          <tr><td colspan="5" style="text-align:right">Fondo recibido</td><td style="text-align:right">${fmt(T.entregado, mon)}</td></tr>
+          <tr><td colspan="5" style="text-align:right">${T.saldo >= 0 ? 'Saldo a devolver' : 'Saldo a reintegrar'}</td><td style="text-align:right">${fmt(Math.abs(T.saldo), mon)}</td></tr></tfoot></table>
+      ${pie(2, total)}
+    </div>
+    ${hojasTk.map((h, k) => `<div class="ri-hoja ri-tk">
+      <div class="ri-tit2">Comprobantes ${k === 0 ? '' : '(sigue)'}</div>
+      <div class="ri-pegados">${h.map(c => `<figure class="ri-pegado">
+        ${esImagenAdj(c.adjunto) ? `<img src="${c.adjunto.dataUrl}" alt="">` : _vistaPdfRend[c.id] ? `<img src="${_vistaPdfRend[c.id]}" alt="">` : `<div class="ri-pdf" data-pdf="${c.id}">PDF · ${esc(c.adjunto.nombre || '')}</div>`}
+        <figcaption><b>${num(c)}</b> · ${esc(fFecha(c.fecha))} · ${esc(c.proveedor || c.concepto || '')} · <b>${fmt(c.importe, mon)}</b></figcaption></figure>`).join('')}</div>
+      ${pie(3 + k, total)}
+    </div>`).join('')}
+    ${pdfs.length || otros.length ? `<div class="ri-hoja">
+      <div class="ri-tit2">Archivos adjuntos</div>
+      <table class="ri-tabla"><thead><tr><th>N°</th><th>Archivo</th><th>Proveedor</th><th style="text-align:right">Importe</th></tr></thead>
+        <tbody>${[...pdfs, ...otros].map(c => `<tr><td>${num(c)}</td><td>${esc(c.adjunto.nombre || '')}${c.adjunto.sinArchivo ? ' <small>(no se guardó: no entraba)</small>' : ''}</td><td>${esc(c.proveedor || '')}</td><td style="text-align:right">${fmt(c.importe, mon)}</td></tr>`).join('')}</tbody></table>
+      <div class="ri-cbtes">Los PDF digitales se adjuntan aparte, en la versión digital (el Excel y los archivos).</div>
+      ${pie(total, total)}
+    </div>` : ''}`;
+}
+async function vistaPrimeraPaginaPdf(c){
+  if(_vistaPdfRend[c.id] || !c.adjunto || !c.adjunto.dataUrl) return _vistaPdfRend[c.id] || null;
+  const L = await cargarPdfjs();
+  const bin = atob(c.adjunto.dataUrl.split(',')[1] || ''), b = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+  const pdf = await L.getDocument({data: b}).promise;
+  const cv = await paginaPdfACanvas(pdf, 1, 900);
+  return (_vistaPdfRend[c.id] = cv.toDataURL('image/jpeg', 0.72));
+}
+function imprimirRend(id){
+  const py = getPy(), cj = cajaPorId(id); if(!cj || !veRend(cj)) return;
+  cerrarImpresionRend();
+  const d = document.createElement('div');
+  d.className = 'rdimp'; d.id = 'rdimp';
+  try{ d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Rendición para imprimir'); }catch(e){}
+  const pintar = () => { d.innerHTML = `<div class="rdimp-barra noprint">
+      <b>Rendición de ${esc(nombreUsuario(cj.responsable))}</b><span class="muted">Imprimila, o elegí «Guardar como PDF» en la impresora.</span>
+      <span style="flex:1"></span><button class="btn pri" onclick="window.print()">Imprimir o guardar PDF</button>
+      <button class="btn" onclick="cerrarImpresionRend()">Cerrar</button></div>
+    <div class="rdimp-hojas">${rendImpresionHTML(py, cj)}</div>`; };
+  pintar();
+  document.body.appendChild(d);
+  try{ document.body.classList.add('con-rdimp'); }catch(e){}
+  /* los PDF: la primera página, si el lector se puede bajar */
+  const pdfs = totalesRend(py, cj).comprobantes.filter(c => c.adjunto && esPdfAdj(c.adjunto) && c.adjunto.dataUrl && !_vistaPdfRend[c.id]);
+  if(pdfs.length) (async () => {
+    for(const c of pdfs){ try{ await vistaPrimeraPaginaPdf(c); }catch(e){} }
+    if(document.getElementById('rdimp') === d) pintar();
+  })();
+}
+function cerrarImpresionRend(){
+  const d = document.getElementById('rdimp'); if(d && d.remove) d.remove();
+  try{ document.body.classList.remove('con-rdimp'); }catch(e){}
 }
 
 /* ---------- comprobantes ---------- */
-function setSubGasto(k){ DB.ui.subGasto = k; R(); }
+function setSubGasto(k){ DB.ui.subGasto = k; DB.ui.rendId = null; _hashPush = true; R(); }
 function setMatriz(k){ DB.ui.matriz = k; R(); }
 
 function cargarComprobante(id, cajaId){
@@ -15899,8 +17188,12 @@ function cargarComprobante(id, cajaId){
   const c = id ? getComprobantes().find(x=>x.id===id)
                : nuevoComprobante({rubro:'', moneda: v?v.monedaBase:'ARS', cajaId:cajaId||null});
   const jorn = (py.desglose?.jornadas)||[];
-  const ocsAbiertas = getOCs().filter(o=>o.estado==='emitida' || o.id===c.ocId);
-  const cajasAbiertas = getCajas().filter(x=>x.estado==='abierta' || x.id===c.cajaId);
+  /* un gasto de una rendición ya mandada no se cambia acá */
+  if(id && c.cajaId && !editaGastoRend(c) && enRendicion(py, c)){ toast('Ese gasto es de una rendición que ya se mandó: se ve en Rendiciones'); return; }
+  /* las OC llevan montos del presupuesto: sólo para quien ve la plata */
+  const ocsAbiertas = vePlata(u) ? getOCs().filter(o=>o.estado==='emitida' || o.id===c.ocId) : [];
+  /* a una rendición se le cargan gastos mientras se arma, y cada uno a la suya */
+  const cajasAbiertas = getCajas().filter(x=>cargaRend(x, u) || x.id===c.cajaId);
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
     <h3>${id?'Editar comprobante':'Cargar comprobante'}
       <span class="spacer"></span>
@@ -15934,18 +17227,20 @@ function cargarComprobante(id, cajaId){
           </select></label>`:''}
         ${ocsAbiertas.length?sel('Contra qué orden de compra','ocId',c.ocId||'',
           [{v:'',l:'— sin OC —'},...ocsAbiertas.map(o=>({v:o.id,l:o.numero+' · '+(o.proveedor||o.subrubro||'')+' · '+fmt(o.importe,o.moneda)}))]):''}
-        ${cajasAbiertas.length?sel('¿Sale de una caja chica?','cajaId',c.cajaId||'',
-          [{v:'',l:'— no, se paga aparte —'},...cajasAbiertas.map(x=>({v:x.id,l:x.nombre}))]):''}
+        ${cajasAbiertas.length?sel('¿Sale de una rendición (un fondo)?','cajaId',c.cajaId||'',
+          [{v:'',l:'— no, se paga aparte —'},...cajasAbiertas.map(x=>({v:x.id,l:(x.nombre||'Fondo')+' · '+nombreUsuario(x.responsable)}))]):''}
       </div>
       <label class="f" style="margin-top:12px"><span>Notas</span>
         <textarea name="notas" rows="2" placeholder="Lo que producción necesite saber para revisarlo">${esc(c.notas)}</textarea></label>
       <div style="margin-top:14px">
-        <span class="f" style="display:block"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700">Foto del comprobante</span></span>
+        <span class="f" style="display:block"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3);font-weight:700">Foto o PDF del comprobante</span></span>
         <div id="cadj" style="margin-top:6px">${adjuntoHTML(c.adjunto)}</div>
-        <input type="file" id="cfile" accept="image/*" capture="environment" style="display:none" onchange="subirAdjunto(this)">
-        <button class="btn" style="margin-top:7px" onclick="document.getElementById('cfile').click()">
-          ${c.adjunto?'Cambiar la foto':'Sacar o elegir foto'}</button>
-        <span class="muted" style="font-size:10.5px;margin-left:8px">se achica sola antes de guardarse</span>
+        <input type="file" id="cfile" accept="${ACEPTA_ADJ}" style="display:none" onchange="subirAdjunto(this)">
+        <input type="file" id="ccam" accept="image/*" capture="environment" style="display:none" onchange="subirAdjunto(this)">
+        <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:7px">
+          <button class="btn" onclick="document.getElementById('cfile').click()">${c.adjunto?'Cambiar el archivo':'Subir archivo'}</button>
+          <button class="btn" onclick="document.getElementById('ccam').click()">Sacar foto</button>
+          <span class="muted" style="font-size:10.5px">foto (JPG, PNG, HEIC…) o PDF · las fotos se achican solas</span></div>
       </div>
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
@@ -15995,27 +17290,36 @@ function subrubroOpts(rubro, sel0){
     xs.map(x=>`<option ${x===sel0?'selected':''}>${esc(x)}</option>`).join('');
 }
 function adjuntoHTML(a){
-  if(!a) return '<span class="muted" style="font-size:11.5px">Sin foto. En el celu abre la cámara directo.</span>';
-  return `<div class="adj"><img src="${a.dataUrl}" alt="comprobante">
-    <span class="muted" style="font-size:10.5px">${esc(a.nombre)} · ${a.w}×${a.h} · ${Math.round(a.bytes/1024)} KB</span></div>`;
+  if(!a) return '<span class="muted" style="font-size:11.5px">Sin archivo. En el celu, «Sacar foto» abre la cámara directo.</span>';
+  const kb = Math.round((a.bytes || 0)/1024) + ' KB';
+  if(esImagenAdj(a)) return `<div class="adj"><img src="${a.dataUrl}" alt="comprobante">
+    <span class="muted" style="font-size:10.5px">${esc(a.nombre)}${a.w ? ` · ${a.w}×${a.h}` : ''} · ${kb}</span></div>`;
+  return `<div class="adj" style="display:flex;gap:9px;align-items:center">${miniAdj(a)}
+    <span class="muted" style="font-size:10.5px">${esc(a.nombre)} · ${kb}${a.sinArchivo ? ' · <b style="color:var(--bad)">no se guardó: no entraba</b>' : ''}</span></div>`;
 }
 let _adjTmp;
+/* foto o PDF: las imágenes que el navegador abre se achican; lo demás se guarda tal cual */
 async function subirAdjunto(inp){
   const f = inp.files[0]; if(!f) return;
   inp.value='';
-  toast('Achicando la foto…');
+  toast(/^image\//.test(f.type || '') ? 'Achicando la foto…' : 'Leyendo el archivo…');
   try{
-    _adjTmp = await achicarImagen(f);
+    const r = await leerAdjunto(f);
+    _adjTmp = r.adjunto;
     const cont = document.getElementById('cadj');
     if(cont) cont.innerHTML = adjuntoHTML(_adjTmp);
-    toast(`Foto lista · ${Math.round(_adjTmp.bytes/1024)} KB`);
-  }catch(e){ alert('No pude usar esa imagen.\n\n'+e.message); }
+    if(r.aviso) toast(r.aviso, {error: true});
+    else toast(`${esImagenAdj(_adjTmp) ? 'Foto lista' : 'Archivo listo'} · ${Math.round((_adjTmp.bytes || 0)/1024)} KB`);
+  }catch(e){ alert('No pude leer ese archivo.\n\n'+e.message); }
 }
 function saveComprobante(id){
   const d = datos(); const py = getPy(); const u = getUsuario();
   py.comprobantes ||= [];
   let c = id ? py.comprobantes.find(x=>x.id===id) : nuevoComprobante();
   const nuevo = !id;
+  /* a una rendición sólo se le suman gastos mientras se arma, y a la propia */
+  if(d.cajaId && d.cajaId !== c.cajaId){ const cj = cajaPorId(d.cajaId);
+    if(!cj || !cargaRend(cj)){ alert('Esa rendición ya se mandó o no es tuya: el gasto no se le puede sumar.'); return; } }
   Object.assign(c, {rubro:d.rubro, subrubro:d.subrubro, concepto:d.concepto,
     proveedor:d.proveedor, cuit:d.cuit, tipo:d.tipo, numero:d.numero, fecha:d.fecha,
     importe:n(d.importe), moneda:d.moneda, circuito:d.circuito,
@@ -16032,6 +17336,7 @@ function saveComprobante(id){
            c.proveedor = c.proveedor || o.proveedor; c.cuit = c.cuit || o.cuit; }
   }
   if(!c.rubro || !c.importe){ alert('Falta el rubro o el importe.'); return; }
+
   if(esPorJornada(c.rubro) && !c.jornada && (getPy().desglose?.jornadas||[]).length){
     const rb = RUBRO(c.rubro);
     alert(`"${rb.nombre}" se mide por día de rodaje.
@@ -16104,16 +17409,23 @@ function verComprobante(id){
       </div>`;}).join('')}</div>
     </div>
     <div class="mfoot">
-      <button class="btn dgr" onclick="delComprobante('${c.id}')">Eliminar</button>
+      ${tocaComprobante(c, u) ? `<button class="btn dgr" onclick="delComprobante('${c.id}')">Eliminar</button>` : ''}
       <div style="flex:1"></div>
       <button class="btn" onclick="cerrar()">Cerrar</button>
-      ${puede(u,'cargar')&&c.estado!=='pagado'?`<button class="btn" onclick="cerrar();cargarComprobante('${c.id}')">Editar</button>`:''}
+      ${puede(u,'cargar')&&c.estado!=='pagado'&&tocaComprobante(c, u)?`<button class="btn" onclick="cerrar();cargarComprobante('${c.id}')">Editar</button>`:''}
       ${acc.filter(a=>a!=='rechazar').map(a=>
         `<button class="btn pri" onclick="cerrar();accionComprobante('${c.id}','${a}')">${esc(LBL_ACCION[a])}</button>`).join('')}
     </div>
   </div></div>`);
 }
+/* quien no ve la plata toca sólo lo suyo, y lo de una rendición mientras la arma */
+function tocaComprobante(c, u = getUsuario()){
+  if(!c) return false;
+  if(c.cajaId && enRendicion(getPy(), c) && !editaGastoRend(c)) return false;
+  return !u || vePlata(u) || c.cargadoPor === u.id;
+}
 function delComprobante(id){
+  if(!tocaComprobante(getComprobantes().find(x=>x.id===id))){ toast('Ese comprobante no lo podés borrar'); return; }
   if(!confirm('Eliminar este comprobante y su recorrido?')) return;
   const py = getPy();
   py.comprobantes = py.comprobantes.filter(x=>x.id!==id);
@@ -18088,19 +19400,26 @@ async function sbCorrerDiagnostico(){
 }
 
 /* ---------- datos: export / import / csv / reset ---------- */
+/* El respaldo completo lleva todo (precios, fee, sueldos): es de
+   Administración y del PE. El jefe baja el presupuesto (sin el fee); los
+   asistentes y el equipo, sólo entran a su cuenta.                        */
+const manejaDatos = (u = getUsuario()) => !u || veTodo(u);
 function menuDatos(){
+  const todo = manejaDatos(), presu = vePlata() && !!getV();
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:430px">
     <h3>Datos</h3><div class="mbody" style="display:flex;flex-direction:column;gap:7px">
       <button class="btn pri" onclick="cerrar();menuNube()">☁ Conectar con Supabase</button>
-      <button class="btn" onclick="expJSON()">⬇ Exportar todo (.json) — respaldo completo</button>
-      <button class="btn" onclick="document.getElementById('imp').click()">⬆ Importar respaldo (.json)</button>
-      <button class="btn" onclick="expCSV()">⬇ Exportar presupuesto actual (.csv)</button>
-      <input type="file" id="imp" accept=".json" style="display:none" onchange="impJSON(this)">
+      ${todo ? `<button class="btn" onclick="expJSON()">⬇ Exportar todo (.json) — respaldo completo</button>
+      <button class="btn" onclick="document.getElementById('imp').click()">⬆ Importar respaldo (.json)</button>` : ''}
+      ${presu ? `<button class="btn" onclick="expCSV()">⬇ Exportar presupuesto actual (.csv)</button>` : ''}
+      ${todo ? `<input type="file" id="imp" accept=".json" style="display:none" onchange="impJSON(this)">
       <div class="muted" style="font-size:11.5px;line-height:1.5;margin:8px 0">
         Todo se guarda en este navegador (localStorage). Exportá el .json seguido:
         es tu respaldo y también la forma de pasarle el trabajo a la otra persona
         hasta que montemos el backend.</div>
-      <button class="btn dgr" onclick="resetDB()">Borrar todo y volver al ejemplo</button>
+      <button class="btn dgr" onclick="resetDB()">Borrar todo y volver al ejemplo</button>`
+      : `<div class="muted" style="font-size:11.5px;line-height:1.5;margin:8px 0">
+        Tus datos se guardan solos en la base del equipo. El respaldo completo lo baja Administración.</div>`}
     </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div>
   </div></div>`); }
 
@@ -18109,7 +19428,7 @@ function bajar(nombre, contenido, tipo){
   a.href=URL.createObjectURL(new Blob([contenido],{type:tipo}));
   a.download=nombre; a.click(); URL.revokeObjectURL(a.href); }
 
-function expJSON(){ bajar(`clap-${hoy()}.json`, JSON.stringify(DB,null,2), 'application/json');
+function expJSON(){ if(!manejaDatos()){ toast('El respaldo completo lo baja Administración'); return; } bajar(`clap-${hoy()}.json`, JSON.stringify(DB,null,2), 'application/json');
   toast('Respaldo descargado'); }
 /* Importar ya no borra todo: trae los proyectos del archivo. Los que ya
    estaban (mismo proyecto) se reemplazan, avisando cuáles; los demás de esta
@@ -18137,6 +19456,7 @@ function importarRespaldo(d){
   return {pisa: pisa.length, nuevos: nuevos.length};
 }
 function impJSON(inp){
+  if(!manejaDatos()){ toast('Importar un respaldo es de Administración'); return; }
   const f=inp.files[0]; if(!f) return;
   const fr=new FileReader();
   fr.onload=()=>{ let r;
@@ -18146,7 +19466,7 @@ function impJSON(inp){
     cerrar(); toast(`Importado: ${r.nuevos} nuevo${r.nuevos == 1 ? '' : 's'}, ${r.pisa} reemplazado${r.pisa == 1 ? '' : 's'}`); R(); };
   fr.readAsText(f); }
 function expCSV(){
-  const v=getV(), py=getPy(); if(!v) return;
+  const v=getV(), py=getPy(); if(!v || !vePlata()) return;
   const q = s => '"'+String(s??'').replace(/"/g,'""')+'"';
   const U = unidadDe(py);
   const L = [['Rubro','Código','Concepto',U,'Unidad','Cantidad','Días','Valor unit.','Moneda',
@@ -18187,6 +19507,7 @@ function expCSV(){
   bajar(`${py.nombre}-${v.nombre}.csv`, '﻿'+L.join('\n'), 'text/csv;charset=utf-8');
   toast('CSV descargado'); }
 function resetDB(){
+  if(!manejaDatos()){ toast('Borrar todo es de Administración'); return; }
   if(!confirm('Se borra TODO lo cargado y vuelve al ejemplo. ¿Seguro?')) return;
   DB=dbVacia(); sembrar(); cerrar(); toast('Base reiniciada'); }
 

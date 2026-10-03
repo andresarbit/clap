@@ -5,7 +5,8 @@
 --     Supabase  ->  SQL Editor  ->  New query
 -- y apretá RUN. Se puede correr varias veces. No borra nada.
 --
--- QUÉ RESUELVE (además, al final: confirmar la citación con un toque)
+-- QUÉ RESUELVE (además: confirmar la citación con un toque, al final; y el
+-- circuito de las rendiciones, en la sección 1a)
 -- 1. Hasta ahora en la base estaba sólo la ficha de cada proyecto; el
 --    presupuesto, el plan, los partes, los gastos y la liquidación vivían en
 --    la compu de cada uno. Dos personas no podían trabajar sobre el mismo
@@ -28,6 +29,10 @@
 --   liquidación.
 --   El fee (el margen) lo leen sólo Administración y el PE: el de cada
 --   presupuesto y el que trae por defecto cada productora.
+--   Las órdenes de compra (parte "compras") las leen y escriben sólo
+--   Administración, el PE y el jefe de producción: llevan montos del
+--   presupuesto. En los gastos, cada asistente cambia sólo lo suyo: sus
+--   comprobantes, su rendición mientras la arma, sus cheques (ver 1a).
 -- ===========================================================================
 
 -- Los roles nuevos van entre Equipo y Producción: para invitar, nadie puede
@@ -82,6 +87,134 @@ create policy parte_crear   on proyecto_parte for insert with check (puedo_parte
 create policy parte_cambiar on proyecto_parte for update
   using (puedo_parte(proyecto_id, parte, true)) with check (puedo_parte(proyecto_id, parte, true));
 
+-- ---------------------------------------------------------------------------
+-- 1a. RENDICIONES Y GASTOS: quién cambia qué adentro de la parte "gastos"
+--
+-- Una rendición es una caja: la plata que se le da a alguien para gastar,
+-- más los tickets que rinde. Pasa por: borrador (la arma quien rinde) ->
+-- enviada (al jefe de producción) -> observada (vuelve con comentario) ->
+-- aprobada (el jefe la eleva) -> cerrada (Administración).
+--
+-- Los asistentes y el equipo escriben la parte "gastos" (sus comprobantes,
+-- sus rendiciones, sus cheques), pero NO pueden:
+--   · tocar lo que cargó otra persona (comprobantes, rendiciones, cheques);
+--   · dar fondos ni anotar adelantos: eso lo hace quien da la plata;
+--   · cambiar los gastos de una rendición ya enviada;
+--   · aprobar ni cerrar nada;
+--   · tocar las órdenes de compra (desde ahora van en su propia parte,
+--     "compras", que no leen; si quedaron en "gastos", la base las conserva).
+-- El jefe de producción revisa y eleva, pero no cierra: cerrar es de
+-- Administración (o del PE).
+-- ---------------------------------------------------------------------------
+create or replace function rend_estado(c jsonb) returns text
+language sql immutable as $$
+  select case when c->>'estado' = 'rendida' then 'cerrada'
+              else coalesce(nullif(c#>>'{rendicion,estado}', ''), 'borrador') end
+$$;
+
+-- null si el cambio está permitido; si no, el motivo (en castellano)
+create or replace function gastos_permitidos(p_viejo jsonb, p_nuevo jsonb, p_yo text, p_rol text)
+returns text
+language plpgsql immutable set search_path = public as $$
+declare
+  c jsonb; v jsonb; e_v text; e_n text;
+  trabadas text[]; mias text[];
+  vc jsonb := coalesce(p_viejo->'cajas', '[]'::jsonb);
+  nc jsonb := coalesce(p_nuevo->'cajas', '[]'::jsonb);
+  vp jsonb := coalesce(p_viejo->'comprobantes', '[]'::jsonb);
+  np jsonb := coalesce(p_nuevo->'comprobantes', '[]'::jsonb);
+  vq jsonb := coalesce(p_viejo->'cheques', '[]'::jsonb);
+  nq jsonb := coalesce(p_nuevo->'cheques', '[]'::jsonb);
+begin
+  if p_rol in ('admin', 'ejecutivo') then return null; end if;
+  if p_rol = 'produccion' then
+    for c in select * from jsonb_array_elements(nc) loop
+      select x into v from jsonb_array_elements(vc) x where x->>'id' = c->>'id' limit 1;
+      if rend_estado(c) = 'cerrada' and (v is null or rend_estado(v) <> 'cerrada') then
+        return 'La rendición la cierra Administración.';
+      end if;
+    end loop;
+    return null;
+  end if;
+
+  -- asistentes y equipo
+  -- 1. las rendiciones (cajas)
+  for v in select * from jsonb_array_elements(vc) loop
+    select x into c from jsonb_array_elements(nc) x where x->>'id' = v->>'id' limit 1;
+    if c is null then return 'Un fondo para rendir lo da de baja quien lo dio.'; end if;
+    if v->>'responsable' is distinct from p_yo then
+      if c is distinct from v then return 'No podés cambiar la rendición de otra persona.'; end if;
+    else
+      if (c - 'rendicion') is distinct from (v - 'rendicion') then
+        return 'Lo entregado (el fondo y los adelantos) lo anota quien da la plata.';
+      end if;
+      e_v := rend_estado(v); e_n := rend_estado(c);
+      if e_n <> e_v and not ((e_v in ('borrador', 'observada') and e_n = 'enviada')
+                             or (e_v = 'enviada' and e_n = 'borrador')) then
+        return 'No podés pasar tu rendición a "' || e_n || '": eso lo hace quien la revisa.';
+      end if;
+    end if;
+  end loop;
+  for c in select * from jsonb_array_elements(nc) loop
+    if not exists (select 1 from jsonb_array_elements(vc) x where x->>'id' = c->>'id') then
+      return 'El fondo para rendir lo da el jefe de producción o Administración.';
+    end if;
+  end loop;
+  trabadas := array(select x->>'id' from jsonb_array_elements(vc) x
+                     where rend_estado(x) in ('enviada', 'aprobada', 'cerrada'));
+  mias := array(select x->>'id' from jsonb_array_elements(nc) x where x->>'responsable' = p_yo);
+
+  -- 2. los comprobantes
+  for v in select * from jsonb_array_elements(vp) loop
+    select x into c from jsonb_array_elements(np) x where x->>'id' = v->>'id' limit 1;
+    if v->>'cargadoPor' is distinct from p_yo then
+      if c is null or (c - 'cargadoPor' - 'historial') is distinct from (v - 'cargadoPor' - 'historial') then
+        return 'No podés cambiar comprobantes que cargó otra persona.';
+      end if;
+    else
+      if v->>'cajaId' = any(trabadas)
+         and (c is null or (c - 'cargadoPor' - 'historial') is distinct from (v - 'cargadoPor' - 'historial')) then
+        return 'Esa rendición ya se mandó: sus gastos no se cambian (pedí que te la devuelvan).';
+      end if;
+      if c is not null and c->>'estado' is distinct from v->>'estado' then
+        return 'El estado de un comprobante lo cambia quien lo revisa.';
+      end if;
+      if c is not null and c->>'cajaId' is not null and c->>'cajaId' is distinct from v->>'cajaId'
+         and (c->>'cajaId' = any(trabadas) or not (c->>'cajaId' = any(mias))) then
+        return 'Sólo podés cargar gastos en tu propia rendición, mientras la estás armando.';
+      end if;
+    end if;
+  end loop;
+  for c in select * from jsonb_array_elements(np) loop
+    if not exists (select 1 from jsonb_array_elements(vp) x where x->>'id' = c->>'id') then
+      if c->>'cargadoPor' is distinct from p_yo then return 'Un comprobante nuevo va a tu nombre.'; end if;
+      if coalesce(c->>'estado', 'cargado') <> 'cargado' then
+        return 'Un comprobante nuevo entra como cargado: lo revisa producción.';
+      end if;
+      if c->>'cajaId' is not null and (c->>'cajaId' = any(trabadas) or not (c->>'cajaId' = any(mias))) then
+        return 'Sólo podés cargar gastos en tu propia rendición, mientras la estás armando.';
+      end if;
+    end if;
+  end loop;
+
+  -- 3. los cheques de garantía
+  for v in select * from jsonb_array_elements(vq) loop
+    select x into c from jsonb_array_elements(nq) x where x->>'id' = v->>'id' limit 1;
+    if v->>'pedidoPor' is distinct from p_yo then
+      if c is distinct from v then return 'No podés cambiar el cheque que pidió otra persona.'; end if;
+    elsif c is not null and c->>'estado' is distinct from v->>'estado' then
+      return 'El cheque lo aprueba el Productor Ejecutivo y lo entrega Administración.';
+    end if;
+  end loop;
+  for c in select * from jsonb_array_elements(nq) loop
+    if not exists (select 1 from jsonb_array_elements(vq) x where x->>'id' = c->>'id')
+       and (c->>'pedidoPor' is distinct from p_yo or coalesce(c->>'estado', 'pedido') <> 'pedido') then
+      return 'Un cheque nuevo va a tu nombre y entra como pedido.';
+    end if;
+  end loop;
+  return null;
+end $$;
+
 -- Guardar una parte. Se manda la versión sobre la que se trabajó: si
 -- mientras tanto alguien guardó otra, no se pisa; vuelve lo que hay en la
 -- base para juntar los cambios y probar de nuevo.
@@ -89,12 +222,12 @@ create or replace function guardar_parte(p_proyecto uuid, p_parte text, p_datos 
 returns json
 language plpgsql security definer set search_path = public as $$
 declare
-  v_prod uuid; v_yo uuid; v_nom text;
+  v_prod uuid; v_yo uuid; v_nom text; v_rol text; v_hay boolean; v_err text;
   r proyecto_parte%rowtype;
 begin
   if auth.uid() is null then raise exception 'Hay que iniciar sesión.'; end if;
   if p_parte not in ('presupuesto','presupuesto_real','gente','plan','rodaje','luces','alta',
-                     'gastos','liquidacion','tareas','contactos','extra') then
+                     'gastos','compras','liquidacion','tareas','contactos','extra') then
     raise exception 'Esa parte del proyecto no existe: %', p_parte;
   end if;
   if not puedo_parte(p_proyecto, p_parte, true) then
@@ -103,21 +236,32 @@ begin
   select productora_id into v_prod from proyecto where id = p_proyecto;
   select id, nombre into v_yo, v_nom from usuario
    where auth_uid = auth.uid() and productora_id = v_prod limit 1;
+  v_rol := mi_rol_en_proyecto(p_proyecto)::text;
   select * into r from proyecto_parte where proyecto_id = p_proyecto and parte = p_parte for update;
-  if found then
-    if p_base is distinct from r.version then
-      return json_build_object('ok', false, 'version', r.version, 'datos', r.datos,
-                               'quien', r.cambiado_nombre, 'cuando', r.cambiado_el);
+  v_hay := found;
+  if v_hay and p_base is distinct from r.version then
+    return json_build_object('ok', false, 'version', r.version, 'datos', r.datos,
+                             'quien', r.cambiado_nombre, 'cuando', r.cambiado_el);
+  end if;
+  if not v_hay and p_base is not null then
+    -- la trabajé sobre una versión que ya no está: que vuelva a traer
+    return json_build_object('ok', false, 'version', null, 'datos', null);
+  end if;
+  if p_parte = 'gastos' then
+    v_err := gastos_permitidos(case when v_hay then r.datos else null end, p_datos, v_yo::text, v_rol);
+    if v_err is not null then raise exception '%', v_err; end if;
+    if v_rol not in ('admin', 'ejecutivo', 'produccion') then
+      -- las órdenes de compra no las tocan: quedan las que había
+      p_datos := (p_datos - 'ocs') || case when v_hay and r.datos ? 'ocs'
+                                           then jsonb_build_object('ocs', r.datos->'ocs') else '{}'::jsonb end;
     end if;
+  end if;
+  if v_hay then
     update proyecto_parte
        set datos = p_datos, version = r.version + 1, cambiado_el = now(),
            cambiado_por = v_yo, cambiado_nombre = v_nom
      where proyecto_id = p_proyecto and parte = p_parte;
     return json_build_object('ok', true, 'version', r.version + 1);
-  end if;
-  if p_base is not null then
-    -- la trabajé sobre una versión que ya no está: que vuelva a traer
-    return json_build_object('ok', false, 'version', null, 'datos', null);
   end if;
   insert into proyecto_parte (proyecto_id, parte, datos, version, cambiado_por, cambiado_nombre)
   values (p_proyecto, p_parte, p_datos, 1, v_yo, v_nom);
@@ -302,4 +446,4 @@ grant execute on function confirmar_citacion(text, boolean, text) to anon, authe
 
 commit;
 
-select 'Listo: los proyectos se guardan completos, hay roles de asistente, el fee es sólo de Administración y el PE, y las citaciones se confirman con un toque. Volvé a CLAP y tocá ☁ → Sincronizar todo.' as "Resultado";
+select 'Listo: los proyectos se guardan completos, hay roles de asistente, el fee es sólo de Administración y el PE, las citaciones se confirman con un toque y cada asistente cambia sólo sus gastos y su rendición. Volvé a CLAP y tocá ☁ → Sincronizar todo.' as "Resultado";

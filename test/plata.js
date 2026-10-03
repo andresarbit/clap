@@ -145,7 +145,8 @@ DB.ui.fGasto = { rubro: '06', estado: '', q: '' };
 const soloArte = py.comprobantes.filter(c => c.rubro === DB.ui.fGasto.rubro);
 ok('se pueden filtrar los de un rubro', soloArte.length === 3, soloArte.length + ' de arte');
 DB.ui.fGasto = { rubro: '', estado: 'pagado', q: '' };
-ok('y por estado', py.comprobantes.filter(c => c.estado === 'pagado').length === 1);
+/* los gastos de una rendición cerrada quedan pagados: salieron del fondo */
+ok('y por estado', py.comprobantes.filter(c => c.estado === 'pagado' && !c.cajaId).length === 1 && py.comprobantes.filter(c => c.cajaId && c.estado !== 'rechazado').every(c => c.estado === 'pagado'));
 DB.ui.fGasto = { rubro: '', estado: '', q: 'catering' };
 limpiarFiltros();
 ok('limpiar deja los filtros vacíos', !DB.ui.fGasto.rubro && !DB.ui.fGasto.estado && !DB.ui.fGasto.q);

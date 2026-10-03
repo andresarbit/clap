@@ -133,9 +133,25 @@ como esta base.
 
 ### A2i. Correr proyecto-completo.sql — ✅ corrido el 02/10 · ⏳ correrlo OTRA VEZ
 
-Después de correrlo se le sumó al final **la confirmación de citaciones con un
-toque** (tabla `citacion_link` y cuatro funciones). Hay que pegarlo y correrlo
-de nuevo: se puede correr las veces que haga falta, no borra nada.
+Después de correrlo se le sumaron dos cosas, y hay que pegarlo y correrlo de
+nuevo (se puede correr las veces que haga falta, no borra nada):
+
+- **La confirmación de citaciones con un toque** (tabla `citacion_link` y
+  cuatro funciones), al final.
+- **Las rendiciones y quién toca qué en los gastos** (sección 1a,
+  `gastos_permitidos`, y `guardar_parte` cambiada). La base ahora hace cumplir
+  que un asistente o alguien del equipo cambie sólo lo suyo: sus comprobantes,
+  su rendición mientras la arma (no la puede aprobar ni cerrar, ni anotarse
+  adelantos), sus cheques. El jefe de producción revisa y eleva, pero no
+  cierra: eso es de Administración o del PE. Y las **órdenes de compra** pasan
+  a su propia parte, `compras`, que los asistentes y el equipo no leen (llevan
+  montos del presupuesto). Las OC que ya estaban en la base dentro de "gastos"
+  no se pierden: la primera vez que Administración, el PE o el jefe abren el
+  proyecto con la versión nueva de CLAP, las pasan solas a "compras". Hasta
+  que corras el SQL, un CLAP nuevo que quiera guardar "compras" va a mostrar
+  el **!** rojo en la nube (la base vieja no conoce esa parte); lo demás anda.
+  Probado contra un Postgres armado como esta base (PGlite): 26 pruebas de
+  quién puede guardar qué.
 
 Hace dos cosas:
 

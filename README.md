@@ -844,6 +844,19 @@ Cinco sub-vistas en **Gastos**:
   rinde. Muestra entregado, gastado, saldo en mano y **cuanto no tiene
   comprobante**. Al rendir calcula si tiene que devolver o si hay que
   reintegrarle, y queda cerrada con fecha y notas.
+- **Rendiciones** — la caja chica con su circuito. El jefe de producción (o
+  Administración) le da un fondo a alguien; esa persona sube las fotos y los PDF
+  de los tickets (varios a la vez, o con la cámara del celu) y cada archivo es
+  una fila. CLAP pre-llena lo que puede leer: el **QR de AFIP** de la factura
+  electrónica (exacto), el texto de un **PDF digital** (CUIT con dígito
+  verificador, fecha, tipo, número y total) y, a ojo, la **foto** de un ticket
+  de papel (OCR en el navegador); lo leído queda en amarillo hasta confirmarlo.
+  Sale la planilla por rubro con subtotales, el **Excel** editable (Carátula,
+  Por rubro y Detalle) y el **PDF para imprimir** con la carátula, las firmas y
+  los tickets pegados de a cuatro por hoja. Circuito: cargando → enviada al
+  jefe → observada (vuelve con comentario) → aprobada → cerrada por
+  Administración, con charla por rendición y por gasto. Cada asistente ve y
+  arma sólo la suya; la base lo hace cumplir (`backend/proyecto-completo.sql`).
 - **Tablero** — Presupuestado · Comprometido · Real · Pagado · **Disponible**,
   rubro por rubro.
 
@@ -1433,6 +1446,7 @@ node test/run.js test/rodaje.js    # citaciones, fichadas, horas extra y turnaro
 node test/run.js test/sica.js      # escala de convenio y su uso como referencia
 node test/run.js test/gastos.js    # rubros, roles y circuito de aprobacion
 node test/run.js test/plata.js     # ordenes de compra, caja chica y tablero
+node test/run.js test/rendiciones.js # rendiciones: circuito, permisos, Excel, PDF, leer el QR/PDF/ticket, quien ve OC y Datos
 node test/run.js test/resumen.js   # portada, pendientes y datos de ejemplo
 node test/run.js test/guia.js      # instructivo: contenido, navegacion y que no mienta
 node test/run.js test/backend.js   # conexion, login, renovacion de sesion y diagnostico

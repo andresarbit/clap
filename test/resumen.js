@@ -11,11 +11,12 @@ ok('trae equipo con los 7 roles', (pr.usuarios || []).length === 7,
 ok('hay uno por cada rol', ROLES.every(r => pr.usuarios.some(u => u.rol === r.k)),
   ROLES.map(r => r.k).join(','));
 ok('arranca con una sesión activa', !!getUsuario(), getUsuario()?.nombre + ' · ' + ROL(getUsuario().rol).l);
-ok('trae comprobantes', py.comprobantes.length === 4, py.comprobantes.length);
+/* 4 sueltos + los 5 tickets de la rendición de ejemplo */
+ok('trae comprobantes', py.comprobantes.length === 9, py.comprobantes.length);
 ok('en distintos estados', new Set(py.comprobantes.map(c => c.estado)).size >= 3,
   [...new Set(py.comprobantes.map(c => c.estado))].join(', '));
 ok('trae una orden de compra emitida', py.ocs.length === 1 && py.ocs[0].estado === 'emitida');
-ok('trae una caja abierta con adelanto', py.cajas.length === 1 && py.cajas[0].adelantos.length === 1,
+ok('trae una caja abierta con adelanto, y una rendición mandada al jefe', py.cajas.length === 2 && py.cajas[0].adelantos.length === 1 && estadoRend(py.cajas[1]) === 'enviada',
   fmt(saldoCaja(py, py.cajas[0]).entregado) + ' entregado');
 ok('todos los comprobantes tienen rubro', py.comprobantes.every(c => c.rubro));
 ok('los historiales son coherentes con el estado',
@@ -61,7 +62,7 @@ DB.ui.usuarioId = ejec.id;
 const pendEjec = py.comprobantes.filter(c => accionesDe(c, ejec).length);
 ok('el ejecutivo tiene algo para aprobar', pendEjec.some(c => c.estado === 'revisado'),
   pendEjec.map(c => c.estado).join(','));
-ok('la portada lo lista', /comprobantes (para aprobar|esperándote)/.test(vistaResumen(pr, py, v)),
+ok('la portada lo lista', /comprobantes? (para aprobar|esperándote)/.test(vistaResumen(pr, py, v)),
   (vistaResumen(pr, py, v).replace(/<[^>]+>/g, ' ').match(/\d+\s+comprobantes?[^<]{0,24}/) || [''])[0].trim());
 ok('avisa de la caja sin rendir', /sin rendir/.test(vistaResumen(pr, py, v)));
 /* arte, que sólo carga, no debería tener pendientes de aprobación */
