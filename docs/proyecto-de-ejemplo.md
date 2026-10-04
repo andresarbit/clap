@@ -1,10 +1,11 @@
-# El proyecto de ejemplo: Brisa — "Respirá"
+# Los proyectos de ejemplo: Brisa — "Respirá" (en curso) y Cumbre — "Ruta abierta" (en cotización)
 
-*La ficha del proyecto que trae CLAP: el que se ve al abrir la app sin sesión, en las
+*La ficha de los dos proyectos que trae CLAP. **Brisa** es el principal: el que se ve al abrir la app sin sesión, en las
 vistas por rol (`node vistas-por-rol/armar.mjs`) y en los tutoriales. Lo arma
 `sembrar()` en `clap.html` y lo controla `test/ejemplo.js`. Todo es inventado: la
 productora, la marca, la agencia, la gente, los CUIT, las direcciones y los tickets.
-Si se cambia algo en `sembrar()`, se cambia acá.*
+Si se cambia algo en `sembrar()`, se cambia acá. El segundo, **Cumbre**, está en cotización
+(la «situación cero»): lo arma `sembrarCotizacion()` y su ficha está en la sección 7.*
 
 **Las fechas se cuentan desde el día en que se abre**: la jornada 1 siempre fue
 **ayer** y la jornada 2 es **pasado mañana**. Los ejemplos de abajo son de abrirlo el
@@ -27,15 +28,16 @@ SICA de **octubre de 2026** que trae la app (si la escala cambia, cambian los su
 | Rodaje | 2 jornadas en Buenos Aires: **J1 exteriores** (costanera y plaza, ya filmada) · **J2 interior** (una casa en Martínez, por filmar) |
 | Jornada | 12 h (la de la plantilla), extras al 50 % |
 
-**El guion** (30″, cuatro escenas; es el mismo de *Desglose → Probar con un guion de
-ejemplo*): Cami (30) corre por la costanera al sol, se frena y toma Brisa (1); cruza la
+**El guion** (30″, cuatro escenas; es el de *Desglose → Probar con un guion de
+ejemplo → Un guion con escenas*): Cami (30) corre por la costanera al sol, se frena y toma Brisa (1); cruza la
 plaza y le devuelve de taco la pelota a un nene (9), que festeja (2); en la cocina de su
 casa Nico (35) abre la heladera llena de botellas y le sirve un vaso con hielo:
 «¿Y? ¿Cuántos kilómetros?» — «Los suficientes» (3); packshot de la botella en el living y
 el locutor: «Brisa. Agua mineral de manantial. Respirá.» (4).
 
-El desglose detecta **menores de edad** (el nene), **vía pública** y **extras**. El
-locutor (voz en off) no está en el elenco del rodaje.
+El desglose detecta a **Cami, Nico y el nene** como elenco (el nene, que se presenta en la
+acción como «NENE (9)», marcado **menor de edad**: pide chaperona y permiso), la **vía pública** y
+los **extras** (corredores y vecinos). El locutor (voz en off) va a la post, no al elenco del rodaje.
 
 ## 2. Quién es quién
 
@@ -202,3 +204,56 @@ $ 700.000):
 
 **Tablero de plata** (versión de rodaje): presupuestado $ 72.122.374 · comprometido
 $ 5.862.440 · real $ 4.265.300 · pagado $ 1.511.700 · disponible $ 61.994.634.
+
+---
+
+## 7. El segundo proyecto: Cumbre — "Ruta abierta" (en cotización)
+
+*El proyecto que muestra la etapa **en cotización**: sólo se ven el Resumen, el Desglose y el
+Presupuesto. Lo arma `sembrarCotizacion()` en `clap.html` y lo controlan `test/ejemplo.js`,
+`test/cotizacion.js` y `test/ejercicios.js`. Todo inventado: la marca, la agencia y los números.
+Al abrir la app se sigue abriendo Brisa; a Cumbre se llega con el selector de proyecto (grupo
+«Cotizando») o desde la lista de proyectos del Resumen.*
+
+| | |
+|---|---|
+| Proyecto | **Cumbre — "Ruta abierta"** · publicidad mediana (plantilla *Publicidad · mediana*) · **en cotización** |
+| Cliente | **Austral Motors** (SUV Cumbre) |
+| Agencia | **Norte Creativa** |
+| Piezas | Spot 30″ · Cutdown 15″ · Bumper 6″ |
+| Medios | TV, digital y redes · Argentina · 12 meses |
+| Quién está | Lo ven el PE (Tomás) y Administración (Marta), que ven todo, y **Lucía** (jefa de producción), invitada: lo ve en costo. El resto del equipo todavía no está invitado. |
+
+**El brief** (un párrafo, sin encabezados; es el primero de *Desglose → Probar con un guion de
+ejemplo*): toma aérea con dron de la Cumbre subiendo una ruta de montaña en la hora dorada; car rig
+con Laura (38) manejando y el viento en el pelo; adentro del auto, su hijo Tomi (8); en un mirador
+pasan diez ciclistas; cae la noche y llueve: detalle de las gotas en cámara lenta con Phantom;
+cierre con packshot 3D, logo animado, locutor en off y música original. Pide cutdowns de 15″ y 6″
+y una versión vertical 9:16.
+
+**Lo que detecta el desglosador** (pestaña *Para cotizar*):
+
+| | |
+|---|---|
+| Bloques | 5: ruta (EXT, hora dorada) · auto (INT, hora dorada) · mirador (EXT, hora dorada) · mirador (EXT, noche) · packshot · **8 puestas estimadas** |
+| Elenco | Laura (principal) · Tomi (secundario, **menor**: chaperona y permiso) · **extras: 10 ciclistas** |
+| Locaciones | Ruta (vía pública: permiso) · Mirador. El interior del auto y el packshot no son locaciones para alquilar. |
+| Cámara especial | Dron (alquiler + piloto) · car rig / brazo ruso (+ rigger) · alta velocidad Phantom (+ técnico) |
+| Efectos en set | Lluvia · viento (confianza media: «el viento le mueve el pelo») · agua · técnico de efectos |
+| Post | Packshot 3D / CGI · motion graphics · locución · música original |
+| Entregables | Cutdown 15″ · cutdown 6″ · formatos para redes |
+
+Todo eso está **aplicado al presupuesto** (menos la camioneta, que la pone el cliente) con
+precios inventados de octubre de 2026; el equipo técnico sale del convenio SICA.
+
+**Los ejercicios** (versiones de Producción; con la escala SICA de octubre de 2026):
+
+| | Total al cliente | Costo de producción | Fee | Lo que cambia contra la base |
+|---|---|---|---|---|
+| **Base 2 jornadas** | $ 140.585.413 | $ 103.571.055 | $ 12.781.849 | Es la base: 33 técnicos, 1 cámara, 3 en el elenco, 16 extras |
+| **1 jornada con horas extra** | $ 118.575.687 | $ 87.238.606 | $ 10.924.442 | Jornadas 2 → 1 (+6 h extra c/u) · −15,7 % |
+| **2 cámaras** | $ 149.259.019 | $ 109.843.290 | $ 13.677.882 | Cámaras 1 → 2 · Cámara +2 personas (operador y foquista) · +6,2 % |
+
+Ninguno está elegido todavía: el PE elige el que se presenta (*Comparar → Elegir*) y lo aprueba con
+**✓ Proyecto aprobado**, que congela una copia «Cliente · aprobada dd/mm/aaaa», pasa el proyecto a
+en curso y le deja a Lucía los pasos para arrancar.
