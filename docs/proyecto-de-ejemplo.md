@@ -211,7 +211,7 @@ $ 5.862.440 · real $ 4.265.300 · pagado $ 1.511.700 · disponible $ 61.994.634
 
 *El proyecto que muestra la etapa **en cotización**: sólo se ven el Resumen, el Desglose y el
 Presupuesto. Lo arma `sembrarCotizacion()` en `clap.html` y lo controlan `test/ejemplo.js`,
-`test/cotizacion.js` y `test/ejercicios.js`. Todo inventado: la marca, la agencia y los números.
+`test/cotizacion.js`, `test/ejercicios.js`, `test/sugeridos.js`, `test/puestas-vehiculo.js` y `test/cotizacion-bajar.js`. Todo inventado: la marca, la agencia y los números.
 Al abrir la app se sigue abriendo Brisa; a Cumbre se llega con el selector de proyecto (grupo
 «Cotizando») o desde la lista de proyectos del Resumen.*
 
@@ -235,16 +235,18 @@ y una versión vertical 9:16.
 
 | | |
 |---|---|
-| Bloques | 5: ruta (EXT, hora dorada) · auto (INT, hora dorada) · mirador (EXT, hora dorada) · mirador (EXT, noche) · packshot · **8 puestas estimadas** |
+| Bloques | 5: ruta (EXT, hora dorada) · auto (INT, hora dorada) · mirador (EXT, hora dorada) · mirador (EXT, noche) · packshot |
+| Puestas | **6 puestas · 6 complejas (+2 en post) → 2 jornadas sugeridas**: a 7 puestas por jornada de 12 h, las complejas cuentan hasta el doble (la ruta: exterior, vía pública, viento, dron y car rig; el auto: el menor; el mirador de noche: lluvia y Phantom) y el packshot 3D no ocupa rodaje. Equivale a 11 puestas simples. Las puestas por jornada (y las de cada bloque) se corrigen en *Para cotizar*. |
 | Elenco | Laura (principal) · Tomi (secundario, **menor**: chaperona y permiso) · **extras: 10 ciclistas** |
 | Locaciones | Ruta (vía pública: permiso) · Mirador. El interior del auto y el packshot no son locaciones para alquilar. |
 | Cámara especial | Dron (alquiler + piloto) · car rig / brazo ruso (+ rigger) · alta velocidad Phantom (+ técnico) |
 | Efectos en set | Lluvia · viento (confianza media: «el viento le mueve el pelo») · agua · técnico de efectos |
 | Post | Packshot 3D / CGI · motion graphics · locución · música original |
 | Entregables | Cutdown 15″ · cutdown 6″ · formatos para redes |
+| Producto del cliente | La camioneta es el producto (SUV Cumbre). En este trato **la pone la marca**: no hay línea y las condiciones de la cotización dicen «El vehículo del producto (SUV Cumbre) lo provee el cliente.». Con «Lo alquila la producción» se sumarían el alquiler, el traslado en batea, el seguro y el conductor de precisión (por el car rig). |
 
-Todo eso está **aplicado al presupuesto** (menos la camioneta, que la pone el cliente) con
-precios inventados de octubre de 2026; el equipo técnico sale del convenio SICA.
+Todo eso está **aplicado al presupuesto** con precios inventados de octubre de 2026; el equipo
+técnico sale del convenio SICA.
 
 **Los ejercicios** (versiones de Producción; con la escala SICA de octubre de 2026):
 
@@ -257,3 +259,34 @@ precios inventados de octubre de 2026; el equipo técnico sale del convenio SICA
 Ninguno está elegido todavía: el PE elige el que se presenta (*Comparar → Elegir*) y lo aprueba con
 **✓ Proyecto aprobado**, que congela una copia «Cliente · aprobada dd/mm/aaaa», pasa el proyecto a
 en curso y le deja a Lucía los pasos para arrancar.
+
+**Ejercicios sugeridos** (no vienen cargados: aparecen al tocar *✦ Ejercicios sugeridos*, arriba del
+presupuesto). Salen de la base; los dos que ya estaban (+6 h y 2 cámaras) no se repiten. Ordenados
+como los arma; *Comparar* los pone uno por renglón y se ordenan por total:
+
+| Ejercicio | Total al cliente | Costo de producción | Contra la base | Aviso |
+|---|---|---|---|---|
+| 1 jornada con +4 h extra | $ 113.047.900 | $ 83.241.239 | −19,6 % | No entran las puestas (≈ 11 pedidas, ≈ 9,3 entran en 16 h) |
+| 3 jornadas, cómoda (sin extras) | $ 179.178.501 | $ 131.895.604 | +27,5 % | — |
+| Jornada larga: 2 × 14 h | $ 151.640.988 | $ 111.565.789 | +7,9 % | Con las jornadas seguidas el descanso queda en 9 h (mínimo 12) |
+| Jornada corta: 2 × 10 h | $ 130.568.007 | $ 96.327.063 | −7,1 % | — (el convenio se recalcula a 10 h) |
+| Sin dron | $ 138.988.213 | $ 102.416.055 | −1,1 % | — |
+| Sin car rig / brazo ruso | $ 136.113.253 | $ 100.337.055 | −3,2 % | — |
+| Sin alta velocidad (Phantom) | $ 136.737.613 | $ 100.788.555 | −2,7 % | — |
+| Equipo reducido (−5 personas) | $ 136.732.357 | $ 100.784.754 | −2,7 % | — |
+| Equipo completo (+3 personas) | $ 144.451.689 | $ 106.366.916 | +2,8 % | — |
+| Menos extras (8) | $ 139.396.225 | $ 102.588.255 | −0,8 % | — |
+| Más extras (24) | $ 141.774.601 | $ 104.553.855 | +0,8 % | — |
+| Elenco más chico (2) | $ 138.933.763 | $ 102.206.055 | −1,2 % | — |
+| Una sola locación (Ruta) | $ 139.859.413 | $ 103.046.055 | −0,5 % | — |
+| Post simple: packshot filmado, sin 3D | $ 135.939.013 | $ 100.211.055 | −3,3 % | El packshot filmado entra sin valor: cargalo |
+
+El tope de horas extra para los ejercicios es de 6 h por jornada (se cambia en *Rodaje → Condiciones
+de la jornada*); el descanso mínimo entre jornadas, 12 h.
+
+**Si no sale**: *No salió* guarda todo (la base, los ejercicios, el desglose, las notas y el motivo) y,
+con el tilde que viene marcado, baja `Cotizacion-Cumbre-Ruta-abierta-no-salio.xlsx`: un *Resumen* que
+compara la base y cada ejercicio (costo, fee, IVA, total, contra la base, jornadas, equipo, lo que
+cambia y los avisos), una hoja por versión (rubros, líneas, subtotales como fórmulas y totales con el
+fee) y el *Desglose*. Desde el resumen del proyecto se vuelve a bajar cuando se quiera, junto con la
+*Cotización en PDF* de la elegida. Sólo el PE y Administración.

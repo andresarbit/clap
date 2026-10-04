@@ -1380,6 +1380,40 @@ tr.csdep td{background:#f3f3f1;color:#171717}
   .cotiz-hero .tot{font-size:22px}
 }
 @media print{ .ejbar,.cotiz-acciones{display:none!important} }
+/* puestas, el producto del cliente y los avisos de los ejercicios */
+.pu-man{display:inline-flex;gap:4px;align-items:center;font-weight:600}
+.pu-man input{width:48px;padding:2px 5px;font-size:12px}
+.pu-f{font-size:10.5px;color:#7a3e00;background:rgba(224,145,62,.13);border-radius:4px;padding:0 5px}
+.pu-f.simple{color:var(--tx3);background:var(--bg4)}
+.prod-tg{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.prod-q{font-size:12px}
+.prod-tg .seg button{min-height:32px}
+.det-item.det-falta{background:rgba(224,145,62,.07);border-radius:6px;padding-left:6px;padding-right:6px}
+.det-item.det-falta .prod-q b{color:var(--warn)}
+.prod-caja{border:1px solid var(--line);border-radius:var(--r);padding:9px 11px;margin-bottom:12px;background:var(--bg2)}
+.prod-caja.falta{border-color:rgba(154,79,0,.45);background:rgba(224,145,62,.07)}
+.ej-chk{display:flex;gap:6px;align-items:center;font-size:12.5px;cursor:pointer}
+.ej-avisos{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.ej-aviso{font-size:11.5px;line-height:1.4;color:var(--warn)}
+.ej-aviso.mal{color:var(--bad);font-weight:600}
+.ej-warn{font-style:normal;color:var(--bad)}
+.ej-warn.suave{color:var(--warn)}
+.cmp-filas th,.cmp-filas td{white-space:nowrap}
+.cmp-filas td.cmp-nom{white-space:normal;min-width:260px;max-width:380px;color:var(--tx);font-weight:400}
+.cmp-cambia{font-size:11.5px;line-height:1.45;color:var(--tx2);margin-top:3px}
+.cmp-filas .cmp-num{text-align:right}
+.cmp-filas td.cmp-num{position:relative}
+.cmp-filas td.neg{color:var(--ok)} .cmp-filas td.pos{color:var(--bad)}
+.cmp-filas tr.es-base td{background:var(--bg3)}
+.cmp-filas tr.es-eleg td:first-child{box-shadow:inset 3px 0 0 var(--ok)}
+.cmp-bar{display:block;height:3px;border-radius:2px;background:var(--ac);opacity:.35;margin:4px 0 0 auto}
+.cmp-ord{font:inherit;color:inherit;background:none;border:none;padding:0;cursor:pointer;text-align:inherit}
+.cmp-ord:hover{color:var(--ac)}
+.cmp-acc{display:flex;gap:4px;justify-content:flex-end}
+@media (max-width:640px){
+  .cmp-filas td.cmp-nom{min-width:170px;max-width:200px;position:static}
+  .prod-tg .seg{flex:1 1 100%}
+}
 </style>
 </head>
 <body>
@@ -1893,6 +1927,10 @@ const ETAPAS = [
 const esJornada8 = l => !!l && (l.etapa === 'prepro' || l.etapa === 'post');
 
 /* Qué pasa con una línea respecto del convenio. Devuelve null si no tiene. */
+/* Un ejercicio de cotización puede probar otra jornada («jornada corta: 10 h»)
+   sin tocar la del proyecto: la línea lleva sus horas y el convenio se le
+   calcula con ésas. Al aprobarse ese ejercicio, el proyecto pasa a esa jornada. */
+const cfgDeLinea = (cfg, l) => l && n(l.horasJornada) >= 8 && !esJornada8(l) ? {...(cfg || nuevaConfigRodaje()), horasJornada: n(l.horasJornada)} : cfg;
 function estadoSICA(l, py){
   if(!l) return null;
   if((l.moneda || 'ARS') !== 'ARS') return null;
@@ -1900,7 +1938,7 @@ function estadoSICA(l, py){
   const E = escalaDelProyecto(py);
   const cargo = cargoSICA(l.concepto, E, l.sicaRef || null);
   if(!cargo) return null;
-  const cfg = py && py.configRodaje;
+  const cfg = cfgDeLinea(py && py.configRodaje, l);
   /* fuera del rodaje la jornada es de 8 h: preproducción, cierre, post */
   const de8 = esJornada8(l);
   const valor = de8 ? cargo.j8 : valorJornadaSICA(cargo, cfg);
@@ -3373,6 +3411,7 @@ function lapso(desde, hasta){
    misma escala con que se armó: valor = j8 + costoHE(H-8, j8/8).
    Cualquier otra línea: la hora es valor/H y no hay nada incluido.         */
 function baseHoraDe(cfg, valorJornada, linea){
+  cfg = cfgDeLinea(cfg, linea);
   const H = horasJornadaDe(cfg), v = n(valorJornada);
   if(!(linea && linea.valorOrigen === 'sica'))
     return {valorHora: v ? v / H : 0, incluidas: 0};
@@ -4637,12 +4676,128 @@ function analizarDesglose(py){
     grupos[cat].push({k: 'dep:' + dep, l: DEPTO(dep).l, conf: 'media', evid: [{esc: '', frase: [...m.values()].map(x => x.nombre).slice(0, 8).join(', ')}],
       escenas: [...new Set([...m.values()].flatMap(x => x.escenas))], lineas: []});
   }));
-  /* 5. escenas y puestas */
-  const esc = escenas.map(e => ({numero: e.numero, intExt: e.intExt, momento: e.momento, locacion: e.locacion, puestas: puestasDeEscena(e)}));
-  const puestas = esc.reduce((s, e) => s + e.puestas.length, 0);
+  /* el producto del cliente que sale en cámara (la camioneta de la marca): lo pone la marca o lo alquila la producción */
+  const prod = productoDelCliente(py);
+  if(prod) grupos.vehiculos.unshift({k: 'producto:' + prod.k, l: prod.l, sub: prod.que, conf: 'alta', producto: prod,
+    evid: prod.evid, escenas: prod.escenas.map(e => e.numero), lineas: [],
+    nota: prod.decision === 'marca' ? 'lo pone la marca: va a las condiciones de la cotización' : prod.decision === 'produccion' ? 'lo alquila la producción' : 'falta decidir quién lo pone'});
+  /* 5. escenas y puestas: cuántas entran en una jornada depende de qué tan complicadas son */
+  const est = estimarPuestas(py, escenas, grupos);
   const total = ['camara', 'sfx', 'post', 'entregas'].reduce((s, k) => s + grupos[k].length, 0) + grupos.elenco.length + grupos.locaciones.length;
-  return {grupos, escenas: esc, puestas, jornadasSug: Math.max(1, Math.ceil(puestas / 12)), total,
+  return {grupos, escenas: est.escenas, puestas: est.puestas, jornadasSug: est.jornadas, est, total, producto: prod,
     noches: escenas.filter(e => /NOCHE|MADRUGADA/.test(e.momento)).length, doradas: escenas.filter(e => /DORADA/.test(e.momento)).length, tags: det};
+}
+
+/* ===================  CUÁNTAS PUESTAS ENTRAN EN UNA JORNADA  ===================
+   En publicidad una jornada de 12 h da para unas 6 a 8 puestas (emplazamientos
+   de cámara), no para 12: depende de qué tan complicada es cada una. Una
+   puesta en exterior, en la vía pública, con dron o car rig, con efectos, con
+   menores o de noche lleva más tiempo (hasta el doble); un interior simple,
+   menos (tres cuartos). El packshot en 3D no se filma: va a la post.
+   El número de puestas por jornada se edita en cada proyecto, y cada bloque
+   puede corregir sus puestas a mano. Con esto se sugieren las jornadas (el
+   desglose, «Aplicar al presupuesto» y los avisos de los ejercicios).       */
+const PUESTAS_JORNADA_DEF = 7;
+const puestasPorJornada = py => { const x = n(((py || {}).desglose || {}).puestasPorJornada); return x >= 1 ? x : PUESTAS_JORNADA_DEF; };
+const RE_CAM_ESPECIAL = /\b(phantom|alta velocidad|camara lenta|slow ?mo(tion)?|stead[iy] ?cam|grua|telescopica|techno ?crane|motion ?control|submarin[oa]|bajo el agua|cable ?cam|spider ?cam)\b/;
+function estimarPuestas(py, escenas, grupos){
+  const ppj = puestasPorJornada(py), H = horasJornadaDe(py && py.configRodaje);
+  const en = (lista, k) => new Set(lista.flatMap(x => (x.escenas || []).map(String)));
+  const sfxEsc = en(grupos.sfx), menorEsc = en(grupos.elenco.filter(x => x.menor));
+  const has3d = grupos.post.some(x => x.k === 'packshot3d');
+  const via = TAG('viaPublica').lugar;
+  const esc = escenas.map(e => {
+    const f0 = [];
+    if(e.intExt !== 'INT') f0.push('exterior');
+    if(via.test(norm(e.locacion || ''))) f0.push('vía pública');
+    if(/NOCHE|MADRUGADA/.test(e.momento || '') && e.locacion !== 'PACKSHOT') f0.push('noche');
+    if(sfxEsc.has(String(e.numero))) f0.push('efectos');
+    if(menorEsc.has(String(e.numero))) f0.push('menores');
+    /* el packshot en 3D se hace en la post: no ocupa tiempo de rodaje */
+    const enPost = e.locacion === 'PACKSHOT' && has3d;
+    let ps = puestasDeEscena(e).map(p => {
+      const f = [...f0], tf = norm((p.frases || []).join(' '));
+      if(p.tipo === 'Aéreo') f.push('dron');
+      if(p.tipo === 'Desde el vehículo') f.push('car rig');
+      if(RE_CAM_ESPECIAL.test(tf)) f.push('cámara especial');
+      const fs = [...new Set(f)];
+      const peso = enPost ? 0 : fs.length ? Math.min(2, 1 + 0.5 * fs.length) : (e.intExt === 'INT' ? 0.75 : 1);
+      return {...p, factores: fs, peso, enPost};
+    });
+    /* el bloque corregido a mano: esa cantidad, con el peso promedio de lo que se detectó */
+    const man = e.puestasManual != null && e.puestasManual !== '' && isFinite(+e.puestasManual) ? Math.max(0, Math.round(+e.puestasManual)) : null;
+    if(man != null && man !== ps.length){
+      const prom = ps.length ? ps.reduce((s, p) => s + p.peso, 0) / ps.length : (enPost ? 0 : 1);
+      const fs = [...new Set(ps.flatMap(p => p.factores))];
+      ps = Array.from({length: man}, (_, i) => ps[i] || {letra: String.fromCharCode(65 + i), tipo: 'Puesta', frases: [], factores: fs, peso: prom, enPost});
+      ps.forEach(p => { p.peso = prom; });
+    }
+    return {numero: e.numero, id: e.id, intExt: e.intExt, momento: e.momento, locacion: e.locacion, puestas: ps, manual: man != null, enPost,
+      peso: ps.reduce((s, p) => s + p.peso, 0)};
+  });
+  const todas = esc.flatMap(e => e.puestas);
+  /* las que se filman (el packshot 3D se cuenta aparte) */
+  const puestas = todas.filter(p => !p.enPost).length, peso = Math.round(todas.reduce((s, p) => s + p.peso, 0) * 100) / 100;
+  const complejas = todas.filter(p => p.peso > 1).length, simples = todas.filter(p => p.peso > 0 && p.peso < 1).length, enPost = todas.filter(p => p.enPost).length;
+  /* con un 5 % de tolerancia: la estimación es gruesa y no conviene sumar una jornada por un pelo */
+  const jornadas = Math.max(1, Math.ceil(peso / ppj - 0.05));
+  const txt = `${puestas} ${plural(puestas, 'puesta')}${complejas ? ` · ${complejas} ${plural(complejas, 'compleja')}` : ''}${enPost ? ` (+${enPost} en post)` : ''} → ${jornadas} ${plural(jornadas, 'jornada sugerida', 'jornadas sugeridas')}`;
+  const porque = `a ${fmtNum(ppj)} puestas por jornada de ${H} h; las complejas (exterior, vía pública, dron o car rig, cámara especial, efectos, menores, noche) cuentan hasta el doble`
+    + `${simples ? ' y un interior simple, tres cuartos' : ''}${enPost ? ' · el packshot en 3D se hace en la post' : ''} · equivale a ${fmtNum(peso)} ${plural(peso, 'puesta simple', 'puestas simples')}`;
+  return {escenas: esc, puestas, peso, complejas, simples, enPost, jornadas, ppj, horas: H, txt, porque};
+}
+const fmtNum = x => (Math.round(n(x) * 10) / 10).toLocaleString('es-AR');
+/* Cuántas puestas (equivalentes) entran en tantas jornadas de tantas horas. */
+const puestasQueEntran = (py, jornadas, horasDia) => n(jornadas) * puestasPorJornada(py) * n(horasDia) / horasJornadaDe(py && py.configRodaje);
+
+/* ==================  EL PRODUCTO DEL CLIENTE EN CÁMARA  ==================
+   Cuando el producto es un vehículo (la SUV de la marca), quién lo pone
+   depende del trato con la marca: a veces lo da el cliente, a veces lo
+   alquila la producción. No se adivina: se pregunta. Sin decidir, queda
+   marcado y no se aplica nada. «Lo pone la marca» no agrega líneas pero
+   suma la aclaración a las condiciones de la cotización; «Lo alquila la
+   producción» agrega el vehículo, el traslado, el seguro y, si se maneja en
+   cámara con car rig, el conductor de precisión.                         */
+const FAMILIAS_PRODUCTO = [
+  {k: 'auto', l: 'Vehículo del producto', que: 'el vehículo', re: /\b(autos?|coches?|camionetas?|suv|pick ?-?up|4x4|todoterreno|utilitario|vehiculos?|sedan|hatchback|crossover)\b/},
+  {k: 'moto', l: 'Moto del producto', que: 'la moto', re: /\b(motos?|motocicletas?|scooters?)\b/},
+];
+function productoDelCliente(py){
+  if(!py) return null;
+  const d = py.desglose || {}, escenas = d.escenas || [];
+  if(!escenas.length) return null;
+  /* qué es el producto: la ficha del proyecto o el título del material */
+  const cab = norm([py.producto, py.nombre, String(d.guion || '').split('\n')[0]].filter(Boolean).join(' '));
+  const fam = FAMILIAS_PRODUCTO.find(f => f.re.test(cab));
+  if(!fam) return null;
+  const es = escenas.filter(e => (e.elementos && (e.elementos.vehiculos || []).some(w => fam.re.test(norm(w)))) || fam.re.test(norm(e.texto || '')));
+  if(!es.length) return null;
+  const f = frasesDe(es[0].texto).find(x => fam.re.test(norm(x))) || es[0].encabezado || '';
+  const conRig = escenas.some(e => /\b(car ?rig|brazo ruso|camera car|pegad[oa] al auto|travelling vehicular)\b/.test(norm(e.texto || '')));
+  const maneja = es.some(e => /\b(maneja|conduce|manejando|al volante)\b/.test(norm(e.texto || '')));
+  const dec = ((py.productoCliente || {})[fam.k === 'auto' ? 'vehiculo' : fam.k]) || null;
+  return {k: fam.k === 'auto' ? 'vehiculo' : fam.k, fam, l: fam.l, que: String(py.producto || '').trim() || fam.que, escenas: es,
+    evid: [{esc: es[0].numero, frase: f.length > 140 ? f.slice(0, 137) + '…' : f}], conRig, maneja,
+    dias: new Set(es.map(e => e.jornada || 1)).size || 1, decision: ['marca', 'produccion'].includes(dec) ? dec : null};
+}
+/* las líneas cuando lo alquila la producción */
+function lineasProductoCliente(P){
+  if(!P || P.decision !== 'produccion') return [];
+  const ev = `«${(P.evid[0] || {}).frase || ''}»`, base = {cantidad: 1, conf: 'alta', dep: 'producto', det: 'producto:' + P.k, grupo: 'vehiculos'};
+  return [
+    {...base, rubro: '12', concepto: `Alquiler del vehículo del producto — ${P.que}`, dias: P.dias, unidad: 'jornada', claves: ['vehiculo del producto', 'alquiler del vehiculo'], nota: 'lo alquila la producción · ' + ev},
+    {...base, rubro: '12', concepto: 'Traslado del vehículo del producto (batea)', dias: 1, unidad: 'global', claves: ['traslado del vehiculo', 'batea'], nota: 'llega y se va sin kilómetros ni barro'},
+    {...base, rubro: '15', concepto: 'Seguro del vehículo del producto', dias: 1, unidad: 'global', claves: ['seguro del vehiculo'], nota: 'cobertura durante el rodaje'},
+    ...(P.conRig || P.maneja ? [{...base, rubro: '12', concepto: 'Conductor de precisión', dias: P.dias, unidad: 'jornada', claves: ['conductor de precision', 'piloto de precision', 'chofer del vehiculo'],
+      nota: P.conRig ? 'se filma en movimiento con car rig' : 'se maneja en cámara'}] : []),
+  ];
+}
+const textoProductoMarca = P => `${P.k === 'moto' ? 'La moto' : 'El vehículo'} del producto (${P.que}) lo provee el cliente.`;
+function decidirProducto(k, dec, volver){
+  const py = getPy(); if(!py) return;
+  if(!vePlata()) return;
+  (py.productoCliente ||= {})[k] = ['marca', 'produccion'].includes(dec) ? dec : null;
+  if(volver === 'aplicar' && modal) aPresupuesto(); else R();
 }
 
 /* --------------------------- TAGS DEL PROYECTO ----------------------------
@@ -5363,14 +5518,14 @@ const PARTES_PY = {
   presupuesto: {
     lee: py => ({versiones: (py.versiones || []).filter(v => !ES_REAL(v)).map(sinFee), versionRodaje: py.versionRodaje || null, piezas: py.piezas || [], plantilla: py.plantilla || null,
       /* la cotización: cuál es la base, cuál se presenta, cuándo se aprobó o por qué no salió */
-      ...(py.baseId || py.elegidaId || py.aprobado || py.noSalio ? {cotiz: {baseId: py.baseId || null, elegidaId: py.elegidaId || null,
-        aprobado: py.aprobado || null, noSalio: py.noSalio || null, etapaHist: py.etapaHist || []}} : {})}),
+      ...(py.baseId || py.elegidaId || py.aprobado || py.noSalio || py.productoCliente ? {cotiz: {baseId: py.baseId || null, elegidaId: py.elegidaId || null,
+        aprobado: py.aprobado || null, noSalio: py.noSalio || null, etapaHist: py.etapaHist || [], productoCliente: py.productoCliente || null}} : {})}),
     pone: (py, d) => {
       const antes = Object.fromEntries((py.versiones || []).map(v => [v.id, v.capas && v.capas.fee]));
       py.versiones = [...(py.versiones || []).filter(ES_REAL), ...(d.versiones || [])];
       py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; py.plantilla = d.plantilla || null;
       if(d.cotiz){ py.baseId = d.cotiz.baseId || null; py.elegidaId = d.cotiz.elegidaId || null; py.aprobado = d.cotiz.aprobado || null;
-        py.noSalio = d.cotiz.noSalio || null; py.etapaHist = d.cotiz.etapaHist || []; }
+        py.noSalio = d.cotiz.noSalio || null; py.etapaHist = d.cotiz.etapaHist || []; py.productoCliente = d.cotiz.productoCliente || null; }
       ponerFees(py, {...(py._fees || {}), ...Object.fromEntries(Object.entries(antes).filter(([, f]) => f != null))}); },
     algo: conLineas},
   presupuesto_real: {
@@ -6462,11 +6617,13 @@ function sembrarCotizacion(pr, jefa){
   const brief = EJEMPLOS_PUB.find(x => x.k === 'brief').texto;
   const des = desglosar(brief);
   Object.assign(py.desglose, {guion: brief, escenas: des.escenas, modo: des.modo, importado: hoyMas(-2)});
-  /* lo detectado, aplicado al presupuesto (menos la camioneta: la pone el cliente) */
+  /* lo detectado, aplicado al presupuesto. La camioneta es el producto: en
+     este trato la pone la marca (va a las condiciones, sin línea) */
+  py.productoCliente = {vehiculo: 'marca'};
   const ui = {p: DB.ui.proyectoId, v: DB.ui.versionId};
   DB.ui.proyectoId = py.id; DB.ui.versionId = vB.id;
   const P = propuestaPresupuesto();
-  aplicarLineasDesglose(py, vB, P.lineas, P.lineas.map((l, i) => ({i})).filter(m => !/^Vehículos —/.test(P.lineas[m.i].concepto)));
+  aplicarLineasDesglose(py, vB, P.lineas, P.lineas.map((l, i) => ({i})));
   DB.ui.proyectoId = ui.p; DB.ui.versionId = ui.v;
   /* los precios de lo que no es convenio (inventados, de octubre de 2026) */
   const PRECIOS = [
@@ -8510,7 +8667,7 @@ Postproducción: edición offline, corrección de color y online.`,
     noIncluye: `Derechos para otros medios, territorios o plazos.
 Realización de banda musical ni derechos SADAIC.
 Making of.
-Producto: a cargo del cliente.`,
+Producto: a cargo del cliente.${(() => { const P = productoDelCliente(py); return P && P.decision === 'marca' ? '\n' + textoProductoMarca(P) : ''; })()}`,
     pago: `50% contra la aprobación del presupuesto y antes de empezar la preproducción.
 50% a 30 días del último día de rodaje.`,
     validez: `10 días. Cotizado con dólar ${v.tcNombre||''} a ${fmtC(v.tc)} del ${f}: si al aprobarse la cotización es otra, el presupuesto se reajusta.`,
@@ -8929,7 +9086,7 @@ function vistaDesglose(py){
     <div class="resu">
       <div><b>${r.escenas}</b><span>${ficcion ? 'Escenas' : 'Bloques'}</span></div>
       ${ficcion ? `<div><b>${octavosATexto(r.octavos)}</b><span>Páginas</span></div>`
-        : enCotizacion(py) ? `<div><b>${analizarDesglose(py).puestas}</b><span>Puestas est.</span></div>` : `<div><b>${planos}</b><span>Planos en el plan</span></div>`}
+        : enCotizacion(py) ? (() => { const E = analizarDesglose(py).est; return `<div title="${esc(E.txt + ' · ' + E.porque)}"><b>${E.puestas}</b><span>Puestas est. · ${E.jornadas} ${plural(E.jornadas, 'jornada')}</span></div>`; })() : `<div><b>${planos}</b><span>Planos en el plan</span></div>`}
       <div><b>${r.personajes.length}</b><span>Personajes</span></div>
       <div><b>${r.locaciones.length}</b><span>Locaciones</span></div>
       <div><b>${r.ext}</b><span>Exteriores</span></div>
@@ -8996,31 +9153,58 @@ function importadorHTML(){
    piensa el que cotiza, con la frase de donde salió cada cosa, qué tan seguro
    es y qué línea del presupuesto propone (y si ya está). */
 function paraCotizarHTML(py){
-  const A = analizarDesglose(py), P = propuestaPresupuesto();
+  const A = analizarDesglose(py), P = propuestaPresupuesto(), E = A.est;
   const estado = l => P.lineas.find(x => x.rubro === l.rubro && norm(x.concepto) === norm(l.concepto));
   const nuevas = P.lineas.filter(l => !l.ya).length, act = P.lineas.filter(l => l.cambia).length;
   const evHTML = x => (x.evid || []).filter(v => v.frase).map(v => `${v.esc ? `<b>${esc(planPorEscenas(py) ? 'Esc.' : 'Bloque')} ${esc(v.esc)}:</b> ` : ''}«${esc(v.frase)}»`).join('<br>');
   const lnHTML = x => (x.lineas || []).map(l => { const s = estado(l);
     return `<div class="det-ln">→ <span class="rcode">${esc(l.rubro)}</span> ${esc(l.concepto)}${l.unidad !== 'global' ? ` · ${l.cantidad} × ${l.dias} ${esc(l.unidad)}` : ''}
       ${s && s.ya && !s.cambia ? ` <span class="chip c-otr">ya está${s.parecida ? ': ' + esc(s.parecida) : ''}</span>` : s && s.cambia ? ` <span class="chip d-par">actualiza ${esc(s.parecida || '')}</span>` : ' <span class="chip d-si">nueva</span>'}</div>`; }).join('');
-  const item = x => `<div class="det-item">
+  const item = x => `<div class="det-item${x.producto && !x.producto.decision ? ' det-falta' : ''}">
     <div class="det-l">${esc(x.l)}${x.sub ? ` <span class="chip c-otr">${esc(x.sub)}</span>` : ''}${x.menor ? ' <span class="chip sica-bajo">menor: permiso y chaperona</span>' : ''}${x.cantidad ? ` <span class="muted" style="font-weight:600">× ${x.cantidad}</span>` : ''}
       <span class="conf ${x.conf}" title="${x.conf === 'alta' ? 'Lo dice el texto' : 'Lo sugiere el texto: revisalo'}">${esc(x.conf)}</span></div>
-    <div><div class="det-ev">${evHTML(x) || '<span class="muted">—</span>'}${x.nota ? ` <span class="muted">· ${esc(x.nota)}</span>` : ''}</div>${lnHTML(x)}</div></div>`;
+    <div><div class="det-ev">${evHTML(x) || '<span class="muted">—</span>'}${x.nota ? ` <span class="muted">· ${esc(x.nota)}</span>` : ''}</div>${lnHTML(x)}
+      ${x.producto ? toggleProductoHTML(x.producto, 'desglose') + lineasProductoCliente(x.producto).map(l => `<div class="det-ln">→ <span class="rcode">${esc(l.rubro)}</span> ${esc(l.concepto)}</div>`).join('') : ''}</div></div>`;
   const grupo = (c, cuerpo) => `<div class="det-grupo"><h5>${esc(c.l)}</h5>${cuerpo}</div>`;
-  const escenasHTML = A.escenas.map(e => `<div class="det-item"><div class="det-l">${esc(e.numero)} · ${esc(e.intExt)} · ${esc(e.locacion)}
+  const puedo = vePlata();
+  const escenasHTML = E.escenas.map(e => `<div class="det-item"><div class="det-l">${esc(e.numero)} · ${esc(e.intExt)} · ${esc(e.locacion)}
       <span class="chip ${/NOCHE/.test(e.momento) ? 'niv-cliente' : /DORADA/.test(e.momento) ? 'd-par' : 'c-otr'}">${esc(e.momento)}</span></div>
-    <div class="det-ev">${e.puestas.length} ${plural(e.puestas.length, 'puesta')}: ${e.puestas.map(p => `<span title="${esc(p.frases.join(' / '))}"><b>${p.letra}</b> ${esc(p.tipo)}${p.frases.length ? ` <span class="muted">(${p.frases.length} ${plural(p.frases.length, 'plano')})</span>` : ''}</span>`).join(' · ')}</div></div>`).join('');
+    <div class="det-ev">${e.enPost ? '<span class="muted">en la post (3D): no ocupa rodaje</span> · ' : ''}${puedo && e.id ? `<label class="pu-man" title="Corregí cuántas puestas tiene este bloque">
+        <input type="number" min="0" step="1" value="${e.puestas.length}" onchange="upPuestasBloque('${e.id}',this.value)" aria-label="Puestas del bloque ${esc(e.numero)}"> ${plural(e.puestas.length, 'puesta')}</label>`
+        : `${e.puestas.length} ${plural(e.puestas.length, 'puesta')}`}${e.manual ? ' <span class="chip d-par" title="Corregido a mano">a mano</span>' : ''}:
+      ${e.puestas.map(p => `<span title="${esc((p.frases || []).join(' / '))}"><b>${p.letra}</b> ${esc(p.tipo)}${p.factores.length ? ` <span class="pu-f">${esc(p.factores.join(', '))}</span>` : p.peso > 0 && p.peso < 1 ? ' <span class="pu-f simple">simple</span>' : ''}</span>`).join(' · ')}</div></div>`).join('');
   const nada = !['camara', 'sfx', 'post', 'entregas'].some(k => A.grupos[k].length);
   return `<div class="cotiz-aviso" style="margin:0 0 12px">
-      <b>${A.escenas.length} ${plural(A.escenas.length, planPorEscenas(py) ? 'escena' : 'bloque')} · ${A.puestas} ${plural(A.puestas, 'puesta')} estimadas</b>
-      (a unas 12 puestas por jornada, ≈ ${A.jornadasSug} ${plural(A.jornadasSug, 'jornada')})${A.noches ? ` · ${A.noches} de noche` : ''}${A.doradas ? ` · ${A.doradas} en hora dorada` : ''}.
-      ${vePlata() ? `<span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:4px">
+      <b>${A.escenas.length} ${plural(A.escenas.length, planPorEscenas(py) ? 'escena' : 'bloque')} · ${esc(E.txt)}</b>${A.noches ? ` · ${A.noches} de noche` : ''}${A.doradas ? ` · ${A.doradas} en hora dorada` : ''}
+      <div class="muted" style="font-size:11.5px;margin:3px 0 6px">${esc(E.porque)}.
+        ${puedo ? `<label style="display:inline-flex;gap:5px;align-items:center;white-space:nowrap">Puestas por jornada
+          <input type="number" min="1" max="20" step="0.5" value="${fmtNum(E.ppj).replace(',', '.')}" style="width:58px;padding:2px 5px;font-size:12px" onchange="setPuestasJornada(this.value)" aria-label="Puestas por jornada"></label>` : ''}</div>
+      ${puedo ? `<span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="btn sm pri" onclick="aPresupuesto()">Aplicar al presupuesto</button>
-        <span class="muted">${nuevas} ${plural(nuevas, 'línea nueva', 'líneas nuevas')}${act ? ` · ${act} para actualizar` : ''} · nada se toca hasta que lo apliques</span></span>` : ''}</div>
+        <span class="muted">${nuevas} ${plural(nuevas, 'línea nueva', 'líneas nuevas')}${act ? ` · ${act} para actualizar` : ''}${P.producto && !P.producto.decision ? ' · <b style="color:var(--warn)">falta decidir quién pone el vehículo del producto</b>' : ''} · nada se toca hasta que lo apliques</span></span>` : ''}</div>
     ${grupo(CATS_DET[0], escenasHTML || '<div class="muted">Sin bloques</div>')}
     ${CATS_DET.slice(1).map(c => A.grupos[c.k].length ? grupo(c, A.grupos[c.k].map(item).join('')) : '').join('')}
     ${nada ? `<div class="muted" style="font-size:12px;padding:8px 0">No aparece cámara especial, efectos en set, post especial ni versiones: si el material los pide con otras palabras, agregalos a mano en el presupuesto.</div>` : ''}`;
+}
+/* «Lo pone la marca» / «Lo alquila la producción», con el estado bien a la vista */
+function toggleProductoHTML(P, volver){
+  const b = (dec, t, d) => `<button type="button" class="${P.decision === dec ? 'on' : ''}" aria-pressed="${P.decision === dec}" ${vePlata() ? `onclick="decidirProducto('${P.k}','${dec}','${volver}')"` : 'disabled'} title="${esc(d)}">${t}</button>`;
+  return `<div class="prod-tg">
+    <span class="prod-q">${P.decision ? '' : '<b>Falta decidir:</b> '}¿Quién pone ${esc(P.k === 'moto' ? 'la moto' : 'el vehículo')} (${esc(P.que)})?</span>
+    <span class="seg">${b('marca', 'Lo pone la marca', 'Sin línea en el presupuesto; en las condiciones de la cotización dice que lo provee el cliente')}${b('produccion', 'Lo alquila la producción', 'Suma el alquiler, el traslado, el seguro y, si hace falta, el conductor')}</span>
+  </div>`;
+}
+function setPuestasJornada(val){
+  const py = getPy(); if(!py || !vePlata()) return;
+  const x = n(val); getD().puestasPorJornada = x >= 1 ? Math.min(20, x) : PUESTAS_JORNADA_DEF;
+  R();
+}
+function upPuestasBloque(eid, val){
+  if(!vePlata()) return;
+  const e = (getD().escenas || []).find(x => x.id === eid); if(!e) return;
+  const auto = puestasDeEscena(e).length, x = Math.max(0, Math.round(n(val)));
+  if(val === '' || x === auto) delete e.puestasManual; else e.puestasManual = x;
+  R();
 }
 /* Los ejemplos de publicidad para probar el desglose (los mismos que usan las pruebas, en test/fixtures). */
 const EJEMPLOS_PUB = [
@@ -9557,16 +9741,23 @@ const GUIA = [
     <ol class="pasos-guia">
       <li><b>Desglosá</b> lo que mandó la agencia: un párrafo, unas frases, el guion o el storyboard (PDF o imágenes).
         En <i>Para cotizar</i> aparece lo que cuesta plata: escenas y puestas, elenco (con los menores y los extras con su cantidad),
-        cámara especial, efectos en set, post y versiones; cada cosa con la frase de donde salió y qué tan seguro es.</li>
+        cámara especial, efectos en set, post y versiones; cada cosa con la frase de donde salió y qué tan seguro es.
+        Las jornadas se sugieren por las <b>puestas</b>: unas 7 por jornada, y las complicadas (exterior, vía pública, dron o car rig,
+        efectos, menores, noche) cuentan hasta el doble. Las puestas por jornada y las de cada bloque se corrigen ahí mismo.
+        Si el producto es un vehículo, decidí si <b>lo pone la marca</b> (va a las condiciones) o <b>lo alquila la producción</b> (suma alquiler, traslado y seguro).</li>
       <li><b>Aplicá al presupuesto</b>: una lista con todo tildado; destildá lo que no va y corregí cantidades. Lo que ya está
         no se duplica (si el desglose pide más, se actualiza). Se deshace con un toque.</li>
       <li><b>Probá ejercicios</b>: otra manera de hacer lo mismo (una jornada con horas extra, dos cámaras, menos extras, un eléctrico más).
-        Cada uno dice arriba qué cambia contra la base para llegar a su precio, y <i>Comparar</i> los pone lado a lado.${veMargen() ? ' Elegí el que se presenta.' : ''}</li>
+        <i>Ejercicios sugeridos</i> arma de un toque un juego desde la base (comprimir con +4 h o +6 h, una jornada más sin extras, jornada
+        larga o corta, otra cámara, sin dron o sin car rig, equipo reducido o completo, menos o más extras, una sola locación, post simple);
+        cada uno se edita o se borra. Cada uno dice qué cambia contra la base y avisa si pasa el tope de horas extra, el descanso entre jornadas
+        o si no entran las puestas. <i>Comparar</i> los pone uno por renglón y se ordenan por total.${veMargen() ? ' Elegí el que se presenta.' : ''}</li>
       ${veMargen() ? '<li><b>Mandá la cotización</b> (Presupuesto → Cotización → PDF).</li>' : ''}
     </ol>
     <p>Cuando el cliente dice que sí, el PE o Administración tocan <b>✓ Proyecto aprobado</b>: se guarda una copia congelada de lo
     aprobado, aparece todo lo demás y el jefe de producción ve en su resumen los pasos para arrancar (invitar al equipo, fechas,
-    plan, pasar el desglose al presupuesto de rodaje). Si no sale, <b>No salió</b> lo deja guardado (con el motivo) y se puede reabrir.</p>`; }},
+    plan, pasar el desglose al presupuesto de rodaje). Si no sale, <b>No salió</b> lo deja guardado entero (con el motivo) y se puede reabrir;
+    ${veMargen() ? 'al marcarlo (y cuando quieras, desde su resumen) se baja la cotización: un Excel con la base, cada ejercicio y el resumen que los compara, y el PDF de la elegida.' : 'el PE o Administración pueden bajar la cotización.'}</p>`; }},
 
   /* el jefe de producción no ve nada del margen: su sección habla del costo */
   {t:'Presupuesto', get c(){ return `
@@ -16565,7 +16756,7 @@ const AUX_AREA = {'02':'2° Ayudante de Dirección','03':'Asistente de Producci�
   '06':'Asistente de Arte','07':'Asistente de Vestuario','08':'Microfonista'};
 /* lo que se puede contar de un presupuesto, para comparar ejercicios */
 function medidasVersion(py, v){
-  const crew = {}; let personas = 0, camaras = 0, extras = 0, elenco = 0, he = 0, heCosto = 0;
+  const crew = {}; let personas = 0, camaras = 0, extras = 0, elenco = 0, he = 0, heCosto = 0, hj = 0;
   (v.rubros || []).forEach(r => r.lineas.forEach(l => {
     const q = Math.max(0, n(l.cantidad));
     if(personaDeCrew(l, r)){ crew[r.codigo] = (crew[r.codigo] || 0) + q; personas += q; }
@@ -16573,8 +16764,12 @@ function medidasVersion(py, v){
     if(esExtraL(l, r)) extras += q;
     if(esActorL(l, r)) elenco += q;
     if(l.hex){ he = Math.max(he, n(l.hex.horas)); heCosto += totalLinea(l, v); }
+    if(personaDeCrew(l, r) && n(l.horasJornada) >= 8) hj = Math.max(hj, n(l.horasJornada));
   }));
-  return {crew, personas, camaras, extras, elenco, he, heCosto, jornadas: jornadasDelPresupuesto(v) || n(v.jornadas) || n(py.jornadas) || 0};
+  const locaciones = ((v.rubros || []).find(r => r.codigo === '10') || {lineas: []}).lineas.filter(l => /^locaci[oó]n\b/i.test(l.concepto || '') && n(l.cantidad) > 0).length;
+  return {crew, personas, camaras, extras, elenco, he, heCosto, locaciones,
+    horasJornada: hj || horasJornadaDe(py && py.configRodaje),
+    jornadas: jornadasDelPresupuesto(v) || n(v.jornadas) || n(py.jornadas) || 0};
 }
 /* Lo que cambia contra la base para llegar a este precio, en palabras. */
 function cambiosVsBase(py, v, base = baseDe(py), u = getUsuario()){
@@ -16583,6 +16778,7 @@ function cambiosVsBase(py, v, base = baseDe(py), u = getUsuario()){
   const hTxt = h => (Math.round(h * 10) / 10).toLocaleString('es-AR');
   if(A.jornadas !== B.jornadas) out.push(`Jornadas ${A.jornadas} → ${B.jornadas}` + (B.he ? ` (+${hTxt(B.he)} h extra c/u)` : ''));
   else if(B.he !== A.he) out.push(B.he ? `Horas extra: +${hTxt(B.he)} h por jornada` : 'Sin las horas extra de la base');
+  if(A.horasJornada !== B.horasJornada) out.push(`Jornada de ${A.horasJornada} h → ${B.horasJornada} h`);
   if(A.camaras !== B.camaras) out.push(`Cámaras ${A.camaras} → ${B.camaras}`);
   if(A.elenco !== B.elenco) out.push(`Elenco ${A.elenco} → ${B.elenco}`);
   if(A.extras !== B.extras) out.push(`Extras ${A.extras} → ${B.extras}`);
@@ -16714,6 +16910,84 @@ function aplicarElenco(py, v, tipo, total){
   for(const l of orden){ if(!resta) break; const saco = Math.min(resta, n(l.cantidad)); l.cantidad = n(l.cantidad) - saco; resta -= saco; }
   rb.lineas = rb.lineas.filter(l => !(es(l, rb) && !n(l.cantidad)));
 }
+/* La jornada corta o larga: las horas de la jornada de rodaje de cada
+   persona del equipo. A los del convenio se les recalcula el sueldo con
+   esas horas; los que cobran un fee propio quedan como están. */
+function aplicarHorasJornada(py, v, horas){
+  const H0 = horasJornadaDe(py.configRodaje);
+  let sica = 0;
+  v.rubros.forEach(r => r.lineas.forEach(l => {
+    if(!personaDeCrew(l, r)) return;
+    if(horas === H0) delete l.horasJornada; else l.horasJornada = horas;
+    if(l.valorOrigen === 'sica' && autocompletarSICA(l, py, true)) sica++;
+  }));
+  return {sica};
+}
+/* las horas extra de alguien que ya no está, afuera */
+function limpiarHEHuerfanas(v){
+  const vivas = new Set(v.rubros.flatMap(r => r.lineas.filter(l => !l.hex).map(raizLinea)));
+  v.rubros.forEach(r => { r.lineas = r.lineas.filter(l => !l.hex || vivas.has(l.hex.lineaRaiz)); });
+}
+/* La cámara especial que tiene un presupuesto (dron, car rig, Phantom…): las
+   líneas que salen de lo que detecta el desglose, o que se llaman así. */
+function lineasDeCamara(v, x){
+  const defs = [...(x.lineas || []), ...(x.lineasMedia || [])];
+  const rubros = new Set(defs.map(d => d[0])), conceptos = new Set(defs.map(d => norm(d[1])));
+  const out = [];
+  v.rubros.forEach(r => r.lineas.forEach(l => {
+    if(esHE(l) || !String(l.concepto || '').trim()) return;
+    const c = norm(l.concepto);
+    if(conceptos.has(c) || (rubros.has(r.codigo) && (x.claves || []).some(k => c.includes(norm(k))))) out.push({r, l});
+  }));
+  return out;
+}
+const camarasEspecialesDe = v => DETECTA.filter(x => x.cat === 'camara' && (x.lineas || []).length && lineasDeCamara(v, x).length);
+const nombreSin = x => 'Sin ' + x.l.charAt(0).toLowerCase() + x.l.slice(1);
+function aplicarSinCamara(py, v, k){
+  const x = DETECTA.find(d => d.k === k && d.cat === 'camara'); if(!x) return [];
+  const fuera = lineasDeCamara(v, x);
+  fuera.forEach(({r, l}) => { r.lineas = r.lineas.filter(y => y !== l); });
+  limpiarHEHuerfanas(v);
+  return fuera.map(f => f.l.concepto);
+}
+/* Una sola locación: queda la más cara (la que manda), salen las otras. */
+const RE_LOCACION_L = /^locaci[oó]n\b/i;
+function locacionesDe(v){
+  const r10 = v.rubros.find(r => r.codigo === '10');
+  return r10 ? r10.lineas.filter(l => RE_LOCACION_L.test(l.concepto || '') && n(l.cantidad) > 0) : [];
+}
+function aplicarLocacionUnica(py, v){
+  const ls = locacionesDe(v); if(ls.length < 2) return null;
+  const queda = [...ls].sort((a, b) => totalLinea(b, v) - totalLinea(a, v))[0];
+  const r10 = v.rubros.find(r => r.codigo === '10');
+  const salen = ls.filter(l => l !== queda);
+  r10.lineas = r10.lineas.filter(l => !salen.includes(l));
+  return {queda: queda.concepto.replace(/^locaci[oó]n\s*[—-]\s*/i, ''), salen: salen.map(l => l.concepto)};
+}
+/* La post simple (el packshot se filma, sin 3D) o completa (packshot 3D,
+   motion graphics y diseño sonoro). Lo nuevo entra sin valor: se avisa. */
+const RE_POST_3D = /packshot 3d|\bcgi\b|vfx \/ 3d|animaci[oó]n 3d/i;
+function aplicarPost(py, v, modo){
+  const r14 = v.rubros.find(r => r.codigo === '14'), r06 = v.rubros.find(r => r.codigo === '06');
+  const sale = [], suma = [];
+  const tiene = (rb, re) => rb && rb.lineas.some(l => re.test(l.concepto || ''));
+  const agrega = (rb, concepto) => { if(!rb) return; const l = nuevaLinea({concepto, cantidad: 1, dias: 1, unidad: 'global', area: areaDeRubro(rb.codigo) || '',
+    notas: 'del ejercicio de post: cargá el valor'}); rb.lineas.push(l); rb.abierto = true; suma.push(concepto); };
+  if(modo === 'simple'){
+    if(!r14) return null;
+    r14.lineas.filter(l => RE_POST_3D.test(l.concepto || '')).forEach(l => sale.push(l.concepto));
+    if(!sale.length) return null;
+    r14.lineas = r14.lineas.filter(l => !RE_POST_3D.test(l.concepto || ''));
+    if(!tiene(r06, /packshot/i)) agrega(r06, 'Packshot filmado (en set)');
+  } else {
+    if(tiene(r14, RE_POST_3D)) return null;
+    agrega(r14, 'Packshot 3D / CGI');
+    if(!tiene(r14, /motion/i)) agrega(r14, 'Motion graphics');
+    if(!tiene(r14, /dise[nñ]o sonoro|sound design/i)) agrega(r14, 'Diseño sonoro');
+  }
+  return {sale, suma};
+}
+
 /* Arma el ejercicio: copia el de origen y aplica lo pedido. */
 function crearEjercicio(py, origen, o = {}){
   const M = medidasVersion(py, origen);
@@ -16721,25 +16995,177 @@ function crearEjercicio(py, origen, o = {}){
   v.ejercicio = {deId: origen.id, creado: hoy(), pedido: {}};
   const P = v.ejercicio.pedido, rep = {};
   const num = x => x !== undefined && x !== null && x !== '' && isFinite(+x);
+  /* primero la jornada (cambia el valor de la hora), después las jornadas y sus extras */
+  if(num(o.horasJornada) && +o.horasJornada >= 8 && +o.horasJornada !== M.horasJornada){
+    aplicarHorasJornada(py, v, +o.horasJornada); P.horasJornada = {de: M.horasJornada, a: +o.horasJornada};
+    if(M.he && !num(o.jornadas)) aplicarJornadas(py, v, M.jornadas, M.jornadas, M.he);
+  }
   if(num(o.jornadas) && +o.jornadas > 0 && (+o.jornadas !== M.jornadas || num(o.he))){
     Object.assign(rep, aplicarJornadas(py, v, M.jornadas, +o.jornadas, o.he)); P.jornadas = {de: M.jornadas, a: +o.jornadas, he: rep.he};
   }
   if(num(o.camaras) && +o.camaras !== M.camaras){ aplicarCamaras(py, v, M.camaras, Math.max(0, +o.camaras)); P.camaras = {de: M.camaras, a: +o.camaras}; }
+  (o.sin || []).forEach(k => { const fuera = aplicarSinCamara(py, v, k); if(fuera.length) (P.sin ||= []).push(k); });
   (o.areas || []).forEach(a => { if(a && a.rubro && n(a.delta)){ aplicarArea(py, v, a.rubro, Math.round(n(a.delta))); (P.areas ||= []).push({rubro: a.rubro, delta: n(a.delta)}); } });
   if(num(o.elenco) && +o.elenco !== M.elenco){ aplicarElenco(py, v, 'elenco', +o.elenco); P.elenco = {de: M.elenco, a: +o.elenco}; }
   if(num(o.extras) && +o.extras !== M.extras){ aplicarElenco(py, v, 'extras', +o.extras); P.extras = {de: M.extras, a: +o.extras}; }
+  if(o.locUnica){ const x = aplicarLocacionUnica(py, v); if(x) P.locUnica = x; }
+  if(o.post === 'simple' || o.post === 'completa'){ const x = aplicarPost(py, v, o.post); if(x) P.post = o.post; }
   if(!(o.nombre || '').trim()) v.nombre = nombreDeEjercicio(P) || 'Ejercicio ' + ((py.versiones || []).filter(esEjercicio).length + 1);
+  v.ejercicio.clave = claveEjercicio(P);
   return {v, rep};
 }
 function nombreDeEjercicio(P){
   const x = [];
   if(P.jornadas) x.push(`${P.jornadas.a} ${plural(P.jornadas.a, 'jornada')}${P.jornadas.he ? ' con horas extra' : ''}`);
+  if(P.horasJornada) x.push(`jornada de ${P.horasJornada.a} h`);
   if(P.camaras) x.push(`${P.camaras.a} ${plural(P.camaras.a, 'cámara')}`);
+  (P.sin || []).forEach(k => { const d = DETECTA.find(y => y.k === k); if(d) x.push('s' + nombreSin(d).slice(1)); });
   if(P.extras) x.push(`${P.extras.a} extras`);
   if(P.elenco) x.push(`${P.elenco.a} en el elenco`);
   (P.areas || []).forEach(a => x.push(`${AREA_CORTA[a.rubro] || a.rubro} ${a.delta > 0 ? '+' : '−'}${Math.abs(a.delta)}`));
-  return x.join(' · ');
+  if(P.locUnica) x.push(`una sola locación (${P.locUnica.queda.charAt(0) + P.locUnica.queda.slice(1).toLowerCase()})`);
+  if(P.post) x.push(P.post === 'simple' ? 'post simple' : 'post completa');
+  const t = x.join(' · ');
+  return t.charAt(0).toUpperCase() + t.slice(1);
 }
+/* lo mismo pedido dos veces es el mismo ejercicio (así los sugeridos no repiten) */
+function claveEjercicio(P){
+  const orden = o => Array.isArray(o) ? o.map(orden) : o && typeof o === 'object' ? Object.keys(o).sort().filter(k => k !== 'salen').map(k => [k, orden(o[k])]) : o;
+  return JSON.stringify(orden(P || {}));
+}
+
+/* --- los límites: el tope de horas extra, el descanso entre jornadas y las puestas --- */
+const TOPE_HE_DEF = 6;
+/* Horas extra por jornada que se aceptan en una cotización. Pasada la 6ª
+   extra el convenio ya paga al 300 % en la escala de publicidad y el equipo
+   no rinde: se avisa. Se cambia en Rodaje → Condiciones de la jornada. */
+const topeHE = cfg => n(cfg && cfg.topeHE) > 0 ? n(cfg.topeHE) : TOPE_HE_DEF;
+function avisosEjercicio(py, v, A){
+  const cfg = py.configRodaje || nuevaConfigRodaje(), M = medidasVersion(py, v), out = [];
+  const H = M.horasJornada, he = M.he, tope = topeHE(cfg), minDesc = n(cfg.minTurnaround) || 12;
+  const comida = cfg.descontarComida !== false ? 1 : 0;
+  if(he > tope) out.push({nivel: 'mal', k: 'tope', t: `+${fmtNum(he)} h extra por jornada pasa el tope de ${fmtNum(tope)} h (serían ${fmtNum(H + he)} h de trabajo)`});
+  /* jornadas seguidas: del wrap a la citación siguiente tiene que quedar el descanso mínimo */
+  const desc = 24 - (H + he + comida);
+  if(he > 0 && M.jornadas >= 2 && desc < minDesc)
+    out.push({nivel: 'mal', k: 'descanso', t: `Con las jornadas seguidas el descanso queda en ${fmtNum(Math.max(0, desc))} h (el mínimo es ${fmtNum(minDesc)} h): hay que dejar un día en el medio`});
+  /* ¿entran las puestas del desglose? */
+  if(A === undefined) A = (py.desglose && (py.desglose.escenas || []).length && !planPorEscenas(py)) ? analizarDesglose(py) : null;
+  if(A && A.est && A.est.peso > 0 && M.jornadas > 0){
+    const entran = puestasQueEntran(py, M.jornadas, H + he);
+    if(entran < A.est.peso * 0.95)
+      out.push({nivel: 'aviso', k: 'puestas', t: `No entran las puestas: el desglose pide ≈ ${fmtNum(A.est.peso)} (con las complejas) y en ${M.jornadas} ${plural(M.jornadas, 'jornada')} de ${fmtNum(H + he)} h entran ≈ ${fmtNum(entran)}`});
+  }
+  /* líneas nuevas sin precio: el total todavía no dice la verdad */
+  const base = baseDe(py);
+  if(base && v !== base){
+    const raices = new Set(base.rubros.flatMap(r => r.lineas.map(raizLinea)));
+    const sinValor = v.rubros.flatMap(r => r.lineas).filter(l => String(l.concepto || '').trim() && !raices.has(raizLinea(l)) && !(n(l.valorUnit) > 0));
+    if(sinValor.length) out.push({nivel: 'aviso', k: 'valor', t: `${sinValor.length} ${plural(sinValor.length, 'línea nueva', 'líneas nuevas')} sin valor (${sinValor.slice(0, 2).map(l => l.concepto).join(', ')}): cargalo para que el total sea real`});
+  }
+  return out;
+}
+
+/* ======================  EJERCICIOS SUGERIDOS  ======================
+   De un toque, desde la BASE, un juego de maneras de hacer lo mismo para ver
+   dónde está la plata: comprimir con horas extra (a distintas intensidades,
+   hasta el tope), una jornada más sin extras, jornada larga o corta, otra
+   cámara, sin cada cámara especial, el equipo más chico o más grande, menos o
+   más extras, una sola locación y la post simple o completa. Cada uno es una
+   versión más (se edita o se borra como cualquiera), con su nombre, lo que
+   cambia contra la base y los avisos si rompe una regla. Lo que ya existe
+   (el mismo pedido) no se repite. */
+function ejerciciosSugeridos(py, base = baseDe(py)){
+  if(!base) return [];
+  const cfg = py.configRodaje || nuevaConfigRodaje(), M = medidasVersion(py, base), H = M.horasJornada, N = M.jornadas || 1, tope = topeHE(cfg);
+  const out = [], add = (o, porque) => out.push({o, porque});
+  /* 1. menos jornadas con horas extra, a distintas intensidades y hasta el tope */
+  if(N >= 2 && !M.he){
+    const a = N - 1;
+    const niveles = [...new Set([4, 6, tope].filter(h => h >= 2 && h <= tope))].sort((x, y) => x - y);
+    /* las extras que hacen falta para que entren las puestas del desglose (si se sabe) */
+    const A = (py.desglose && (py.desglose.escenas || []).length && !planPorEscenas(py)) ? analizarDesglose(py) : null;
+    let nec = null;
+    if(A && A.est.peso > 0){ nec = Math.ceil(Math.max(0, (A.est.peso * 0.95 / (a * puestasPorJornada(py)) - 1) * H) * 2) / 2; }
+    if(nec != null && nec > tope && nec <= 10) niveles.push(nec);
+    niveles.forEach(h => add({nombre: `${a} ${plural(a, 'jornada')} con +${fmtNum(h)} h extra`, jornadas: a, he: h},
+      h > tope ? 'lo que haría falta para que entren las puestas: pasa el tope' : `comprimir ${N} en ${a} con ${fmtNum(h)} h extra por jornada`));
+  }
+  /* 2. una jornada más, sin extras */
+  add({nombre: `${N + 1} jornadas, cómoda (sin extras)`, jornadas: N + 1, he: 0}, 'más aire: una jornada más y nadie hace horas extra');
+  /* 3. jornada larga y corta */
+  if(!M.he) add({nombre: `Jornada larga: ${N} × ${H + 2} h`, jornadas: N, he: 2}, 'las mismas jornadas con 2 h extra cada una: entran más puestas');
+  if(H - 2 >= 8) add({nombre: `Jornada corta: ${N} × ${H - 2} h`, horasJornada: H - 2}, 'jornada de convenio más corta: el equipo sale más barato, entran menos puestas');
+  /* 4. cámaras */
+  add(M.camaras <= 1 ? {nombre: '2 cámaras', camaras: 2} : {nombre: '1 cámara', camaras: 1}, M.camaras <= 1 ? 'una segunda unidad de cámara con su operador y foquista' : 'una sola cámara');
+  /* 5. sin cada cámara especial que tiene el presupuesto */
+  camarasEspecialesDe(base).forEach(x => add({nombre: nombreSin(x), sin: [x.k]}, `cuánto pesa ${x.l.toLowerCase()} en el precio`));
+  /* 6. el equipo técnico más chico o más grande */
+  const areasMenos = ['03', '04', '05', '06', '07'].filter(c => (M.crew[c] || 0) >= 3);
+  if(areasMenos.length) add({nombre: `Equipo reducido (−${areasMenos.length} ${plural(areasMenos.length, 'persona')})`, areas: areasMenos.map(rubro => ({rubro, delta: -1}))},
+    'una persona menos en cada área grande (la cabeza del área no se toca)');
+  const areasMas = ['04', '05', '06'].filter(c => (M.crew[c] || 0) >= 1);
+  if(areasMas.length) add({nombre: `Equipo completo (+${areasMas.length} ${plural(areasMas.length, 'persona')})`, areas: areasMas.map(rubro => ({rubro, delta: 1}))},
+    'un asistente más en cámara, eléctrica y arte');
+  /* 7. elenco y extras */
+  if(M.extras >= 4){
+    const menos = Math.max(1, Math.round(M.extras / 2)), mas = Math.round(M.extras * 1.5);
+    add({nombre: `Menos extras (${menos})`, extras: menos}, 'la mitad de los extras');
+    add({nombre: `Más extras (${mas})`, extras: mas}, 'la mitad más de extras');
+  }
+  if(M.elenco >= 2) add({nombre: `Elenco más chico (${M.elenco - 1})`, elenco: M.elenco - 1}, 'un actor o actriz secundario menos');
+  /* 8. una sola locación */
+  const locs = locacionesDe(base);
+  if(locs.length >= 2){ const q = [...locs].sort((a, b) => totalLinea(b, base) - totalLinea(a, base))[0].concepto.replace(/^locaci[oó]n\s*[—-]\s*/i, '');
+    add({nombre: `Una sola locación (${q.charAt(0) + q.slice(1).toLowerCase()})`, locUnica: true}, 'todo en la locación principal: sale el resto'); }
+  /* 9. la post */
+  const r14 = base.rubros.find(r => r.codigo === '14');
+  if(r14 && r14.lineas.some(l => RE_POST_3D.test(l.concepto || ''))) add({nombre: 'Post simple: packshot filmado, sin 3D', post: 'simple'}, 'el packshot se filma en el set en vez de hacerse en 3D');
+  else if(r14) add({nombre: 'Post completa: packshot 3D, motion y diseño sonoro', post: 'completa'}, 'la post con todo (lo nuevo entra sin valor)');
+  return out;
+}
+function generarSugeridos(py = getPy(), o = {}){
+  if(!py) return [];
+  if(!apruebaProyecto()){ toast('Los ejercicios los arman el Productor Ejecutivo o Administración.'); return []; }
+  const base = baseDe(py); if(!base){ toast('Primero armá el presupuesto base'); return []; }
+  if(!py.baseId) py.baseId = base.id;
+  const ya = new Set((py.versiones || []).filter(esEjercicio).map(v => v.ejercicio.clave || claveEjercicio(v.ejercicio.pedido)));
+  const nuevos = [];
+  ejerciciosSugeridos(py, base).forEach(({o: pedido, porque}) => {
+    const {v} = crearEjercicio(py, base, pedido);
+    /* si no cambió nada (o ya existe el mismo), no se suma */
+    if(!Object.keys(v.ejercicio.pedido).length || ya.has(v.ejercicio.clave)) return;
+    ya.add(v.ejercicio.clave);
+    v.ejercicio.sugerido = true; v.ejercicio.porque = porque;
+    py.versiones.push(v); nuevos.push(v);
+  });
+  if(o.silencioso) return nuevos;
+  if(!nuevos.length){ toast('Los ejercicios sugeridos ya están todos'); return nuevos; }
+  DB.ui.tab = 'presu'; DB.ui.vista = 'interna';
+  toast(`${nuevos.length} ${plural(nuevos.length, 'ejercicio sugerido', 'ejercicios sugeridos')} contra la base: cada uno se edita o se borra como cualquier versión`,
+    {accion: 'Deshacer', fn: () => { py.versiones = py.versiones.filter(x => !nuevos.includes(x)); if(nuevos.some(x => x.id === py.elegidaId)) py.elegidaId = null;
+      if(nuevos.some(x => x.id === DB.ui.versionId)) DB.ui.versionId = base.id; R(); toast('Ejercicios sugeridos borrados'); }});
+  R();
+  compararEjercicios();
+  return nuevos;
+}
+/* Borrar un ejercicio (mientras se cotiza; un proyecto que no salió se guarda entero). */
+function borrarEjercicio(id){
+  const py = getPy(); if(!py) return;
+  if(!apruebaProyecto()){ toast('Los ejercicios los manejan el Productor Ejecutivo o Administración.'); return; }
+  const v = (py.versiones || []).find(x => x.id === id);
+  if(!v || !esEjercicio(v)){ toast('La base no se borra: es contra la que se comparan los ejercicios'); return; }
+  if(etapaDe(py) === 'nosalio'){ toast('Un proyecto que no salió queda guardado entero: reabrilo para borrar ejercicios'); return; }
+  const i = py.versiones.indexOf(v), eraElegida = py.elegidaId === id, abierta = DB.ui.versionId === id;
+  py.versiones.splice(i, 1);
+  if(eraElegida) py.elegidaId = null;
+  if(abierta) DB.ui.versionId = (baseDe(py) || {}).id || null;
+  const enComparar = modal && /Comparar ejercicios/.test(modal);
+  toast(`Ejercicio «${v.nombre}» borrado`, {accion: 'Deshacer', fn: () => { py.versiones.splice(Math.min(i, py.versiones.length), 0, v);
+    if(eraElegida) py.elegidaId = id; if(abierta) DB.ui.versionId = id; R(); }});
+  if(enComparar) compararEjercicios(); else R();
+}
+
 function nuevoEjercicio(){
   const py = getPy(); if(!py) return;
   if(!apruebaProyecto()){ toast('Los ejercicios los arman el Productor Ejecutivo o Administración.'); return; }
@@ -16748,10 +17174,13 @@ function nuevoEjercicio(){
   if(!origen){ toast('Primero armá el presupuesto base'); return; }
   const M = medidasVersion(py, origen), cfg = py.configRodaje || nuevaConfigRodaje();
   const areaSel = (nm) => `<select name="${nm}"><option value="">— ningún área —</option>${Object.entries(AREA_CORTA).map(([k, l]) => `<option value="${k}">${esc(l)} (${M.crew[k] || 0})</option>`).join('')}</select>`;
-  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:600px">
+  const cams = camarasEspecialesDe(origen), r14 = origen.rubros.find(r => r.codigo === '14'), con3d = r14 && r14.lineas.some(l => RE_POST_3D.test(l.concepto || ''));
+  const chk = (nm, t) => `<label class="ej-chk"><input type="checkbox" name="${nm}" style="width:auto;flex:none"> <span>${t}</span></label>`;
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:620px">
     <h3>Nuevo ejercicio</h3><div class="mbody">
       <div class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Otra manera de hacer el mismo trabajo, para comparar el precio.
-        Es una versión más del presupuesto: la de origen queda intacta y después se edita a mano como cualquier otra.</div>
+        Es una versión más del presupuesto: la de origen queda intacta y después se edita a mano como cualquier otra.
+        ${enCotizacion(py) ? 'Para probar muchas de una, usá <b>Ejercicios sugeridos</b>.' : ''}</div>
       <div class="grid2">
         ${campo('Nombre (si lo dejás vacío, se arma con los cambios)', 'nombre', '', 'text', 'placeholder="1 jornada con horas extra"')}
         ${sel('Parte de', 'origen', origen.id, fam.map(x => ({v: x.id, l: (x === baseDe(py) ? 'Base · ' : '') + x.nombre})))}
@@ -16759,34 +17188,46 @@ function nuevoEjercicio(){
       <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Cambios rápidos (vacío = igual que el de origen)</div>
       <div class="grid2">
         ${campo(`Jornadas de rodaje (hoy ${M.jornadas})`, 'jornadas', '', 'number', `min="1" step="1" placeholder="${M.jornadas}"`)}
-        ${campo(`Horas extra por jornada (jornada de ${horasJornadaDe(cfg)} h · ${esc(escalaTexto(cfg))})`, 'he', '', 'number', `min="0" step="0.5" placeholder="se calcula si comprimís"`)}
+        ${campo(`Horas extra por jornada (jornada de ${M.horasJornada} h · ${esc(escalaTexto(cfg))} · tope ${fmtNum(topeHE(cfg))} h)`, 'he', '', 'number', `min="0" step="0.5" placeholder="se calcula si comprimís"`)}
+        ${campo(`Horas de la jornada (hoy ${M.horasJornada} h; el convenio se recalcula)`, 'horasJornada', '', 'number', `min="8" step="1" placeholder="${M.horasJornada}"`)}
         ${campo(`Cámaras (hoy ${M.camaras})`, 'camaras', '', 'number', `min="0" step="1" placeholder="${M.camaras}"`)}
         ${campo(`Elenco: actores y actrices (hoy ${M.elenco})`, 'elenco', '', 'number', `min="0" step="1" placeholder="${M.elenco}"`)}
         ${campo(`Extras (hoy ${M.extras})`, 'extras', '', 'number', `min="0" step="1" placeholder="${M.extras}"`)}
-        <div></div>
         <label class="f"><span>Equipo técnico: área</span>${areaSel('area1')}</label>
         ${campo('Personas más (+) o menos (−)', 'delta1', '', 'number', 'step="1" placeholder="+2 / −1"')}
         <label class="f"><span>Otra área</span>${areaSel('area2')}</label>
         ${campo('Personas más (+) o menos (−)', 'delta2', '', 'number', 'step="1" placeholder="+1 / −1"')}
       </div>
+      ${cams.length || locacionesDe(origen).length >= 2 || r14 ? `<div style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:12px">
+        ${cams.map(x => chk('sin_' + x.k, esc(nombreSin(x)))).join('')}
+        ${locacionesDe(origen).length >= 2 ? chk('locUnica', 'Una sola locación') : ''}
+        ${r14 ? chk('post', con3d ? 'Post simple (packshot filmado, sin 3D)' : 'Post completa (packshot 3D, motion, diseño sonoro)') : ''}
+      </div>` : ''}
       <div class="sicabox" style="margin-top:12px;font-size:12px;line-height:1.5">Al comprimir jornadas, los días de cada línea del rodaje pasan a las jornadas nuevas
         y a cada persona del equipo se le suman sus horas extra con la escala del convenio (en líneas «Horas extra — …» que se pueden tocar).
-        Si no ponés las horas, se calcula la mitad de lo que se pierde (hasta 8 h): ${M.jornadas > 1 ? `de ${M.jornadas} a ${M.jornadas - 1} serían ${sugerirHE(M.jornadas, M.jornadas - 1, cfg)} h` : 'con una jornada no hay nada que comprimir'}.</div>
+        Si no ponés las horas, se calcula la mitad de lo que se pierde (hasta 8 h): ${M.jornadas > 1 ? `de ${M.jornadas} a ${M.jornadas - 1} serían ${sugerirHE(M.jornadas, M.jornadas - 1, cfg)} h` : 'con una jornada no hay nada que comprimir'}.
+        Si pasa el tope de ${fmtNum(topeHE(cfg))} h extra, el descanso de ${fmtNum(n(cfg.minTurnaround) || 12)} h entre jornadas o no entran las puestas del desglose, el ejercicio lo avisa.</div>
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
       <button class="btn pri" onclick="confirmarEjercicio()">Crear el ejercicio</button></div>
   </div></div>`);
 }
-function confirmarEjercicio(){
-  const py = getPy(), d = datos();
+function confirmarEjercicio(o){
+  const py = getPy(), d = o || datos();
+  /* los tildes se leen del cuadro (datos() trae «on» aunque estén destildados) */
+  const tildado = nm => { try{ const el = document.querySelector(`.mod input[name="${nm}"]`); return !!(el && el.checked); }catch(e){ return false; } };
   const origen = (py.versiones || []).find(x => x.id === d.origen) || baseDe(py);
-  const {v, rep} = crearEjercicio(py, origen, {nombre: d.nombre, jornadas: d.jornadas, he: d.he, camaras: d.camaras, elenco: d.elenco, extras: d.extras,
-    areas: [{rubro: d.area1, delta: d.delta1}, {rubro: d.area2, delta: d.delta2}]});
+  const cams = camarasEspecialesDe(origen);
+  const r14 = origen.rubros.find(r => r.codigo === '14'), con3d = r14 && r14.lineas.some(l => RE_POST_3D.test(l.concepto || ''));
+  const {v, rep} = crearEjercicio(py, origen, {nombre: d.nombre, jornadas: d.jornadas, he: d.he, horasJornada: d.horasJornada, camaras: d.camaras, elenco: d.elenco, extras: d.extras,
+    areas: [{rubro: d.area1, delta: d.delta1}, {rubro: d.area2, delta: d.delta2}],
+    sin: d.sin || cams.filter(x => tildado('sin_' + x.k)).map(x => x.k), locUnica: d.locUnica != null ? d.locUnica : tildado('locUnica'),
+    post: d.post != null ? d.post : tildado('post') ? (con3d ? 'simple' : 'completa') : ''});
   if(!py.baseId && baseDe(py)) py.baseId = baseDe(py).id;
   py.versiones.push(v); DB.ui.versionId = v.id; DB.ui.tab = 'presu'; DB.ui.vista = 'interna';
   cerrar();
-  const c = cambiosVsBase(py, v);
-  toast(`Ejercicio «${v.nombre}»: ${c.totalTxt}${rep.sinValor ? ` · ${rep.sinValor} sin valor no llevan horas extra` : ''}`,
+  const c = cambiosVsBase(py, v), av = avisosEjercicio(py, v);
+  toast(`Ejercicio «${v.nombre}»: ${c.totalTxt}${rep.sinValor ? ` · ${rep.sinValor} sin valor no llevan horas extra` : ''}${av.length ? ` · ⚠ ${av[0].t}` : ''}`,
     {accion: 'Deshacer', fn: () => { py.versiones = py.versiones.filter(x => x !== v); DB.ui.versionId = origen.id; R(); toast('Ejercicio borrado'); }});
   R();
 }
@@ -16800,62 +17241,89 @@ function elegirEjercicio(id){
     {accion: 'Deshacer', fn: () => { py.elegidaId = antes; R(); }});
   R();
 }
+const avisosHTML = av => av.map(a => `<span class="ej-aviso ${a.nivel}">⚠ ${esc(a.t)}</span>`).join('');
 /* la barra de los ejercicios, arriba del presupuesto */
 function panelEjercicios(py, v){
   const fam = familiaCotiz(py);
   if(!fam.length || (!enCotizacion(py) && fam.length < 2)) return '';
-  const base = baseDe(py), u = getUsuario(), margen = veMargen(u), puedo = apruebaProyecto(u);
+  const base = baseDe(py), u = getUsuario(), margen = veMargen(u), puedo = apruebaProyecto(u), cotiz = etapaDe(py) === 'cotizacion';
   const esFam = fam.includes(v);
-  const tab = x => { const R = calcular(x);
-    return `<button class="ejtab${x === v ? ' on' : ''}" onclick="selVersion('${x.id}')" title="${esc(x === base ? 'La base: el primer presupuesto' : cambiosVsBase(py, x).texto)}">
-      <span>${x === base ? 'Base · ' : ''}${esc(x.nombre)}</span><b>${fmt(totalVisible(R, u), x.monedaBase)}</b>
+  const A = (py.desglose && (py.desglose.escenas || []).length && !planPorEscenas(py)) ? analizarDesglose(py) : null;
+  const tab = x => { const R = calcular(x), av = x === base ? [] : avisosEjercicio(py, x, A);
+    return `<button class="ejtab${x === v ? ' on' : ''}" onclick="selVersion('${x.id}')" title="${esc(x === base ? 'La base: el primer presupuesto' : cambiosVsBase(py, x).texto + (av.length ? ' · ⚠ ' + av.map(a => a.t).join(' · ') : ''))}">
+      <span>${x === base ? 'Base · ' : ''}${esc(x.nombre)}${av.some(a => a.nivel === 'mal') ? ' <i class="ej-warn" aria-label="rompe una regla">⚠</i>' : av.length ? ' <i class="ej-warn suave" aria-label="con avisos">⚠</i>' : ''}</span><b>${fmt(totalVisible(R, u), x.monedaBase)}</b>
       ${py.elegidaId === x.id ? '<em class="eleg">la que se presenta</em>' : ''}</button>`; };
   const c = esFam && v !== base ? cambiosVsBase(py, v) : null;
+  const av = c ? avisosEjercicio(py, v, A) : [];
   return `<div class="card noprint"><h3>${enCotizacion(py) ? 'Ejercicios de cotización' : 'Ejercicios'}
-      <span class="spacer"></span><span class="muted" style="font-size:10px;text-transform:none;letter-spacing:0">${margen ? 'total al cliente' : 'costo de producción'}</span></h3>
+      <span class="spacer"></span><span class="muted" style="font-size:10px;text-transform:none;letter-spacing:0">${margen ? 'total al cliente' : 'costo de producción'} · ${fam.length - 1} ${plural(fam.length - 1, 'ejercicio')}</span></h3>
     <div class="ejbar">${fam.map(tab).join('')}
       <span class="spacer"></span>
       ${fam.length > 1 ? `<button class="btn sm" onclick="compararEjercicios()">Comparar</button>` : ''}
+      ${puedo && cotiz ? `<button class="btn sm" onclick="generarSugeridos()" title="Un juego de ejercicios desde la base: menos jornadas con horas extra, una más sin extras, jornada larga o corta, otra cámara, sin cada cámara especial, el equipo, los extras, una sola locación y la post">✦ Ejercicios sugeridos</button>` : ''}
       ${puedo ? `<button class="btn sm pri" onclick="nuevoEjercicio()">+ Nuevo ejercicio</button>` : ''}
     </div>
     ${c ? `<div class="ejcambios"><span class="muted">Para llegar a este precio:</span> ${c.items.length ? c.items.map(t => `<b>${esc(t)}</b>`).join(' · ') : 'todavía igual que la base (cambiá lo que quieras abajo)'}
         · <b class="${c.dif < 0 ? 'neg' : c.dif > 0 ? 'pos' : ''}">${esc(c.totalTxt)}</b>
-        ${puedo && py.elegidaId !== v.id ? ` <button class="btn sm" style="margin-left:6px" onclick="elegirEjercicio('${v.id}')">Elegir esta para presentar</button>` : ''}</div>`
+        ${v.ejercicio && v.ejercicio.porque ? `<span class="muted"> · sugerido: ${esc(v.ejercicio.porque)}</span>` : ''}
+        ${puedo && py.elegidaId !== v.id ? ` <button class="btn sm" style="margin-left:6px" onclick="elegirEjercicio('${v.id}')">Elegir esta para presentar</button>` : ''}
+        ${puedo && cotiz ? ` <button class="btn sm dgr" onclick="borrarEjercicio('${v.id}')">Borrar este ejercicio</button>` : ''}
+        ${av.length ? `<div class="ej-avisos">${avisosHTML(av)}</div>` : ''}</div>`
       : esFam ? `<div class="ejcambios muted">${v === base ? 'Esta es la <b>base</b>: los ejercicios se comparan contra ella.' : ''}
         ${puedo && fam.length > 1 && py.elegidaId !== v.id ? `<button class="btn sm" style="margin-left:6px" onclick="elegirEjercicio('${v.id}')">Elegir esta para presentar</button>` : ''}
-        ${!fam.some(x => x !== base) && puedo ? ' Probá otra manera de hacerlo (una jornada con horas extra, otra cámara, menos extras) con <b>+ Nuevo ejercicio</b>.' : ''}</div>` : ''}
+        ${!fam.some(x => x !== base) && puedo ? ' Probá otra manera de hacerlo (una jornada con horas extra, otra cámara, menos extras) con <b>+ Nuevo ejercicio</b>, o muchas de una con <b>Ejercicios sugeridos</b>.' : ''}</div>` : ''}
   </div>`;
 }
-/* todos lado a lado */
-function filasComparacion(py, u = getUsuario()){
+/* todos, uno por renglón (con muchos ejercicios se leen mejor así), ordenables */
+function filasComparacion(py, u = getUsuario(), orden = null){
   const fam = familiaCotiz(py, u), base = baseDe(py);
-  return fam.map(v => { const R = calcular(v), M = medidasVersion(py, v), C = cambiosVsBase(py, v, base, u);
-    return {v, esBase: v === base, elegida: py.elegidaId === v.id, total: R.total, fee: R.fee, costo: R.subtotal + R.contingencia,
-      visible: totalVisible(R, u), M, C}; });
+  const A = (py.desglose && (py.desglose.escenas || []).length && !planPorEscenas(py)) ? analizarDesglose(py) : null;
+  const F = fam.map((v, i) => { const R = calcular(v), M = medidasVersion(py, v), C = cambiosVsBase(py, v, base, u);
+    return {v, i, esBase: v === base, elegida: py.elegidaId === v.id, total: R.total, fee: R.fee, costo: R.subtotal + R.contingencia,
+      visible: totalVisible(R, u), M, C, avisos: v === base ? [] : avisosEjercicio(py, v, A)}; });
+  const o = orden || 'orden';
+  const cmp = {orden: (a, b) => a.i - b.i, total: (a, b) => a.visible - b.visible, '-total': (a, b) => b.visible - a.visible,
+    nombre: (a, b) => (a.esBase ? -1 : b.esBase ? 1 : a.v.nombre.localeCompare(b.v.nombre, 'es')), pct: (a, b) => a.C.pct - b.C.pct}[o] || ((a, b) => a.i - b.i);
+  return [...F].sort(cmp);
+}
+function ordenarComparacion(k){
+  const act = DB.ui.cmpOrden || 'orden';
+  DB.ui.cmpOrden = k === 'total' && act === 'total' ? '-total' : k === 'total' && act === '-total' ? 'orden' : k === act ? 'orden' : k;
+  compararEjercicios();
 }
 function compararEjercicios(){
-  const py = getPy(), u = getUsuario(), margen = veMargen(u), F = filasComparacion(py, u);
+  const py = getPy(), u = getUsuario(), margen = veMargen(u), orden = DB.ui.cmpOrden || 'orden', F = filasComparacion(py, u, orden);
   if(F.length < 2){ toast('Todavía no hay ejercicios para comparar'); return; }
-  const mb = F[0].v.monedaBase, fila = (t, f) => `<tr><td>${t}</td>${F.map(x => `<td>${f(x)}</td>`).join('')}</tr>`;
-  const minimo = Math.min(...F.map(x => x.visible));
-  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:min(1100px,96vw)">
-    <h3>Comparar ejercicios</h3><div class="mbody">
-      <div class="scrollx"><table class="cmp">
-        <thead><tr><th></th>${F.map(x => `<th>${x.esBase ? 'Base<br>' : ''}${esc(x.v.nombre)}${x.elegida ? '<br><span class="eleg">la que se presenta</span>' : ''}</th>`).join('')}</tr></thead>
-        <tbody>
-          ${margen ? fila('<b>Total al cliente</b> (con IVA)', x => `<b${x.visible === minimo ? ' style="color:var(--ok)"' : ''}>${fmt(x.total, mb)}</b>`) : ''}
-          ${margen ? fila('Fee (margen)', x => fmt(x.fee, mb)) : ''}
-          ${fila(margen ? 'Costo de producción' : '<b>Costo de producción</b>', x => margen ? fmt(x.costo, mb) : `<b${x.visible === minimo ? ' style="color:var(--ok)"' : ''}>${fmt(x.costo, mb)}</b>`)}
-          ${fila('Contra la base', x => x.esBase ? '—' : `${x.C.pct > 0 ? '+' : x.C.pct < 0 ? '−' : ''}${Math.abs(x.C.pct).toLocaleString('es-AR')} %`)}
-          ${fila('Jornadas', x => `${x.M.jornadas}${x.M.he ? ` <span class="muted">+${x.M.he} h extra</span>` : ''}`)}
-          ${fila('Equipo técnico', x => `${fmtC(x.M.personas)} ${plural(x.M.personas, 'persona')}`)}
-          ${fila('Cámaras', x => x.M.camaras)}
-          ${fila('Elenco · extras', x => `${x.M.elenco} · ${x.M.extras}`)}
-          <tr><td>Lo que cambia</td>${F.map(x => `<td class="txt">${x.esBase ? 'Es la base' : x.C.items.length ? x.C.items.map(esc).join('<br>') : 'Igual que la base'}</td>`).join('')}</tr>
-          ${apruebaProyecto(u) ? `<tr><td></td>${F.map(x => `<td>${x.elegida ? '<span class="eleg">Elegida</span>' : `<button class="btn sm" onclick="elegirEjercicio('${x.v.id}')">Elegir</button>`}</td>`).join('')}</tr>` : ''}
-        </tbody></table></div>
+  const mb = F[0].v.monedaBase, puedo = apruebaProyecto(u), cotiz = etapaDe(py) === 'cotizacion';
+  const minimo = Math.min(...F.map(x => x.visible)), maximo = Math.max(...F.map(x => x.visible));
+  const flecha = k => orden === k ? ' ▲' : orden === '-' + k ? ' ▼' : '';
+  const th = (k, t, extra = '') => `<th${extra}>${k ? `<button class="cmp-ord" onclick="ordenarComparacion('${k}')" title="Ordenar">${t}${flecha(k)}</button>` : t}</th>`;
+  const barra = x => maximo > minimo ? `<span class="cmp-bar" style="width:${Math.round(8 + 92 * (x.visible - minimo) / (maximo - minimo))}%"></span>` : '';
+  const pct = x => x.esBase ? '—' : `${x.C.pct > 0 ? '+' : x.C.pct < 0 ? '−' : ''}${Math.abs(x.C.pct).toLocaleString('es-AR')} %`;
+  const fila = x => `<tr class="${x.esBase ? 'es-base' : ''}${x.elegida ? ' es-eleg' : ''}">
+    <td class="cmp-nom"><b>${x.esBase ? 'Base · ' : ''}${esc(x.v.nombre)}</b>${x.elegida ? ' <span class="eleg">la que se presenta</span>' : ''}${x.v.ejercicio && x.v.ejercicio.sugerido ? ' <span class="chip c-otr">sugerido</span>' : ''}
+      <div class="cmp-cambia">${x.esBase ? 'Es la base' : x.C.items.length ? x.C.items.map(esc).join(' · ') : 'Igual que la base'}</div>${x.avisos.length ? `<div class="ej-avisos">${avisosHTML(x.avisos)}</div>` : ''}</td>
+    ${margen ? `<td class="cmp-num"><b${x.visible === minimo ? ' style="color:var(--ok)"' : ''}>${fmt(x.total, mb)}</b>${barra(x)}</td><td class="cmp-num">${fmt(x.fee, mb)}</td><td class="cmp-num">${fmt(x.costo, mb)}</td>`
+      : `<td class="cmp-num"><b${x.visible === minimo ? ' style="color:var(--ok)"' : ''}>${fmt(x.costo, mb)}</b>${barra(x)}</td>`}
+    <td class="cmp-num ${x.C.pct < 0 ? 'neg' : x.C.pct > 0 ? 'pos' : ''}">${pct(x)}</td>
+    <td class="cmp-num">${x.M.jornadas}${x.M.he ? ` <span class="muted">+${fmtNum(x.M.he)} h</span>` : ''}${x.M.horasJornada !== horasJornadaDe(py.configRodaje) ? ` <span class="muted">· ${x.M.horasJornada} h</span>` : ''}</td>
+    <td class="cmp-num">${fmtC(x.M.personas)}</td>
+    <td class="cmp-num">${x.M.camaras}</td>
+    <td class="cmp-num">${x.M.elenco} · ${x.M.extras}</td>
+    ${puedo ? `<td><div class="cmp-acc">${x.elegida ? '<span class="eleg">Elegida</span>' : `<button class="btn sm" onclick="elegirEjercicio('${x.v.id}')">Elegir</button>`}
+      ${!x.esBase && cotiz ? `<button class="btn sm dgr" onclick="borrarEjercicio('${x.v.id}')" title="Borrar este ejercicio" aria-label="Borrar ${esc(x.v.nombre)}">✕</button>` : ''}</div></td>` : ''}
+  </tr>`;
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:min(1240px,97vw)">
+    <h3>Comparar ejercicios <span class="muted" style="font-size:11px;font-weight:400;text-transform:none;letter-spacing:0">· ${F.length - 1} contra la base · tocá un título para ordenar</span></h3><div class="mbody">
+      <div class="scrollx"><table class="cmp cmp-filas">
+        <thead><tr>${th('nombre', 'Ejercicio · Lo que cambia')}
+          ${margen ? `${th('total', '<b>Total al cliente</b> (con IVA)', ' class="cmp-num"')}<th class="cmp-num">Fee (margen)</th><th class="cmp-num">Costo de producción</th>`
+            : th('total', '<b>Costo de producción</b>', ' class="cmp-num"')}
+          ${th('pct', 'Contra la base', ' class="cmp-num"')}<th class="cmp-num">Jornadas</th><th class="cmp-num">Equipo técnico</th><th class="cmp-num">Cámaras</th><th class="cmp-num">Elenco · extras</th>
+          ${puedo ? '<th></th>' : ''}</tr></thead>
+        <tbody>${F.map(fila).join('')}</tbody></table></div>
       ${margen ? '' : '<div class="muted" style="font-size:11.5px;margin-top:8px">Ves el costo de producción. El precio al cliente lo arman el PE y Administración.</div>'}
-    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div></div></div>`);
+    </div><div class="mfoot">${puedo && cotiz ? `<button class="btn" onclick="cerrar();generarSugeridos()">✦ Ejercicios sugeridos</button>` : ''}<div style="flex:1"></div><button class="btn" onclick="cerrar()">Cerrar</button></div></div></div>`);
 }
 
 /* ======================  APROBAR, NO SALIÓ, REABRIR  ====================== */
@@ -16903,7 +17371,10 @@ function confirmarAprobacion(o){
   if((v.nivel || 'produccion') === 'produccion') py.versionRodaje = v.id;
   /* si lo aprobado es un ejercicio con otras jornadas, el proyecto pasa a tener ésas */
   antes.jornadas = py.jornadas;
-  const J = medidasVersion(py, v).jornadas; if(J) py.jornadas = J;
+  const MV = medidasVersion(py, v), J = MV.jornadas; if(J) py.jornadas = J;
+  /* …y si probaba otra jornada (corta o larga de convenio), el rodaje pasa a esa */
+  antes.horasJornada = (py.configRodaje || {}).horasJornada;
+  if(MV.horasJornada !== horasJornadaDe(py.configRodaje)){ py.configRodaje ||= nuevaConfigRodaje(); py.configRodaje.horasJornada = MV.horasJornada; }
   py.etapa = 'aprobado';
   /* sin montos: esto viaja con el presupuesto de producción, que lee el jefe */
   py.aprobado = {fecha: f, quien, versionId: snap.id, deId: v.id};
@@ -16921,6 +17392,7 @@ function confirmarAprobacion(o){
   toast(`Proyecto aprobado: «${snap.nombre}» quedó congelada y el proyecto está en curso`, {accion: 'Deshacer', fn: () => {
     py.versiones = py.versiones.filter(x => x !== snap); v.estado = antes.estado;
     py.versionRodaje = antes.versionRodaje; py.etapa = antes.etapa; py.aprobado = antes.aprobado; py.jornadas = antes.jornadas;
+    if(py.configRodaje && antes.horasJornada != null) py.configRodaje.horasJornada = antes.horasJornada;
     py.etapaHist = (py.etapaHist || []).slice(0, antes.hist);
     py.tareas = tareasDe(py).filter(t => !nuevas.includes(t.id));
     DB.ui.versionId = antes.versionId; DB.ui.tab = antes.tab;
@@ -16944,6 +17416,10 @@ function noSalio(){
         presupuesto y sus ejercicios. Se puede reabrir cuando quieras.</div>
       <label class="f"><span>Por qué (opcional)</span>
         <textarea name="motivo" rows="2" placeholder="Lo ganó otra productora · se cayó la campaña · el precio"></textarea></label>
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:12px;cursor:pointer">
+        <input type="checkbox" name="bajar" checked style="width:auto;flex:none;margin-top:2px">
+        <span style="font-size:12.5px;line-height:1.5"><b>Bajar la cotización</b>: un Excel con la base y los ${Math.max(0, versionesDeCotizacion(py).length - 1)} ejercicios
+          (rubros, líneas, totales y fee) y el resumen que los compara. El PDF de la cotización se baja después desde el resumen.</span></label>
     </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
       <button class="btn pri" onclick="confirmarNoSalio()">Marcar que no salió</button></div></div></div>`);
 }
@@ -16951,14 +17427,162 @@ function confirmarNoSalio(o){
   const py = getPy(), d = o || datos(), u = getUsuario();
   if(!apruebaProyecto(u)) return;
   const antes = {etapa: py.etapa, noSalio: py.noSalio || null, hist: (py.etapaHist || []).length};
+  /* el tilde se lee del cuadro (datos() trae «on» aunque esté destildado) */
+  const bajarlo = o ? !!o.bajar : !!(document.querySelector('.mod input[name=bajar]') || {}).checked;
   py.etapa = 'nosalio';
+  /* no se borra nada: la base, los ejercicios, el desglose y las notas quedan como estaban */
   py.noSalio = {motivo: String(d.motivo || '').trim(), fecha: hoy(), quien: u ? u.nombre : ''};
   (py.etapaHist ||= []).push({de: antes.etapa, a: 'nosalio', fecha: hoy(), quien: py.noSalio.quien, motivo: py.noSalio.motivo});
   DB.ui.tab = 'resumen';
   if(modal) cerrar();
-  toast('Quedó como «No salió»', {accion: 'Deshacer', fn: () => { py.etapa = antes.etapa; py.noSalio = antes.noSalio;
+  toast('Quedó como «No salió»: guardado entero, se puede reabrir', {accion: 'Deshacer', fn: () => { py.etapa = antes.etapa; py.noSalio = antes.noSalio;
     py.etapaHist = (py.etapaHist || []).slice(0, antes.hist); subirEtapa(py); R(); }});
   subirEtapa(py); R();
+  if(bajarlo) bajarCotizacion();
+}
+/* ===================  BAJAR LA COTIZACIÓN (la que no salió, o cualquiera)  ===================
+   Un Excel de verdad (el mismo armador que las rendiciones) con todo lo que
+   se cotizó: un Resumen que compara la base y cada ejercicio (costo, fee,
+   IVA, total, contra la base, jornadas, equipo, lo que cambia y los avisos),
+   una hoja por versión con sus rubros, sus líneas, los subtotales como
+   fórmulas y los totales con el fee, y el desglose de lo que pedía el
+   material. Lleva el margen: lo bajan sólo el PE y Administración. La
+   cotización en PDF de la elegida sale de la vista Cotización (imprimir). */
+function versionesDeCotizacion(py){
+  const base = baseDe(py), vs = py.versiones || [];
+  return [...(base ? [base] : []), ...vs.filter(v => esEjercicio(v) && v !== base), ...vs.filter(v => v !== base && !esEjercicio(v))];
+}
+function nombreHojaUnico(nombre, usados){
+  let b = String(nombre || 'Hoja').replace(/[\[\]:*?\/\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 31) || 'Hoja', x = b, k = 2;
+  while(usados.has(x.toLowerCase())){ const suf = ` (${k++})`; x = b.slice(0, 31 - suf.length) + suf; }
+  usados.add(x.toLowerCase());
+  return x;
+}
+function hojasCotizacion(py){
+  const pr = prDe(py) || getPr() || {}, base = baseDe(py), eleg = versionElegida(py), et = etapaDe(py);
+  const vs = versionesDeCotizacion(py);
+  const B = v => ({v, s: 1}), P = v => ({v: Math.round(n(v) * 100) / 100, s: 2}), PB = v => ({v: Math.round(n(v) * 100) / 100, s: 4}), H = v => ({v, s: 6});
+  const A = (py.desglose && (py.desglose.escenas || []).length) ? analizarDesglose(py) : null;
+  const usados = new Set(['resumen', 'desglose']);
+  const hojasV = vs.map((v, i) => ({v, nombre: nombreHojaUnico(v === base ? 'Base' : `${i}. ${v.nombre}`, usados)}));
+  /* --- el resumen: todas lado a lado --- */
+  const filasCmp = vs.map(v => { const R = calcular(v), M = medidasVersion(py, v), C = cambiosVsBase(py, v, base, getUsuario());
+    return {v, R, M, C, av: v === base ? [] : avisosEjercicio(py, v, A && !planPorEscenas(py) ? A : null)}; });
+  const RB = base ? calcular(base) : null;
+  const resumen = [
+    [{v: `Cotización — ${py.nombre || ''}`, s: 5}],
+    [],
+    [B('Productora'), pr.nombre || ''],
+    [B('Cliente'), py.cliente || ''],
+    [B('Agencia'), py.agencia || ''],
+    [B('Producto'), py.producto || ''],
+    [B('Derechos'), [py.medios, py.territorio, py.plazo].filter(Boolean).join(' · ')],
+    [B('Etapa'), ETAPA(et).l],
+    ...(py.noSalio ? [[B('No salió'), py.noSalio.fecha ? {fecha: py.noSalio.fecha} : '', py.noSalio.quien || ''], [B('Motivo'), py.noSalio.motivo || '—']] : []),
+    [B('La que se presentó'), eleg ? eleg.nombre : (base ? base.nombre + ' (la base: no se eligió otra)' : '—')],
+    [B('Bajado'), {fecha: hoy()}, (getUsuario() || {}).nombre || ''],
+    [],
+    [H('Versión'), H('Es'), H('Costo directo'), H('Contingencia'), H('Costo de producción'), H('Fee'), H('IIBB'), H('IVA'), H('Total al cliente'), H('Contra la base'),
+      H('Jornadas'), H('Horas extra por jornada'), H('Horas de jornada'), H('Cámaras'), H('Equipo técnico'), H('Elenco'), H('Extras'), H('Lo que cambia'), H('Avisos')],
+    ...filasCmp.map(x => [x.v === eleg ? {v: x.v.nombre + ' (la que se presentó)', s: 1} : x.v.nombre,
+      x.v === base ? 'Base' : esEjercicio(x.v) ? (x.v.ejercicio.sugerido ? 'Ejercicio sugerido' : 'Ejercicio') : NIVEL(x.v.nivel).l,
+      P(x.R.subtotal), P(x.R.contingencia), P(x.R.subtotal + x.R.contingencia), P(x.R.fee), P(x.R.iibb), P(x.R.iva), PB(x.R.total),
+      x.v === base || !RB || !RB.total ? '—' : {v: Math.round((x.R.total - RB.total) / RB.total * 1000) / 1000, s: 7},
+      x.M.jornadas, x.M.he || 0, x.M.horasJornada, x.M.camaras, x.M.personas, x.M.elenco, x.M.extras,
+      x.v === base ? 'Es la base' : (x.C.items.join(' · ') || 'Igual que la base'), x.av.map(a => a.t).join(' · ')]),
+    [],
+    ...((py.etapaHist || []).length ? [[H('Historia'), H('Fecha'), H('Quién'), H('Motivo')],
+      ...py.etapaHist.map(h => [`${ETAPA(h.de || 'cotizacion').l} → ${ETAPA(h.a).l}`, h.fecha ? {fecha: h.fecha} : '', h.quien || '', h.motivo || ''])] : []),
+  ];
+  /* --- una hoja por versión --- */
+  const hojaVersion = v => {
+    const R = calcular(v), mb = v.monedaBase || 'ARS', C = v === base ? null : cambiosVsBase(py, v, base, getUsuario());
+    const f = [
+      [{v: v.nombre, s: 5}],
+      [B('Proyecto'), py.nombre || ''],
+      [B('Versión'), v === base ? 'Base' : esEjercicio(v) ? 'Ejercicio' : NIVEL(v.nivel).l, v.estado || ''],
+      [B('Fecha'), v.fecha ? {fecha: v.fecha} : ''],
+      [B('Moneda'), mb, `TC ${v.tcNombre || ''} ${fmtC(v.tc)}`],
+      ...(C ? [[B('Lo que cambia contra la base'), C.items.join(' · ') || 'Igual que la base']] : []),
+      ...(v.ejercicio && v.ejercicio.porque ? [[B('Por qué'), v.ejercicio.porque]] : []),
+      [],
+      [H('Cód.'), H('Rubro / concepto'), H('Unidad'), H('Cantidad'), H('Días'), H('Valor unitario'), H('Moneda'), H('Total ' + mb), H('Notas')]];
+    const subt = [];
+    v.rubros.forEach(r => {
+      const ls = r.lineas.filter(l => String(l.concepto || '').trim());
+      if(!ls.length) return;
+      f.push([B(r.codigo), B(r.nombre)]);
+      const ini = f.length + 1;
+      ls.forEach(l => f.push(['', l.concepto, l.unidad || '', n(l.cantidad), n(l.dias), P(l.valorUnit), l.moneda || 'ARS', P(totalLinea(l, v)), l.notas || '']));
+      const fin = f.length;
+      f.push(['', '', '', '', '', '', B('Subtotal'), {v: Math.round(totalRubro({lineas: ls}, v) * 100) / 100, s: 4, f: `SUM(H${ini}:H${fin})`}]);
+      subt.push('H' + f.length);
+      f.push([]);
+    });
+    const tot = (t, val, pct) => ['', B(t), '', '', '', '', pct != null ? `${n(pct)} %` : '', PB(val)];
+    f.push(['', '', '', '', '', '', B('Líneas'), {v: Math.round(R.subtotalLineas * 100) / 100, s: 4, f: subt.length ? subt.join('+') : '0'}]);
+    if(R.cargas) f.push(tot('Cargas sociales SICA', R.cargas, v.capas.cargas));
+    if(R.cargasElenco) f.push(tot('Cargas del elenco (AAA)', R.cargasElenco, v.capas.cargasElenco));
+    f.push(tot('Costo directo', R.subtotal));
+    f.push(tot('Contingencia', R.contingencia, v.capas.contingencia));
+    f.push(tot('Costo de producción', R.subtotal + R.contingencia));
+    f.push(tot('Fee de producción (margen)', R.fee, v.capas.fee));
+    if(R.iibb) f.push(tot('Ingresos Brutos', R.iibb, v.capas.iibb));
+    f.push(tot('Neto', R.neto));
+    if(R.exento) f.push(tot('Exento de IVA', R.exento));
+    f.push(tot('IVA', R.iva, v.capas.iva));
+    f.push(tot('Total al cliente', R.total));
+    const cond = v.condiciones || {};
+    const llenas = COND_CAMPOS.filter(x => String(cond[x.k] || '').trim());
+    if(llenas.length){ f.push([]); f.push([H('Condiciones')]); llenas.forEach(x => f.push([B(x.l), String(cond[x.k]).replace(/\s*\n\s*/g, ' · ')])); }
+    return f;
+  };
+  /* --- el desglose: lo que pedía el material --- */
+  const desglose = A ? [
+    [{v: 'Lo que pedía el material', s: 5}],
+    [B('Puestas'), A.est.txt],
+    [B('Cómo se estimó'), A.est.porque],
+    [],
+    [H('Bloque'), H('Int/Ext'), H('Locación'), H('Momento'), H('Puestas'), H('Peso')],
+    ...A.est.escenas.map(e => [e.numero, e.intExt, e.locacion, e.momento, e.puestas.length, Math.round(e.peso * 100) / 100]),
+    [],
+    [H('Categoría'), H('Qué'), H('Confianza'), H('De dónde sale'), H('Nota')],
+    ...CATS_DET.slice(1).flatMap(c => A.grupos[c.k].map(x => [c.l, x.l + (x.cantidad ? ` × ${x.cantidad}` : '') + (x.sub ? ` (${x.sub})` : ''), x.conf,
+      (x.evid || []).map(e => (e.esc ? `bloque ${e.esc}: ` : '') + '«' + e.frase + '»').join(' · '), x.nota || ''])),
+  ] : null;
+  return [{nombre: 'Resumen', filas: resumen, anchos: [40, 18, 16, 14, 18, 14, 12, 14, 18, 12, 10, 12, 10, 9, 12, 9, 9, 60, 60]},
+    ...hojasV.map(h => ({nombre: h.nombre, filas: hojaVersion(h.v), anchos: [7, 46, 10, 10, 8, 16, 9, 18, 50]})),
+    ...(desglose ? [{nombre: 'Desglose', filas: desglose, anchos: [24, 40, 12, 70, 40, 8]}] : [])];
+}
+const xlsxCotizacion = py => libroXlsx(hojasCotizacion(py));
+const nombreArchivoCotiz = py => `Cotizacion-${String(py.nombre || 'proyecto').replace(/[^\wáéíóúñÁÉÍÓÚÑ-]+/g, '-').replace(/-+/g, '-').slice(0, 50).replace(/^-+|-+$/g, '')}${etapaDe(py) === 'nosalio' ? '-no-salio' : ''}`;
+function bajarCotizacion(){
+  const py = getPy(); if(!py) return;
+  if(!apruebaProyecto()){ toast('La cotización con el fee la bajan el Productor Ejecutivo o Administración.'); return; }
+  const hojas = hojasCotizacion(py);
+  bajar(nombreArchivoCotiz(py) + '.xlsx', libroXlsx(hojas), 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  const nv = versionesDeCotizacion(py).length;
+  toast(`Cotización bajada: el resumen, ${nv} ${plural(nv, 'versión', 'versiones')}${hojas.some(h => h.nombre === 'Desglose') ? ' y el desglose' : ''}`);
+}
+/* La cotización de la elegida (o la base) en la vista para imprimir o pasar a PDF. */
+function imprimirCotizacion(){
+  const py = getPy(); if(!py) return;
+  if(!veMargen()){ toast('La cotización para el cliente la ven el Productor Ejecutivo y Administración.'); return; }
+  const v = versionElegida(py) || baseDe(py); if(!v) return;
+  if(modal) cerrar();
+  DB.ui.tab = 'presu'; DB.ui.vista = 'cliente'; DB.ui.versionId = v.id; DB.ui.pieza = null;
+  R();
+  setTimeout(() => { try{ window.print(); }catch(e){} }, 350);
+}
+/* la caja con los dos botones (en el resumen de lo que no salió, y al marcarlo) */
+function bajarCotizHTML(py){
+  if(!apruebaProyecto()) return '';
+  const eleg = versionElegida(py) || baseDe(py);
+  return `<div class="csblock"><h4>Bajar la cotización</h4><div class="pad" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <button class="btn pri" onclick="bajarCotizacion()">⬇ Excel con todas las versiones</button>
+    <button class="btn" onclick="imprimirCotizacion()">Cotización en PDF${eleg ? ` (${esc(eleg.nombre)})` : ''}</button>
+    <span class="muted" style="font-size:12px;line-height:1.5;flex:1;min-width:220px">El Excel trae un resumen que compara la base y los ${Math.max(0, versionesDeCotizacion(py).length - 1)} ejercicios, una hoja por versión
+      (rubros, líneas, totales y fee) y el desglose. El PDF es la cotización que se le mandó al cliente.</span></div></div>`;
 }
 /* lo aprobado vuelve a cotización sólo si todavía no arrancó nada */
 function arrancoAlgo(py){
@@ -17010,16 +17634,17 @@ function vistaResumenCotiz(pr, py, v){
       </div>
     </div>
     ${et === 'nosalio' ? `<div class="cotiz-aviso"><b>No salió</b>${py.noSalio ? ` · ${esc(fechaAR(py.noSalio.fecha))}${py.noSalio.quien ? ' · ' + esc(py.noSalio.quien) : ''}${py.noSalio.motivo ? ' · «' + esc(py.noSalio.motivo) + '»' : ''}` : ''}.
-      Queda guardado con su presupuesto y sus ejercicios. ${puedo ? `<button class="btn sm" style="margin-left:6px" onclick="reabrirCotizacion()">Reabrir la cotización</button>` : ''}</div>` : ''}
+      Queda guardado entero: el presupuesto, los ${Math.max(0, versionesDeCotizacion(py).length - 1)} ejercicios, el desglose y las notas. ${puedo ? `<button class="btn sm" style="margin-left:6px" onclick="reabrirCotizacion()">Reabrir la cotización</button>` : ''}</div>
+      ${bajarCotizHTML(py)}` : ''}
     <div class="cotiz-pasos">
-      ${paso('1', 'Desglosar lo que mandó la agencia', d.escenas.length ? `${d.escenas.length} ${planPorEscenas(py) ? 'escenas' : 'bloques'}${A ? ` · ${A.puestas} puestas estimadas · ${A.total} cosas para cotizar` : ''}` : 'Pegá el brief o el guion, o soltá el storyboard (PDF o imágenes)', !!d.escenas.length,
+      ${paso('1', 'Desglosar lo que mandó la agencia', d.escenas.length ? `${d.escenas.length} ${planPorEscenas(py) ? 'escenas' : 'bloques'}${A ? ` · ${esc(A.est.txt)} · ${A.total} cosas para cotizar` : ''}${A && A.producto && !A.producto.decision ? ' · <b>falta decidir quién pone el vehículo</b>' : ''}` : 'Pegá el brief o el guion, o soltá el storyboard (PDF o imágenes)', !!d.escenas.length,
         `<button class="btn sm${d.escenas.length ? '' : ' pri'}" onclick="setTab('desglose')${d.escenas.length ? ";setSub('cotizar')" : ''}">${d.escenas.length ? 'Ver lo detectado' : 'Desglosar'}</button>`)}
       ${paso('2', 'Armar el presupuesto', lineas ? `${lineas} ${plural(lineas, 'línea')}${sinValor ? ` · <b>${sinValor} sin valor</b>` : ' con valor'}` : 'Desde una plantilla, el desglose o a mano', lineas > 0 && !sinValor,
         `<button class="btn sm" onclick="setTab('presu')">Ir al presupuesto</button>`)}
       ${paso('3', 'Probar ejercicios', ejs ? `${ejs} ${plural(ejs, 'ejercicio')} contra la base${eleg ? ` · se presenta «${esc(eleg.nombre)}»` : ''}` : 'Otra manera de hacerlo: menos jornadas con horas extra, otra cámara, menos extras', ejs > 0,
-        `<span style="display:flex;gap:6px;flex-wrap:wrap">${ejs ? `<button class="btn sm" onclick="setTab('presu');compararEjercicios()">Comparar</button>` : ''}${puedo ? `<button class="btn sm" onclick="setTab('presu');nuevoEjercicio()">+ Ejercicio</button>` : ''}</span>`)}
+        `<span style="display:flex;gap:6px;flex-wrap:wrap">${ejs ? `<button class="btn sm" onclick="setTab('presu');compararEjercicios()">Comparar</button>` : ''}${puedo && et === 'cotizacion' ? `<button class="btn sm" onclick="setTab('presu');generarSugeridos()">✦ Sugeridos</button><button class="btn sm" onclick="setTab('presu');nuevoEjercicio()">+ Ejercicio</button>` : ''}</span>`)}
       ${margen ? paso('4', 'Mandar la cotización', 'El resumen por rubro con fee e impuestos, para la agencia o el cliente (se imprime o se pasa a PDF)', false,
-        `<button class="btn sm" onclick="setTab('presu');setVista('cliente')">Ver la cotización</button>`) : ''}
+        `<span style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" onclick="setTab('presu');setVista('cliente')">Ver la cotización</button>${puedo ? `<button class="btn sm" onclick="bajarCotizacion()" title="Un Excel con la base, los ejercicios y el resumen que los compara">⬇ Excel</button>` : ''}</span>`) : ''}
     </div>
     ${et === 'cotizacion' ? (puedo ? `<div class="cotiz-acciones">
         <button class="btn aprobar" onclick="aprobarProyecto()">✓ Proyecto aprobado</button>
@@ -19211,7 +19836,7 @@ function zipGuardado(archivos){
 const xmlEsc = s => String(s ?? '').replace(/[&<>"]/g, m => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[m])).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '');
 const colLetra = i => { let s = ''; i++; while(i){ const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
 const serialFecha = iso => { const [a, m, d] = iso.split('-').map(Number); return Math.round((Date.UTC(a, m - 1, d) - Date.UTC(1899, 11, 30)) / 86400000); };
-/* estilos: 0 normal · 1 negrita · 2 plata · 3 fecha · 4 plata en negrita · 5 título · 6 encabezado */
+/* estilos: 0 normal · 1 negrita · 2 plata · 3 fecha · 4 plata en negrita · 5 título · 6 encabezado · 7 porcentaje */
 const XLSX_ESTILOS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
 <numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.00"/><numFmt numFmtId="165" formatCode="dd/mm/yyyy"/></numFmts>
@@ -19219,13 +19844,14 @@ const XLSX_ESTILOS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFEDEDED"/><bgColor indexed="64"/></patternFill></fill></fills>
 <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
 <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-<cellXfs count="7"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+<cellXfs count="8"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
 <xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>
 <xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
 <xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>
 <xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>
 <xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>
-<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/></cellXfs>
+<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>
+<xf numFmtId="10" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>
 <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
 </styleSheet>`;
 /* Una hoja: filas de celdas. Celda = string | number | null | {v, s, f, fecha}. */
@@ -20208,6 +20834,7 @@ function cfgRodaje(){
         ${campo('Horas de jornada de scouting','horasScouting',c.horasScouting??8,'number','step="any" min="1"')}
         ${campo('Recargo hora extra % (si usás uno solo)','recargoHE',c.recargoHE,'number','step="any"')}
         ${campo('Descanso mínimo entre jornadas (h)','minTurnaround',c.minTurnaround,'number','step="any"')}
+        ${campo('Tope de horas extra por jornada (ejercicios de cotización)','topeHE',topeHE(c),'number','step="0.5" min="1"')}
         ${campo('Teléfono de producción','telProduccion',c.telProduccion,'text','placeholder="va en la citación"')}
       </div>
       <label style="display:flex;gap:8px;align-items:center;margin-top:14px;cursor:pointer">
@@ -20258,6 +20885,7 @@ function saveCfgRodaje(){
     horasScouting:Math.max(1,n(d.horasScouting)||8), recargoHE:n(d.recargoHE),
     tramosHE: leerTramosDelForm(d) || c.tramosHE,
     minTurnaround:n(d.minTurnaround), telProduccion:d.telProduccion,
+    topeHE: n(d.topeHE) > 0 ? n(d.topeHE) : TOPE_HE_DEF,
     descontarComida: chk ? chk.checked : true});
   cerrar();
   /* Cambiar la jornada o la escala de extras cambia lo que corresponde por
@@ -20464,8 +21092,11 @@ function lineaParecida(v, l){
 /* {clasica:true}: sin el análisis de publicidad (lo usan los avisos del plan, que miran el rodaje) */
 function propuestaPresupuestoBase(o = {}){
   const d=getD(), r=resumenDesglose(d), out=[];
-  const jorn = d.jornadas.length || r.jornadasEstimadas;
   let A = null; if(!o.clasica) try{ A = analizarDesglose(getPy()); }catch(e){}
+  /* las jornadas: en ficción, por páginas; en publicidad, por las puestas (ponderadas por lo complicadas) */
+  const jorn = d.jornadas.length || (A && !planPorEscenas(getPy()) ? A.jornadasSug : r.jornadasEstimadas);
+  /* el producto del cliente (la camioneta de la marca) no va como un vehículo más: se decide aparte */
+  const prod = A ? A.producto : null;
   const deElenco = p => A && A.grupos.elenco.find(x => x.k === 'p:' + norm(p));
   /* elenco: los días son las jornadas en las que realmente aparece */
   r.personajes.forEach(p=>{
@@ -20489,7 +21120,8 @@ function propuestaPresupuestoBase(o = {}){
     /* la cámara especial, los efectos, la post y los extras salen del análisis de publicidad (más abajo) */
     if(A && ['equipo','sfx','vfx','sonido','extras'].includes(dep)) return;
     const m = r.porDepto[dep]; if(!m||!m.size) return;
-    const items=[...m.values()];
+    const items=[...m.values()].filter(it => !(dep === 'vehiculos' && prod && prod.fam.re.test(norm(it.nombre))));
+    if(!items.length) return;
     const ar = cfg.area || areaDeRubro(cfg.rubro);
     if(cfg.modo==='porItem') items.forEach(it=>out.push({dep, rubro:cfg.rubro, area:ar,
       concepto:cfg.etiqueta+' — '+it.nombre, cantidad:1, dias:new Set(it.escenas).size||1,
@@ -20526,6 +21158,8 @@ function propuestaPresupuestoBase(o = {}){
         piezaId: l.piezaId || null, nota: (x.nota ? x.nota + ' · ' : '') + ev(x), claves: l.claves, det: l.det, conf: l.conf, grupo: cat});
     })));
   }
+  /* el vehículo del producto, si lo alquila la producción */
+  lineasProductoCliente(prod).forEach(l => out.push({...l, area: areaDeRubro(l.rubro) || ''}));
   /* lo que el guion pide aunque no sea un personaje con diálogo ni un elemento:
      el menor (y su permiso y su chaperona) y el permiso de filmar en la calle */
   try{
@@ -20550,7 +21184,7 @@ function propuestaPresupuestoBase(o = {}){
         nota: lugares.length ? lugares.join(', ') : 'vía pública', claves: ['via publica', 'permiso municipal', 'permiso de filmacion'], claveRubros: true});
     }
   }catch(e){}
-  return {lineas:out, jornadas:jorn, resumen:r};
+  return {lineas:out, jornadas:jorn, resumen:r, producto: prod, estPuestas: A ? A.est : null};
 }
 /* «Aplicar al presupuesto»: la lista de todo lo detectado, todo tildado. Lo
    nuevo se crea; lo que ya está se actualiza (si el desglose pide más) en
@@ -20559,9 +21193,10 @@ function propuestaPresupuestoBase(o = {}){
 let _aplicar = null;
 function aPresupuesto(){
   const v=getV(); if(!v){ toast('Este proyecto no tiene presupuesto'); return; }
-  const {lineas, jornadas} = propuestaPresupuesto();
-  if(!lineas.length){ toast('No hay nada para enviar'); return; }
+  const {lineas, jornadas, producto, estPuestas} = propuestaPresupuesto();
+  if(!lineas.length && !producto){ toast('No hay nada para enviar'); return; }
   _aplicar = {lineas, jornadas, versionId: v.id};
+  const falta = producto && !producto.decision;
   const yaEstan = lineas.filter(l => l.ya && !l.cambia).length, actualiza = lineas.filter(l => l.cambia).length;
   const nuevas = lineas.filter(l => !l.ya).length;
   const porRubro={};
@@ -20590,6 +21225,12 @@ function aPresupuesto(){
         En <b>${esc(v.nombre)}</b>: <b>${nuevas} ${plural(nuevas, 'línea nueva', 'líneas nuevas')}</b>${actualiza ? `, <b>${actualiza} se actualiza${actualiza == 1 ? '' : 'n'}</b> (el desglose pide más cantidad o más días)` : ''}${yaEstan ? ` y <b>${yaEstan} ya están en el presupuesto</b> (no se duplican)` : ''}.
         Todo viene tildado: destildá lo que no va y corregí la cantidad o los días. Lo nuevo entra con <b>el valor en cero</b>
         (salvo los cargos del convenio SICA, que se completan solos). Después todo se sigue editando a mano.</div>
+      ${producto ? `<div class="prod-caja${falta ? ' falta' : ''}">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);font-weight:700;margin-bottom:4px">Producto del cliente</div>
+        ${toggleProductoHTML(producto, 'aplicar')}
+        <div class="muted" style="font-size:11.5px;margin-top:4px">${producto.decision === 'marca' ? `No se agrega ninguna línea: en las condiciones de la cotización va «${esc(textoProductoMarca(producto))}»`
+          : producto.decision === 'produccion' ? 'Se suman el alquiler, el traslado y el seguro' + (producto.conRig || producto.maneja ? ', y el conductor de precisión' : '') + ' (abajo, en sus rubros).'
+          : 'Depende del trato con la marca. Hasta que lo decidas no se puede aplicar.'}</div></div>` : ''}
       ${Object.keys(porRubro).sort().map(cod=>{
         const rb = v.rubros.find(x=>x.codigo===cod);
         return `<div style="margin-bottom:11px">
@@ -20600,23 +21241,29 @@ function aPresupuesto(){
       }).join('')}
       <label style="display:flex;gap:8px;align-items:center;padding-top:8px;border-top:1px solid var(--line);cursor:pointer">
         <input type="checkbox" id="setj" checked style="width:auto;flex:none">
-        <span style="font-size:12.5px">Poner el proyecto en <b>${jornadas} jornada${jornadas==1?'':'s'}</b> de rodaje</span></label>
+        <span style="font-size:12.5px">Poner el proyecto en <b>${jornadas} jornada${jornadas==1?'':'s'}</b> de rodaje${estPuestas && !planPorEscenas(getPy()) ? ` <span class="muted">(${esc(estPuestas.txt)})</span>` : ''}</span></label>
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
-      <button class="btn pri" onclick="confirmarAPresupuesto()">Aplicar al presupuesto</button></div>
+      ${falta ? '<span class="muted" style="font-size:11.5px;color:var(--warn)">Primero decidí quién pone el vehículo</span>' : ''}
+      <button class="btn pri" onclick="confirmarAPresupuesto()" ${falta ? 'disabled' : ''}>Aplicar al presupuesto</button></div>
   </div></div>`);
 }
 /* Aplica las líneas tildadas. Se puede llamar con la lista ya resuelta
    (pruebas): [{i, cantidad, dias}] */
 function confirmarAPresupuesto(elegidas){
-  const {lineas, jornadas} = propuestaPresupuesto();
+  const {lineas, jornadas, producto} = propuestaPresupuesto();
+  /* desde la pantalla no se aplica sin decidir quién pone el producto */
+  if(!elegidas && producto && !producto.decision){ toast('Primero decidí quién pone el vehículo del producto'); return null; }
   const leer = (attr, i) => { try{ const el = document.querySelector(`.mod input[data-${attr}="${i}"]`); return el && el.value !== undefined && el.value !== '' ? n(el.value) : null; }catch(e){ return null; } };
   const marcadas = elegidas || [...document.querySelectorAll('.mod input[type=checkbox][data-i]')]
     .filter(c=>c.checked && !c.disabled).map(c => { const i = parseInt(c.dataset.i,10); return {i, cantidad: leer('q', i), dias: leer('d', i)}; });
   const setj = elegidas ? true : document.getElementById('setj')?.checked;
   const py = getPy(), v=getV();
-  const antes = {rubros: JSON.stringify(v.rubros), jornadas: py.jornadas, aprobado: py.aprobado ? {...py.aprobado} : null};
+  const antes = {rubros: JSON.stringify(v.rubros), jornadas: py.jornadas, aprobado: py.aprobado ? {...py.aprobado} : null,
+    condiciones: v.condiciones ? JSON.stringify(v.condiciones) : null};
   const {creadas, actualizadas} = aplicarLineasDesglose(py, v, lineas, marcadas);
+  /* «lo pone la marca»: sin línea, pero dicho en las condiciones de la cotización */
+  if(producto && producto.decision) notaProductoEnCondiciones(py, v, producto);
   if(setj) py.jornadas = jornadas;
   /* después de aprobado, pasar el desglose es uno de los pasos del jefe */
   if(py.aprobado && etapaDe(py) === 'aprobado') py.aprobado.desglosePasado = hoy();
@@ -20624,9 +21271,21 @@ function confirmarAPresupuesto(elegidas){
   if(modal) cerrar();
   DB.ui.tab='presu';
   toast(`${creadas} ${plural(creadas, 'línea nueva', 'líneas nuevas')}${actualizadas ? ` · ${actualizadas} ${plural(actualizadas, 'actualizada', 'actualizadas')}` : ''} — cargá los valores`,
-    {accion: 'Deshacer', fn: () => { v.rubros = JSON.parse(antes.rubros); py.jornadas = antes.jornadas; py.aprobado = antes.aprobado; R(); toast('El presupuesto quedó como antes'); }});
+    {accion: 'Deshacer', fn: () => { v.rubros = JSON.parse(antes.rubros); py.jornadas = antes.jornadas; py.aprobado = antes.aprobado;
+      v.condiciones = antes.condiciones ? JSON.parse(antes.condiciones) : v.condiciones; R(); toast('El presupuesto quedó como antes'); }});
   R();
-  return {creadas, actualizadas};
+  return {creadas, actualizadas, pendiente: producto && !producto.decision ? [producto.k] : []};
+}
+/* La aclaración del producto en las condiciones (y se saca si después lo alquila la producción). */
+function notaProductoEnCondiciones(py, v, P){
+  const txt = textoProductoMarca(P), base = txt.replace(/ lo provee el cliente\.$/, '');
+  if(P.decision === 'marca'){
+    if(!v.condiciones || !COND_CAMPOS.some(x => String(v.condiciones[x.k] || '').trim())){ v.condiciones = condicionesTipicas(py, v); return; }
+    const ni = String(v.condiciones.noIncluye || '');
+    if(!ni.includes(base)) v.condiciones.noIncluye = (ni.trim() ? ni.replace(/\s+$/, '') + '\n' : '') + txt;
+  } else if(v.condiciones && v.condiciones.noIncluye){
+    v.condiciones.noIncluye = v.condiciones.noIncluye.split('\n').filter(x => !x.includes(base)).join('\n');
+  }
 }
 /* El corazón de «Aplicar»: crea lo nuevo y hace crecer lo que ya estaba. */
 function aplicarLineasDesglose(py, v, lineas, marcadas){
