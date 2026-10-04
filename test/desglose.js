@@ -58,8 +58,8 @@ console.log('\n--- LINEAS PROPUESTAS ---');
 p.lineas.forEach(l=>console.log(`  ${l.rubro}  ${String(l.cantidad)}x${String(l.dias).padEnd(2)} ${l.concepto.padEnd(44)} ${l.nota.slice(0,40)}`));
 ok('propone lineas', p.lineas.length>8, p.lineas.length+' lineas');
 ok('elenco va al rubro 09', p.lineas.filter(l=>l.dep==='elenco').every(l=>l.rubro==='09'));
-/* el guion de ejemplo es el spot de Brisa: CAMI, NICO y el LOCUTOR (en off) */
-ok('una linea por personaje', p.lineas.filter(l=>l.dep==='elenco').length===3, p.lineas.filter(l=>l.dep==='elenco').map(l=>l.concepto).join(','));
+/* el guion de ejemplo es el spot de Brisa: CAMI, NICO y el NENE (9), que se presenta en la acción. El LOCUTOR (OFF) va a la post, no al elenco */
+ok('una linea por personaje', p.lineas.filter(l=>l.dep==='elenco').length===3 && ['CAMI','NICO','NENE'].every(n=>p.lineas.some(l=>l.dep==='elenco'&&l.concepto===n)), p.lineas.filter(l=>l.dep==='elenco').map(l=>l.concepto).join(','));
 ok('CAMI aparece en sus jornadas', p.lineas.find(l=>l.concepto==='CAMI').dias>=1,
    'dias='+p.lineas.find(l=>l.concepto==='CAMI').dias);
 ok('una linea por locacion', p.lineas.filter(l=>l.dep==='locacion').length===4);
@@ -80,7 +80,8 @@ ok('crea las lineas en el presupuesto', despues===antesTot+p.lineas.length, ante
 /* en cero, salvo las que son un cargo del convenio (la chaperona): esas las completa el SICA */
 ok('las crea en valor 0 (salvo los cargos del convenio SICA)', v.rubros.find(r=>r.codigo==='09').lineas.slice(-3).every(l=>l.valorUnit===0 || (l.sica && l.valorOrigen==='sica')));
 /* lo que pide el guion sin ser un personaje: el menor (y su permiso y su chaperona) y el permiso de la calle */
-ok('propone el menor, su chaperona y el permiso', ['Actor o actriz menor de edad','Chaperona','Permiso de trabajo de menores'].every(t => p.lineas.some(l => l.dep==='tag' && l.concepto.startsWith(t))), p.lineas.filter(l=>l.dep==='tag').map(l=>l.concepto).join(' / '));
+/* el NENE (9) ya es un personaje del elenco marcado como menor: no se propone otro actor menor aparte */
+ok('propone el menor (como personaje), su chaperona y el permiso', p.lineas.some(l => (l.dep==='elenco' && l.menor) || (l.dep==='tag' && l.concepto.startsWith('Actor o actriz menor de edad'))) && ['Chaperona','Permiso de trabajo de menores'].every(t => p.lineas.some(l => l.dep==='tag' && l.concepto.startsWith(t))), p.lineas.filter(l=>l.dep==='tag' || l.menor).map(l=>l.concepto).join(' / '));
 ok('y el permiso de vía pública', p.lineas.some(l => l.dep==='tag' && /vía pública/.test(l.concepto)));
 ok('actualiza jornadas del proyecto', getPy().jornadas===p.jornadas, getPy().jornadas);
 ok('el total sigue calculando', isFinite(calcular(v).total), Math.round(calcular(v).total));

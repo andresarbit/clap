@@ -6,7 +6,8 @@
 -- y apretá RUN. Se puede correr varias veces. No borra nada.
 --
 -- QUÉ RESUELVE (además: confirmar la citación con un toque, al final; y el
--- circuito de las rendiciones, en la sección 1a)
+-- circuito de las rendiciones, en la sección 1a; y la etapa del proyecto
+-- —en cotización, aprobado, no salió—, arriba de puedo_parte)
 -- 1. Hasta ahora en la base estaba sólo la ficha de cada proyecto; el
 --    presupuesto, el plan, los partes, los gastos y la liquidación vivían en
 --    la compu de cada uno. Dos personas no podían trabajar sobre el mismo
@@ -74,6 +75,35 @@ revoke insert, update, delete on proyecto_parte from authenticated, anon;
 -- Los gastos: los asistentes y el equipo los ESCRIBEN (con guardar_parte),
 -- pero no los leen enteros: cada uno recibe sólo lo suyo con leer_gastos
 -- (sección 1a). Así a su compu no llegan los comprobantes de los demás.
+-- LA ETAPA DEL PROYECTO (la situación cero: cotizar). Un proyecto nuevo
+-- arranca EN COTIZACIÓN: se ven sólo el desglose y el presupuesto. Cuando el
+-- PE o Administración tocan «Proyecto aprobado», pasa a APROBADO y aparece
+-- todo lo demás. «No salió» lo deja guardado. Los proyectos que ya existían
+-- quedan aprobados (es lo que eran). Mientras se cotiza, los asistentes y el
+-- equipo (si alguien los invitó antes de tiempo) no escriben ninguna parte:
+-- no hay plan, ni rodaje, ni gastos todavía.
+alter table proyecto add column if not exists etapa text not null default 'aprobado';
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'proyecto_etapa_valida') then
+    alter table proyecto add constraint proyecto_etapa_valida check (etapa in ('cotizacion','aprobado','nosalio'));
+  end if;
+end $$;
+-- La etapa la cambian sólo Administración y el PE. Si otro rol guarda la
+-- ficha del proyecto (el jefe que corrige el nombre) con otra etapa, la etapa
+-- queda como estaba: no rebota el guardado, simplemente no se toca.
+create or replace function etapa_solo_pe() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.etapa is distinct from old.etapa and auth.uid() is not null
+     and coalesce(mi_rol_en_proyecto(old.id)::text, '') not in ('admin','ejecutivo') then
+    new.etapa := old.etapa;
+  end if;
+  return new;
+end $$;
+drop trigger if exists tr_etapa_solo_pe on proyecto;
+create trigger tr_etapa_solo_pe before update of etapa on proyecto
+  for each row execute function etapa_solo_pe();
+
 create or replace function puedo_parte(p_proyecto uuid, p_parte text, p_escribir boolean)
 returns boolean
 language sql stable security definer set search_path = public as $$
@@ -81,6 +111,8 @@ language sql stable security definer set search_path = public as $$
     when r is null then false
     when r in ('admin','ejecutivo') then true
     when r = 'produccion' then p_parte <> 'presupuesto_real'
+    -- cotizando (o no salió): los asistentes y el equipo no escriben nada
+    when p_escribir and coalesce((select etapa from proyecto where id = p_proyecto), 'aprobado') <> 'aprobado' then false
     when p_escribir then case r
         when 'asistdir'  then p_parte in ('plan','tareas')
         when 'asistprod' then p_parte in ('rodaje','luces','alta','gastos','tareas','contactos')
@@ -687,4 +719,4 @@ grant execute on function confirmar_citacion(text, boolean, text) to anon, authe
 
 commit;
 
-select 'Listo: los proyectos se guardan completos, hay roles de asistente, el fee es sólo de Administración y el PE, las citaciones se confirman con un toque, cada asistente cambia y recibe sólo sus gastos y su rendición, y lo de arte pasa por producción. Volvé a CLAP y tocá ☁ → Sincronizar todo.' as "Resultado";
+select 'Listo: los proyectos se guardan completos, hay roles de asistente, el fee es sólo de Administración y el PE, las citaciones se confirman con un toque, cada asistente cambia y recibe sólo sus gastos y su rendición, lo de arte pasa por producción y los proyectos tienen etapa (en cotización, aprobado, no salió). Volvé a CLAP y tocá ☁ → Sincronizar todo.' as "Resultado";

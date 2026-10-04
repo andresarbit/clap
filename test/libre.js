@@ -82,7 +82,8 @@ ok('descarta el encabezado VIDEO/AUDIO', !RES.escenas.some(e => /^VIDEO$/i.test(
 ok('detecta OFICINA', RES.escenas.some(e => e.locacion === 'OFICINA'), RES.escenas.map(e => e.locacion).join('|'));
 ok('detecta el auto', RES.escenas.some(e => (e.elementos.vehiculos || []).includes('auto')));
 ok('detecta la lluvia', RES.escenas.some(e => (e.elementos.sfx || []).includes('lluvia')));
-ok('detecta LOCUTOR', RES.escenas.some(e => e.personajes.includes('LOCUTOR')), RES.escenas.flatMap(e => e.personajes).join('|'));
+/* el locutor es una voz en off: va a la post (Locución), no al elenco del rodaje */
+ok('detecta LOCUTOR (como voz en off, no elenco)', RES.escenas.some(e => (e.voces || []).includes('LOCUTOR')) && !RES.escenas.some(e => e.personajes.includes('LOCUTOR')), RES.escenas.flatMap(e => e.personajes).join('|'));
 ok('no toma SFX ni AUDIO como personaje', !RES.escenas.some(e => e.personajes.some(p => /SFX|AUDIO|VIDEO/.test(p))));
 
 /* --------------------------------- 4. un solo párrafo largo, de corrido */

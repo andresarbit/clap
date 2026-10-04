@@ -13,7 +13,7 @@ const U = r => pr.usuarios.find(u => u.rol === r);
 const como = r => { DB.ui.usuarioId = U(r).id; modal = null; };
 
 console.log('--- 1. QUÉ ES ---');
-ok('una sola productora y un solo proyecto', DB.productoras.length === 1 && pr.proyectos.length === 1);
+ok('una sola productora y dos proyectos: Brisa (en curso, el que se abre) y Cumbre (en cotización)', DB.productoras.length === 1 && pr.proyectos.length === 2 && etapaDe(pr.proyectos[0]) === 'aprobado' && etapaDe(pr.proyectos[1]) === 'cotizacion' && getPy() === pr.proyectos[0]);
 ok('Productora Demo · Brisa · Faro Comunicación (todo inventado)', pr.nombre === 'Productora Demo' && /Brisa/.test(py.nombre) && /Brisa/.test(py.cliente) && py.agencia === 'Faro Comunicación');
 ok('1 spot de 30″, el cutdown de 15″ y 3 piezas para redes', py.piezas.length === 5 && /30″/.test(py.piezas[0].nombre) && /15″/.test(py.piezas[1].nombre) && py.piezas.slice(2).every(p => /^Redes/.test(p.nombre)));
 ok('los siete del equipo, uno por rol, todos en el proyecto', pr.usuarios.length === 7 && ORDEN_ROLES.every(r => U(r)) && pr.usuarios.every(u => py.invitados.includes(u.id)));

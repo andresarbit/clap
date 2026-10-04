@@ -1326,6 +1326,60 @@ tr.csdep td{background:#f3f3f1;color:#171717}
     padding:0;font-size:12px;-webkit-appearance:none;appearance:none;background-image:none!important}
   .tcp-fec::-webkit-calendar-picker-indicator{display:none}
 }
+
+/* ---------- cotización: la etapa del proyecto, los ejercicios y lo detectado ---------- */
+.etapa-chip{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:4px 8px;border-radius:999px;white-space:nowrap;flex:none}
+.etapa-chip.et-cotizacion{background:rgba(31,95,168,.11);color:#174a85}
+.etapa-chip.et-aprobado{background:rgba(31,107,62,.12);color:#1f5f1a}
+.etapa-chip.et-nosalio{background:var(--bg4);color:var(--tx2)}
+.cotiz-hero{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;padding:16px}
+.cotiz-hero .tot{font-size:26px;font-weight:800;letter-spacing:-.01em}
+.cotiz-pasos{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;padding:0 16px 16px}
+.cotiz-paso{border:1px solid var(--line);border-radius:var(--r);padding:11px 12px;background:var(--bg2);display:flex;flex-direction:column;gap:5px;text-align:left}
+.cotiz-paso b{font-size:13px}
+.cotiz-paso .muted{font-size:12px;line-height:1.45}
+.cotiz-paso.hecho{border-color:rgba(31,107,62,.35)}
+.cotiz-paso .cpnum{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--tx3);text-transform:uppercase}
+.cotiz-acciones{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:0 16px 16px}
+.btn.aprobar{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:700;padding:9px 16px;font-size:13.5px}
+.btn.aprobar:hover{background:#185632;color:#fff}
+.cotiz-aviso{background:rgba(31,95,168,.07);border:1px solid rgba(31,95,168,.25);border-radius:var(--r);padding:10px 12px;font-size:12.5px;line-height:1.5;margin:0 16px 14px}
+.ejbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 14px}
+.ejtab{border:1px solid var(--line);border-radius:8px;padding:6px 10px;background:var(--bg2);display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:120px;text-align:left}
+.ejtab span{font-size:11.5px;color:var(--tx2);font-weight:600}
+.ejtab b{font-size:13px;font-variant-numeric:tabular-nums}
+.ejtab.on{border-color:var(--ac);box-shadow:inset 0 -2px 0 var(--ac)}
+.ejtab .eleg{font-size:9.5px;color:var(--ok);font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.ejcambios{padding:10px 14px;border-top:1px solid var(--line);font-size:12.5px;line-height:1.6}
+.ejcambios b{font-weight:700}
+.ejcambios .neg{color:var(--ok)} .ejcambios .pos{color:var(--bad)}
+.cmp{border-collapse:collapse;width:100%;font-size:12.5px}
+.cmp th,.cmp td{border-bottom:1px solid var(--line);padding:7px 9px;text-align:right;vertical-align:top;font-variant-numeric:tabular-nums}
+.cmp th:first-child,.cmp td:first-child{text-align:left;color:var(--tx2);font-weight:600;position:sticky;left:0;background:var(--bg2)}
+.cmp thead th{font-size:11.5px;color:var(--tx)}
+.cmp td.txt{text-align:left;font-size:11.5px;line-height:1.45;min-width:170px;color:var(--tx2)}
+.cmp .eleg{color:var(--ok);font-weight:800}
+.det-grupo{border-top:1px solid var(--line);padding:10px 0}
+.det-grupo:first-child{border-top:none}
+.det-grupo h5{font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);margin-bottom:6px;font-weight:800}
+.det-item{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:3px 12px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.det-item:last-child{border-bottom:none}
+.det-item .det-l{font-weight:700;font-size:13px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.det-item .det-ev{font-size:12px;color:var(--tx2);line-height:1.45}
+.det-item .det-ln{font-size:11.5px;color:var(--tx3);margin-top:2px}
+.conf{font-size:9.5px;font-weight:800;letter-spacing:.04em;padding:1px 6px;border-radius:4px;text-transform:uppercase}
+.conf.alta{background:rgba(31,107,62,.12);color:#1f5f1a}
+.conf.media{background:rgba(224,145,62,.15);color:#7a3e00}
+.conf.baja{background:var(--bg4);color:var(--tx2)}
+.aplica-fila{display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--line)}
+.aplica-fila input[type=number]{width:58px;padding:3px 5px;font-size:12px}
+.aplica-fila .cant{display:flex;gap:4px;align-items:center;flex:none;font-size:11px;color:var(--tx3)}
+@media (max-width:640px){
+  .det-item{grid-template-columns:1fr}
+  .aplica-fila{flex-wrap:wrap}
+  .cotiz-hero .tot{font-size:22px}
+}
+@media print{ .ejbar,.cotiz-acciones{display:none!important} }
 </style>
 </head>
 <body>
@@ -2058,6 +2112,10 @@ function nuevoProyecto(o={}){
     cliente:o.cliente||'', agencia:o.agencia||'', producto:o.producto||'',
     territorio:o.territorio||'Argentina', plazo:o.plazo||'12 meses', medios:o.medios||'Digital',
     jornadas:o.jornadas??1, versiones:o.versiones||[nuevaVersion()], versionActiva:null,
+    /* 'cotizacion' | 'aprobado' | 'nosalio'. Lo que se crea desde la pantalla
+       arranca cotizando (saveProyecto); lo que se arma por código, aprobado,
+       como estaba todo antes de que existieran las etapas. */
+    etapa:o.etapa||'aprobado',
     desglose:o.desglose||nuevoDesglose(),
     contactos:o.contactos||{porLinea:{}, extra:[]},
     tags:o.tags||{manual:[], descartados:[]},
@@ -2618,8 +2676,9 @@ const DICC = {
     'mula','cabra','pollo','paloma','palomas','serpiente','arana'],
   sfx:['lluvia','llueve','humo','humea','fuego','incendio','arde','explosion','explota','estalla','sangre','sangra',
     'viento','ventarron','nieve','nieva','granizo','niebla','neblina','chispa','chispas','disparo','disparos','balazo',
-    'rompe','romper','rotura','quiebra','estruendo','derrumbe','inundacion','vapor','burbujas','espuma'],
-  stunts:['pelea','pelean','golpea','golpe','trompada','patada','caida','se cae','salta','salto','persecucion',
+    'rompe','romper','rotura','quiebra','estruendo','derrumbe','inundacion','vapor','burbujas','espuma',
+    'llovizna','tormenta','bruma','fogata','llamas','pirotecnia','fuegos artificiales','bengala','splash','salpica','nevada','confeti','humo de colores'],
+  stunts:['pelea','pelean','golpea','trompada','patada','caida','se cae','salta','salto','persecucion',
     'persigue','choca','choque','atropella','forcejea','empuja','arma','pistola','revolver','escopeta','cuchillo',
     'punal','dispara','corre por','se tira','trepa','cuelga','acrobacia','doble de riesgo'],
   utileria:['telefono','celular','cellular','taza','tazas','vaso','vasos','botella','copa','cigarrillo','encendedor',
@@ -2638,19 +2697,25 @@ const DICC = {
     'embarrado','quemadura','palidez','llora','lagrimas'],
   extras:['gente','multitud','publico','pasajeros','comensales','transeuntes','peatones','alumnos','empleados','hinchada',
     'cola de gente','muchedumbre','clientes','mozos','vecinos','turistas','periodistas','manifestantes','invitados',
-    'espectadores','fila','concurrencia','asistentes'],
+    'espectadores','fila','concurrencia','asistentes',
+    /* los grupos que en un guion de publicidad van en mayúscula como si fueran personajes */
+    'corredores','ciclistas','banistas','bailarines','hinchas','surfistas','runners','skaters','oficinistas','compradores'],
   equipo:['grua','dron','drone','steadicam','travelling','camara lenta','slow motion','plano aereo','vista aerea',
-    'cenital','subacuatico','bajo el agua','time lapse','camara en mano','plano secuencia','riel','cablecam'],
+    'cenital','subacuatico','bajo el agua','time lapse','camara en mano','plano secuencia','riel','cablecam',
+    /* lo de publicidad: lo que cambia el presupuesto de cámara */
+    'toma aerea','phantom','alta velocidad','car rig','brazo ruso','camera car','gimbal','ronin','macro','probe',
+    'motion control','technocrane','telescopica','dolly','timelapse','hyperlapse','fpv','camara 360'],
   sonido:['musica','cancion','suena','sonido','timbre','sirena','ladrido','campana','alarma','bocina','aplausos',
     'silbato','megafono','altavoz','parlante','locutor','radio suena'],
   arte:['cartel','carteles','letrero','decoracion','ambientacion','mueble','muebles','mesa','silla','sillas','sillon',
     'cama','escritorio','biblioteca','alfombra','cortina','cortinas','planta','plantas','arbol','luces navidenas',
     'guirnalda','banderin','banderines','pizarron','vidriera','mostrador','barra'],
   vfx:['pantalla verde','croma','chroma','composicion','cgi','vfx','borrar cable','set extension','doble digital',
-    'transformacion','morphing','fondo digital'],
+    'transformacion','morphing','fondo digital','packshot 3d','retoque','cambio de cielo','motion graphics','logo animado',
+    'animacion 3d','fondo verde','green screen'],
 };
 
-const MOMENTOS = ['DIA','DÍA','NOCHE','TARDE','MAÑANA','MANANA','AMANECER','ATARDECER','ANOCHECER','MADRUGADA',
+const MOMENTOS = ['DIA','DÍA','NOCHE','TARDE','MAÑANA','MANANA','AMANECER','ATARDECER','ANOCHECER','MADRUGADA','HORA DORADA',
   'CONTINUO','CONTINUA','MAS TARDE','MÁS TARDE','DAY','NIGHT','DAWN','DUSK','MORNING','EVENING','CONTINUOUS','LATER'];
 
 /* Normaliza para comparar: sin acentos, minúsculas.                          */
@@ -2749,7 +2814,36 @@ const EDITA_DE = {
   asistdir:  ['resumen','desglose','plan'],
 };
 const claveSolapa = () => DB.ui.tab === 'personal' ? 'personal:' + (DB.ui.subPersonal || 'alta') : DB.ui.tab;
-function puedeSolapa(k, u = getUsuario()){
+
+/* ======================  LA SITUACIÓN CERO: COTIZAR  ======================
+   Todo comercial arranca igual: llega el material de la agencia y hay que
+   cotizarlo antes de que nadie piense en el rodaje. Mientras el proyecto está
+   EN COTIZACIÓN se ven sólo el resumen, el desglose y el presupuesto (con sus
+   versiones, sus ejercicios y la cotización para el cliente). Cuando el PE o
+   Administración tocan «Proyecto aprobado», se congela la cotización que se
+   aprobó y aparece todo lo demás para el jefe de producción. Si no sale, queda
+   guardado como «No salió» (para la historia y las cuentas), y se puede
+   reabrir. Los proyectos de antes de esto estaban todos en curso: aprobados. */
+const ETAPAS_PY = [
+  {k:'cotizacion', l:'En cotización', corto:'Cotizando', d:'Se ve sólo el desglose y el presupuesto'},
+  {k:'aprobado',   l:'Aprobado',      corto:'En curso',  d:'Ya se aprobó: plan, rodaje, gastos y todo lo demás'},
+  {k:'nosalio',    l:'No salió',      corto:'No salió',  d:'No se hizo: queda guardado para la historia'},
+];
+const etapaDe = py => (py && ETAPAS_PY.some(e => e.k === py.etapa)) ? py.etapa : 'aprobado';
+const ETAPA = k => ETAPAS_PY.find(e => e.k === k) || ETAPAS_PY[1];
+/* cotizando o no salió: lo único que hay es la cotización */
+const enCotizacion = py => !!py && etapaDe(py) !== 'aprobado';
+/* las solapas que son de UN proyecto (las de la productora no dependen de la etapa) */
+const SOLAPAS_PROYECTO = ['resumen','presu','desglose','plan','luces','personal:alta','callsheet','rodaje','gastos','personal:liquidacion','personal'];
+const SOLAPAS_COTIZ = ['resumen','presu','desglose'];
+/* el que aprueba (o dice que no salió) es el que pone la cara con el cliente */
+const apruebaProyecto = (u = getUsuario()) => !u || veTodo(u);
+function puedeSolapa(k, u = getUsuario(), py = (typeof getPy === 'function' ? getPy() : null)){
+  if(py && enCotizacion(py) && SOLAPAS_PROYECTO.includes(k)){
+    /* el que no ve la plata, mientras se cotiza, sólo tiene su panel con el aviso */
+    if(!vePlata(u)) return k === 'resumen';
+    return SOLAPAS_COTIZ.includes(k);
+  }
   if(vePlata(u)) return true;
   return (SOLAPAS_DE[u.rol] || SOLAPAS_DE.equipo).includes(k);
 }
@@ -4031,7 +4125,7 @@ function matchEncabezado(t){
     const ie = /\bext/.test(r) ? 'EXT' : /\bint/.test(r) ? 'INT' : 'INT';
     /* si el INT/EXT venía adentro ya lo tomé: no debe quedar en la locación */
     const resto = m[2].replace(/^\s*(INT\.?\s*\/\s*EXT\.?|EXT\.?\s*\/\s*INT\.?|INT|EXT|INTERIOR|EXTERIOR)\b\.?\s*[\-–—:]?\s*/i,'');
-    return {numero:m[1], resto, intExt:ie};
+    return {numero:m[1], resto, intExt:ie, deSlug2:true};
   }
   return null;
 }
@@ -4057,12 +4151,29 @@ function parseGuion(txt){
           mom = ult.toUpperCase(); loc = partes.slice(0,-1).join(' - ').trim();
         }
       }
+      /* «Cuadro 3: Detalle macro: la lata se abre…» — en un storyboard pegado
+         el encabezado trae la descripción del cuadro: eso es texto, no una
+         locación. La locación y el momento se infieren de la descripción. */
+      const caption = m.deSlug2 && (resto.length > 38 || /[.;!?]\s/.test(resto) || resto.split(/\s+/).length > 6);
+      let capLoc = null;
+      if(caption){
+        capLoc = lugarDeTexto(resto);
+        const mm = resto.match(/^\s*([^.;:]{2,30}?)\s*[\-–—]\s*(D[ÍI]A|NOCHE|TARDE|MAÑANA|AMANECER|ATARDECER|HORA DORADA)\b\.?\s*/i);
+        if(mm){ capLoc = {loc: mm[1].trim().toUpperCase(), ie: m.intExt}; mom = mm[2].toUpperCase().replace('DIA', 'DÍA'); }
+        if(!mom){ const tn = norm(resto); for(const [re, val] of PISTAS_MOMENTO) if(re.test(tn)){ mom = val; break; } }
+        /* el cuadro del producto: es el packshot, no la locación anterior */
+        if(!capLoc && /\b(packshot|pack shot|placa final|plano de producto)\b/.test(norm(resto))) capLoc = {loc: 'PACKSHOT', ie: 'INT'};
+      }
+      const prev = escenas[escenas.length - 1];
       act = nuevaEscena({
         numero: m.numero || String(++nAuto),
-        encabezado: t, intExt: m.intExt,
-        locacion: loc.replace(/[\.:]$/,'').trim() || 'Sin locación',
-        momento: mom || 'DÍA'});
-      act._lineas = 0; act.texto = '';
+        encabezado: t,
+        intExt: !caption ? m.intExt : /\b(int|ext)\b/i.test(t) ? m.intExt : capLoc ? capLoc.ie : prev ? prev.intExt : m.intExt,
+        locacion: caption ? (capLoc ? capLoc.loc : prev ? prev.locacion : 'Sin locación')
+          : loc.replace(/[\.:]$/,'').trim() || 'Sin locación',
+        momento: mom || (caption && prev ? prev.momento : 'DÍA')});
+      act._lineas = 0; act.texto = caption ? resto + '\n' : '';
+      if(caption){ act._lineas = 1; act.caption = true; }
       continue;
     }
     if(!act) continue;                       /* encabezado de guion, títulos, etc. */
@@ -4078,13 +4189,34 @@ function parseGuion(txt){
         const x=lineas[k].trim(); if(x){ sig=x; break; } }
       if(soloLetras.length>1 && soloLetras===soloLetras.toUpperCase() && sig && !matchEncabezado(sig)){
         const nom = t.replace(/\([^)]*\)/g,'').replace(/[:：]$/,'').trim();
-        if(nom && nom.length>1 && !act.personajes.includes(nom)) act.personajes.push(nom);
+        /* «LOCUTOR (OFF)»: es una voz que se graba en la post, no alguien en el set */
+        if(/\((?:off|en off|v\.?\s?o\.?|o\.?\s?s\.?|voz)\)/i.test(t) || /^(LOCUTOR|LOCUTORA|VOZ EN OFF|VOZ|VO)$/.test(nom)){
+          if(nom && !(act.voces ||= []).includes(nom)) act.voces.push(nom);
+        } else if(nom && nom.length>1 && !act.personajes.includes(nom)){
+          act.personajes.push(nom); (act.conDialogo ||= []).push(nom);
+        }
       }
     }
   }
   cerrar();
-  escenas.forEach(e=>{ delete e._lineas; detectar(e); });
+  escenas.forEach(e=>{ delete e._lineas;
+    /* en publicidad casi nadie habla: los personajes se presentan en la acción
+       con su edad, «CAMI (30) corre…», «Un NENE (9) juega…». Eso es elenco. */
+    conEdades(e).forEach(({nom}) => { if(!e.personajes.some(p => norm(p) === norm(nom))) e.personajes.push(nom); });
+    detectar(e); });
   return escenas;
+}
+/* «NOMBRE (edad)» en el texto: el personaje y su edad (la edad dice si es menor) */
+function conEdades(e){
+  const out = [];
+  for(const m of String(e.texto || '').matchAll(/\b([A-ZÁÉÍÓÚÑÜ]{2,}(?:\s+[A-ZÁÉÍÓÚÑÜ]{2,})?)\s*\((\d{1,2})(?:\s*a[ñn]os)?\)/g)){
+    const nom = m[1].trim();
+    if(NO_PERSONAJE.has(nom) || nom.split(/\s+/).some(x => NO_PERSONAJE.has(x))) continue;
+    if(LUGARES.INT.includes(norm(nom)) || LUGARES.EXT.includes(norm(nom))) continue;
+    (e.edades ||= {})[nom] = +m[2];
+    if(!out.some(x => x.nom === nom)) out.push({nom, edad: +m[2]});
+  }
+  return out;
 }
 
 /* --- Guion SIN encabezados -----------------------------------------------
@@ -4104,11 +4236,14 @@ const LUGARES = {
   EXT:['calle','vereda','plaza','parque','patio','jardin','terraza','balcon','playa','campo','ruta',
     'autopista','cancha','estacionamiento','montana','rio','bosque','esquina','azotea','muelle','pileta',
     'piscina','avenida','barrio','puerto','desierto','sierra','laguna','costanera','feria','obra','techo',
-    'camino','sendero','estadio','vereda','parrilla','camping','bosque','puente','peaje','semaforo'],
+    'camino','sendero','estadio','vereda','parrilla','camping','bosque','puente','peaje','semaforo',
+    'mirador','lago','cerro','glaciar','viñedo','vinedo','salina'],
 };
 /* Pistas de momento del día en prosa. */
 const PISTAS_MOMENTO = [
-  [/\b(de noche|nocturn[oa]|anochecer|la noche|oscurid|a oscuras)\b/, 'NOCHE'],
+  /* en publicidad la hora dorada es un momento propio: una ventana de luz corta que se planifica aparte */
+  [/\b(hora dorada|golden hour|ultimo sol|luz dorada|hora magica|magic hour)\b/, 'HORA DORADA'],
+  [/\b(de noche|nocturn[oa]|anochecer|la noche|cae la noche|oscurid|a oscuras)\b/, 'NOCHE'],
   [/\b(atardecer|crepusculo|cae el sol|puesta del sol|caida del sol)\b/, 'ATARDECER'],
   [/\b(amanecer|al alba|sale el sol|madrugada|primera luz)\b/, 'AMANECER'],
   [/\b(de tarde|la tarde|siesta|media tarde)\b/, 'TARDE'],
@@ -4120,7 +4255,8 @@ const RE_CORTE = /(?:^|(?<=[.:;!?])\s+)(?=(?:corte a|cortamos a|cut to|abrimos e
 /* Palabras en mayúscula que NO son personajes. */
 const NO_PERSONAJE = new Set(['INT','EXT','DIA','DÍA','NOCHE','TARDE','FIN','VIDEO','AUDIO','OFF','VOZ','VO',
   'SFX','FX','MUS','LOGO','PACK','SUPER','ZOOM','CUT','TO','THE','END','CORTE','PLANO','TOMA','ESCENA','SEC',
-  'SPOT','TV','TVC','CLIENTE','PRODUCTO','MARCA','TITULO','TÍTULO','CLAIM','PACKSHOT','SLOGAN','ON','OK']);
+  'SPOT','TV','TVC','CLIENTE','PRODUCTO','MARCA','TITULO','TÍTULO','CLAIM','PACKSHOT','SLOGAN','ON','OK',
+  'SUV','CGI','VFX','FPV','POV','HD','UHD','STORYBOARD','CUADRO','LEGAL','LEGALES','CTA']);
 
 /* Una tabla VIDEO | AUDIO pegada de Word llega con tabs o muchos espacios.
    Se aplana: primero la columna de imagen, después la de audio.              */
@@ -4149,6 +4285,8 @@ function bloquesLibres(txt){
   /* descartar un título suelto arriba de todo */
   if(bl.length>1 && bl[0].split('\n').length===1 && bl[0].length<70 &&
      bl[0]===bl[0].toUpperCase() && !/[.]/.test(bl[0])) bl.shift();
+  /* un brief de un párrafo o unas pocas frases: se corta donde cambia el lugar o la hora */
+  if(bl.length <= 3) bl = bl.flatMap(partirPorCambios);
   /* si vino todo de corrido, cortar por las frases que abren plano */
   if(bl.length===1 && bl[0].length>260){
     const p = bl[0].split(RE_CORTE).map(x=>x.trim()).filter(Boolean);
@@ -4176,18 +4314,15 @@ function parseGuionLibre(txt){
   return bl.map((b,i)=>{
     const t = norm(b);
     /* locación: primer lugar conocido que aparezca; si no hay, sigue el anterior */
-    let loc='', ie='';
-    for(const [k,palabras] of Object.entries(LUGARES)){
-      for(const p of palabras){
-        const pos = t.indexOf(' '+p);
-        if(pos>=0 || t.startsWith(p)){
-          const cand = p.toUpperCase();
-          if(!loc || (pos>=0 && pos < t.indexOf(' '+norm(loc)))){ loc=cand; ie=k; }
-        }
-      }
-    }
+    const L0 = lugarDeTexto(b);
+    let loc = L0 ? L0.loc : '', ie = L0 ? L0.ie : '';
     if(/\b(interior|adentro|dentro de)\b/.test(t)) ie='INT';
     if(/\b(exterior|afuera|a la calle|al aire libre)\b/.test(t)) ie='EXT';
+    /* «dentro del auto», «en el asiento de atrás»: el vehículo es la locación */
+    const veh = t.match(/\b(?:interior|dentro|adentro) (?:del|de la|de un|de una) (auto|coche|camioneta|colectivo|tren|avion|subte|taxi|camion|micro|barco|ascensor)\b/);
+    if(veh){ loc = veh[1].toUpperCase(); ie = 'INT'; }
+    /* el cierre de producto sin lugar: es el packshot (en estudio o en 3D), no la última locación */
+    if(/\b(packshot|pack shot|placa final|plano de producto)\b/.test(t) && (!loc || RE_SALTO.test(t.trim()))){ loc = 'PACKSHOT'; ie = 'INT'; }
     if(!loc){ loc = locPrev || 'Sin locación'; ie = ie || iePrev; }
     /* momento */
     let mom='';
@@ -4198,10 +4333,56 @@ function parseGuionLibre(txt){
     const e = nuevaEscena({numero:String(i+1), encabezado:b.split('\n')[0].slice(0,90),
       intExt:ie||'INT', locacion:loc, momento:mom, texto:b,
       octavos: Math.max(1, Math.round(b.split('\n').length/6.875) || Math.round(b.length/380*8) || 1)});
-    e.personajes = personajesLibres(b);
+    /* el locutor es una voz de la post, no elenco del rodaje */
+    e.personajes = personajesLibres(b).filter(p => { if(/^(LOCUTOR|LOCUTORA|VOZ|VOZ EN OFF|VOZ OFF)$/.test(p)){ (e.voces ||= []).push(p); return false; } return true; });
+    conEdades(e).forEach(({nom}) => { if(!e.personajes.some(p => norm(p) === norm(nom))) e.personajes.push(nom); });
     detectar(e);
     return e;
   });
+}
+const vehiculoLugar = t => { const m = norm(t).match(/\b(?:interior|dentro|adentro|arriba) (?:del|de la|de un|de una) (auto|coche|camioneta|colectivo|tren|avion|subte|taxi|camion|micro|barco|ascensor)\b/); return m ? m[1].toUpperCase() : ''; };
+/* El lugar que nombra un texto: el primero conocido que aparece. */
+function lugarDeTexto(txt){
+  /* lo que va entre comillas (el claim, un diálogo) y el «SUPER:» (texto en pantalla) no dicen dónde se filma */
+  const t = norm(String(txt || '').replace(/«[^»]*»|"[^"\n]*"|“[^”]*”/g, ' ').replace(/\bsuper\s*:/gi, ' '));
+  let loc = '', ie = '';
+  for(const [k, palabras] of Object.entries(LUGARES)){
+    for(const p of palabras){
+      const pos = t.indexOf(' ' + p);
+      if(pos >= 0 || t.startsWith(p)){
+        const cand = p.toUpperCase();
+        if(!loc || (pos >= 0 && pos < t.indexOf(' ' + norm(loc)))){ loc = cand; ie = k; }
+      }
+    }
+  }
+  return loc ? {loc, ie} : null;
+}
+/* Un brief de un párrafo (o unas pocas frases) cuenta varios momentos sin
+   encabezados: se corta donde cambia el lugar, la hora o hay un salto
+   («de golpe», «corte a»). Cada parte es un bloque del desglose. */
+const RE_SALTO = /^(?:corte a|cortamos a|de golpe|de pronto|de repente|al rato|mas tarde|despues|luego|cierre|cerramos|cierra con|final|en el cierre|placa final|packshot|pack shot)\b/;
+function partirPorCambios(b){
+  const frases = b.replace(/\r\n?/g, '\n').split(/(?<=[.!?])\s+|\n+/).map(x => x.trim()).filter(Boolean);
+  if(frases.length < 2) return [b];
+  const out = []; let act = null, momPrev = '';
+  frases.forEach(f => {
+    const tf = norm(f), veh = vehiculoLugar(tf), L = veh ? {loc: veh, ie: 'INT'} : lugarDeTexto(f);
+    let mom = ''; for(const [re, val] of PISTAS_MOMENTO) if(re.test(tf)){ mom = val; break; }
+    const nuevo = !act || (L && act.loc && L.loc !== act.loc) || (mom && act.mom && mom !== act.mom)
+      || (RE_SALTO.test(tf) && act.frases.length >= 1 && (L || /cierre|cerramos|cierra|final|packshot|pack shot/.test(tf)));
+    if(nuevo && act && act.frases.length){ out.push(act); momPrev = act.mom || momPrev; act = null; }
+    /* el momento sigue del bloque anterior hasta que el texto diga otro */
+    if(!act) act = {frases: [], loc: '', mom: momPrev, propio: false};
+    act.frases.push(f);
+    if(L && !act.loc) act.loc = L.loc;
+    if(mom && !act.propio){ act.mom = mom; act.propio = true; }
+  });
+  if(act && act.frases.length) out.push(act);
+  /* un bloque que es sólo «pero el momento siguió» no se separa */
+  for(let i = out.length - 1; i > 0; i--) if(!out[i].loc && out[i].mom === out[i - 1].mom && !RE_SALTO.test(norm(out[i].frases[0]))){ out[i - 1].frases.push(...out[i].frases); out.splice(i, 1); }
+  /* sólo vale la pena si de verdad hay más de un lugar o momento */
+  const distintos = new Set(out.map(x => x.loc + '|' + x.mom)).size;
+  return out.length > 1 && distintos > 1 ? out.map(x => x.frases.join(' ')) : [b];
 }
 
 /* En prosa los personajes vienen en MAYÚSCULA la primera vez ("Una MADRE
@@ -4234,6 +4415,234 @@ function desglosar(txt){
   if(conEnc.length) return {escenas:conEnc, modo:'encabezados'};
   const libres = parseGuionLibre(txt);
   return {escenas:libres, modo: libres.length>1 ? 'parrafos' : libres.length ? 'bloque' : 'nada'};
+}
+
+/* ===================  LO QUE CUESTA PLATA, EN PUBLICIDAD  ==================
+   Lo que el que cotiza tiene que ver de un vistazo en el material de la
+   agencia: la cámara especial, los efectos en set, la post y los
+   entregables. Cada cosa dice de dónde lo sacó (la frase, el bloque), qué
+   tan seguro está y qué línea del presupuesto propone. Nada se agrega solo:
+   se propone, y se aplica desde la lista con tildes.
+   Las expresiones se comparan sin acentos y en minúscula; aceptan las
+   variantes de escritura de la jerga («slow motion», «slowmo», «cámara
+   lenta»; «drone», «dron», «toma aérea»).
+     re        lo que lo dice sin dudas (confianza alta)
+     media     lo que lo sugiere (confianza media)
+     lineas    [rubro, concepto, días: 'esc' = los días en que aparece | 1 global] */
+const DETECTA = [
+  /* --- cámara especial --- */
+  {cat:'camara', k:'dron', l:'Dron', re:/\b(dron(e|es)?|toma(s)? aerea(s)?|plano(s)? aereo(s)?|vista(s)? aerea(s)?|fpv)\b/, media:/\b(desde el aire|desde arriba muy alto|sobrevuela|vuelo sobre)\b/,
+    lineas:[['11','Alquiler de drone','esc'],['04','Piloto de Drone','esc']], claves:['dron']},
+  {cat:'camara', k:'steadicam', l:'Steadicam', re:/\bstead[iy] ?cam\b/, media:/\b(sigue (a|al|a la) .{0,20}(caminando|corriendo)|camara (que )?la sigue|camara (que )?lo sigue)\b/,
+    lineas:[['04','Operador de Steadicam','esc'],['11','Steadicam (equipo)','esc']], claves:['steadicam']},
+  {cat:'camara', k:'grua', l:'Grúa / telescópica', re:/\b(grua|telescopica|techno ?crane|technocrane|jib|pluma de camara)\b/,
+    lineas:[['11','Technocrane / grúa telescópica','esc'],['05','Operador de grúa','esc']], claves:['grua','technocrane']},
+  {cat:'camara', k:'cablecam', l:'Cable cam', re:/\b(cable ?cam|spider ?cam)\b/, lineas:[['11','Cablecam (equipo y operador)','esc']], claves:['cablecam']},
+  {cat:'camara', k:'carrig', l:'Car rig / brazo ruso', re:/\b(car ?rig|brazo ruso|russian arm|camera car|auto camara|montura de auto|car mount|pegad[oa] al auto|travelling vehicular)\b/,
+    media:/\b(desde otro auto|en movimiento por la ruta|auto en movimiento|maneja por)\b/,
+    lineas:[['11','Camera car / brazo ruso','esc'],['05','Rigger','esc']], claves:['camera car','brazo ruso','car rig']},
+  {cat:'camara', k:'altavel', l:'Alta velocidad (Phantom)', re:/\b(phantom|alta velocidad|\d{3,4} ?fps|super ?slow|ultra ?slow)\b/, media:/\b(camara lenta|slow ?motion|slow ?mo|en slow|ralenti|camara super lenta)\b/,
+    lineas:[['11','Cámara de alta velocidad (Phantom)','esc'],['04','Técnico de Phantom','esc']], lineasMedia:[['11','Cámara de alta velocidad (Phantom)','esc']], claves:['phantom','alta velocidad']},
+  {cat:'camara', k:'submarina', l:'Cámara submarina', re:/\b(submarin[oa]s?|subacuatic[oa]s?|bajo el agua|debajo del agua|underwater|carcasa acuatica)\b/,
+    lineas:[['11','Carcasa / cámara submarina','esc'],['04','Operador de cámara submarina','esc']], claves:['submarin','subacuatic']},
+  {cat:'camara', k:'macro', l:'Macro / probe', re:/\b(macro|probe|lente sonda|periscopio)\b/, media:/\b(detalle extremo|super detalle|extremo detalle|primerisimo primer plano de (la|el|las|los))\b/,
+    lineas:[['11','Ópticas especiales (macro / probe)','esc']], claves:['opticas especiales','macro','probe']},
+  {cat:'camara', k:'motion', l:'Motion control', re:/\b(motion ?control|brazo robotico|robot de camara|bolt|milo)\b/, lineas:[['11','Motion control (equipo y técnico)','esc']], claves:['motion control']},
+  {cat:'camara', k:'timelapse', l:'Time-lapse', re:/\b(time ?-?lapse|timelapse|hyper ?-?lapse|hiperlapso)\b/, lineas:[['04','Time-lapse (equipo y técnico)',1]], claves:['lapse']},
+  {cat:'camara', k:'gimbal', l:'Gimbal', re:/\b(gimbal|ronin|estabilizador)\b/, lineas:[['04','Operador de Ronin / gimbal','esc']], claves:['ronin','gimbal']},
+  {cat:'camara', k:'mano', l:'Cámara en mano', re:/\b(camara en mano|handheld|hand ?held|en mano y nervios[oa])\b/, lineas:[], nota:'No suma equipo: lo hace el operador'},
+  {cat:'camara', k:'dolly', l:'Travelling / dolly', re:/\b(travelling|traveling|dolly|rieles|riel)\b/,
+    lineas:[['11','Dolly y rieles','esc'],['05','Operador de dolly','esc']], claves:['dolly']},
+  {cat:'camara', k:'vr', l:'360 / VR', re:/\b(360|realidad virtual|camara 360)\b/, media:/\bvr\b/, lineas:[['11','Cámara 360 / VR','esc']], claves:['360']},
+  /* --- efectos especiales en set --- */
+  {cat:'sfx', k:'lluvia', l:'Lluvia', re:/\b(lluvia|llueve|lloviendo|llovizna|aguacero|tormenta|empieza a llover)\b/, lineas:[['06','Efectos especiales — lluvia (torre y rociadores)',1]], claves:['lluvia']},
+  {cat:'sfx', k:'viento', l:'Viento', re:/\b(ventilador(es)?|ventarron|rafaga|viento fuerte)\b/, media:/\b(viento|el pelo (le )?vuela|le mueve el pelo|flamea)\b/, lineas:[['06','Efectos especiales — viento (ventiladores)',1]], claves:['viento','ventilador']},
+  {cat:'sfx', k:'humo', l:'Humo / niebla', re:/\b(humo|niebla|neblina|bruma|hazer|haze|maquina de humo)\b/, lineas:[['06','Efectos especiales — humo / niebla',1]], claves:['humo','niebla']},
+  {cat:'sfx', k:'fuego', l:'Fuego', re:/\b(fuego|llamas?|incendio|fogata|antorcha|prende fuego|arde)\b/, lineas:[['06','Efectos especiales — fuego (técnico habilitado)',1],['16','Matafuegos y elementos de seguridad',1]], claves:['fuego','matafuego']},
+  {cat:'sfx', k:'nieve', l:'Nieve', re:/\b(nieve|nieva|nevada|copos)\b/, lineas:[['06','Efectos especiales — nieve',1]], claves:['nieve']},
+  {cat:'sfx', k:'piro', l:'Explosión / pirotecnia', re:/\b(explosion|explota|estalla|pirotecni[ac]s?|fuegos artificiales|bengalas?|petardos?)\b/,
+    lineas:[['06','Pirotecnia (técnico habilitado)',1],['10','Permiso especial de pirotecnia',1]], claves:['pirotecn','explosi']},
+  {cat:'sfx', k:'agua', l:'Agua (splash, salpicaduras)', re:/\b(splash|salpica(dura)?s?|chorro de agua|baldazo|manguera)\b/, media:/\b(gotas|charco|moja(do|da)?)\b/,
+    lineas:[['06','Efectos de agua (splash, salpicaduras)',1]], claves:['splash','salpica','efectos de agua']},
+  {cat:'sfx', k:'espuma', l:'Espuma / burbujas', re:/\b(espuma|burbujas|confeti|papelitos)\b/, lineas:[['06','Efectos especiales — espuma / burbujas / confeti',1]], claves:['espuma','burbuja','confeti']},
+  {cat:'sfx', k:'mecanico', l:'Efecto mecánico / rigging', re:/\b(rigging|tanza|levita|vuela por el aire|se rompe sol[oa]|efecto mecanico|cables? (para|que) (colgar|sostiene))\b/,
+    media:/\b(se rompe|estalla el vidrio|rompe (el|la|un|una) (vidrio|ventana|vaso|botella))\b/, lineas:[['06','Efectos mecánicos / rigging',1]], claves:['rigging','mecanic']},
+  /* --- post y VFX --- */
+  {cat:'post', k:'packshot3d', l:'Packshot 3D / CGI', re:/\b(packshot|pack shot|plano de producto|producto|paquete|lata|botella)\b.{0,40}\b(3d|cgi|render(izad[oa])?)\b|\b(3d|cgi)\b.{0,30}\b(packshot|pack shot|producto|lata|botella|paquete)\b/,
+    lineas:[['14','Packshot 3D / CGI',1]], claves:['packshot 3d','3d','cgi']},
+  {cat:'post', k:'packshot', l:'Packshot filmado', re:/\b(packshot|pack shot|plano de producto|placa de producto)\b/, si:A => !A.has('packshot3d'),
+    lineas:[['06','Packshot en set (mesa de producto y estilismo)',1]], claves:['packshot','food styling']},
+  {cat:'post', k:'croma', l:'Croma / composición', re:/\b(croma|chroma|pantalla verde|fondo verde|green ?screen|blue ?screen|fondo azul)\b/,
+    lineas:[['14','VFX / composición',1],['06','Fondo de croma (tela, estructura y luz pareja)',1]], claves:['composic','croma','chroma']},
+  {cat:'post', k:'limpieza', l:'Limpieza y retoque', re:/\b(borrar|limpieza|retoque|clean ?-?up|sacar (los )?cables|beauty)\b/, lineas:[['14','Limpieza y retoque (clean-up)',1]], claves:['limpieza','retoque']},
+  {cat:'post', k:'cielo', l:'Cambio de cielo', re:/\b(cambio de cielo|reemplazo de cielo|cielo digital|sky replacement|cambiar el cielo)\b/, lineas:[['14','Reemplazo de cielo',1]], claves:['cielo']},
+  {cat:'post', k:'vfx', l:'VFX / 3D', re:/\b(vfx|cgi|efectos? visuales|efecto digital|doble digital|set extension|morph(ing)?|particulas|animacion 3d|render(izad[oa])?)\b/, si:A => !A.has('packshot3d'),
+    lineas:[['14','VFX / 3D',1]], claves:['vfx','cgi','3d','composic']},
+  {cat:'post', k:'motion', l:'Motion graphics', re:/\b(motion graphics?|grafica animada|logo animado|claim animado|placa animada|textos? animad[oa]s?|tipografia animada|zocalo|lower third|animacion de (texto|logo|placa))\b/,
+    media:/\b(super(s)?|placa final|claim en pantalla|texto en pantalla|legal(es)?)\b/, lineas:[['14','Motion graphics',1]], claves:['motion']},
+  {cat:'post', k:'locucion', l:'Locución', re:/\b(locutor(a)?|locucion|voz en off|voz off|\(off\)|voice ?over|v\.o\.)\b/, lineas:[['14','Locución',1]], claves:['locuci']},
+  {cat:'post', k:'licencia', l:'Música con licencia', re:/\b(licencia de musica|tema (conocido|de [a-z]+)|cancion de [a-z]+|hit|musica de catalogo|stock music)\b/, lineas:[['14','Licencia de música',1]], claves:['licencia']},
+  {cat:'post', k:'musica', l:'Música original', re:/\b(musica original|jingle|banda sonora|compositor)\b/, media:/\b(musica|cancion|tema musical|track)\b/, si:A => !A.has('licencia'),
+    lineas:[['14','Música original',1]], claves:['music']},
+  {cat:'post', k:'sonoro', l:'Diseño sonoro', re:/\b(diseno sonoro|sound design|foley|efectos de sonido|crunch|sonido exagerado)\b/, lineas:[['14','Diseño sonoro',1]], claves:['diseno sonoro','sound design']},
+  {cat:'post', k:'directo', l:'Sonido directo', re:/\b(sonido directo|sincro|habla a camara|testimonial|entrevista|en vivo)\b/, lineas:[['08','Sonidista Directo','esc'],['08','Microfonista','esc']], claves:['sonidista','directo']},
+  {cat:'post', k:'color', l:'Corrección de color', re:/\b(colorista|correccion de color|grading|etalonaje|look (calido|frio|vintage|desaturado))\b/, lineas:[['14','Colorista',1]], claves:['color']},
+];
+const CATS_DET = [
+  {k:'escenas', l:'Escenas y puestas'}, {k:'elenco', l:'Elenco'}, {k:'locaciones', l:'Locaciones y permisos'},
+  {k:'camara', l:'Cámara especial'}, {k:'sfx', l:'Efectos especiales en set'}, {k:'post', l:'Postproducción y VFX'},
+  {k:'entregas', l:'Versiones y entregables'}, {k:'arte', l:'Arte, utilería, vestuario y maquillaje'}, {k:'vehiculos', l:'Vehículos y animales'}];
+const noEsLocacion = l => !l || l === 'Sin locación' || l === 'PACKSHOT' || (DICC.vehiculos || []).includes(norm(l));
+const NUMEROS_TXT = {un:1,una:1,uno:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9,diez:10,once:11,doce:12,quince:15,veinte:20,treinta:30,cuarenta:40,cincuenta:50,cien:100};
+const RE_MENOR = /^(nen[ea]s?|nin[oa]s?|chic[oa]s?|bebes?|hij[oa]s?|adolescentes?|pibe|piba|nenit[oa]|varon(cito)?)$/;
+const frasesDe = t => String(t || '').replace(/\r\n?/g, '\n').split(/(?<=[.!?;])\s+|\n+/).map(x => x.trim()).filter(Boolean);
+/* los tipos de plano que dicen cuántas puestas (emplazamientos de cámara) tiene un bloque */
+const TIROS_PUESTA = [
+  ['aereo', 'Aéreo', /\b(dron(e)?|aere[oa]|desde el aire|fpv)\b/],
+  ['vehiculo', 'Desde el vehículo', /\b(car ?rig|brazo ruso|camera car|pegad[oa] al auto|desde otro auto)\b/],
+  ['packshot', 'Packshot', /\b(packshot|pack shot|plano de producto|placa final)\b/],
+  ['detalle', 'Detalle', /\b(detalle|macro|insert|primerisimo|close ?up|probe)\b/],
+  ['contra', 'Contraplano', /\b(contra ?plano|contra ?campo|reverse|inverso)\b/],
+  ['general', 'General', /\b(plano general|gran plano|plano abierto|abre en|vemos (la|el) (ruta|playa|ciudad|costa|campo))\b/],
+  ['seguimiento', 'Seguimiento', /\b(stead[iy] ?cam|travelling|dolly|sigue a|gimbal|camara en mano)\b/],
+  ['cerrado', 'Primer plano', /\b(primer plano|plano medio|plano corto|cerrad[oa])\b/],
+];
+function puestasDeEscena(e){
+  const frases = frasesDe(e.texto).filter(f => f.split(/\s+/).length >= 3);
+  const grupos = new Map();
+  frases.forEach(f => {
+    const tf = norm(f);
+    const hit = TIROS_PUESTA.find(([, , re]) => re.test(tf));
+    const k = hit ? hit[0] : 'base';
+    if(!grupos.has(k)) grupos.set(k, {tipo: hit ? hit[1] : 'Puesta principal', frases: []});
+    grupos.get(k).frases.push(f);
+  });
+  if(!grupos.size) grupos.set('base', {tipo: 'Puesta principal', frases: []});
+  return [...grupos.values()].map((g, i) => ({letra: String.fromCharCode(65 + i), ...g}));
+}
+/* «diez ciclistas», «un grupo de 12 corredores», «multitud»: cuántos extras */
+function cuantosExtras(textoNorm, palabra){
+  const re = new RegExp('\\b(\\d{1,3}|' + Object.keys(NUMEROS_TXT).join('|') + ')\\s+(?:[a-z]+\\s+){0,2}' + palabra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
+  const m = textoNorm.match(re);
+  if(m){ const k = /^\d+$/.test(m[1]) ? +m[1] : NUMEROS_TXT[m[1]]; if(k > 1) return {cantidad: k, conf: 'alta'}; }
+  if(/\b(multitud|muchedumbre|publico|hinchada|concurrencia|espectadores|manifestantes)\b/.test(palabra)) return {cantidad: 30, conf: 'media'};
+  return {cantidad: 6, conf: 'media'};
+}
+/* Todo lo que el material dice que hay que cotizar, con su evidencia. */
+function analizarDesglose(py){
+  const d = py.desglose || nuevoDesglose(), escenas = d.escenas || [];
+  const grupos = Object.fromEntries(CATS_DET.map(c => [c.k, []]));
+  const jornadaDe = e => e.jornada || 1;
+  const evid = (e, f) => ({esc: e.numero, frase: f.length > 140 ? f.slice(0, 137) + '…' : f});
+  /* 1. la cámara, los efectos y la post: frase por frase */
+  const hallado = new Map();
+  escenas.forEach(e => frasesDe(e.texto || e.encabezado).forEach(f => {
+    const tf = ' ' + norm(f).replace(/[«»"“”]/g, ' ') + ' ';
+    DETECTA.forEach(x => {
+      const alta = x.re && x.re.test(tf), media = !alta && x.media && x.media.test(tf);
+      if(!alta && !media) return;
+      let h = hallado.get(x.k);
+      if(!h){ h = {x, conf: 'media', evid: [], escenas: new Set()}; hallado.set(x.k, h); }
+      if(alta) h.conf = 'alta';
+      h.escenas.add(e);
+      if(h.evid.length < 3 && !h.evid.some(v => v.esc === e.numero)) h.evid.push(evid(e, f));
+    });
+  }));
+  const claves = new Set(hallado.keys());
+  hallado.forEach((h, k) => {
+    if(h.x.si && !h.x.si(claves)) return;
+    const diasEsc = new Set([...h.escenas].map(jornadaDe)).size || 1;
+    const defs = h.conf === 'media' && h.x.lineasMedia ? h.x.lineasMedia : h.x.lineas;
+    grupos[h.x.cat].push({k, l: h.x.l, conf: h.conf, evid: h.evid, nota: h.x.nota || '',
+      escenas: [...h.escenas].map(e => e.numero),
+      lineas: defs.map(([r, c, dd]) => ({rubro: r, concepto: c, cantidad: 1, dias: dd === 'esc' ? diasEsc : 1, unidad: dd === 'esc' ? 'jornada' : 'global',
+        claves: h.x.claves, det: k, conf: h.conf}))});
+  });
+  /* el técnico de efectos: uno solo, los días en que hay algún efecto */
+  if(grupos.sfx.length){
+    const es = new Set(grupos.sfx.flatMap(x => x.escenas));
+    const dias = new Set(escenas.filter(e => es.has(e.numero)).map(jornadaDe)).size || 1;
+    grupos.sfx[0].lineas.unshift({rubro: '06', concepto: 'Técnico de efectos especiales', cantidad: 1, dias, unidad: 'jornada', claves: ['tecnico de efectos', 'efectos especiales'], det: 'sfx',
+      conf: grupos.sfx.some(x => x.conf === 'alta') ? 'alta' : 'media'});
+  }
+  /* 2. las versiones y los formatos: 30″, 15″, 6″, vertical para redes */
+  const todo = escenas.map(e => e.texto + '\n' + e.encabezado).join('\n') + '\n' + (d.guion || '');
+  const tn = norm(todo);
+  const durs = [...new Set([...todo.matchAll(/(?:^|[^\d])(\d{1,3})\s*(?:″|"|”|''|’’|seg(?:undos)?\b|s\b)/gi)].map(m => +m[1]).filter(x => x >= 4 && x <= 120))].sort((a, b) => b - a);
+  if(durs.length > 1){
+    durs.slice(1).forEach(dd => grupos.entregas.push({k: 'cut' + dd, l: `Cutdown de ${dd}″`, conf: 'alta', evid: [{esc: '', frase: `El material pide ${durs.map(x => x + '″').join(', ')}`}],
+      lineas: [{rubro: '14', concepto: `Edición de cutdown ${dd}″`, cantidad: 1, dias: 1, unidad: 'global', claves: [`cutdown ${dd}`, `${dd}″`, `${dd}"`, `${dd} seg`], det: 'cut' + dd, conf: 'alta'}]}));
+  }
+  const fm = tn.match(/\b(9 ?: ?16|vertical(es)?|stories|story|reels?|tik ?tok|1 ?: ?1|feed|pre-?roll|bumper|formatos? para redes|versiones? para redes|redes sociales)\b/);
+  if(fm) grupos.entregas.push({k: 'redes', l: 'Formatos para redes', conf: 'alta', evid: [{esc: '', frase: `«${fm[0]}»`}],
+    lineas: [{rubro: '14', concepto: 'Adaptación a formatos para redes (9:16 · 1:1)', cantidad: 1, dias: 1, unidad: 'global', claves: ['redes', 'vertical', '9:16'], det: 'redes', conf: 'alta'}]});
+  /* 3. el elenco: principales, secundarios, menores, extras y voces */
+  const pers = new Map();
+  escenas.forEach(e => (e.personajes || []).forEach(p => {
+    const k = norm(p).trim(); if(!pers.has(k)) pers.set(k, {nombre: p, escenas: [], dialogo: false, edad: null});
+    const x = pers.get(k); x.escenas.push(e); if((e.conDialogo || []).includes(p)) x.dialogo = true;
+    const ed = e.edades && (e.edades[p] ?? e.edades[p.toUpperCase()]); if(ed != null) x.edad = ed;
+  }));
+  const lista = [...pers.values()];
+  lista.forEach((x, i) => {
+    x.menor = (x.edad != null && x.edad < 18) || RE_MENOR.test(norm(x.nombre));
+    x.rol = x.dialogo || x.escenas.length >= 2 || i === 0 || (x.edad != null && !x.menor) ? 'principal' : 'secundario';
+    if(x.menor && x.escenas.length < 2 && !x.dialogo) x.rol = 'secundario';
+    const e0 = x.escenas[0], f = frasesDe(e0.texto).find(ff => norm(ff).includes(norm(x.nombre))) || e0.encabezado || '';
+    grupos.elenco.push({k: 'p:' + norm(x.nombre), l: x.nombre.charAt(0) + x.nombre.slice(1).toLowerCase(), conf: 'alta', evid: [evid(e0, f)],
+      sub: x.rol === 'principal' ? 'Principal' : 'Secundario', menor: x.menor, edad: x.edad, escenas: x.escenas.map(e => e.numero),
+      lineas: [{rubro: '09', concepto: x.nombre, cantidad: 1, dias: new Set(x.escenas.map(jornadaDe)).size || 1, unidad: 'jornada', conf: 'alta'}]});
+  });
+  const extras = new Map();
+  escenas.forEach(e => (e.elementos.extras || []).forEach(w => { const k = norm(w); if(!extras.has(k)) extras.set(k, {nombre: w, escenas: []}); extras.get(k).escenas.push(e); }));
+  extras.forEach((x, k) => {
+    const textoEs = norm(x.escenas.map(e => e.texto).join(' '));
+    const c = cuantosExtras(textoEs, k);
+    const e0 = x.escenas[0], f = frasesDe(e0.texto).find(ff => norm(ff).includes(k)) || '';
+    const dias = new Set(x.escenas.map(jornadaDe)).size || 1;
+    grupos.elenco.push({k: 'x:' + k, l: 'Extras — ' + x.nombre, sub: 'Extras', conf: c.conf, cantidad: c.cantidad, evid: [evid(e0, f)], escenas: x.escenas.map(e => e.numero),
+      nota: c.conf === 'media' ? 'cantidad estimada: ajustala' : '',
+      lineas: [{rubro: '09', concepto: 'Extras — ' + x.nombre, cantidad: c.cantidad, dias, unidad: 'jornada', claves: [x.nombre, 'extras ' + x.nombre], det: 'x:' + k, conf: c.conf,
+        piezaId: piezaDeEscenas(x.escenas), dep: 'extras'}]});
+  });
+  /* «tres amigos», «un grupo de amigas»: si son pocos, son elenco (aparecen en cámara); si son muchos, extras */
+  const grupoEl = new Map();
+  escenas.forEach(e => { const tn = norm(e.texto); for(const m of tn.matchAll(/\b(amigos|amigas|companeros|companeras|primos|hermanos|vecinas)\b/g)){
+    const w = m[1]; if(extras.has(w)) continue; if(!grupoEl.has(w)) grupoEl.set(w, {escenas: new Set(), texto: ''}); const g = grupoEl.get(w); g.escenas.add(e); g.texto += ' ' + tn; } });
+  grupoEl.forEach((g, w) => {
+    const c = cuantosExtras(g.texto, w), es = [...g.escenas], cant = c.conf === 'alta' ? c.cantidad : 4;
+    const e0 = es[0], f = frasesDe(e0.texto).find(ff => norm(ff).includes(w)) || '';
+    const dias = new Set(es.map(jornadaDe)).size || 1, pocos = cant <= 5;
+    const conc = (pocos ? 'Actores — ' : 'Extras — ') + w.replace('companer', 'compañer');
+    grupos.elenco.push({k: 'g:' + w, l: conc, sub: pocos ? 'Secundarios' : 'Extras', conf: c.conf, cantidad: cant, evid: [evid(e0, f)], escenas: es.map(e => e.numero),
+      nota: c.conf === 'media' ? 'cantidad estimada: ajustala' : '',
+      lineas: [{rubro: '09', concepto: conc, cantidad: cant, dias, unidad: 'jornada', claves: [w], det: 'g:' + w, conf: c.conf, piezaId: piezaDeEscenas(es), dep: pocos ? 'elenco-grupo' : 'extras'}]});
+  });
+  const voces = [...new Set(escenas.flatMap(e => e.voces || []))];
+  if(voces.length && !grupos.post.some(x => x.k === 'locucion'))
+    grupos.post.push({k: 'locucion', l: 'Locución', conf: 'alta', evid: [{esc: '', frase: voces.join(', ') + ' (en off)'}],
+      lineas: [{rubro: '14', concepto: 'Locución', cantidad: 1, dias: 1, unidad: 'global', claves: ['locuci'], det: 'locucion', conf: 'alta'}]});
+  /* 4. locaciones (con vía pública), arte y vehículos: lo que ya junta el desglose */
+  const r = resumenDesglose(d), det = tagsDetectados(py);
+  r.locaciones.filter(l => !noEsLocacion(l)).forEach(l => {
+    const es = escenas.filter(e => e.locacion === l), via = TAG('viaPublica').lugar.test(norm(l));
+    grupos.locaciones.push({k: 'loc:' + l, l: l.charAt(0) + l.slice(1).toLowerCase(), conf: 'alta',
+      sub: `${[...new Set(es.map(e => e.intExt))].join('/')} · ${[...new Set(es.map(e => e.momento))].join(', ')}${via ? ' · vía pública' : ''}`,
+      evid: [evid(es[0], es[0].encabezado || frasesDe(es[0].texto)[0] || '')], escenas: es.map(e => e.numero),
+      lineas: [{rubro: '10', concepto: 'Locación — ' + l, cantidad: 1, dias: new Set(es.map(jornadaDe)).size || 1, unidad: 'jornada', conf: 'alta'},
+        ...(via ? [{rubro: '10', concepto: 'Permiso de filmación en vía pública', cantidad: 1, dias: 1, unidad: 'jornada', conf: 'alta'}] : [])]});
+  });
+  [['arte', ['utileria', 'arte', 'vestuario', 'maquillaje']], ['vehiculos', ['vehiculos', 'animales']]].forEach(([cat, deps]) => deps.forEach(dep => {
+    const m = r.porDepto[dep]; if(!m || !m.size) return;
+    grupos[cat].push({k: 'dep:' + dep, l: DEPTO(dep).l, conf: 'media', evid: [{esc: '', frase: [...m.values()].map(x => x.nombre).slice(0, 8).join(', ')}],
+      escenas: [...new Set([...m.values()].flatMap(x => x.escenas))], lineas: []});
+  }));
+  /* 5. escenas y puestas */
+  const esc = escenas.map(e => ({numero: e.numero, intExt: e.intExt, momento: e.momento, locacion: e.locacion, puestas: puestasDeEscena(e)}));
+  const puestas = esc.reduce((s, e) => s + e.puestas.length, 0);
+  const total = ['camara', 'sfx', 'post', 'entregas'].reduce((s, k) => s + grupos[k].length, 0) + grupos.elenco.length + grupos.locaciones.length;
+  return {grupos, escenas: esc, puestas, jornadasSug: Math.max(1, Math.ceil(puestas / 12)), total,
+    noches: escenas.filter(e => /NOCHE|MADRUGADA/.test(e.momento)).length, doradas: escenas.filter(e => /DORADA/.test(e.momento)).length, tags: det};
 }
 
 /* --------------------------- TAGS DEL PROYECTO ----------------------------
@@ -4348,6 +4757,14 @@ function detectar(e){
   Object.entries(porDep).forEach(([dep, hall]) => {
     e.elementos[dep] = [...new Set([...(e.elementos[dep]||[]), ...hall])];
     e.auto[dep] = hall;
+  });
+  /* «Pasan otros CORREDORES»: en mayúscula pero es un grupo, no un personaje: va a extras */
+  e.personajes = (e.personajes || []).filter(p => {
+    const q = norm(p).trim();
+    if(!(DICC.extras || []).includes(q) || (e.conDialogo || []).includes(p)) return true;
+    e.elementos.extras = [...new Set([...(e.elementos.extras || []), q])];
+    (e.auto.extras ||= []).includes(q) || e.auto.extras.push(q);
+    return false;
   });
 }
 
@@ -4817,7 +5234,10 @@ async function sincronizarProductoras(){
 const PY_CAMPOS = [['nombre','nombre'],['tipo','tipo'],['cliente','cliente'],
   ['agencia','agencia'],['producto','producto'],['territorio','territorio'],
   ['plazo','plazo'],['medios','medios'],['jornadas','jornadas'],
-  ['tel_produccion','telProduccion'],['archivado','archivado']];
+  ['tel_produccion','telProduccion'],['archivado','archivado'],['etapa','etapa']];
+/* La base todavía sin la columna «etapa» (sin correr el SQL nuevo): el
+   proyecto se sube igual, sin la etapa, y no se vuelve a intentar. */
+let _sinEtapaEnBase = false;
 
 async function sbBajarProyectos(){
   if(!await sbSesionViva()) return [];
@@ -4830,9 +5250,18 @@ async function sbSubirProyecto(py, productoraId){
   if(f.jornadas != null) f.jornadas = Math.round(n(f.jornadas)) || 1;
   /* en la base es sí o no, nunca vacío: un proyecto que nunca se archivó va como false */
   f.archivado = !!py.archivado;
-  const r = await sbFetch('/rest/v1/proyecto', {method:'POST',
+  f.etapa = etapaDe(py);
+  if(_sinEtapaEnBase) delete f.etapa;
+  const subir = body => sbFetch('/rest/v1/proyecto', {method:'POST',
     headers:{'Prefer':'resolution=merge-duplicates,return=representation'},
-    body: JSON.stringify(f)});
+    body: JSON.stringify(body)});
+  let r;
+  try{ r = await subir(f); }
+  catch(e){
+    /* la base vieja no conoce la columna: sube sin la etapa */
+    if('etapa' in f && /etapa|PGRST204|column/i.test(e.message || '')){ _sinEtapaEnBase = true; delete f.etapa; r = await subir(f); }
+    else throw e;
+  }
   return (r && r[0]) || null;
 }
 
@@ -4932,11 +5361,16 @@ function ponerFees(py, fees){
 const ocsEnGastos = py => !(py && SYNC[py.id] && SYNC[py.id].compras);
 const PARTES_PY = {
   presupuesto: {
-    lee: py => ({versiones: (py.versiones || []).filter(v => !ES_REAL(v)).map(sinFee), versionRodaje: py.versionRodaje || null, piezas: py.piezas || [], plantilla: py.plantilla || null}),
+    lee: py => ({versiones: (py.versiones || []).filter(v => !ES_REAL(v)).map(sinFee), versionRodaje: py.versionRodaje || null, piezas: py.piezas || [], plantilla: py.plantilla || null,
+      /* la cotización: cuál es la base, cuál se presenta, cuándo se aprobó o por qué no salió */
+      ...(py.baseId || py.elegidaId || py.aprobado || py.noSalio ? {cotiz: {baseId: py.baseId || null, elegidaId: py.elegidaId || null,
+        aprobado: py.aprobado || null, noSalio: py.noSalio || null, etapaHist: py.etapaHist || []}} : {})}),
     pone: (py, d) => {
       const antes = Object.fromEntries((py.versiones || []).map(v => [v.id, v.capas && v.capas.fee]));
       py.versiones = [...(py.versiones || []).filter(ES_REAL), ...(d.versiones || [])];
       py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; py.plantilla = d.plantilla || null;
+      if(d.cotiz){ py.baseId = d.cotiz.baseId || null; py.elegidaId = d.cotiz.elegidaId || null; py.aprobado = d.cotiz.aprobado || null;
+        py.noSalio = d.cotiz.noSalio || null; py.etapaHist = d.cotiz.etapaHist || []; }
       ponerFees(py, {...(py._fees || {}), ...Object.fromEntries(Object.entries(antes).filter(([, f]) => f != null))}); },
     algo: conLineas},
   presupuesto_real: {
@@ -4985,11 +5419,13 @@ const PARTES_PY = {
                 pone: (py, d) => { if(d.configRodaje) py.configRodaje = d.configRodaje; if(d.tags) py.tags = d.tags; }},
 };
 /* lo mismo que dice la base (puedo_parte), para no intentar lo que va a rebotar */
-function puedeParte(parte, escribir, u = getUsuario()){
+function puedeParte(parte, escribir, u = getUsuario(), py = getPy()){
   if(!u || u.pendiente) return false;
   const r = u.rol;
   if(r === 'admin' || r === 'ejecutivo') return true;
   if(r === 'produccion') return parte !== 'presupuesto_real';
+  /* cotizando, los asistentes y el equipo no escriben nada (igual que la base) */
+  if(escribir && py && enCotizacion(py)) return false;
   if(escribir) return ({asistdir: ['plan','tareas'], asistprod: ['rodaje','luces','alta','gastos','tareas','contactos']}[r] || ['gastos','tareas']).includes(parte);
   return ['gente','plan','rodaje','luces','alta','gastos','tareas','contactos','extra'].includes(parte);
 }
@@ -5420,6 +5856,8 @@ function migrar(){
     }
     py.piezas ||= [];
     py.piezas.forEach((p,i)=>{ p.numero ??= i+1; p.peso ??= 1; });
+    /* las etapas llegaron después: todo lo que ya existía estaba en curso */
+    if(!ETAPAS_PY.some(e => e.k === py.etapa)) py.etapa = 'aprobado';
   }));
   DB.catalogo ||= {personas:[]};
   DB.ui ||= {vista:'interna', tab:'resumen'};
@@ -5994,6 +6432,73 @@ function sembrar(){
   fC2.rendicion = {estado:'aProduccion', pasos:[rp('borrador', 'aProduccion', uCarla, hoy() + ' 08:50')],
     charla:[msg(uCarla, hoy() + ' 08:51', 'El rociador lo compré en la feria: no dan ticket.', tC[2].id)]};
   py.cajas = [fD1, fD2, fC1, fC2];
+  /* el segundo proyecto: uno que todavía se está cotizando */
+  sembrarCotizacion(pr, uLucia);
+  DB.ui.proyectoId = py.id; DB.ui.versionId = vRod.id;
+}
+
+/* Semilla 2: una publicidad EN COTIZACIÓN (la situación cero). Todo
+   inventado: la marca, la agencia y los números.
+     Cumbre — «Ruta abierta» · SUV · agencia Norte Creativa
+     spot 30″ + cutdowns 15″ y 6″ + vertical para redes
+     El brief es de un párrafo (el mismo ejemplo de «Probar con un guion de
+     ejemplo»): desglosado, aplicado al presupuesto, y con dos ejercicios
+     contra la base (una jornada con horas extra, y dos cámaras).
+   Sólo está invitada la jefa de producción (lo ve en costo); el resto del
+   equipo todavía no. Ficha en docs/proyecto-de-ejemplo.md.                  */
+function sembrarCotizacion(pr, jefa){
+  const vB = nuevaVersion({nombre:'Base 2 jornadas', nivel:'produccion', estado:'borrador', tc:1420, tcNombre:'MEP',
+    capas:{fee:15, contingencia:5, iibb:0, iva:21, cargas:40, cargasElenco:30}});
+  const py = nuevoProyecto({nombre:'Cumbre — "Ruta abierta"', tipo:'publicidad', cliente:'Austral Motors (SUV Cumbre)', agencia:'Norte Creativa',
+    producto:'SUV Cumbre', territorio:'Argentina', plazo:'12 meses', medios:'TV, digital y redes', jornadas:2, versiones:[vB], etapa:'cotizacion'});
+  py.baseId = vB.id;
+  py.piezas = [nuevaPieza({nombre:'Spot 30″', numero:1, duracion:'30″'}), nuevaPieza({nombre:'Cutdown 15″', numero:2, duracion:'15″'}),
+    nuevaPieza({nombre:'Bumper 6″', numero:3, duracion:'6″'})];
+  py.piezas.forEach((p, i) => { p.peso = [6, 2, 1][i]; });
+  py.invitados = jefa ? [jefa.id] : [];
+  pr.proyectos.push(py);
+  aplicarPlantilla(py, vB, 'pub-mediana', {jornadas:2});
+  /* el brief de la agencia, desglosado */
+  const brief = EJEMPLOS_PUB.find(x => x.k === 'brief').texto;
+  const des = desglosar(brief);
+  Object.assign(py.desglose, {guion: brief, escenas: des.escenas, modo: des.modo, importado: hoyMas(-2)});
+  /* lo detectado, aplicado al presupuesto (menos la camioneta: la pone el cliente) */
+  const ui = {p: DB.ui.proyectoId, v: DB.ui.versionId};
+  DB.ui.proyectoId = py.id; DB.ui.versionId = vB.id;
+  const P = propuestaPresupuesto();
+  aplicarLineasDesglose(py, vB, P.lineas, P.lineas.map((l, i) => ({i})).filter(m => !/^Vehículos —/.test(P.lineas[m.i].concepto)));
+  DB.ui.proyectoId = ui.p; DB.ui.versionId = ui.v;
+  /* los precios de lo que no es convenio (inventados, de octubre de 2026) */
+  const PRECIOS = [
+    [/^Director$/, 3500000], [/^Scouting/, 450000], [/^Casting$/, 600000], [/Pre Production Meeting/, 120000], [/^Shootingboard/, 350000],
+    [/^Caja chica/, 300000], [/^Alquiler de utilería/, 700000], [/^Compras de arte/, 500000], [/^Alquiler de muebles/, 300000],
+    [/^Alquiler de vestuario/, 450000], [/^Compra de vestuario/, 300000], [/^Insumos de maquillaje/, 120000],
+    [/^Actor \/ Actriz Principal/, 900000], [/^Actor \/ Actriz Secundario/, 500000], [/^Extra$/, 90000], [/^Extras —/, 90000],
+    [/^LAURA$/, 1100000], [/^TOMI$/, 700000], [/^Buyout/, 2400000], [/^Fee de agencia de casting/, 350000], [/^Permiso de trabajo de menores/, 180000],
+    [/^Fee de locación/, 900000], [/^Locación — RUTA/, 600000], [/^Locación — MIRADOR/, 500000], [/^Permiso municipal/, 400000],
+    [/^Permiso de filmación en vía pública/, 400000], [/^Seguridad de locación/, 120000], [/^Limpieza/, 80000],
+    [/^Paquete cámara/, 1300000], [/^Paquete de luces/, 1800000], [/^Paquete de grip/, 600000], [/^Grupo electrógeno/, 450000],
+    [/^Handies/, 60000], [/^Camión de luces/, 350000], [/^Expendables/, 250000], [/^Alquiler de drone/, 650000], [/^Camera car/, 2800000],
+    [/^Cámara de alta velocidad/, 2200000], [/^Auto de producción/, 120000], [/^Combustible/, 260000], [/^Peajes/, 40000],
+    [/^Camión de producción/, 300000], [/^Combi de pasajeros/, 280000], [/^Desayuno/, 6000], [/^Almuerzo/, 14000], [/^Merienda/, 4000],
+    [/^Agua y bebidas/, 120000], [/^Montajista/, 250000], [/^Colorista/, 700000], [/^Mezcla/, 450000], [/^Diseño sonoro/, 400000],
+    [/^Licencia de música/, 900000], [/^Música original/, 1500000], [/^Locución/, 350000], [/^Packshot 3D/, 3200000], [/^Motion graphics/, 900000],
+    [/^Edición de cutdown 15/, 300000], [/^Edición de cutdown 6/, 200000], [/^Adaptación a formatos/, 450000],
+    [/^Efectos especiales — lluvia/, 900000], [/^Efectos especiales — viento/, 250000], [/^Efectos de agua/, 200000],
+    [/^Piloto de Drone/, 450000], [/^Técnico de Phantom/, 450000], [/^Rigger/, 280000], [/^Grip$/, 250000], [/^Técnico de efectos/, 350000],
+    [/^Seguro de Accidentes/, 380000], [/^Responsabilidad Civil/, 260000], [/^Todo Riesgo/, 320000]];
+  vB.rubros.forEach(r => r.lineas.forEach(l => {
+    if(l.valorOrigen === 'sica' || n(l.valorUnit) > 0) return;
+    const pr0 = PRECIOS.find(([re]) => re.test(l.concepto)); if(pr0){ l.valorUnit = pr0[1]; l.valorOrigen = 'manual'; }
+    l.circuito ||= 'transferencia'; l.comprobante ||= (l.valorOrigen === 'sica' ? 'reciboX' : 'facBC');
+  }));
+  vB.condiciones = condicionesTipicas(py, vB);
+  /* dos ejercicios contra la base */
+  const e1 = crearEjercicio(py, vB, {nombre: '1 jornada con horas extra', jornadas: 1}).v;
+  const e2 = crearEjercicio(py, vB, {nombre: '2 cámaras', camaras: 2}).v;
+  e1.fecha = e2.fecha = hoyMas(-1);
+  py.versiones.push(e1, e2);
+  return py;
 }
 
 /* Accesores de contexto ---------------------------------------------------- */
@@ -6746,11 +7251,15 @@ function header(pr,py,v){
     <div class="hrow">
       <div class="brand"><b>CLAP</b><span>Control, Logística y Administración de Producción</span></div>
       ${menuProductoras(pr)}
-      ${pr?(()=>{ const mios = proyectosDe(pr); return `<div class="pick"><label>Proyecto</label>
+      ${pr?(()=>{ const mios = proyectosDe(pr);
+        /* con proyectos en distintas etapas, se agrupan: cotizando, en curso, no salieron */
+        const opt = p => `<option value="${p.id}" ${p.id===py?.id?'selected':''}>${esc(p.nombre)}</option>`;
+        const grupos = ETAPAS_PY.map(e => ({e, ps: mios.filter(p => etapaDe(p) === e.k)})).filter(g => g.ps.length);
+        return `<div class="pick"><label>Proyecto</label>
         <select onchange="selProyecto(this.value)">
-          ${mios.map(p=>`<option value="${p.id}" ${p.id===py?.id?'selected':''}>${esc(p.nombre)}</option>`).join('')}
+          ${grupos.length > 1 ? grupos.map(g => `<optgroup label="${esc(g.e.corto)} (${g.ps.length})">${g.ps.map(opt).join('')}</optgroup>`).join('') : mios.map(opt).join('')}
           ${!mios.length?`<option>${pr.proyectos.length?'— sin invitaciones —':'— ninguno —'}</option>`:''}
-        </select></div>`; })():''}
+        </select></div>${py && enCotizacion(py) ? `<span class="etapa-chip et-${etapaDe(py)}" title="${esc(ETAPA(etapaDe(py)).d)}">${esc(ETAPA(etapaDe(py)).l)}</span>` : ''}`; })():''}
       ${py && plata?`<button class="btn invbtn" onclick="invitarAlProyecto()"
         title="Mandar un link para sumar a alguien a «${esc(py.nombre)}»">✉ Invitar</button>`:''}
       ${py && plata?(()=>{ const vs = versionesQueVeo(py); return `<div class="pick niv-${esc((v&&v.nivel)||'produccion')}"><label>Versión</label>
@@ -6773,9 +7282,15 @@ function header(pr,py,v){
   </header>`;
 }
 
+let _avisoCotiz = null;
+const TABS_NOMBRE = {plan:'El plan de rodaje', luces:'El pedido de luces', 'personal:alta':'Las altas y el seguro', callsheet:'El callsheet',
+  rodaje:'El rodaje', gastos:'Los gastos', 'personal:liquidacion':'La liquidación'};
 function cuerpo(pr,py,v){
   /* una solapa que no le toca: al panel (o a la parte de la pantalla que sí) */
   if(!puedeSolapa(claveSolapa())){
+    /* un link a una solapa que todavía no existe porque se está cotizando */
+    if(enCotizacion(py) && SOLAPAS_PROYECTO.includes(claveSolapa()) && vePlata())
+      _avisoCotiz = (TABS_NOMBRE[claveSolapa()] || 'Esa solapa');
     if(DB.ui.tab === 'personal' && puedeSolapa('personal:alta')) DB.ui.subPersonal = 'alta';
     else DB.ui.tab = 'resumen';
   }
@@ -6810,7 +7325,7 @@ function cuerpo(pr,py,v){
   if(DB.ui.tab==='rodaje')    return vistaRodaje(pr,py,vr);
   if(DB.ui.tab==='gastos')    return vistaGastos(pr,py,vePlata() ? v : null);
   if(DB.ui.tab==='personal')  return vistaPersonal(pr,py,vr);
-  if(DB.ui.tab==='resumen')   return vistaResumen(pr,py,v);
+  if(DB.ui.tab==='resumen')   return enCotizacion(py) ? vistaResumenCotiz(pr,py,v) : vistaResumen(pr,py,v);
   return vistaPresupuesto(pr,py,v);
 }
 
@@ -6913,7 +7428,7 @@ function avisosPlanPresupuesto(py, v){
      una línea de eso, aunque no se llame igual que la que propone el desglose. */
   if((d.escenas || []).length){
     try{
-      propuestaPresupuestoBase().lineas.filter(x => x.dep !== 'elenco' && x.dep !== 'locacion').forEach(x => {
+      propuestaPresupuestoBase({clasica: true}).lineas.filter(x => x.dep !== 'elenco' && x.dep !== 'locacion').forEach(x => {
         const rb = v.rubros.find(r => r.codigo === x.rubro);
         const cubre = CUBRE_DESGLOSE[x.dep];
         const ya = rb && rb.lineas.some(l => (norm(l.concepto) === norm(x.concepto) && (l.piezaId || null) === (x.piezaId || null))
@@ -7223,6 +7738,7 @@ function vistaPanel(pr, py){
   const u = getUsuario();
   if(!py) return `<div class="card"><div class="empty">Todavía no te sumaron a ningún proyecto de ${esc(pr ? pr.nombre : 'la productora')}.<br>
     <span class="muted" style="font-size:12px">Pedile el link de invitación al jefe de producción.</span></div></div>`;
+  if(enCotizacion(py)) return panelCotizando(pr, py, u);
   const mias = tareasDe(py).filter(t => t.asignadoA === u.id);
   const pend = mias.filter(t => t.estado !== 'hecha').sort((a, b) => String(a.vence || '9').localeCompare(String(b.vence || '9')));
   const hechas = mias.filter(t => t.estado === 'hecha');
@@ -7555,6 +8071,7 @@ function vistaPresupuesto(pr,py,v){
   const R = calcular(v, filtro);
   return `
   ${cabeceraProyecto(pr,py,v,cli)}
+  ${cli ? '' : panelEjercicios(py, v)}
   ${!cli && v.rubros.every(r => !r.lineas.length) ? tarjetaVacia(py) : ''}
   ${solapasPiezas(py, v, sel, cli)}
   ${cli ? '' : barraSICA(py, v)}
@@ -8400,8 +8917,10 @@ function vistaDesglose(py){
   if(!d.escenas.length) return barraPiezasDesglose(py, d, true) + importadorHTML();
   const r = resumenDesglose(d);
   /* el plan de rodaje era una sub-solapa de acá; ahora es una solapa propia */
-  const sub = DB.ui.subDesglose && DB.ui.subDesglose !== 'plan' ? DB.ui.subDesglose : 'escenas';
-  const S=[['escenas', planPorEscenas(py) ? 'Escenas' : 'Bloques'],['deptos','Por departamento'],['tags','Permisos y seguros']];
+  /* cotizando, lo primero es lo que cuesta plata */
+  let sub = DB.ui.subDesglose && DB.ui.subDesglose !== 'plan' ? DB.ui.subDesglose : (enCotizacion(py) ? 'cotizar' : 'escenas');
+  if(sub === 'cotizar' && !vePlata()) sub = 'escenas';
+  const S=[...(vePlata() ? [['cotizar','Para cotizar']] : []),['escenas', planPorEscenas(py) ? 'Escenas' : 'Bloques'],['deptos','Por departamento'],['tags','Permisos y seguros']];
   /* en publicidad las páginas no dicen nada: se cuenta en bloques y planos */
   const ficcion = planPorEscenas(py);
   const elementos = Object.values(r.porDepto).reduce((s, m) => s + (m ? m.size : 0), 0);
@@ -8409,7 +8928,8 @@ function vistaDesglose(py){
   return `<div class="card">
     <div class="resu">
       <div><b>${r.escenas}</b><span>${ficcion ? 'Escenas' : 'Bloques'}</span></div>
-      ${ficcion ? `<div><b>${octavosATexto(r.octavos)}</b><span>Páginas</span></div>` : `<div><b>${planos}</b><span>Planos en el plan</span></div>`}
+      ${ficcion ? `<div><b>${octavosATexto(r.octavos)}</b><span>Páginas</span></div>`
+        : enCotizacion(py) ? `<div><b>${analizarDesglose(py).puestas}</b><span>Puestas est.</span></div>` : `<div><b>${planos}</b><span>Planos en el plan</span></div>`}
       <div><b>${r.personajes.length}</b><span>Personajes</span></div>
       <div><b>${r.locaciones.length}</b><span>Locaciones</span></div>
       <div><b>${r.ext}</b><span>Exteriores</span></div>
@@ -8426,12 +8946,13 @@ function vistaDesglose(py){
       <button class="btn sm noprint" onclick="addEscena()">+ Escena</button>
       <button class="btn sm noprint" onclick="document.getElementById('dgfile').click()" title="Otro guion, guion técnico o storyboard: se suma a lo que ya hay">+ Material</button>
       <button class="btn sm noprint" onclick="menuGuion()">Guion ▾</button>
-      <button class="btn sm noprint" onclick="setTab('plan')" title="Repartir en jornadas y armar el día hora por hora">Plan de rodaje →</button>
-      ${vePlata() ? `<button class="btn sm pri noprint" onclick="aPresupuesto()">→ Presupuesto</button>` : ''}
+      ${puedeSolapa('plan') ? `<button class="btn sm noprint" onclick="setTab('plan')" title="Repartir en jornadas y armar el día hora por hora">Plan de rodaje →</button>` : ''}
+      ${vePlata() ? `<button class="btn sm pri noprint" onclick="aPresupuesto()" title="Todo lo detectado, en una lista con tildes: lo nuevo se crea y lo que ya está se actualiza">Aplicar al presupuesto</button>` : ''}
     </div>
     ${sub==='escenas' ? barraPiezasDesglose(py, d) : ''}
     <div class="noprint dgmini">${cajaMaterialHTML()}</div>
     <div class="pad">${
+      sub==='cotizar' ? paraCotizarHTML(py) :
       sub==='deptos' ? deptosHTML(r) : sub==='tags' ? tagsHTML(py) :
       (d.modo && d.modo!=='encabezados' ? avisoModoHTML(d) : '') +
       escenasVisibles(py, d).map(e=>escHTML(e,d,py)).join('') +
@@ -8466,9 +8987,70 @@ function importadorHTML(){
         <span class="muted" style="font-size:10.5px">o Ctrl+Enter</span>
         <input type="file" id="gfile" multiple accept=".txt,.fountain,.fdx,.docx,.doc,.rtf,.pdf" style="display:none" onchange="subirGuion(this)">
         <div style="flex:1"></div>
-        <button class="btn" onclick="guionEjemplo()">Probar con un guion de ejemplo</button>
+        <button class="btn" onclick="menuEjemplos()">Probar con un guion de ejemplo</button>
       </div>
     </div></div>`;
+}
+
+/* «Para cotizar»: lo que el material dice que cuesta plata, ordenado como lo
+   piensa el que cotiza, con la frase de donde salió cada cosa, qué tan seguro
+   es y qué línea del presupuesto propone (y si ya está). */
+function paraCotizarHTML(py){
+  const A = analizarDesglose(py), P = propuestaPresupuesto();
+  const estado = l => P.lineas.find(x => x.rubro === l.rubro && norm(x.concepto) === norm(l.concepto));
+  const nuevas = P.lineas.filter(l => !l.ya).length, act = P.lineas.filter(l => l.cambia).length;
+  const evHTML = x => (x.evid || []).filter(v => v.frase).map(v => `${v.esc ? `<b>${esc(planPorEscenas(py) ? 'Esc.' : 'Bloque')} ${esc(v.esc)}:</b> ` : ''}«${esc(v.frase)}»`).join('<br>');
+  const lnHTML = x => (x.lineas || []).map(l => { const s = estado(l);
+    return `<div class="det-ln">→ <span class="rcode">${esc(l.rubro)}</span> ${esc(l.concepto)}${l.unidad !== 'global' ? ` · ${l.cantidad} × ${l.dias} ${esc(l.unidad)}` : ''}
+      ${s && s.ya && !s.cambia ? ` <span class="chip c-otr">ya está${s.parecida ? ': ' + esc(s.parecida) : ''}</span>` : s && s.cambia ? ` <span class="chip d-par">actualiza ${esc(s.parecida || '')}</span>` : ' <span class="chip d-si">nueva</span>'}</div>`; }).join('');
+  const item = x => `<div class="det-item">
+    <div class="det-l">${esc(x.l)}${x.sub ? ` <span class="chip c-otr">${esc(x.sub)}</span>` : ''}${x.menor ? ' <span class="chip sica-bajo">menor: permiso y chaperona</span>' : ''}${x.cantidad ? ` <span class="muted" style="font-weight:600">× ${x.cantidad}</span>` : ''}
+      <span class="conf ${x.conf}" title="${x.conf === 'alta' ? 'Lo dice el texto' : 'Lo sugiere el texto: revisalo'}">${esc(x.conf)}</span></div>
+    <div><div class="det-ev">${evHTML(x) || '<span class="muted">—</span>'}${x.nota ? ` <span class="muted">· ${esc(x.nota)}</span>` : ''}</div>${lnHTML(x)}</div></div>`;
+  const grupo = (c, cuerpo) => `<div class="det-grupo"><h5>${esc(c.l)}</h5>${cuerpo}</div>`;
+  const escenasHTML = A.escenas.map(e => `<div class="det-item"><div class="det-l">${esc(e.numero)} · ${esc(e.intExt)} · ${esc(e.locacion)}
+      <span class="chip ${/NOCHE/.test(e.momento) ? 'niv-cliente' : /DORADA/.test(e.momento) ? 'd-par' : 'c-otr'}">${esc(e.momento)}</span></div>
+    <div class="det-ev">${e.puestas.length} ${plural(e.puestas.length, 'puesta')}: ${e.puestas.map(p => `<span title="${esc(p.frases.join(' / '))}"><b>${p.letra}</b> ${esc(p.tipo)}${p.frases.length ? ` <span class="muted">(${p.frases.length} ${plural(p.frases.length, 'plano')})</span>` : ''}</span>`).join(' · ')}</div></div>`).join('');
+  const nada = !['camara', 'sfx', 'post', 'entregas'].some(k => A.grupos[k].length);
+  return `<div class="cotiz-aviso" style="margin:0 0 12px">
+      <b>${A.escenas.length} ${plural(A.escenas.length, planPorEscenas(py) ? 'escena' : 'bloque')} · ${A.puestas} ${plural(A.puestas, 'puesta')} estimadas</b>
+      (a unas 12 puestas por jornada, ≈ ${A.jornadasSug} ${plural(A.jornadasSug, 'jornada')})${A.noches ? ` · ${A.noches} de noche` : ''}${A.doradas ? ` · ${A.doradas} en hora dorada` : ''}.
+      ${vePlata() ? `<span style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;margin-left:4px">
+        <button class="btn sm pri" onclick="aPresupuesto()">Aplicar al presupuesto</button>
+        <span class="muted">${nuevas} ${plural(nuevas, 'línea nueva', 'líneas nuevas')}${act ? ` · ${act} para actualizar` : ''} · nada se toca hasta que lo apliques</span></span>` : ''}</div>
+    ${grupo(CATS_DET[0], escenasHTML || '<div class="muted">Sin bloques</div>')}
+    ${CATS_DET.slice(1).map(c => A.grupos[c.k].length ? grupo(c, A.grupos[c.k].map(item).join('')) : '').join('')}
+    ${nada ? `<div class="muted" style="font-size:12px;padding:8px 0">No aparece cámara especial, efectos en set, post especial ni versiones: si el material los pide con otras palabras, agregalos a mano en el presupuesto.</div>` : ''}`;
+}
+/* Los ejemplos de publicidad para probar el desglose (los mismos que usan las pruebas, en test/fixtures). */
+const EJEMPLOS_PUB = [
+  {k:'brief', t:'Un brief de un párrafo (una SUV)', texto:`Cumbre — «Ruta abierta» · SUV Austral Cumbre · spot 30″ + cutdowns 15″ y 6″ + versión vertical 9:16 para redes.
+Abrimos con una toma aérea con dron: la Cumbre sube por una ruta de montaña desierta en la hora dorada. Car rig pegado al auto: la conductora, LAURA (38), maneja tranquila con la ventanilla baja y el viento le mueve el pelo. Dentro del auto, en el asiento de atrás, su hijo TOMI (8) mira por la ventana. De golpe estamos en un mirador: la camioneta frena y bajan los dos; pasan diez ciclistas por la ruta. Cae la noche y empieza a llover: plano detalle de las gotas sobre el capot en cámara lenta, con Phantom, y los faros que se encienden. Cierre con packshot 3D de la Cumbre girando sobre fondo negro, logo animado y locutor en off: «Cumbre. Donde termina el camino.» Música original.`},
+  {k:'frases', t:'Unas pocas frases (un snack)', texto:`Snack Crocante · 20″ y 6″ para stories
+Una cocina de día, tres amigos abren un paquete de papas.
+Crunch exagerado: slow motion de las papas volando, macro de la sal.
+Afuera, en la terraza, una multitud baila con humo de colores y fuegos artificiales.
+Placa final con el claim animado y el paquete en 3D.`},
+  {k:'story', t:'Un storyboard con texto (una gaseosa)', texto:`STORYBOARD · GASEOSA PAMPA · 30"
+Cuadro 1: EXT. Playa - Día. Plano general con dron de la costa; bañistas en la arena.
+Cuadro 2: Primer plano de MARTINA (25) sacando una lata de la heladerita. Gotas sobre la lata.
+Cuadro 3: Detalle macro: la lata se abre y salpica gaseosa en cámara lenta sobre fondo de croma.
+Cuadro 4: Steadicam siguiendo a Martina que corre hacia el mar con un perro.
+Cuadro 5: Contraluz en hora dorada, un grupo de amigos brinda. SUPER: «Pampa. Refrescá tu verano».
+Cuadro 6: Packshot de la lata con gotas, logo animado. Locutor (off). Versiones de 15" y 6" para redes en vertical.`},
+];
+function menuEjemplos(){
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:460px">
+    <h3>Probar con un ejemplo</h3><div class="mbody" style="display:flex;flex-direction:column;gap:7px">
+      <div class="muted" style="font-size:12px;line-height:1.5;margin-bottom:4px">Material de publicidad inventado, como llega de una agencia. Se pega en el cuadro para que lo veas y lo desgloses.</div>
+      ${EJEMPLOS_PUB.map(x => `<button class="btn" style="text-align:left;white-space:normal" onclick="usarEjemplo('${x.k}')">${esc(x.t)}</button>`).join('')}
+      <button class="btn" style="text-align:left;white-space:normal" onclick="cerrar();guionEjemplo()">Un guion con escenas (Brisa — «Respirá», el del proyecto de ejemplo)</button>
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div></div></div>`);
+}
+function usarEjemplo(k){
+  const x = EJEMPLOS_PUB.find(e => e.k === k); if(!x) return;
+  cerrar(); importarGuion(x.texto);
+  if(vePlata()){ DB.ui.subDesglose = 'cotizar'; R(); }
 }
 
 /* Devuelve el cartel de estado que va abajo del textarea. Se actualiza en vivo
@@ -8523,7 +9105,7 @@ function escHTML(e,d,py){
         onclick="event.stopPropagation()" onchange="upEsc('${e.id}','locacion',this.value)">
       <select class="emom ed ${noche?'noche':''}" title="Momento del día"
         onclick="event.stopPropagation()" onchange="upEsc('${e.id}','momento',this.value)">
-        ${[...new Set(['DÍA','NOCHE','TARDE','MAÑANA','AMANECER','ATARDECER','MADRUGADA','CONTINUO',e.momento])]
+        ${[...new Set(['DÍA','NOCHE','TARDE','MAÑANA','AMANECER','ATARDECER','HORA DORADA','MADRUGADA','CONTINUO',e.momento])]
           .map(x=>`<option ${x===e.momento?'selected':''}>${esc(x)}</option>`).join('')}
       </select>
       ${planPorEscenas(py) ? `<span class="epg">${octavosATexto(e.octavos)} pg</span>` : ''}
@@ -8724,7 +9306,9 @@ function listaProyectosHTML(pr, actual){
   const nuevo = `<span class="spacer" style="flex:1"></span>
     <button class="btn sm pri" onclick="editProyecto()">+ Nuevo proyecto</button>`;
   const fila = p => {
-    const v = p.versiones && p.versiones[p.versiones.length-1];
+    const vis = versionesQueVeo(p);
+    /* cotizando, el número que importa es el del ejercicio elegido (o el de la base) */
+    const v = enCotizacion(p) ? (vis.find(x => x.id === p.elegidaId) || vis.find(x => x.id === p.baseId) || vis[0]) : vis[vis.length-1];
     const R = v ? calcular(v) : null;
     const esActual = actual && p.id === actual.id;
     const sub = [p.cliente, p.agencia, p.jornadas ? p.jornadas + (p.jornadas==1?' jornada':' jornadas') : '']
@@ -8735,19 +9319,25 @@ function listaProyectosHTML(pr, actual){
         ${esActual?'<span class="pyaqui">estás acá</span>':''}
         <span class="pysub">${esc(sub||'sin datos de cliente')}</span>
         ${pz.length?`<span class="pypz">${pz.map(x=>`<span class="pypzchip">${esc(nombrePieza(p,x.id))}</span>`).join('')}</span>`:''}</span>
+      <span class="etapa-chip et-${etapaDe(p)}">${esc(ETAPA(etapaDe(p)).corto)}</span>
       <span class="pyest">${v?esc(v.nombre)+' · '+esc(v.estado):'sin presupuesto'}</span>
       <span class="pytot">${R?fmt(totalVisible(R), v.monedaBase):'—'}</span>
     </button>`;
   };
+  /* cotizando arriba (es lo que se está peleando), en curso, y lo que no salió al final */
+  const grupos = ETAPAS_PY.map(e => ({e, ps: mios.filter(p => etapaDe(p) === e.k)})).filter(g => g.ps.length);
   const cuerpo = mios.length
-    ? `<div class="pylista">${mios.map(fila).join('')}</div>`
+    ? (grupos.length > 1
+      ? grupos.map(g => `<div class="pygrupo"><div class="muted" style="font-size:10.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;padding:9px 14px 3px">${esc(g.e.corto)} · ${g.ps.length}</div>
+          <div class="pylista">${g.ps.map(fila).join('')}</div></div>`).join('')
+      : `<div class="pylista">${mios.map(fila).join('')}</div>`)
     : `<div class="pad muted" style="font-size:12.5px">
         ${(pr.proyectos||[]).length
           ? 'Esta productora tiene proyectos, pero todavía no te invitaron a ninguno.'
           : 'Todavía no hay ningún proyecto. Creá el primero con el botón de arriba.'}</div>`;
   return `<div class="csblock"><h4>Proyectos de ${esc(pr.nombre)}
     <span class="muted" style="text-transform:none;letter-spacing:0;font-weight:400;margin-left:6px">
-      ${mios.length || ''}</span>${nuevo}</h4>${cuerpo}</div>`;
+      ${mios.length || ''}${grupos.length > 1 ? ' · ' + grupos.map(g => `${g.ps.length} ${g.e.corto.toLowerCase()}`).join(' · ') : ''}</span>${nuevo}</h4>${cuerpo}</div>`;
 }
 
 function vistaResumen(pr,py,v){
@@ -8847,7 +9437,11 @@ function vistaResumen(pr,py,v){
         <div class="cssub">${veMargen() ? 'presupuesto' : 'costo de producción'} ${esc(v?v.nombre:'')} · ${esc(v?v.estado:'')}</div></div>
     </div>
 
+    ${u && u.rol === 'produccion' ? siguientePasoJefeHTML(py) : ''}
+
     ${u && ['ejecutivo','admin','produccion'].includes(u.rol) ? pendHTML : ''}
+
+    ${!u || u.rol !== 'produccion' ? siguientePasoJefeHTML(py) : ''}
 
     ${v ? tcPanel(v, R) : ''}
 
@@ -8940,7 +9534,7 @@ const GUIA = [
         su mail y su contraseña, con el rol que elegiste. En <b>Equipo y roles</b> ves quién está y a qué proyecto entra.</li>
       <li><b>Desglose</b> — soltá lo que mandó la agencia: guion, guion técnico (Excel) o storyboard.
         De ahí salen los bloques o escenas, el elenco, las locaciones y los elementos.</li>
-      <li><b>Presupuesto</b> — armalo desde una plantilla, a mano, o mandá el desglose con <i>→ Presupuesto</i>.</li>
+      <li><b>Presupuesto</b> — armalo desde una plantilla, a mano, o con lo que detectó el desglose (<i>Aplicar al presupuesto</i>).</li>
       <li><b>Plan de rodaje</b> — el día hora por hora: planos o escenas, almuerzo, traslados y la luz.</li>
       <li><b>Pedido de luces</b> — lo arma el gaffer o el segundo de foto: equipos, potencia y precios.</li>
       <li><b>Altas y seguro</b> — antes de rodar: los datos de cada uno y la planilla para el seguro.</li>
@@ -8953,6 +9547,26 @@ const GUIA = [
     Al final, lo que es de la productora y no de un proyecto (catálogo, equipo y roles, productoras).</p>
     <p class="tip">La solapa <b>Resumen</b> es la portada: te dice cómo viene la plata y qué está
     esperando algo tuyo. Todo lo que aparece ahí es clickeable y te lleva al lugar.</p>`},
+
+  /* la situación cero: el jefe lee lo mismo, en costo */
+  {t:'Cotizar: antes de que se apruebe', get c(){ return `
+    <p>Todo proyecto nuevo arranca <b>en cotización</b>: sólo se ven el <b>Resumen</b>, el <b>Desglose</b> y el
+    <b>Presupuesto</b>. Nada de plan, luces, callsheet, rodaje ni gastos: todavía no hay nada que filmar.
+    Lo trabajan el Productor Ejecutivo y Administración${veMargen() ? ' (con el fee y el precio al cliente)' : ''}, y el jefe de producción si lo invitan (en costo).
+    Si alguien más entra antes de tiempo, ve «Este proyecto todavía se está cotizando».</p>
+    <ol class="pasos-guia">
+      <li><b>Desglosá</b> lo que mandó la agencia: un párrafo, unas frases, el guion o el storyboard (PDF o imágenes).
+        En <i>Para cotizar</i> aparece lo que cuesta plata: escenas y puestas, elenco (con los menores y los extras con su cantidad),
+        cámara especial, efectos en set, post y versiones; cada cosa con la frase de donde salió y qué tan seguro es.</li>
+      <li><b>Aplicá al presupuesto</b>: una lista con todo tildado; destildá lo que no va y corregí cantidades. Lo que ya está
+        no se duplica (si el desglose pide más, se actualiza). Se deshace con un toque.</li>
+      <li><b>Probá ejercicios</b>: otra manera de hacer lo mismo (una jornada con horas extra, dos cámaras, menos extras, un eléctrico más).
+        Cada uno dice arriba qué cambia contra la base para llegar a su precio, y <i>Comparar</i> los pone lado a lado.${veMargen() ? ' Elegí el que se presenta.' : ''}</li>
+      ${veMargen() ? '<li><b>Mandá la cotización</b> (Presupuesto → Cotización → PDF).</li>' : ''}
+    </ol>
+    <p>Cuando el cliente dice que sí, el PE o Administración tocan <b>✓ Proyecto aprobado</b>: se guarda una copia congelada de lo
+    aprobado, aparece todo lo demás y el jefe de producción ve en su resumen los pasos para arrancar (invitar al equipo, fechas,
+    plan, pasar el desglose al presupuesto de rodaje). Si no sale, <b>No salió</b> lo deja guardado (con el motivo) y se puede reabrir.</p>`; }},
 
   /* el jefe de producción no ve nada del margen: su sección habla del costo */
   {t:'Presupuesto', get c(){ return `
@@ -8995,9 +9609,9 @@ const GUIA = [
     <p>Los <b>elementos</b> (utilería, vestuario, vehículos, animales, efectos, riesgo) se proponen
     con un diccionario. Los que salen <b>con borde punteado son sugerencias</b>: confirmalas
     dejándolas o borralas con la ×. Vas a ver falsos positivos, es esperable.</p>
-    <p class="tip">Desglosar <b>no toca el presupuesto</b>. Sólo va si tocás <i>→ Presupuesto</i>
-    y confirmás en la lista con checkboxes; lo que ya está en el presupuesto viene destildado para no
-    duplicarlo. En publicidad se cuenta en bloques (no en páginas), y las jornadas se reparten en el
+    <p class="tip">Desglosar <b>no toca el presupuesto</b>. Sólo va si tocás <i>Aplicar al presupuesto</i>
+    y confirmás la lista (viene toda tildada; corregís cantidades y días). Lo que ya está en el presupuesto no se
+    duplica: si el desglose pide más, se actualiza. Y se deshace con un toque. En publicidad se cuenta en bloques (no en páginas), y las jornadas se reparten en el
     <b>Plan de rodaje</b>. Borrar el desglose no borra las jornadas ni el callsheet.</p>`},
 
   {t:'Plan de rodaje', c:`
@@ -9228,7 +9842,7 @@ function vistaGuia(){
    están armados para eso.                                                   */
 const CANAL_WHATSAPP = {modo: 'manual', numero: null};
 
-const NO_ES_PERSONA = /alquiler|compra|combustible|movilidad|flete|vi[aá]tico|insumo|expendable|equipo de|construcci|devoluc|plantas|gr[aá]fica|lavander|arreglos|caja chica|buyout|cesi[oó]n|derechos|cargas|fee de|renovaci|playback|material|consumo|cami[oó]n|paquete|kit|efectos|veh[ií]culo/i;
+const NO_ES_PERSONA = /alquiler|compra|combustible|movilidad|flete|vi[aá]tico|insumo|expendable|equipo de|construcci|devoluc|plantas|gr[aá]fica|lavander|arreglos|caja chica|buyout|cesi[oó]n|derechos|cargas|fee de|renovaci|playback|material|consumo|cami[oó]n|paquete|kit|efectos|veh[ií]culo|horas extra/i;
 
 function genteDelProyecto(py, v){
   const man = (py.contactos && py.contactos.porLinea) || {};
@@ -12559,6 +13173,14 @@ function cajaMaterialHTML(){
       accept=".txt,.fountain,.fdx,.docx,.doc,.rtf,.pdf,.xlsx,.xlsm,.csv,image/*">`;
 }
 let _dgPendientes = [];
+/* «03-dron-sobre-la-ruta.jpg» → «3: dron sobre la ruta». «IMG_1234.jpg» no dice nada. */
+function textoDeNombreArchivo(nombre){
+  const base = String(nombre || '').replace(/\.[a-z0-9]{2,5}$/i, '').replace(/[_\-.]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const palabras = (base.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]{3,}/g) || []).filter(w => !/^(img|image|imagen|frame|cuadro|shot|plano|toma|copia|copy|final|storyboard|board|scan|dsc|pxl|screenshot|captura)$/i.test(w));
+  if(palabras.length < 2) return '';
+  const m = base.match(/^(?:frame|cuadro|plano|shot|toma)?\s*(\d{1,3})\s+(.*)$/i);
+  return m ? `${+m[1]}: ${m[2]}` : base;
+}
 async function soltarMaterial(ev){
   const files = ev.dataTransfer ? [...ev.dataTransfer.files] : [...(ev.files || [])];
   if(ev.preventDefault) ev.preventDefault();
@@ -12584,7 +13206,21 @@ async function soltarMaterial(ev){
   if(imagenes.length){
     const orden = imagenes.sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric:true}));
     const cuadros = [];
-    for(const f of orden){ try{ cuadros.push({img:(await achicarImagen(f, 320, 0.6)).dataUrl, texto:''}); }catch(e){} }
+    /* el texto de cada cuadro: el nombre del archivo si dice algo («03-dron-sobre-la-ruta.jpg»);
+       si no, se intenta leer lo escrito en la imagen (OCR, en el navegador y sin pagar nada) */
+    for(const f of orden){ try{ cuadros.push({img:(await achicarImagen(f, 320, 0.6)).dataUrl, texto: textoDeNombreArchivo(f.name), f}); }catch(e){} }
+    const sinTexto = cuadros.filter(c => !c.texto);
+    if(sinTexto.length && sinTexto.length <= 24){
+      let k = 0;
+      for(const c of sinTexto){
+        k++; toast(`Leyendo el texto de los cuadros (${k} de ${sinTexto.length})…`, {ms: 60000});
+        try{ const cv = prepararParaOcr(await imagenACanvas(c.f, 1600)); const r = await ocrCanvas(cv);
+          const t = String(r.texto || '').replace(/\s+/g, ' ').trim();
+          if(r.conf >= 45 && (t.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]{3,}/g) || []).length >= 3) c.texto = t; }
+        catch(e){ break; }   /* sin internet o sin el lector: se sigue sin texto */
+      }
+    }
+    cuadros.forEach(c => { delete c.f; });
     materialDesdeCuadros(py, cuadros, `${imagenes.length} imagen${imagenes.length == 1 ? '' : 'es'}`);
   }
   if(guiones.length){
@@ -15881,6 +16517,552 @@ function duplicarVersion(){
   py.versiones.push(copia); DB.ui.versionId = copia.id;
   toast(`Creada ${copia.nombre} — la anterior queda intacta`); R(); }
 
+/* Una copia de una versión con ids nuevos; cada línea recuerda de cuál viene
+   (así se comparan las líneas entre la base y sus ejercicios). */
+function copiarVersion(v, o = {}){
+  const c = JSON.parse(JSON.stringify(v));
+  c.id = uid('v'); c.fecha = hoy();
+  c.rubros.forEach(r => { r.id = uid('rb'); r.lineas.forEach(l => { l.origenId = raizLinea(l); l.id = uid('ln'); }); });
+  delete c.congelada; delete c.aprobadaDe;
+  return Object.assign(c, o);
+}
+const fechaAR = f => /^\d{4}-\d\d-\d\d$/.test(f || '') ? f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(0, 4) : (f || '');
+
+/* ======================  EJERCICIOS DE COTIZACIÓN  ========================
+   Antes de mandar el número, el PE prueba maneras de hacer el mismo trabajo:
+   las dos jornadas en una con horas extra, una cámara o dos, un eléctrico
+   menos, seis extras en vez de diez. Cada prueba es una versión más del
+   presupuesto (no un mecanismo aparte) marcada como ejercicio: sale de la
+   BASE —el primer presupuesto— o de otro ejercicio, y arriba dice en
+   palabras qué cambia contra la base para llegar a su precio. Se comparan
+   lado a lado y se elige la que se presenta; «Proyecto aprobado» congela la
+   elegida. El jefe de producción, si está invitado, los ve en costo.      */
+const esEjercicio = v => !!(v && v.ejercicio);
+function baseDe(py){
+  const vs = (py && py.versiones) || [];
+  return vs.find(v => v.id === py.baseId) || vs.find(v => !v.ejercicio && !v.congelada && (v.nivel || 'produccion') === 'produccion')
+    || vs.find(v => !v.ejercicio && !v.congelada) || vs[0] || null;
+}
+/* la base y sus ejercicios, los que quien mira puede ver */
+function familiaCotiz(py, u = getUsuario()){
+  const b = baseDe(py), vis = versionesQueVeo(py, u);
+  return [...(b && vis.includes(b) ? [b] : []), ...vis.filter(v => esEjercicio(v) && v !== b)];
+}
+const versionElegida = py => (py.versiones || []).find(v => v.id === py.elegidaId) || null;
+const RE_CAMARA_PAQ = /paquete c[aá]mara|c[aá]mara \+ [oó]pticas|c[aá]mara adicional|segunda c[aá]mara|2[ªa°] c[aá]mara/i;
+const RE_EXTRAS_L = /\bextras?\b|figuraci|ambiente|multitud/i;
+const RE_NO_ELENCO = /derech|buyout|cesi[oó]n|fee|agencia|coordinador|cargas|permiso|tutor|chaperon|coach|casting|renovaci/i;
+const esHE = l => !!(l && (l.hex || /^horas extra/i.test(l.concepto || '')));
+/* una persona del equipo técnico que trabaja por jornada en el rodaje */
+const personaDeCrew = (l, r) => RUBROS_CREW.includes(r.codigo) && (l.unidad || 'jornada') === 'jornada' && !l.etapa
+  && String(l.concepto || '').trim() && !NO_ES_PERSONA.test(l.concepto) && !esHE(l);
+const esExtraL = (l, r) => r.codigo === '09' && RE_EXTRAS_L.test(l.concepto || '') && !RE_NO_ELENCO.test(l.concepto || '');
+const esActorL = (l, r) => r.codigo === '09' && !esExtraL(l, r) && RE_ELENCO_AAA.test(l.concepto || '') && !RE_NO_ELENCO.test(l.concepto || '')
+  && !/\bvoz\b|locutor|doble/i.test(l.concepto || '');
+const AREA_CORTA = {'02':'Dirección','03':'Producción','04':'Cámara','05':'Eléctrica y grip','06':'Arte','07':'Vestuario y maquillaje','08':'Sonido'};
+/* el que se suma o se saca cuando el equipo de un área crece o se achica */
+const AUX_AREA = {'02':'2° Ayudante de Dirección','03':'Asistente de Producción','04':'2° Asistente de Cámara','05':'Eléctrico',
+  '06':'Asistente de Arte','07':'Asistente de Vestuario','08':'Microfonista'};
+/* lo que se puede contar de un presupuesto, para comparar ejercicios */
+function medidasVersion(py, v){
+  const crew = {}; let personas = 0, camaras = 0, extras = 0, elenco = 0, he = 0, heCosto = 0;
+  (v.rubros || []).forEach(r => r.lineas.forEach(l => {
+    const q = Math.max(0, n(l.cantidad));
+    if(personaDeCrew(l, r)){ crew[r.codigo] = (crew[r.codigo] || 0) + q; personas += q; }
+    if(r.codigo === '11' && RE_CAMARA_PAQ.test(l.concepto || '')) camaras += q;
+    if(esExtraL(l, r)) extras += q;
+    if(esActorL(l, r)) elenco += q;
+    if(l.hex){ he = Math.max(he, n(l.hex.horas)); heCosto += totalLinea(l, v); }
+  }));
+  return {crew, personas, camaras, extras, elenco, he, heCosto, jornadas: jornadasDelPresupuesto(v) || n(v.jornadas) || n(py.jornadas) || 0};
+}
+/* Lo que cambia contra la base para llegar a este precio, en palabras. */
+function cambiosVsBase(py, v, base = baseDe(py), u = getUsuario()){
+  if(!v || !base) return {items: [], texto: '', total: 0, dif: 0, pct: 0};
+  const A = medidasVersion(py, base), B = medidasVersion(py, v), out = [];
+  const hTxt = h => (Math.round(h * 10) / 10).toLocaleString('es-AR');
+  if(A.jornadas !== B.jornadas) out.push(`Jornadas ${A.jornadas} → ${B.jornadas}` + (B.he ? ` (+${hTxt(B.he)} h extra c/u)` : ''));
+  else if(B.he !== A.he) out.push(B.he ? `Horas extra: +${hTxt(B.he)} h por jornada` : 'Sin las horas extra de la base');
+  if(A.camaras !== B.camaras) out.push(`Cámaras ${A.camaras} → ${B.camaras}`);
+  if(A.elenco !== B.elenco) out.push(`Elenco ${A.elenco} → ${B.elenco}`);
+  if(A.extras !== B.extras) out.push(`Extras ${A.extras} → ${B.extras}`);
+  Object.keys(AREA_CORTA).forEach(cod => {
+    const d = (B.crew[cod] || 0) - (A.crew[cod] || 0); if(!d) return;
+    out.push(`${AREA_CORTA[cod]} ${d > 0 ? '+' : '−'}${Math.abs(d)} ${plural(Math.abs(d), 'persona')}`);
+  });
+  /* líneas que entran o salen (fuera de las horas extra, que ya se dijeron) */
+  const raices = vv => { const m = new Map(); vv.rubros.forEach(r => r.lineas.forEach(l => { if(!esHE(l) && String(l.concepto || '').trim()) m.set(raizLinea(l), l); })); return m; };
+  const rA = raices(base), rB = raices(v);
+  const suma = [...rB.entries()].filter(([k]) => !rA.has(k)).map(([, l]) => l.concepto);
+  const sale = [...rA.entries()].filter(([k]) => !rB.has(k)).map(([, l]) => l.concepto);
+  const lista = xs => xs.slice(0, 3).join(', ') + (xs.length > 3 ? ` y ${xs.length - 3} más` : '');
+  if(suma.length) out.push('Se suma: ' + lista(suma));
+  if(sale.length) out.push('Sale: ' + lista(sale));
+  const TA = totalVisible(calcular(base), u), TB = totalVisible(calcular(v), u), dif = TB - TA;
+  const p = TA ? Math.round(dif / TA * 1000) / 10 : 0;
+  const totalTxt = `${veMargen(u) ? 'Total' : 'Costo'} ${fmt(TB, v.monedaBase)}` + (v === base ? '' : ` (${p > 0 ? '+' : p < 0 ? '−' : ''}${Math.abs(p).toLocaleString('es-AR')} % vs base)`);
+  return {items: out, texto: [...out, totalTxt].join(' · '), totalTxt, total: TB, dif, pct: p};
+}
+
+/* --- las transformaciones rápidas (cada una se puede ajustar después a mano) --- */
+/* Horas extra que hacen falta para meter el rodaje en menos jornadas: la
+   mitad de las horas que se pierden, hasta 8 por día. Es una propuesta. */
+const sugerirHE = (J, a, cfg) => a > 0 && a < J ? Math.min(8, Math.round((J - a) / a * horasJornadaDe(cfg) / 2)) : 0;
+function aplicarJornadas(py, v, J, a, heIn){
+  const cfg = py.configRodaje || nuevaConfigRodaje();
+  v.rubros.forEach(r => { r.lineas = r.lineas.filter(l => !l.hex); });
+  if(a !== J) v.rubros.forEach(r => { if(['01', '14', '15', '17'].includes(r.codigo)) return;
+    r.lineas.forEach(l => { if(!l.etapa && n(l.dias) === J && !['global', 'hora'].includes(l.unidad)) l.dias = a; }); });
+  v.jornadas = a;
+  const he = heIn !== undefined && heIn !== null && heIn !== '' ? Math.max(0, n(heIn)) : sugerirHE(J, a, cfg);
+  let lineas = 0, sinValor = 0;
+  if(he > 0) v.rubros.forEach(r => {
+    const nuevas = [];
+    r.lineas.forEach(l => {
+      nuevas.push(l);
+      if(!personaDeCrew(l, r)) return;
+      if(!(n(l.valorUnit) > 0)){ sinValor++; return; }
+      const {valorHora, incluidas} = baseHoraDe(cfg, l.valorUnit, l);
+      const rep = repartirHEDesde(he, escalaDe(cfg), incluidas);
+      const costo = rep.reduce((s, t) => s + t.horas * valorHora * (1 + t.recargo / 100), 0);
+      const nl = nuevaLinea({concepto: `Horas extra — ${l.concepto}`, cantidad: l.cantidad, dias: he * a, unidad: 'hora',
+        valorUnit: Math.round(costo / he), moneda: l.moneda || 'ARS', area: l.area || '', piezaId: l.piezaId || null,
+        notas: `${(Math.round(he * 10) / 10).toLocaleString('es-AR')} h por jornada × ${a} ${plural(a, 'jornada')} · ${textoHE(rep)}`,
+        contrato: contratoDe(l, r), circuito: l.circuito || '', comprobante: l.comprobante || ''});
+      nl.valorOrigen = 'manual'; nl.sicaRef = 'ninguno';
+      nl.hex = {lineaRaiz: raizLinea(l), horas: he, jornadas: a};
+      nuevas.push(nl); lineas++;
+    });
+    r.lineas = nuevas;
+  });
+  return {he, lineas, sinValor};
+}
+function lineaNuevaPara(py, v, rubro, concepto, cantidad, dias){
+  const rb = v.rubros.find(r => r.codigo === rubro); if(!rb) return null;
+  const l = nuevaLinea({concepto, cantidad, dias, unidad: 'jornada', area: areaDeRubro(rubro) || ''});
+  autocompletarSICA(l, py);
+  rb.lineas.push(l); rb.abierto = true;
+  return l;
+}
+function aplicarCamaras(py, v, de, a){
+  const J = jornadasDelPresupuesto(v) || n(v.jornadas) || n(py.jornadas) || 1;
+  /* sin paquete de cámara cargado se cuenta como una */
+  const delta = a - (de || 1);
+  const r11 = v.rubros.find(r => r.codigo === '11'), r04 = v.rubros.find(r => r.codigo === '04');
+  const paq = r11 && r11.lineas.find(l => RE_CAMARA_PAQ.test(l.concepto || ''));
+  if(paq) paq.cantidad = Math.max(0, n(paq.cantidad) + (de === 0 ? a - n(paq.cantidad) : delta));
+  else if(a > 0) lineaNuevaPara(py, v, '11', 'Paquete cámara + ópticas', a, J);
+  if(!r04 || !delta) return {delta};
+  const busca = re => r04.lineas.find(l => re.test(l.concepto || '') && !esHE(l) && !l.etapa);
+  [[/operador de c[aá]mara/i, 'Operador de Cámara'], [/foquista|1° ?ac\b/i, 'Foquista (1° AC)']].forEach(([re, nom]) => {
+    const l = busca(re);
+    if(delta > 0){ if(l) l.cantidad = n(l.cantidad) + delta; else lineaNuevaPara(py, v, '04', nom, delta, J); }
+    else if(l){
+      /* al sacar cámaras queda al menos un foquista */
+      const min = /foquista/i.test(nom) ? 1 : 0;
+      l.cantidad = Math.max(min, n(l.cantidad) + delta);
+      if(!n(l.cantidad)) r04.lineas = r04.lineas.filter(x => x !== l);
+    }
+  });
+  return {delta};
+}
+function aplicarArea(py, v, rubro, delta){
+  const rb = v.rubros.find(r => r.codigo === rubro); if(!rb || !delta) return;
+  const J = jornadasDelPresupuesto(v) || n(v.jornadas) || n(py.jornadas) || 1;
+  const pers = rb.lineas.filter(l => personaDeCrew(l, rb));
+  if(delta > 0){
+    const aux = pers.find(l => norm(l.concepto) === norm(AUX_AREA[rubro] || ''))
+      || [...pers].sort((x, y) => n(x.valorUnit) - n(y.valorUnit))[0];
+    if(aux && pers.length > 1) aux.cantidad = n(aux.cantidad) + delta;
+    else lineaNuevaPara(py, v, rubro, AUX_AREA[rubro] || 'Asistente', delta, J);
+    return;
+  }
+  /* se achica desde el más barato; la cabeza del área no se toca */
+  let resta = -delta;
+  const orden = [...pers].sort((x, y) => n(x.valorUnit) - n(y.valorUnit));
+  const cabeza = [...pers].sort((x, y) => n(y.valorUnit) - n(x.valorUnit))[0];
+  for(const l of orden){
+    if(!resta) break;
+    const piso = l === cabeza ? 1 : 0, saco = Math.min(resta, Math.max(0, n(l.cantidad) - piso));
+    l.cantidad = n(l.cantidad) - saco; resta -= saco;
+  }
+  rb.lineas = rb.lineas.filter(l => !(personaDeCrew(l, rb) && !n(l.cantidad)));
+  /* las horas extra de lo que salió, también */
+  const vivas = new Set(rb.lineas.map(raizLinea));
+  rb.lineas = rb.lineas.filter(l => !l.hex || vivas.has(l.hex.lineaRaiz));
+  rb.lineas.filter(l => l.hex).forEach(h => { const o = rb.lineas.find(x => raizLinea(x) === h.hex.lineaRaiz); if(o) h.cantidad = o.cantidad; });
+}
+function aplicarElenco(py, v, tipo, total){
+  const rb = v.rubros.find(r => r.codigo === '09'); if(!rb) return;
+  const J = jornadasDelPresupuesto(v) || n(v.jornadas) || n(py.jornadas) || 1;
+  const es = tipo === 'extras' ? esExtraL : esActorL;
+  const ls = rb.lineas.filter(l => es(l, rb));
+  let delta = Math.max(0, total) - ls.reduce((s, l) => s + Math.max(0, n(l.cantidad)), 0);
+  if(!delta) return;
+  if(delta > 0){
+    const donde = tipo === 'extras' ? [...ls].sort((x, y) => n(y.cantidad) - n(x.cantidad))[0]
+      : ls.find(l => /secundari|bolo/i.test(l.concepto || ''));
+    if(donde) donde.cantidad = n(donde.cantidad) + delta;
+    else { const l = nuevaLinea({concepto: tipo === 'extras' ? 'Extra' : 'Actor / Actriz Secundario', cantidad: delta, dias: J, unidad: 'jornada', area: 'elenco'});
+      rb.lineas.push(l); rb.abierto = true; }
+    return;
+  }
+  /* se saca desde el grupo más grande (extras) o desde los secundarios (elenco) */
+  const orden = tipo === 'extras' ? [...ls].sort((x, y) => n(y.cantidad) - n(x.cantidad))
+    : [...ls].sort((x, y) => (/principal|protag/i.test(x.concepto) ? 1 : 0) - (/principal|protag/i.test(y.concepto) ? 1 : 0) || n(x.valorUnit) - n(y.valorUnit));
+  let resta = -delta;
+  for(const l of orden){ if(!resta) break; const saco = Math.min(resta, n(l.cantidad)); l.cantidad = n(l.cantidad) - saco; resta -= saco; }
+  rb.lineas = rb.lineas.filter(l => !(es(l, rb) && !n(l.cantidad)));
+}
+/* Arma el ejercicio: copia el de origen y aplica lo pedido. */
+function crearEjercicio(py, origen, o = {}){
+  const M = medidasVersion(py, origen);
+  const v = copiarVersion(origen, {estado: 'borrador', nombre: (o.nombre || '').trim() || 'Ejercicio'});
+  v.ejercicio = {deId: origen.id, creado: hoy(), pedido: {}};
+  const P = v.ejercicio.pedido, rep = {};
+  const num = x => x !== undefined && x !== null && x !== '' && isFinite(+x);
+  if(num(o.jornadas) && +o.jornadas > 0 && (+o.jornadas !== M.jornadas || num(o.he))){
+    Object.assign(rep, aplicarJornadas(py, v, M.jornadas, +o.jornadas, o.he)); P.jornadas = {de: M.jornadas, a: +o.jornadas, he: rep.he};
+  }
+  if(num(o.camaras) && +o.camaras !== M.camaras){ aplicarCamaras(py, v, M.camaras, Math.max(0, +o.camaras)); P.camaras = {de: M.camaras, a: +o.camaras}; }
+  (o.areas || []).forEach(a => { if(a && a.rubro && n(a.delta)){ aplicarArea(py, v, a.rubro, Math.round(n(a.delta))); (P.areas ||= []).push({rubro: a.rubro, delta: n(a.delta)}); } });
+  if(num(o.elenco) && +o.elenco !== M.elenco){ aplicarElenco(py, v, 'elenco', +o.elenco); P.elenco = {de: M.elenco, a: +o.elenco}; }
+  if(num(o.extras) && +o.extras !== M.extras){ aplicarElenco(py, v, 'extras', +o.extras); P.extras = {de: M.extras, a: +o.extras}; }
+  if(!(o.nombre || '').trim()) v.nombre = nombreDeEjercicio(P) || 'Ejercicio ' + ((py.versiones || []).filter(esEjercicio).length + 1);
+  return {v, rep};
+}
+function nombreDeEjercicio(P){
+  const x = [];
+  if(P.jornadas) x.push(`${P.jornadas.a} ${plural(P.jornadas.a, 'jornada')}${P.jornadas.he ? ' con horas extra' : ''}`);
+  if(P.camaras) x.push(`${P.camaras.a} ${plural(P.camaras.a, 'cámara')}`);
+  if(P.extras) x.push(`${P.extras.a} extras`);
+  if(P.elenco) x.push(`${P.elenco.a} en el elenco`);
+  (P.areas || []).forEach(a => x.push(`${AREA_CORTA[a.rubro] || a.rubro} ${a.delta > 0 ? '+' : '−'}${Math.abs(a.delta)}`));
+  return x.join(' · ');
+}
+function nuevoEjercicio(){
+  const py = getPy(); if(!py) return;
+  if(!apruebaProyecto()){ toast('Los ejercicios los arman el Productor Ejecutivo o Administración.'); return; }
+  const fam = familiaCotiz(py), v = getV();
+  const origen = fam.includes(v) ? v : baseDe(py);
+  if(!origen){ toast('Primero armá el presupuesto base'); return; }
+  const M = medidasVersion(py, origen), cfg = py.configRodaje || nuevaConfigRodaje();
+  const areaSel = (nm) => `<select name="${nm}"><option value="">— ningún área —</option>${Object.entries(AREA_CORTA).map(([k, l]) => `<option value="${k}">${esc(l)} (${M.crew[k] || 0})</option>`).join('')}</select>`;
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:600px">
+    <h3>Nuevo ejercicio</h3><div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:12px">Otra manera de hacer el mismo trabajo, para comparar el precio.
+        Es una versión más del presupuesto: la de origen queda intacta y después se edita a mano como cualquier otra.</div>
+      <div class="grid2">
+        ${campo('Nombre (si lo dejás vacío, se arma con los cambios)', 'nombre', '', 'text', 'placeholder="1 jornada con horas extra"')}
+        ${sel('Parte de', 'origen', origen.id, fam.map(x => ({v: x.id, l: (x === baseDe(py) ? 'Base · ' : '') + x.nombre})))}
+      </div>
+      <div style="margin:14px 0 6px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">Cambios rápidos (vacío = igual que el de origen)</div>
+      <div class="grid2">
+        ${campo(`Jornadas de rodaje (hoy ${M.jornadas})`, 'jornadas', '', 'number', `min="1" step="1" placeholder="${M.jornadas}"`)}
+        ${campo(`Horas extra por jornada (jornada de ${horasJornadaDe(cfg)} h · ${esc(escalaTexto(cfg))})`, 'he', '', 'number', `min="0" step="0.5" placeholder="se calcula si comprimís"`)}
+        ${campo(`Cámaras (hoy ${M.camaras})`, 'camaras', '', 'number', `min="0" step="1" placeholder="${M.camaras}"`)}
+        ${campo(`Elenco: actores y actrices (hoy ${M.elenco})`, 'elenco', '', 'number', `min="0" step="1" placeholder="${M.elenco}"`)}
+        ${campo(`Extras (hoy ${M.extras})`, 'extras', '', 'number', `min="0" step="1" placeholder="${M.extras}"`)}
+        <div></div>
+        <label class="f"><span>Equipo técnico: área</span>${areaSel('area1')}</label>
+        ${campo('Personas más (+) o menos (−)', 'delta1', '', 'number', 'step="1" placeholder="+2 / −1"')}
+        <label class="f"><span>Otra área</span>${areaSel('area2')}</label>
+        ${campo('Personas más (+) o menos (−)', 'delta2', '', 'number', 'step="1" placeholder="+1 / −1"')}
+      </div>
+      <div class="sicabox" style="margin-top:12px;font-size:12px;line-height:1.5">Al comprimir jornadas, los días de cada línea del rodaje pasan a las jornadas nuevas
+        y a cada persona del equipo se le suman sus horas extra con la escala del convenio (en líneas «Horas extra — …» que se pueden tocar).
+        Si no ponés las horas, se calcula la mitad de lo que se pierde (hasta 8 h): ${M.jornadas > 1 ? `de ${M.jornadas} a ${M.jornadas - 1} serían ${sugerirHE(M.jornadas, M.jornadas - 1, cfg)} h` : 'con una jornada no hay nada que comprimir'}.</div>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
+      <button class="btn pri" onclick="confirmarEjercicio()">Crear el ejercicio</button></div>
+  </div></div>`);
+}
+function confirmarEjercicio(){
+  const py = getPy(), d = datos();
+  const origen = (py.versiones || []).find(x => x.id === d.origen) || baseDe(py);
+  const {v, rep} = crearEjercicio(py, origen, {nombre: d.nombre, jornadas: d.jornadas, he: d.he, camaras: d.camaras, elenco: d.elenco, extras: d.extras,
+    areas: [{rubro: d.area1, delta: d.delta1}, {rubro: d.area2, delta: d.delta2}]});
+  if(!py.baseId && baseDe(py)) py.baseId = baseDe(py).id;
+  py.versiones.push(v); DB.ui.versionId = v.id; DB.ui.tab = 'presu'; DB.ui.vista = 'interna';
+  cerrar();
+  const c = cambiosVsBase(py, v);
+  toast(`Ejercicio «${v.nombre}»: ${c.totalTxt}${rep.sinValor ? ` · ${rep.sinValor} sin valor no llevan horas extra` : ''}`,
+    {accion: 'Deshacer', fn: () => { py.versiones = py.versiones.filter(x => x !== v); DB.ui.versionId = origen.id; R(); toast('Ejercicio borrado'); }});
+  R();
+}
+function elegirEjercicio(id){
+  const py = getPy(), v = (py.versiones || []).find(x => x.id === id); if(!v) return;
+  if(!apruebaProyecto()){ toast('La que se presenta la eligen el Productor Ejecutivo o Administración.'); return; }
+  const antes = py.elegidaId || null;
+  py.elegidaId = id; DB.ui.versionId = id;
+  if(modal) cerrar();
+  toast(`«${v.nombre}» es la que se presenta: la cotización y la aprobación salen de esta`,
+    {accion: 'Deshacer', fn: () => { py.elegidaId = antes; R(); }});
+  R();
+}
+/* la barra de los ejercicios, arriba del presupuesto */
+function panelEjercicios(py, v){
+  const fam = familiaCotiz(py);
+  if(!fam.length || (!enCotizacion(py) && fam.length < 2)) return '';
+  const base = baseDe(py), u = getUsuario(), margen = veMargen(u), puedo = apruebaProyecto(u);
+  const esFam = fam.includes(v);
+  const tab = x => { const R = calcular(x);
+    return `<button class="ejtab${x === v ? ' on' : ''}" onclick="selVersion('${x.id}')" title="${esc(x === base ? 'La base: el primer presupuesto' : cambiosVsBase(py, x).texto)}">
+      <span>${x === base ? 'Base · ' : ''}${esc(x.nombre)}</span><b>${fmt(totalVisible(R, u), x.monedaBase)}</b>
+      ${py.elegidaId === x.id ? '<em class="eleg">la que se presenta</em>' : ''}</button>`; };
+  const c = esFam && v !== base ? cambiosVsBase(py, v) : null;
+  return `<div class="card noprint"><h3>${enCotizacion(py) ? 'Ejercicios de cotización' : 'Ejercicios'}
+      <span class="spacer"></span><span class="muted" style="font-size:10px;text-transform:none;letter-spacing:0">${margen ? 'total al cliente' : 'costo de producción'}</span></h3>
+    <div class="ejbar">${fam.map(tab).join('')}
+      <span class="spacer"></span>
+      ${fam.length > 1 ? `<button class="btn sm" onclick="compararEjercicios()">Comparar</button>` : ''}
+      ${puedo ? `<button class="btn sm pri" onclick="nuevoEjercicio()">+ Nuevo ejercicio</button>` : ''}
+    </div>
+    ${c ? `<div class="ejcambios"><span class="muted">Para llegar a este precio:</span> ${c.items.length ? c.items.map(t => `<b>${esc(t)}</b>`).join(' · ') : 'todavía igual que la base (cambiá lo que quieras abajo)'}
+        · <b class="${c.dif < 0 ? 'neg' : c.dif > 0 ? 'pos' : ''}">${esc(c.totalTxt)}</b>
+        ${puedo && py.elegidaId !== v.id ? ` <button class="btn sm" style="margin-left:6px" onclick="elegirEjercicio('${v.id}')">Elegir esta para presentar</button>` : ''}</div>`
+      : esFam ? `<div class="ejcambios muted">${v === base ? 'Esta es la <b>base</b>: los ejercicios se comparan contra ella.' : ''}
+        ${puedo && fam.length > 1 && py.elegidaId !== v.id ? `<button class="btn sm" style="margin-left:6px" onclick="elegirEjercicio('${v.id}')">Elegir esta para presentar</button>` : ''}
+        ${!fam.some(x => x !== base) && puedo ? ' Probá otra manera de hacerlo (una jornada con horas extra, otra cámara, menos extras) con <b>+ Nuevo ejercicio</b>.' : ''}</div>` : ''}
+  </div>`;
+}
+/* todos lado a lado */
+function filasComparacion(py, u = getUsuario()){
+  const fam = familiaCotiz(py, u), base = baseDe(py);
+  return fam.map(v => { const R = calcular(v), M = medidasVersion(py, v), C = cambiosVsBase(py, v, base, u);
+    return {v, esBase: v === base, elegida: py.elegidaId === v.id, total: R.total, fee: R.fee, costo: R.subtotal + R.contingencia,
+      visible: totalVisible(R, u), M, C}; });
+}
+function compararEjercicios(){
+  const py = getPy(), u = getUsuario(), margen = veMargen(u), F = filasComparacion(py, u);
+  if(F.length < 2){ toast('Todavía no hay ejercicios para comparar'); return; }
+  const mb = F[0].v.monedaBase, fila = (t, f) => `<tr><td>${t}</td>${F.map(x => `<td>${f(x)}</td>`).join('')}</tr>`;
+  const minimo = Math.min(...F.map(x => x.visible));
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:min(1100px,96vw)">
+    <h3>Comparar ejercicios</h3><div class="mbody">
+      <div class="scrollx"><table class="cmp">
+        <thead><tr><th></th>${F.map(x => `<th>${x.esBase ? 'Base<br>' : ''}${esc(x.v.nombre)}${x.elegida ? '<br><span class="eleg">la que se presenta</span>' : ''}</th>`).join('')}</tr></thead>
+        <tbody>
+          ${margen ? fila('<b>Total al cliente</b> (con IVA)', x => `<b${x.visible === minimo ? ' style="color:var(--ok)"' : ''}>${fmt(x.total, mb)}</b>`) : ''}
+          ${margen ? fila('Fee (margen)', x => fmt(x.fee, mb)) : ''}
+          ${fila(margen ? 'Costo de producción' : '<b>Costo de producción</b>', x => margen ? fmt(x.costo, mb) : `<b${x.visible === minimo ? ' style="color:var(--ok)"' : ''}>${fmt(x.costo, mb)}</b>`)}
+          ${fila('Contra la base', x => x.esBase ? '—' : `${x.C.pct > 0 ? '+' : x.C.pct < 0 ? '−' : ''}${Math.abs(x.C.pct).toLocaleString('es-AR')} %`)}
+          ${fila('Jornadas', x => `${x.M.jornadas}${x.M.he ? ` <span class="muted">+${x.M.he} h extra</span>` : ''}`)}
+          ${fila('Equipo técnico', x => `${fmtC(x.M.personas)} ${plural(x.M.personas, 'persona')}`)}
+          ${fila('Cámaras', x => x.M.camaras)}
+          ${fila('Elenco · extras', x => `${x.M.elenco} · ${x.M.extras}`)}
+          <tr><td>Lo que cambia</td>${F.map(x => `<td class="txt">${x.esBase ? 'Es la base' : x.C.items.length ? x.C.items.map(esc).join('<br>') : 'Igual que la base'}</td>`).join('')}</tr>
+          ${apruebaProyecto(u) ? `<tr><td></td>${F.map(x => `<td>${x.elegida ? '<span class="eleg">Elegida</span>' : `<button class="btn sm" onclick="elegirEjercicio('${x.v.id}')">Elegir</button>`}</td>`).join('')}</tr>` : ''}
+        </tbody></table></div>
+      ${margen ? '' : '<div class="muted" style="font-size:11.5px;margin-top:8px">Ves el costo de producción. El precio al cliente lo arman el PE y Administración.</div>'}
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div></div></div>`);
+}
+
+/* ======================  APROBAR, NO SALIÓ, REABRIR  ====================== */
+function aprobarProyecto(){
+  const py = getPy(); if(!py) return;
+  if(!apruebaProyecto()){ toast('El proyecto lo aprueban el Productor Ejecutivo o Administración.'); return; }
+  const vs = versionesQueVeo(py).filter(x => !x.congelada);
+  const def = versionElegida(py) || (vs.includes(getV()) ? getV() : baseDe(py)) || vs[0];
+  if(!def){ toast('Primero armá el presupuesto'); return; }
+  const jefe = getUsuarios().find(x => x.rol === 'produccion' && x.activo !== false && (py.invitados || []).includes(x.id));
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:560px">
+    <h3>Proyecto aprobado</h3><div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.6;margin-bottom:12px">
+        Se guarda una copia congelada de la cotización aprobada (no se toca más), el proyecto pasa a <b>en curso</b> y aparecen
+        el plan de rodaje, el pedido de luces, las altas, el callsheet, el rodaje, los gastos y la liquidación.
+        ${jefe ? `<b>${esc(jefe.nombre)}</b> (jefe de producción) lo ve en su resumen con los pasos para arrancar.` : 'Todavía no hay un jefe de producción invitado: invitalo después con ✉ Invitar.'}</div>
+      ${sel('La versión que aprobó el cliente', 'version', def.id, vs.map(x => ({v: x.id, l: `${NIVEL(x.nivel).l} · ${x.nombre} · ${fmt(totalVisible(calcular(x)), x.monedaBase)}`})))}
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px;cursor:pointer">
+        <input type="checkbox" name="tareas" ${jefe ? 'checked' : ''} style="width:auto;flex:none">
+        <span style="font-size:12.5px">Dejarle al jefe de producción las tareas para arrancar (invitar al equipo, fechas, plan, desglose al presupuesto de rodaje)</span></label>
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
+      <button class="btn aprobar" onclick="confirmarAprobacion()">Aprobar el proyecto</button></div>
+  </div></div>`);
+}
+const PASOS_ARRANQUE = [
+  {k:'invitar', t:'Invitar al equipo del rodaje', d:'Asistentes, arte, dirección: cada uno con su rol'},
+  {k:'fechas',  t:'Poner las fechas de rodaje', d:'La fecha de cada jornada define la escala del convenio'},
+  {k:'plan',    t:'Armar el plan de rodaje', d:'Planos, puestas y horarios de cada jornada'},
+  {k:'desglose',t:'Pasar el desglose al presupuesto de rodaje', d:'Revisar cantidades y que no falte nada de lo detectado'},
+];
+function confirmarAprobacion(o){
+  const py = getPy(), d = o || datos(), u = getUsuario();
+  if(!apruebaProyecto(u)) return;
+  const v = (py.versiones || []).find(x => x.id === d.version) || versionElegida(py) || getV();
+  if(!v) return;
+  const antes = {etapa: py.etapa, versionRodaje: py.versionRodaje || null, aprobado: py.aprobado || null, estado: v.estado,
+    hist: (py.etapaHist || []).length, versionId: DB.ui.versionId, tab: DB.ui.tab};
+  const f = hoy(), quien = u ? u.nombre : '';
+  const snap = copiarVersion(v, {nombre: `${v.nivel === 'cliente' ? '' : 'Cliente · '}aprobada ${fechaAR(f)}${v.nivel === 'cliente' ? ' · ' + v.nombre : ''}`.replace(/^aprobada/, 'Aprobada'),
+    nivel: veMargen(u) ? 'cliente' : 'produccion', estado: 'aprobado', fecha: f});
+  delete snap.ejercicio; snap.congelada = true; snap.aprobadaDe = v.id;
+  py.versiones.push(snap);
+  v.estado = 'aprobado';
+  if((v.nivel || 'produccion') === 'produccion') py.versionRodaje = v.id;
+  /* si lo aprobado es un ejercicio con otras jornadas, el proyecto pasa a tener ésas */
+  antes.jornadas = py.jornadas;
+  const J = medidasVersion(py, v).jornadas; if(J) py.jornadas = J;
+  py.etapa = 'aprobado';
+  /* sin montos: esto viaja con el presupuesto de producción, que lee el jefe */
+  py.aprobado = {fecha: f, quien, versionId: snap.id, deId: v.id};
+  (py.etapaHist ||= []).push({de: antes.etapa, a: 'aprobado', fecha: f, quien});
+  const nuevas = [];
+  /* el tilde se lee del cuadro (datos() trae el value, que es «on» aunque esté destildado) */
+  const tareas = o ? o.tareas !== false : !!(document.querySelector('.mod input[name=tareas]') || {}).checked;
+  if(tareas){
+    const jefe = getUsuarios().find(x => x.rol === 'produccion' && x.activo !== false && (py.invitados || []).includes(x.id));
+    PASOS_ARRANQUE.forEach(p => { const t = nuevaTarea({titulo: p.t, detalle: p.d, asignadoA: jefe ? jefe.id : null, creadaPor: u ? u.id : null});
+      t.arranque = p.k; tareasDe(py).push(t); nuevas.push(t.id); });
+  }
+  DB.ui.tab = 'resumen'; DB.ui.versionId = v.id;
+  if(modal) cerrar();
+  toast(`Proyecto aprobado: «${snap.nombre}» quedó congelada y el proyecto está en curso`, {accion: 'Deshacer', fn: () => {
+    py.versiones = py.versiones.filter(x => x !== snap); v.estado = antes.estado;
+    py.versionRodaje = antes.versionRodaje; py.etapa = antes.etapa; py.aprobado = antes.aprobado; py.jornadas = antes.jornadas;
+    py.etapaHist = (py.etapaHist || []).slice(0, antes.hist);
+    py.tareas = tareasDe(py).filter(t => !nuevas.includes(t.id));
+    DB.ui.versionId = antes.versionId; DB.ui.tab = antes.tab;
+    subirEtapa(py); R(); toast('Vuelve a estar en cotización'); }});
+  subirEtapa(py);
+  R();
+  return snap;
+}
+/* la etapa viaja en la ficha del proyecto */
+function subirEtapa(py){
+  try{ if(typeof sbConectado === 'function' && sbConectado() && py.enServidor){ const pr = prDe(py) || getPr();
+    sbSubirProyecto(py, pr.id).then(() => guardar()).catch(e => toast('Guardado acá, pero no pude subir la etapa: ' + e.message)); } }catch(e){}
+  guardar();
+}
+function noSalio(){
+  const py = getPy(); if(!py) return;
+  if(!apruebaProyecto()){ toast('Eso lo deciden el Productor Ejecutivo o Administración.'); return; }
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:480px">
+    <h3>No salió</h3><div class="mbody">
+      <div class="muted" style="font-size:12.5px;line-height:1.55;margin-bottom:10px">El proyecto queda guardado (para la historia y las cuentas) con su
+        presupuesto y sus ejercicios. Se puede reabrir cuando quieras.</div>
+      <label class="f"><span>Por qué (opcional)</span>
+        <textarea name="motivo" rows="2" placeholder="Lo ganó otra productora · se cayó la campaña · el precio"></textarea></label>
+    </div><div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
+      <button class="btn pri" onclick="confirmarNoSalio()">Marcar que no salió</button></div></div></div>`);
+}
+function confirmarNoSalio(o){
+  const py = getPy(), d = o || datos(), u = getUsuario();
+  if(!apruebaProyecto(u)) return;
+  const antes = {etapa: py.etapa, noSalio: py.noSalio || null, hist: (py.etapaHist || []).length};
+  py.etapa = 'nosalio';
+  py.noSalio = {motivo: String(d.motivo || '').trim(), fecha: hoy(), quien: u ? u.nombre : ''};
+  (py.etapaHist ||= []).push({de: antes.etapa, a: 'nosalio', fecha: hoy(), quien: py.noSalio.quien, motivo: py.noSalio.motivo});
+  DB.ui.tab = 'resumen';
+  if(modal) cerrar();
+  toast('Quedó como «No salió»', {accion: 'Deshacer', fn: () => { py.etapa = antes.etapa; py.noSalio = antes.noSalio;
+    py.etapaHist = (py.etapaHist || []).slice(0, antes.hist); subirEtapa(py); R(); }});
+  subirEtapa(py); R();
+}
+/* lo aprobado vuelve a cotización sólo si todavía no arrancó nada */
+function arrancoAlgo(py){
+  const d = py.desglose || {};
+  return (py.comprobantes || []).length > 0 || (py.cajas || []).length > 0 || (py.ocs || []).length > 0
+    || ((py.plan || {}).items || []).some(x => x.tipo === 'plano' && x.jornada)
+    || (d.jornadas || []).some(j => j.parte && (Object.keys(j.parte.fichadas || {}).length || (j.parte.filmadas || []).length));
+}
+function reabrirCotizacion(){
+  const py = getPy(); if(!py) return;
+  if(!apruebaProyecto()){ toast('Eso lo deciden el Productor Ejecutivo o Administración.'); return; }
+  if(etapaDe(py) === 'aprobado' && arrancoAlgo(py)){ toast('Ya arrancó (hay plan, gastos o partes): no se puede volver a cotización.'); return; }
+  const antes = {etapa: py.etapa, hist: (py.etapaHist || []).length};
+  py.etapa = 'cotizacion';
+  (py.etapaHist ||= []).push({de: antes.etapa, a: 'cotizacion', fecha: hoy(), quien: (getUsuario() || {}).nombre || ''});
+  DB.ui.tab = 'resumen';
+  if(modal) cerrar();
+  toast('De nuevo en cotización', {accion: 'Deshacer', fn: () => { py.etapa = antes.etapa; py.etapaHist = (py.etapaHist || []).slice(0, antes.hist); subirEtapa(py); R(); }});
+  subirEtapa(py); R();
+}
+
+/* --- el resumen mientras se cotiza --- */
+function vistaResumenCotiz(pr, py, v){
+  const u = getUsuario(), margen = veMargen(u), puedo = apruebaProyecto(u), et = etapaDe(py);
+  const fam = familiaCotiz(py), eleg = versionElegida(py);
+  const vt = (eleg && versionesQueVeo(py).includes(eleg)) ? eleg : v;
+  const R = vt ? calcular(vt) : null;
+  const d = py.desglose || nuevoDesglose();
+  const A = d.escenas.length ? analizarDesglose(py) : null;
+  const lineas = vt ? vt.rubros.reduce((s, r) => s + r.lineas.filter(l => String(l.concepto || '').trim()).length, 0) : 0;
+  const sinValor = vt ? vt.rubros.reduce((s, r) => s + r.lineas.filter(l => String(l.concepto || '').trim() && !(n(l.valorUnit) > 0)).length, 0) : 0;
+  const aviso = _avisoCotiz; _avisoCotiz = null;
+  const paso = (num, t, desc, hecho, btn) => `<div class="cotiz-paso${hecho ? ' hecho' : ''}"><span class="cpnum">${num}${hecho ? ' · listo' : ''}</span><b>${t}</b>
+    <span class="muted">${desc}</span>${btn}</div>`;
+  const ejs = fam.filter(x => x !== baseDe(py)).length;
+  return `<div class="cs">
+    ${aviso ? `<div class="cotiz-aviso" style="margin:12px 16px 0">${esc(aviso)} aparece cuando el proyecto se aprueba. Mientras se cotiza, acá están el desglose y el presupuesto.</div>` : ''}
+    <div class="cotiz-hero">
+      <div style="flex:1;min-width:220px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="etapa-chip et-${et}">${esc(ETAPA(et).l)}</span>
+          ${py.cliente ? `<span class="muted" style="font-size:12px">${esc(py.cliente)}${py.agencia ? ' · ' + esc(py.agencia) : ''}</span>` : ''}</div>
+        <div class="csttl" style="margin-top:6px">${esc(py.nombre)}</div>
+        <div class="cssub">${esc(pr.nombre)} · ${esc(TIPO(py.tipo).l)}${py.medios ? ' · ' + esc(py.medios) : ''}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="tot">${R ? fmt(totalVisible(R, u), vt.monedaBase) : '—'}</div>
+        <div class="cssub">${margen ? 'total al cliente, con IVA' : 'costo de producción'} · ${esc(vt ? vt.nombre : '')}${eleg && vt === eleg ? ' (la que se presenta)' : ''}</div>
+        ${R && margen ? `<div class="cssub">costo ${fmt(R.subtotal + R.contingencia, vt.monedaBase)} · fee ${fmt(R.fee, vt.monedaBase)}</div>` : ''}
+      </div>
+    </div>
+    ${et === 'nosalio' ? `<div class="cotiz-aviso"><b>No salió</b>${py.noSalio ? ` · ${esc(fechaAR(py.noSalio.fecha))}${py.noSalio.quien ? ' · ' + esc(py.noSalio.quien) : ''}${py.noSalio.motivo ? ' · «' + esc(py.noSalio.motivo) + '»' : ''}` : ''}.
+      Queda guardado con su presupuesto y sus ejercicios. ${puedo ? `<button class="btn sm" style="margin-left:6px" onclick="reabrirCotizacion()">Reabrir la cotización</button>` : ''}</div>` : ''}
+    <div class="cotiz-pasos">
+      ${paso('1', 'Desglosar lo que mandó la agencia', d.escenas.length ? `${d.escenas.length} ${planPorEscenas(py) ? 'escenas' : 'bloques'}${A ? ` · ${A.puestas} puestas estimadas · ${A.total} cosas para cotizar` : ''}` : 'Pegá el brief o el guion, o soltá el storyboard (PDF o imágenes)', !!d.escenas.length,
+        `<button class="btn sm${d.escenas.length ? '' : ' pri'}" onclick="setTab('desglose')${d.escenas.length ? ";setSub('cotizar')" : ''}">${d.escenas.length ? 'Ver lo detectado' : 'Desglosar'}</button>`)}
+      ${paso('2', 'Armar el presupuesto', lineas ? `${lineas} ${plural(lineas, 'línea')}${sinValor ? ` · <b>${sinValor} sin valor</b>` : ' con valor'}` : 'Desde una plantilla, el desglose o a mano', lineas > 0 && !sinValor,
+        `<button class="btn sm" onclick="setTab('presu')">Ir al presupuesto</button>`)}
+      ${paso('3', 'Probar ejercicios', ejs ? `${ejs} ${plural(ejs, 'ejercicio')} contra la base${eleg ? ` · se presenta «${esc(eleg.nombre)}»` : ''}` : 'Otra manera de hacerlo: menos jornadas con horas extra, otra cámara, menos extras', ejs > 0,
+        `<span style="display:flex;gap:6px;flex-wrap:wrap">${ejs ? `<button class="btn sm" onclick="setTab('presu');compararEjercicios()">Comparar</button>` : ''}${puedo ? `<button class="btn sm" onclick="setTab('presu');nuevoEjercicio()">+ Ejercicio</button>` : ''}</span>`)}
+      ${margen ? paso('4', 'Mandar la cotización', 'El resumen por rubro con fee e impuestos, para la agencia o el cliente (se imprime o se pasa a PDF)', false,
+        `<button class="btn sm" onclick="setTab('presu');setVista('cliente')">Ver la cotización</button>`) : ''}
+    </div>
+    ${et === 'cotizacion' ? (puedo ? `<div class="cotiz-acciones">
+        <button class="btn aprobar" onclick="aprobarProyecto()">✓ Proyecto aprobado</button>
+        <button class="btn" onclick="noSalio()">No salió</button>
+        <span class="muted" style="font-size:12px">Al aprobarlo se congela la cotización y aparece todo lo demás para el jefe de producción.</span></div>`
+      : `<div class="cotiz-aviso">Ves el <b>costo de producción</b>. Lo aprueban el Productor Ejecutivo o Administración: cuando lo hagan, aparecen el plan, el rodaje y todo lo demás.</div>`) : ''}
+    ${(() => { const ch = tagsChipsHTML(py); return ch ? `<div class="csblock"><h4>Qué tiene este proyecto</h4><div class="pad">${ch}</div></div>` : ''; })()}
+    ${listaProyectosHTML(pr, py)}
+  </div>`;
+}
+/* el que no ve la plata y entró antes de tiempo */
+function panelCotizando(pr, py, u){
+  return `<div class="card"><div class="pad" style="padding:22px 18px">
+    <span class="etapa-chip et-${etapaDe(py)}">${esc(ETAPA(etapaDe(py)).l)}</span>
+    <div style="font-size:18px;font-weight:700;margin:10px 0 6px">${etapaDe(py) === 'nosalio' ? 'Este proyecto no salió' : 'Este proyecto todavía se está cotizando'}</div>
+    <div class="muted" style="font-size:13px;line-height:1.6;max-width:560px">${esc(py.nombre)}${py.cliente ? ' · ' + esc(py.cliente) : ''}.
+      ${etapaDe(py) === 'nosalio' ? 'Quedó guardado, pero no se va a filmar.' : `Por ahora lo trabajan el Productor Ejecutivo, Administración y el jefe de producción.
+      Cuando el cliente lo apruebe, acá vas a ver tus tareas, ${u && u.rol === 'asistdir' ? 'el desglose, el plan de rodaje' : 'el callsheet'} y lo que te toque.`}</div>
+  </div></div>`;
+}
+/* después de aprobar: lo que le toca al jefe para arrancar */
+function pasosArranque(py){
+  const d = py.desglose || {jornadas: []}, us = getUsuarios();
+  const equipo = (py.invitados || []).some(id => { const x = us.find(y => y.id === id); return x && ['asistprod', 'asistdir', 'arte', 'equipo'].includes(x.rol); });
+  const hecho = {
+    invitar: equipo,
+    fechas: (d.jornadas || []).length > 0 && d.jornadas.every(j => /^\d{4}-\d\d-\d\d$/.test(j.fecha || '')),
+    plan: ((py.plan || {}).items || []).some(x => x.tipo === 'plano' && x.jornada),
+    desglose: !!(py.aprobado && py.aprobado.desglosePasado) || !(d.escenas || []).length,
+  };
+  const ir = {invitar: 'invitarAlProyecto()', fechas: "setTab('plan')", plan: "setTab('plan')", desglose: "setTab('desglose');setSub('cotizar')"};
+  return PASOS_ARRANQUE.map(p => ({...p, hecho: !!hecho[p.k], ir: ir[p.k]}));
+}
+function siguientePasoJefeHTML(py){
+  if(!py.aprobado) return '';
+  const P = pasosArranque(py); if(P.every(p => p.hecho)) return '';
+  const vA = (py.versiones || []).find(x => x.id === py.aprobado.deId);
+  return `<div class="csblock"><h4>Siguiente paso: arrancar la producción</h4>
+    <div class="pad"><div class="muted" style="font-size:12px;margin-bottom:8px">Aprobado el ${esc(fechaAR(py.aprobado.fecha))}${py.aprobado.quien ? ' por ' + esc(py.aprobado.quien) : ''}${vA ? ` · el presupuesto de rodaje es «${esc(vA.nombre)}»` : ''}.</div>
+    <div style="display:flex;flex-direction:column;gap:1px">${P.map(p => `<button class="pendfila ${p.hecho ? '' : 'urg'}" onclick="${p.ir}" ${p.hecho ? 'style="color:var(--tx3)"' : ''}>
+      <span class="pendn">${p.hecho ? '✓' : '·'}</span><span><b>${esc(p.t)}</b> <span class="muted">— ${esc(p.d)}</span></span><span class="pendir">→</span></button>`).join('')}</div></div></div>`;
+}
+
 /* ---------- modales ---------- */
 let _abridor = null;
 function abrir(html){
@@ -15980,6 +17162,16 @@ function editProyecto(id){
         ${campo('Jornadas de rodaje','jornadas',p.jornadas,'number','step="1" min="0"' + (id ? ' oninput="previewPlantilla()"' : ''))}
       </div>
       ${id ? `<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
+        Etapa</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="etapa-chip et-${etapaDe(p)}">${esc(ETAPA(etapaDe(p)).l)}</span>
+          <span class="muted" style="font-size:12px">${esc(ETAPA(etapaDe(p)).d)}</span>
+          ${apruebaProyecto() && p.id === getPy()?.id ? `<span class="spacer"></span>
+            ${etapaDe(p) === 'cotizacion' ? `<button class="btn sm" onclick="cerrar();aprobarProyecto()">Proyecto aprobado</button><button class="btn sm" onclick="cerrar();noSalio()">No salió</button>` : ''}
+            ${etapaDe(p) === 'nosalio' ? `<button class="btn sm" onclick="reabrirCotizacion()">Reabrir la cotización</button>` : ''}
+            ${etapaDe(p) === 'aprobado' && !arrancoAlgo(p) ? `<button class="btn sm" onclick="reabrirCotizacion()" title="Todavía no arrancó nada: vuelve a mostrar sólo el desglose y el presupuesto">Volver a cotización</button>` : ''}` : ''}
+        </div>
+        <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
         Plantilla del presupuesto</div>
         <div class="muted" style="font-size:12px;margin-bottom:8px">Hoy: <b>${esc(PLANTILLA(p.plantilla) ? PLANTILLA(p.plantilla).t : 'sin plantilla')}</b>.
           Si elegís otra, lo que está en las dos queda cargado con sus datos.</div>
@@ -15990,7 +17182,13 @@ function editProyecto(id){
       : `<div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
         Arrancar el presupuesto con</div>
         <input type="hidden" name="plantilla" value="">
-        <div id="plelegir">${tarjetasPlantilla(p.tipo, '')}</div>`}
+        <div id="plelegir">${tarjetasPlantilla(p.tipo, '')}</div>
+        <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
+          Lo que mandó la agencia <span style="text-transform:none;letter-spacing:0;font-weight:400">(si ya lo tenés)</span></div>
+        <textarea name="brief" rows="4" placeholder="Pegá el brief, el guion o las frases del storyboard: se desglosa al guardar. El PDF o las imágenes se sueltan después en el Desglose."
+          style="font-size:12.5px;line-height:1.5"></textarea>
+        <div class="muted" style="font-size:11.5px;margin-top:6px;line-height:1.5">El proyecto arranca <b>en cotización</b>: sólo el desglose y el presupuesto.
+          Cuando el cliente lo aprueba, aparece todo lo demás (plan, rodaje, gastos…).</div>`}
       <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
         Derechos de imagen / buyout</div>
       <div class="grid2">
@@ -16029,11 +17227,23 @@ function saveProyecto(id){
     const plk = d.plantilla;
     p.versiones[0].capas = {fee:pr.feeDefault, contingencia:pr.contingenciaDefault,
       iibb:pr.iibbDefault, iva:pr.ivaDefault, cargas:ult.cargas, cargasElenco:ult.cargasElenco};
+    /* la situación cero: el proyecto nuevo se cotiza; el primer presupuesto es la base de los ejercicios */
+    p.etapa = 'cotizacion';
+    p.versiones[0].nombre = 'Base';
+    p.baseId = p.versiones[0].id;
     pr.proyectos.push(p); DB.ui.proyectoId=p.id; DB.ui.versionId=p.versiones[0].id; DB.ui.tab='presu';
+    let msg = '';
     if(plk){
       const res = aplicarPlantilla(p, p.versiones[0], plk, {jornadas: n(d.jornadas) || null});
-      toast(`${res.agregadas} líneas desde la plantilla · los sueldos del convenio ya están; el resto va en cero con la referencia en la nota`);
+      msg = `${res.agregadas} líneas desde la plantilla · los sueldos del convenio ya están; el resto va en cero con la referencia en la nota`;
     }
+    const brief = String(d.brief || '').trim();
+    if(brief){
+      const {escenas, modo} = desglosar(brief);
+      if(escenas.length){ Object.assign(p.desglose, {guion: brief, escenas, modo, importado: hoy()}); DB.ui.tab = 'desglose'; DB.ui.subDesglose = 'cotizar';
+        msg = `En cotización · ${escenas.length} ${modo === 'encabezados' ? 'escenas' : 'bloques'} desglosados: revisá lo detectado y aplicalo al presupuesto`; }
+    }
+    if(msg) toast(msg);
   }
   cerrar();
   /* El proyecto sube apenas se guarda: si vive sólo en este navegador, invitar
@@ -16434,7 +17644,7 @@ function importarGuion(txt){
     alert('No hay texto para desglosar.'); return; }
   const d = getD();
   d.guion = t; d.escenas = escenas; d.importado = hoy(); d.modo = modo;
-  DB.ui.subDesglose='escenas';
+  DB.ui.subDesglose = enCotizacion(getPy()) && vePlata() ? 'cotizar' : 'escenas';
   toast(modo==='encabezados' ? `${escenas.length} escenas desglosadas`
       : `${escenas.length} bloques — sin encabezados, separé por párrafo. Revisá y ajustá.`);
   R();
@@ -19216,6 +20426,16 @@ function propuestaPresupuesto(){
     const parecida = igual ? null : lineaParecida(v, l);
     l.ya = !!(igual || parecida);
     if(parecida) l.parecida = parecida.concepto;
+    /* lo que ya está no se duplica: se actualiza si el desglose pide más (más extras, más días) */
+    const m = igual || parecida;
+    if(m){
+      l.match = m.id;
+      l.cambia = {};
+      const mismaUnidad = (m.unidad || 'jornada') === (l.unidad || 'jornada') && l.unidad !== 'global';
+      if(mismaUnidad && n(l.cantidad) > n(m.cantidad)) l.cambia.cantidad = [n(m.cantidad), n(l.cantidad)];
+      if(mismaUnidad && n(l.dias) > n(m.dias)) l.cambia.dias = [n(m.dias), n(l.dias)];
+      if(!Object.keys(l.cambia).length) delete l.cambia;
+    }
   });
   return res;
 }
@@ -19241,18 +20461,23 @@ function lineaParecida(v, l){
   }
   return null;
 }
-function propuestaPresupuestoBase(){
+/* {clasica:true}: sin el análisis de publicidad (lo usan los avisos del plan, que miran el rodaje) */
+function propuestaPresupuestoBase(o = {}){
   const d=getD(), r=resumenDesglose(d), out=[];
   const jorn = d.jornadas.length || r.jornadasEstimadas;
+  let A = null; if(!o.clasica) try{ A = analizarDesglose(getPy()); }catch(e){}
+  const deElenco = p => A && A.grupos.elenco.find(x => x.k === 'p:' + norm(p));
   /* elenco: los días son las jornadas en las que realmente aparece */
   r.personajes.forEach(p=>{
     const js = new Set(d.escenas.filter(e=>e.personajes.includes(p)).map(e=>e.jornada||1));
     const suyas = d.escenas.filter(e=>e.personajes.includes(p));
-    out.push({dep:'elenco', rubro:'09', area:'elenco', concepto:p, cantidad:1, dias:js.size||1, unidad:'jornada',
-      piezaId: piezaDeEscenas(suyas),
-      nota:'escenas '+suyas.map(e=>e.numero).join(', ')});
+    const x = deElenco(p);
+    out.push({dep:'elenco', rubro:'09', area:'elenco', concepto:p, personaje:p, cantidad:1, dias:js.size||1, unidad:'jornada',
+      piezaId: piezaDeEscenas(suyas), rol: x ? x.sub : '', menor: !!(x && x.menor), conf: 'alta',
+      nota:(x ? x.sub.toLowerCase() + (x.menor ? ` · menor de edad${x.edad != null ? ' (' + x.edad + ')' : ''}` : '') + ' · ' : '') + 'escenas '+suyas.map(e=>e.numero).join(', ')});
   });
-  r.locaciones.forEach(l=>{
+  /* el packshot, el interior del auto y lo que no dice dónde no son una locación para alquilar */
+  r.locaciones.filter(l => !noEsLocacion(l)).forEach(l=>{
     const es = d.escenas.filter(e=>e.locacion===l);
     out.push({dep:'locacion', rubro:'10', area:'locaciones', concepto:'Locación — '+l, cantidad:1,
       dias:new Set(es.map(e=>e.jornada||1)).size||1, unidad:'jornada',
@@ -19261,6 +20486,8 @@ function propuestaPresupuestoBase(){
   });
   Object.entries(MAPA_RUBRO).forEach(([dep,cfg])=>{
     if(dep==='elenco'||dep==='locacion') return;
+    /* la cámara especial, los efectos, la post y los extras salen del análisis de publicidad (más abajo) */
+    if(A && ['equipo','sfx','vfx','sonido','extras'].includes(dep)) return;
     const m = r.porDepto[dep]; if(!m||!m.size) return;
     const items=[...m.values()];
     const ar = cfg.area || areaDeRubro(cfg.rubro);
@@ -19289,16 +20516,28 @@ function propuestaPresupuestoBase(){
       });
     }
   });
+  /* lo detectado para publicidad: extras con su cantidad, cámara especial,
+     efectos en set, post y entregables. Cada línea dice de dónde salió. */
+  if(A){
+    const ev = x => (x.evid || []).map(v => (v.esc ? `bloque ${v.esc}: ` : '') + '«' + v.frase + '»').join(' · ');
+    ['elenco', 'camara', 'sfx', 'post', 'entregas'].forEach(cat => A.grupos[cat].forEach(x => x.lineas.forEach(l => {
+      if(out.some(o => o.rubro === l.rubro && norm(o.concepto) === norm(l.concepto))) return;
+      out.push({dep: l.dep || cat, rubro: l.rubro, area: areaDeRubro(l.rubro) || '', concepto: l.concepto, cantidad: l.cantidad, dias: l.dias, unidad: l.unidad,
+        piezaId: l.piezaId || null, nota: (x.nota ? x.nota + ' · ' : '') + ev(x), claves: l.claves, det: l.det, conf: l.conf, grupo: cat});
+    })));
+  }
   /* lo que el guion pide aunque no sea un personaje con diálogo ni un elemento:
      el menor (y su permiso y su chaperona) y el permiso de filmar en la calle */
   try{
     const py = getPy(), det = tagsDetectados(py), tags = tagsDelProyecto(py).map(t => t.k);
     const escTag = k => det[k] ? [...det[k].escenas] : [];
     const dias = k => new Set(d.escenas.filter(e => escTag(k).includes(e.numero)).map(e => e.jornada || 1)).size || 1;
-    if(tags.includes('menores')){
-      const quien = det.menores ? [...det.menores.motivos].filter(Boolean)[0] || '' : '';
+    const menorPers = out.find(l => l.dep === 'elenco' && l.menor);
+    if(tags.includes('menores') || menorPers){
+      const quien = menorPers ? menorPers.concepto : det.menores ? [...det.menores.motivos].filter(Boolean)[0] || '' : '';
       const nota = (escTag('menores').length ? 'escenas ' + escTag('menores').join(', ') : 'menores de edad') + (quien ? ' · «' + quien + '»' : '');
-      out.push({dep:'tag', rubro:'09', area:'elenco', concepto:'Actor o actriz menor de edad' + (quien ? ' — ' + quien : ''), cantidad:1, dias:dias('menores'), unidad:'jornada',
+      /* si el menor ya es un personaje del elenco, no se propone otra vez */
+      if(!menorPers) out.push({dep:'tag', rubro:'09', area:'elenco', concepto:'Actor o actriz menor de edad' + (quien ? ' — ' + quien : ''), cantidad:1, dias:dias('menores'), unidad:'jornada',
         nota, claves: ['menor de edad', 'infantil', ...(quien ? [quien] : [])], claveRubros: true});
       out.push({dep:'tag', rubro:'09', area:'elenco', concepto:'Chaperona / adulto responsable', cantidad:1, dias:dias('menores'), unidad:'jornada',
         nota, claves: ['chaperon', 'adulto responsable', 'tutor'], claveRubros: true});
@@ -19313,60 +20552,107 @@ function propuestaPresupuestoBase(){
   }catch(e){}
   return {lineas:out, jornadas:jorn, resumen:r};
 }
+/* «Aplicar al presupuesto»: la lista de todo lo detectado, todo tildado. Lo
+   nuevo se crea; lo que ya está se actualiza (si el desglose pide más) en
+   vez de duplicarse; lo que ya está igual no se toca. Se puede cambiar la
+   cantidad y los días antes de aplicar, y después se deshace con un toque. */
+let _aplicar = null;
 function aPresupuesto(){
   const v=getV(); if(!v){ toast('Este proyecto no tiene presupuesto'); return; }
   const {lineas, jornadas} = propuestaPresupuesto();
   if(!lineas.length){ toast('No hay nada para enviar'); return; }
-  const yaEstan = lineas.filter(l => l.ya).length;
+  _aplicar = {lineas, jornadas, versionId: v.id};
+  const yaEstan = lineas.filter(l => l.ya && !l.cambia).length, actualiza = lineas.filter(l => l.cambia).length;
+  const nuevas = lineas.filter(l => !l.ya).length;
   const porRubro={};
   lineas.forEach((l,i)=>{ (porRubro[l.rubro] ||= []).push({...l,i}); });
-  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod">
-    <h3>Enviar el desglose al presupuesto</h3><div class="mbody">
+  const fila = l => {
+    const igual = l.ya && !l.cambia;
+    return `<div class="aplica-fila">
+      <input type="checkbox" data-i="${l.i}" ${igual ? 'disabled' : 'checked'} style="width:auto;margin-top:3px;flex:none" aria-label="${esc(l.concepto)}">
+      <span style="flex:1;min-width:0">
+        <span style="font-size:12.5px">${esc(l.concepto)}</span>
+        ${l.rol ? ` <span class="chip c-otr">${esc(l.rol.toLowerCase())}${l.menor ? ' · menor' : ''}</span>` : ''}
+        ${l.conf && l.conf !== 'alta' ? ` <span class="conf ${l.conf}" title="Lo sugiere el texto, no lo dice: revisalo">${esc(l.conf)}</span>` : ''}
+        ${igual ? ` <span class="chip c-otr" ${l.parecida ? `title="Parece la línea «${esc(l.parecida)}»"` : ''}>ya está${l.parecida ? ': ' + esc(l.parecida) : ''}</span>` : ''}
+        ${l.cambia ? ` <span class="chip d-par">actualiza «${esc(l.parecida || l.concepto)}»: ${Object.entries(l.cambia).map(([k, [a, b]]) => `${k === 'dias' ? 'días' : 'cantidad'} ${a} → ${b}`).join(', ')}</span>` : ''}
+        <span class="muted" style="font-size:10.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.nota || '')}">${esc(l.nota || '')}</span>
+        ${piezasDe(getPy()).length?`<span class="chip ${l.piezaId?'pz-si':'pz-com'}" style="margin-top:2px;display:inline-block">${
+          l.piezaId?esc(nombrePieza(getPy(), l.piezaId)):'Compartida'}</span>`:''}
+      </span>
+      ${igual ? '' : `<span class="cant"><input type="number" min="0" step="1" data-q="${l.i}" value="${esc(l.cantidad)}" aria-label="Cantidad de ${esc(l.concepto)}">×
+        <input type="number" min="0" step="1" data-d="${l.i}" value="${esc(l.dias)}" aria-label="Días de ${esc(l.concepto)}"> ${esc(l.unidad)}</span>`}
+    </div>`;
+  };
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:680px">
+    <h3>Aplicar el desglose al presupuesto</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">
-        Se crean <b>${lineas.length} líneas</b> en <b>${esc(v.nombre)}</b> con el concepto, la cantidad
-        y los días ya calculados desde el desglose. <b>Los valores quedan en cero</b> (salvo los cargos del convenio SICA, que se completan solos) — los ponés vos.
-        Destildá lo que no quieras.${yaEstan ? ` <b>${yaEstan} ya están en el presupuesto</b> y vienen destildadas: mandarlas de nuevo las duplica.` : ''}</div>
+        En <b>${esc(v.nombre)}</b>: <b>${nuevas} ${plural(nuevas, 'línea nueva', 'líneas nuevas')}</b>${actualiza ? `, <b>${actualiza} se actualiza${actualiza == 1 ? '' : 'n'}</b> (el desglose pide más cantidad o más días)` : ''}${yaEstan ? ` y <b>${yaEstan} ya están en el presupuesto</b> (no se duplican)` : ''}.
+        Todo viene tildado: destildá lo que no va y corregí la cantidad o los días. Lo nuevo entra con <b>el valor en cero</b>
+        (salvo los cargos del convenio SICA, que se completan solos). Después todo se sigue editando a mano.</div>
       ${Object.keys(porRubro).sort().map(cod=>{
         const rb = v.rubros.find(x=>x.codigo===cod);
         return `<div style="margin-bottom:11px">
-          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);font-weight:700;margin-bottom:4px">
+          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);font-weight:700;margin-bottom:2px">
             <span class="rcode">${esc(cod)}</span> ${esc(rb?rb.nombre:'(rubro inexistente)')}</div>
-          ${porRubro[cod].map(l=>`<label style="display:flex;gap:8px;align-items:flex-start;padding:3px 0;cursor:pointer">
-            <input type="checkbox" data-i="${l.i}" ${l.ya ? '' : 'checked'} style="width:auto;margin-top:3px;flex:none">
-            <span style="flex:1;min-width:0">
-              <span style="font-size:12.5px">${esc(l.concepto)}</span>${l.ya ? ` <span class="chip c-otr" ${l.parecida ? `title="Parece la línea «${esc(l.parecida)}»"` : ''}>ya está${l.parecida ? ': ' + esc(l.parecida) : ''}</span>` : ''}
-              <span class="muted" style="font-size:10.5px;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-                ${l.cantidad} × ${l.dias} ${esc(l.unidad)}${l.nota?' · '+esc(l.nota):''}</span>
-              ${piezasDe(getPy()).length?`<span class="chip ${l.piezaId?'pz-si':'pz-com'}" style="margin-top:2px;display:inline-block">${
-                l.piezaId?esc(nombrePieza(getPy(), l.piezaId)):'Compartida'}</span>`:''}
-            </span></label>`).join('')}
+          ${porRubro[cod].map(fila).join('')}
         </div>`;
       }).join('')}
       <label style="display:flex;gap:8px;align-items:center;padding-top:8px;border-top:1px solid var(--line);cursor:pointer">
         <input type="checkbox" id="setj" checked style="width:auto;flex:none">
         <span style="font-size:12.5px">Poner el proyecto en <b>${jornadas} jornada${jornadas==1?'':'s'}</b> de rodaje</span></label>
     </div>
-    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button>
-      <button class="btn pri" onclick="confirmarAPresupuesto()">Crear las líneas</button></div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cancelar</button><div style="flex:1"></div>
+      <button class="btn pri" onclick="confirmarAPresupuesto()">Aplicar al presupuesto</button></div>
   </div></div>`);
 }
-function confirmarAPresupuesto(){
+/* Aplica las líneas tildadas. Se puede llamar con la lista ya resuelta
+   (pruebas): [{i, cantidad, dias}] */
+function confirmarAPresupuesto(elegidas){
   const {lineas, jornadas} = propuestaPresupuesto();
-  const marcadas = [...document.querySelectorAll('.mod input[type=checkbox][data-i]')]
-    .filter(c=>c.checked).map(c=>lineas[parseInt(c.dataset.i,10)]);
-  const setj = document.getElementById('setj')?.checked;
-  const v=getV(); let creadas=0;
-  marcadas.forEach(l=>{
+  const leer = (attr, i) => { try{ const el = document.querySelector(`.mod input[data-${attr}="${i}"]`); return el && el.value !== undefined && el.value !== '' ? n(el.value) : null; }catch(e){ return null; } };
+  const marcadas = elegidas || [...document.querySelectorAll('.mod input[type=checkbox][data-i]')]
+    .filter(c=>c.checked && !c.disabled).map(c => { const i = parseInt(c.dataset.i,10); return {i, cantidad: leer('q', i), dias: leer('d', i)}; });
+  const setj = elegidas ? true : document.getElementById('setj')?.checked;
+  const py = getPy(), v=getV();
+  const antes = {rubros: JSON.stringify(v.rubros), jornadas: py.jornadas, aprobado: py.aprobado ? {...py.aprobado} : null};
+  const {creadas, actualizadas} = aplicarLineasDesglose(py, v, lineas, marcadas);
+  if(setj) py.jornadas = jornadas;
+  /* después de aprobado, pasar el desglose es uno de los pasos del jefe */
+  if(py.aprobado && etapaDe(py) === 'aprobado') py.aprobado.desglosePasado = hoy();
+  _aplicar = null;
+  if(modal) cerrar();
+  DB.ui.tab='presu';
+  toast(`${creadas} ${plural(creadas, 'línea nueva', 'líneas nuevas')}${actualizadas ? ` · ${actualizadas} ${plural(actualizadas, 'actualizada', 'actualizadas')}` : ''} — cargá los valores`,
+    {accion: 'Deshacer', fn: () => { v.rubros = JSON.parse(antes.rubros); py.jornadas = antes.jornadas; py.aprobado = antes.aprobado; R(); toast('El presupuesto quedó como antes'); }});
+  R();
+  return {creadas, actualizadas};
+}
+/* El corazón de «Aplicar»: crea lo nuevo y hace crecer lo que ya estaba. */
+function aplicarLineasDesglose(py, v, lineas, marcadas){
+  let creadas=0, actualizadas=0;
+  marcadas.forEach(m=>{
+    const l = lineas[m.i]; if(!l) return;
+    const q = m.cantidad != null ? m.cantidad : l.cantidad, d = m.dias != null ? m.dias : l.dias;
     const rb = v.rubros.find(x=>x.codigo===l.rubro); if(!rb) return;
-    const nl = nuevaLinea({concepto:l.concepto, cantidad:l.cantidad, dias:l.dias,
-      unidad:l.unidad, valorUnit:0, notas:l.nota, area:l.area||'', piezaId:l.piezaId||null});
-    autocompletarSICA(nl, getPy());
+    const ex = l.match && v.rubros.flatMap(r => r.lineas).find(x => x.id === l.match);
+    if(ex){
+      /* lo que ya estaba: sólo crece (nunca se baja lo que alguien puso a mano) */
+      let toco = false;
+      if((ex.unidad || 'jornada') === (l.unidad || 'jornada') && l.unidad !== 'global'){
+        if(n(q) > n(ex.cantidad)){ ex.cantidad = q; toco = true; }
+        if(n(d) > n(ex.dias)){ ex.dias = d; toco = true; }
+      }
+      if(toco){ actualizadas++; rb.abierto = true; }
+      return;
+    }
+    const nl = nuevaLinea({concepto:l.concepto, cantidad:q, dias:d,
+      unidad:l.unidad, valorUnit:0, notas:l.nota, area:l.area||'', piezaId:l.piezaId||null, personaje: l.dep === 'elenco' ? (l.personaje || '') : ''});
+    autocompletarSICA(nl, py);
     rb.lineas.push(nl);
     rb.abierto = true; creadas++;
   });
-  if(setj) getPy().jornadas = jornadas;
-  cerrar(); DB.ui.tab='presu';
-  toast(`${creadas} ${plural(creadas, 'línea creada', 'líneas creadas')} — cargá los valores`); R();
+  return {creadas, actualizadas};
 }
 function expDesgloseCSV(){
   const d=getD(), py=getPy();

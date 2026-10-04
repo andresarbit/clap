@@ -347,5 +347,22 @@ r = await invitar9('jefe', 'ejecutivo'); ok('ni al PE', !!r.error, r.error);
 r = await invitar9('diego', 'equipo'); ok('los asistentes no invitan', !!r.error, r.error);
 r = await invitar9('sofia', 'equipo'); ok('ni el equipo', !!r.error, r.error);
 
+console.log('\n--- 10. LA ETAPA: EN COTIZACIÓN, APROBADO ---');
+ok('los proyectos que ya estaban quedan aprobados', (await db.query(`select etapa from proyecto where id=$1`, [PY])).rows[0].etapa === 'aprobado');
+const PY2 = (await db.query(`insert into proyecto(productora_id,nombre,etapa) values($1,'Cumbre (cotizando)','cotizacion') returning id`, [prodId])).rows[0].id;
+for (const k of ['jefe', 'diego', 'paula']) await db.query(`insert into proyecto_persona(proyecto_id,usuario_id) values($1,$2) on conflict do nothing`, [PY2, UID[k]]);
+const parte10 = async (k, parte) => { try { const x = await como(k, async () => (await db.query(`select guardar_parte($1,$2,'{}'::jsonb,null) r`, [PY2, parte])).rows[0].r); return x && x.ok ? 'ok' : JSON.stringify(x); } catch (e) { return e.message; } };
+r = await parte10('diego', 'tareas'); ok('cotizando, el asistente de producción no escribe (ni las tareas)', r !== 'ok', r);
+r = await parte10('paula', 'plan'); ok('ni la asistente de dirección el plan', r !== 'ok', r);
+r = await parte10('jefe', 'presupuesto'); ok('el jefe sí trabaja el presupuesto (en costo)', r === 'ok', r);
+r = await parte10('tomas', 'presupuesto_real'); ok('y el PE el Real', r === 'ok', r);
+await como('jefe', async () => { try { await db.query(`update proyecto set etapa='aprobado' where id=$1`, [PY2]); } catch (e) {} });
+ok('el jefe no lo aprueba (la etapa queda como estaba, sin romper el guardado)', (await db.query(`select etapa from proyecto where id=$1`, [PY2])).rows[0].etapa === 'cotizacion');
+await como('tomas', async () => db.query(`update proyecto set etapa='aprobado' where id=$1`, [PY2]));
+ok('el PE lo aprueba', (await db.query(`select etapa from proyecto where id=$1`, [PY2])).rows[0].etapa === 'aprobado');
+r = await parte10('diego', 'tareas'); ok('aprobado, el asistente ya escribe lo suyo', r === 'ok', r);
+r = await como('marta', async () => { try { await db.query(`update proyecto set etapa='cualquiera' where id=$1`, [PY2]); return 'pudo'; } catch (e) { return e.message; } });
+ok('una etapa que no existe no entra', r !== 'pudo', r);
+
 console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');
 process.exit(fallos ? 1 : 0);
