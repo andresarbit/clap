@@ -13457,32 +13457,32 @@ async function soltarMaterial(ev){
   else R();
 }
 /* Un PDF sin encabezados de escena puede ser un guion de publicidad (prosa
-   o dos columnas), un storyboard en grilla o la presentación de la agencia,
-   con una hoja por escena (la frase y sus cuadros). Se pregunta UNA vez para
+   o dos columnas) o un storyboard en grilla; y alguna vez, un material con
+   una escena por hoja (la frase y sus cuadros). Se pregunta UNA vez para
    todos los PDF que llegaron juntos: equivocarse acá es tirar el storyboard
    como texto o cortar un guion en cuadros. */
 function preguntarPdf(){
   const xs = _dgPendientes; if(!xs.length){ R(); return; }
   const varios = xs.length > 1, paginas = xs.reduce((s, x) => s + (x.paginas || 1), 0);
-  /* poco texto por hoja: storyboard o presentación */
+  /* poco texto por hoja: storyboard */
   const poco = xs.reduce((s, x) => s + x.txt.replace(/\s+/g, ' ').length, 0) / paginas < 700;
   const nombres = xs.map(x => x.f.name.replace(/\.pdf$/i, ''));
   abrir(`<div class="ov"><div class="mod" style="max-width:540px">
     <h3>¿Qué ${varios ? `son estos ${xs.length} PDF` : `es «${esc(xs[0].f.name)}»`}?</h3><div class="mbody">
       <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">No ${varios ? 'tienen' : 'tiene'} encabezados de escena (INT./EXT.).
-        ${poco ? `Poco texto por hoja: <b>parece la presentación de la agencia o un storyboard</b>.` : `Bastante texto: <b>parece un guion</b> de publicidad.`}
+        ${poco ? `Poco texto por hoja: <b>parece un storyboard</b>.` : `Bastante texto: <b>parece un guion</b> de publicidad.`}
         ${varios ? `<br>Van en este orden: ${nombres.length > 6 ? esc(nombres.slice(0, 2).join(', ')) + ' … ' + esc(nombres[nombres.length - 1]) : esc(nombres.join(', '))}.` : ''}</div>
       <div style="display:flex;flex-direction:column;gap:8px">
-        <button class="btn ${poco ? 'pri' : ''}" style="text-align:left" onclick="pdfPorPagina()">Una escena por página
-          <br><span style="font-size:11px;opacity:.8">${paginas} ${plural(paginas, 'hoja')} → ${paginas} ${plural(paginas, 'escena')}: la frase de cada hoja y sus cuadros (si hay varios pegados, se separan)</span></button>
         <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
-          <button class="btn" style="text-align:left;flex:1;min-width:200px" onclick="pdfComoStoryboard()">Storyboard en grilla
-            <br><span class="muted" style="font-size:11px">varios cuadros por hoja, cada uno con su texto</span></button>
+          <button class="btn ${poco ? 'pri' : ''}" style="text-align:left;flex:1;min-width:200px" onclick="pdfComoStoryboard()">Storyboard en grilla
+            <br><span style="font-size:11px;opacity:.8">varios cuadros por hoja, cada uno con su texto</span></button>
           <div style="min-width:170px">${sel('Cuadros por página','grilla','3x2',[['1x1','1 (la página entera)'],['2x1','2 (uno al lado del otro)'],['1x2','2 (uno arriba del otro)'],
             ['2x2','4 (2 × 2)'],['3x2','6 (3 × 2)'],['2x3','6 (2 × 3)'],['3x3','9 (3 × 3)'],['4x3','12 (4 × 3)']].map(([v, l]) => ({v, l})))}</div>
         </div>
         <button class="btn ${poco ? '' : 'pri'}" style="text-align:left" onclick="pdfComoGuion()">Es un guion
-          <br><span class="muted" style="font-size:11px">se lee el texto${varios ? ', todos seguidos,' : ''} y se desglosa por párrafo</span></button>
+          <br><span style="font-size:11px;opacity:.8">se lee el texto${varios ? ', todos seguidos,' : ''} y se desglosa por párrafo</span></button>
+        <button class="btn" style="text-align:left" onclick="pdfPorPagina()">Cada hoja es una escena
+          <br><span class="muted" style="font-size:11px">para el caso raro de una hoja por escena: ${paginas} ${plural(paginas, 'hoja')} → ${paginas} ${plural(paginas, 'escena')}, con la frase y los cuadros de cada una</span></button>
       </div>
       <div id="dgestado" class="muted" style="font-size:12px;margin-top:10px" role="status"></div>
     </div><div class="mfoot"><button class="btn" onclick="_dgPendientes = [];cerrar();R()">Cancelar</button></div></div></div>`);
@@ -13534,9 +13534,9 @@ async function pdfPorPagina(){
 }
 
 /* ---------- una escena por página ----------
-   La agencia muchas veces no manda un storyboard en grilla sino la
-   presentación: una hoja por escena, con la frase (la locución o el súper)
-   y dos o tres cuadros pegados en una foto. Cada hoja es una escena y sus
+   No es lo habitual, pero a veces el material viene con una hoja por
+   escena: la frase (la locución o el súper) y dos o tres cuadros pegados en
+   una foto. Si se elige esa opción, cada hoja es una escena y sus
    fotos son los planos; si una foto trae varios cuadros pegados, se cortan
    donde cambia la imagen de golpe. Lo que se repite en casi todas las hojas
    (la agencia, la marca, el pie) no es de la escena.                      */
