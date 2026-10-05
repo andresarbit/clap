@@ -248,6 +248,9 @@ button.eie:hover{filter:brightness(1.35)}
 .emom.noche{color:#1e3a5f}
 .epg{font:600 11px var(--mono);color:var(--tx2);flex:none}
 .ebody{padding:9px 11px;display:flex;flex-direction:column;gap:7px}
+.ecuadros{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ecuadros img{height:64px;width:auto;max-width:180px;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.ecuadros q{flex:1 1 220px;font-size:12px;color:var(--tx2);font-style:italic;min-width:0}
 .drow{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
 .dlbl{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:800;
   width:112px;flex:none;padding-top:5px;display:flex;align-items:center;gap:5px}
@@ -3934,13 +3937,29 @@ function docATexto(bytes){
 }
 
 /* Despachador: elige el extractor por extensión.                             */
+/* El lector propio no entiende las letras guardadas como números de glifo
+   (lo que exportan PowerPoint, Keynote o Canva con fuentes incrustadas): le
+   sale basura. Si el texto se ve así, se lee con pdf.js, que sí las traduce. */
+const textoRaro = t => { const x = String(t || ''); if(x.length < 40) return false;
+  const ctrl = (x.match(/[\u0000-\u0008\u000e-\u001f]/g) || []).length, letras = (x.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]/g) || []).length;
+  return ctrl / x.length > 0.02 || letras / x.length < 0.4; };
+async function pdfATextoBueno(bytes){
+  let t = '', err = null;
+  try{ t = await pdfATexto(bytes); }catch(e){ err = e; if(/contraseña/.test(e.message || '')) throw e; }
+  if(!err && !textoRaro(t)) return t;
+  try{
+    const L = await cargarPdfjs();
+    const pdf = await L.getDocument({data: bytes.slice()}).promise;
+    return await textoDePdf(pdf, pdf.numPages);
+  }catch(e){ if(err) throw err; return t; }
+}
 async function archivoATexto(file){
   const ext = (file.name.match(/\.[^.]+$/)||[''])[0].toLowerCase();
   if(ext==='.txt'||ext==='.fountain'||ext==='.md'||ext==='') return limpiar(await file.text());
   if(ext==='.fdx') return fdxATexto(await file.text());
   if(ext==='.rtf') return rtfATexto(await file.text());
   const bytes = new Uint8Array(await file.arrayBuffer());
-  if(ext==='.pdf')  return await pdfATexto(bytes);
+  if(ext==='.pdf')  return await pdfATextoBueno(bytes);
   if(ext==='.docx') return await docxATexto(bytes);
   if(ext==='.xlsx' || ext==='.xlsm') return await xlsxATexto(bytes);
   if(ext==='.xls'){
@@ -4933,7 +4952,8 @@ function resumenDesglose(d){
   const pers = new Set(), locs = new Set(), porDepto = {};
   esc.forEach(e=>{
     e.personajes.forEach(p=>pers.add(p));
-    locs.add(e.locacion);
+    /* la placa final se hace en la post: no es un lugar donde filmar */
+    if(!/^PLACA\b/.test(e.locacion || '')) locs.add(e.locacion);
     Object.entries(e.elementos).forEach(([k,v])=>{
       porDepto[k] ||= new Map();
       v.forEach(x=>{ const key=norm(x);
@@ -5669,6 +5689,7 @@ async function sincronizarPartes(py){
           if(puedeParte(f.parte, true) && (P.algo ? P.algo(local) : true) && canon(local) !== canon(f.datos)) respaldarParte(py, f.parte, local);
         } else datos = fusionar3(base, local, f.datos);
         P.pone(py, JSON.parse(JSON.stringify(datos)));
+        if(f.parte === 'plan') dgRebase(py);
         S[f.parte] = {v: f.version, h: canon(f.datos), ...(f.filtrada ? {f: true} : {})};
         if(f.cambiado_nombre && f.cambiado_nombre !== yo) otros.push({parte: f.parte, quien: f.cambiado_nombre});
       });
@@ -5689,6 +5710,7 @@ async function sincronizarPartes(py){
         const srv = r && r.version != null ? r : (await sbPartes(py.id, true, [parte]))[0];
         if(!srv){ b = null; continue; }
         P.pone(py, JSON.parse(JSON.stringify(fusionar3(b ? JSON.parse(b.h) : undefined, datos, srv.datos))));
+        if(parte === 'plan') dgRebase(py);
         b = S[parte] = {v: srv.version, h: canon(srv.datos), ...(srv.filtrada || (parte === 'gastos' && gastosFiltrados() && _leerGastos) ? {f: true} : {})};
         datos = P.lee(py);
         if(srv.quien && srv.quien !== yo) otros.push({parte, quien: srv.quien});
@@ -9066,6 +9088,7 @@ function barraPiezasDesglose(py, d, suelta){
 }
 
 function vistaDesglose(py){
+  dgMirar(py);
   const d = py.desglose;
   /* Sin guion cargado esto devolvía SOLO el importador, así que el botón de
      agregar spot no aparecía nunca — justo cuando más se necesita, que es al
@@ -9100,6 +9123,7 @@ function vistaDesglose(py){
       <button class="btn sm noprint solo-cel" onclick="plegarTodo(${!d.escenas.every(e=>e.abierta)})">${d.escenas.every(e=>e.abierta)?'Compactar':'Expandir'}</button>
       ${TIPO(py.tipo).varias?`<button class="btn sm noprint pzadd" onclick="addPiezaPreguntando()"
         title="Agregar ${esc(unidadDe(py).toLowerCase())} a este proyecto">+ ${esc(unidadDe(py))}</button>`:''}
+      ${dgBotonDeshacer(py)}
       <button class="btn sm noprint" onclick="addEscena()">+ Escena</button>
       <button class="btn sm noprint" onclick="document.getElementById('dgfile').click()" title="Otro guion, guion técnico o storyboard: se suma a lo que ya hay">+ Material</button>
       <button class="btn sm noprint" onclick="menuGuion()">Guion ▾</button>
@@ -9144,6 +9168,7 @@ function importadorHTML(){
         <span class="muted" style="font-size:10.5px">o Ctrl+Enter</span>
         <input type="file" id="gfile" multiple accept=".txt,.fountain,.fdx,.docx,.doc,.rtf,.pdf" style="display:none" onchange="subirGuion(this)">
         <div style="flex:1"></div>
+        ${dgBotonDeshacer(getPy())}
         <button class="btn" onclick="menuEjemplos()">Probar con un guion de ejemplo</button>
       </div>
     </div></div>`;
@@ -9303,6 +9328,7 @@ function escHTML(e,d,py){
       ${e.jornada ? `<span class="muted noprint" style="font-size:10.5px" title="Se cambia en el plan de rodaje">J${e.jornada}</span>` : ''}
     </div>
     <div class="ebody">
+      ${cuadrosEscenaHTML(py, e)}
       <div class="drow">
         <span class="dlbl" style="color:${DEPTO('elenco').c}"><i class="ddot" style="background:${DEPTO('elenco').c}"></i>Elenco</span>
         <span class="dels">${e.personajes.map(p=>elHTML(e.id,'personajes',p,DEPTO('elenco').c,false)).join('')
@@ -13293,7 +13319,8 @@ function escenasDeDescripciones(lista, piezaId){
   });
 }
 /* Suma escenas y planos al proyecto, enlazados entre sí. */
-function sumarMaterial(py, escenas, planos, origen, modo){
+function sumarMaterial(py, escenas, planos, origen, modo, aviso){
+  dgFoto(py, 'traer ' + origen);
   const d = getD(), p = planDe(py);
   if(!d.escenas.length){ d.modo = modo; d.importado = hoy(); }
   const base = d.escenas.length;
@@ -13303,8 +13330,8 @@ function sumarMaterial(py, escenas, planos, origen, modo){
   planos.forEach(x => { p.items.push(x); meterEnJornada(py, x, null); });
   DB.ui.subDesglose = 'escenas';
   const conElem = escenas.filter(e => Object.values(e.elementos).some(v => v.length) || e.personajes.length).length;
-  toast(`${origen}: ${escenas.length ? escenas.length + ' bloque' + (escenas.length == 1 ? '' : 's') + ' al desglose' + (conElem ? ` (${conElem} con elementos detectados)` : '') : 'sin texto para desglosar'}` +
-    (planos.length ? ` · ${planos.length} plano${planos.length == 1 ? '' : 's'} al banco del plan de rodaje` : ''));
+  toast(aviso || (`${origen}: ${escenas.length ? escenas.length + ' bloque' + (escenas.length == 1 ? '' : 's') + ' al desglose' + (conElem ? ` (${conElem} con elementos detectados)` : '') : 'sin texto para desglosar'}` +
+    (planos.length ? ` · ${planos.length} plano${planos.length == 1 ? '' : 's'} al banco del plan de rodaje` : '')), {accion: 'Deshacer', fn: dgDeshacer, ms: 9000});
 }
 const MOMENTO_DE_LUZ = {noche:'NOCHE', dorada:'ATARDECER', azul:'ATARDECER', dia:'DÍA'};
 
@@ -13387,8 +13414,9 @@ async function soltarMaterial(ev){
       if(/\.(xlsx|xlsm)$/i.test(f.name)){ toast('Leyendo ' + f.name + '…'); await materialDesdeXlsx(py, f); continue; }
       if(/\.pdf$/i.test(f.name)){
         /* un PDF con encabezados de escena es un guion; si no, se pregunta */
-        const txt = await pdfATexto(new Uint8Array(await f.arrayBuffer()));
-        if(parseGuion(txt).length) guiones.push(f); else dudosos.push({f, txt});
+        const bytes = new Uint8Array(await f.arrayBuffer()), txt = await pdfATextoBueno(bytes);
+        const paginas = (latin1(bytes).match(/\/Type\s*\/Page(?![s\w])/g) || []).length || 1;
+        if(parseGuion(txt).length) guiones.push(f); else dudosos.push({f, txt, paginas});
         continue;
       }
       guiones.push(f);
@@ -13423,52 +13451,252 @@ async function soltarMaterial(ev){
       }catch(e){ toast(f.name + ': ' + e.message); } }
     } else await subirGuion({files: guiones, value: ''});
   }
-  _dgPendientes = dudosos;
+  /* «PRESENTACIÓN 10.pdf», «… 11.pdf»…: van en el orden del nombre */
+  _dgPendientes = dudosos.sort((a, b) => a.f.name.localeCompare(b.f.name, undefined, {numeric: true}));
   if(dudosos.length) preguntarPdf();
   else R();
 }
 /* Un PDF sin encabezados de escena puede ser un guion de publicidad (prosa
-   o dos columnas) o un storyboard. Se pregunta: equivocarse acá es tirar el
-   storyboard como texto o cortar un guion en cuadros. */
+   o dos columnas), un storyboard en grilla o la presentación de la agencia,
+   con una hoja por escena (la frase y sus cuadros). Se pregunta UNA vez para
+   todos los PDF que llegaron juntos: equivocarse acá es tirar el storyboard
+   como texto o cortar un guion en cuadros. */
 function preguntarPdf(){
-  const x = _dgPendientes[0]; if(!x){ R(); return; }
-  const pocas = x.txt.replace(/\s+/g, ' ').length < 2500;
-  abrir(`<div class="ov"><div class="mod" style="max-width:520px">
-    <h3>¿Qué es «${esc(x.f.name)}»?</h3><div class="mbody">
-      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">No tiene encabezados de escena (INT./EXT.).
-        ${pocas ? 'Tiene poco texto: <b>parece un storyboard</b>.' : 'Tiene bastante texto: <b>parece un guion</b> de publicidad.'}</div>
-      <div class="grid2">
-        <button class="btn ${pocas ? '' : 'pri'}" onclick="pdfComoGuion()">Es un guion<br><span class="muted" style="font-size:11px">se lee el texto y se desglosa</span></button>
-        <div style="display:flex;flex-direction:column;gap:6px">
-          ${sel('Cuadros por página','grilla','3x2',[['1x1','1 (la página entera)'],['2x1','2 (uno al lado del otro)'],['1x2','2 (uno arriba del otro)'],
-            ['2x2','4 (2 × 2)'],['3x2','6 (3 × 2)'],['2x3','6 (2 × 3)'],['3x3','9 (3 × 3)'],['4x3','12 (4 × 3)']].map(([v, l]) => ({v, l})))}
-          <button class="btn ${pocas ? 'pri' : ''}" onclick="pdfComoStoryboard()">Es un storyboard</button>
+  const xs = _dgPendientes; if(!xs.length){ R(); return; }
+  const varios = xs.length > 1, paginas = xs.reduce((s, x) => s + (x.paginas || 1), 0);
+  /* poco texto por hoja: storyboard o presentación */
+  const poco = xs.reduce((s, x) => s + x.txt.replace(/\s+/g, ' ').length, 0) / paginas < 700;
+  const nombres = xs.map(x => x.f.name.replace(/\.pdf$/i, ''));
+  abrir(`<div class="ov"><div class="mod" style="max-width:540px">
+    <h3>¿Qué ${varios ? `son estos ${xs.length} PDF` : `es «${esc(xs[0].f.name)}»`}?</h3><div class="mbody">
+      <div class="muted" style="font-size:12px;line-height:1.55;margin-bottom:12px">No ${varios ? 'tienen' : 'tiene'} encabezados de escena (INT./EXT.).
+        ${poco ? `Poco texto por hoja: <b>parece la presentación de la agencia o un storyboard</b>.` : `Bastante texto: <b>parece un guion</b> de publicidad.`}
+        ${varios ? `<br>Van en este orden: ${nombres.length > 6 ? esc(nombres.slice(0, 2).join(', ')) + ' … ' + esc(nombres[nombres.length - 1]) : esc(nombres.join(', '))}.` : ''}</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn ${poco ? 'pri' : ''}" style="text-align:left" onclick="pdfPorPagina()">Una escena por página
+          <br><span style="font-size:11px;opacity:.8">${paginas} ${plural(paginas, 'hoja')} → ${paginas} ${plural(paginas, 'escena')}: la frase de cada hoja y sus cuadros (si hay varios pegados, se separan)</span></button>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <button class="btn" style="text-align:left;flex:1;min-width:200px" onclick="pdfComoStoryboard()">Storyboard en grilla
+            <br><span class="muted" style="font-size:11px">varios cuadros por hoja, cada uno con su texto</span></button>
+          <div style="min-width:170px">${sel('Cuadros por página','grilla','3x2',[['1x1','1 (la página entera)'],['2x1','2 (uno al lado del otro)'],['1x2','2 (uno arriba del otro)'],
+            ['2x2','4 (2 × 2)'],['3x2','6 (3 × 2)'],['2x3','6 (2 × 3)'],['3x3','9 (3 × 3)'],['4x3','12 (4 × 3)']].map(([v, l]) => ({v, l})))}</div>
         </div>
+        <button class="btn ${poco ? '' : 'pri'}" style="text-align:left" onclick="pdfComoGuion()">Es un guion
+          <br><span class="muted" style="font-size:11px">se lee el texto${varios ? ', todos seguidos,' : ''} y se desglosa por párrafo</span></button>
       </div>
-      <div id="dgestado" class="muted" style="font-size:12px;margin-top:10px"></div>
-    </div><div class="mfoot"><button class="btn" onclick="_dgPendientes.shift();cerrar();preguntarPdf()">Saltear</button></div></div></div>`);
+      <div id="dgestado" class="muted" style="font-size:12px;margin-top:10px" role="status"></div>
+    </div><div class="mfoot"><button class="btn" onclick="_dgPendientes = [];cerrar();R()">Cancelar</button></div></div></div>`);
 }
 async function pdfComoGuion(){
-  const x = _dgPendientes.shift(); cerrar();
-  if(x){ const partes = partirGuiones(x.txt);
-    if(partes.length > 1) confirmarVariosGuiones(partes.map((g, k) => ({titulo: g.titulo || `${x.f.name} (${k+1})`, texto: g.texto, archivo: x.f.name})), getPy());
-    else importarGuion(x.txt); }
-  if(_dgPendientes.length) preguntarPdf();
+  const xs = _dgPendientes.splice(0); cerrar();
+  if(!xs.length) return;
+  const txt = xs.map(x => x.txt).join('\n\n');
+  if(xs.length === 1){
+    const partes = partirGuiones(txt);
+    if(partes.length > 1){ confirmarVariosGuiones(partes.map((g, k) => ({titulo: g.titulo || `${xs[0].f.name} (${k+1})`, texto: g.texto, archivo: xs[0].f.name})), getPy()); return; }
+  }
+  /* si ya hay un desglose, se suma: no se pisa lo que estaba */
+  if(getD().escenas.length){
+    const {escenas} = desglosar(txt);
+    escenas.forEach(e => e.piezaId = piezaActual());
+    sumarMaterial(getPy(), escenas, [], xs.length > 1 ? `${xs.length} PDF` : xs[0].f.name, 'encabezados');
+    R();
+  } else importarGuion(txt);
 }
 let _dgCargando = false;
 async function pdfComoStoryboard(){
   if(_dgCargando) return;
-  const x = _dgPendientes[0]; if(!x) return;
+  const xs = _dgPendientes; if(!xs.length) return;
   const [cols, filas] = String(datos().grilla || '1x1').split('x').map(Number);
   const est = document.getElementById('dgestado');
   _dgCargando = true;
   try{
-    const cuadros = await cuadrosDePdf(x.f, cols || 1, filas || 1, t => { if(est) est.textContent = t; });
-    _dgPendientes.shift(); cerrar();
-    materialDesdeCuadros(getPy(), cuadros, x.f.name);
+    const cuadros = [];
+    for(const x of xs) cuadros.push(...await cuadrosDePdf(x.f, cols || 1, filas || 1, t => { if(est) est.textContent = (xs.length > 1 ? x.f.name + ' · ' : '') + t; }));
+    _dgPendientes = []; cerrar();
+    materialDesdeCuadros(getPy(), cuadros, xs.length > 1 ? `${xs.length} PDF` : xs[0].f.name);
   }catch(e){ if(est) est.textContent = e.message || 'No pude leer el PDF'; return; }
   finally{ _dgCargando = false; }
-  if(_dgPendientes.length) preguntarPdf(); else R();
+  R();
+}
+async function pdfPorPagina(){
+  if(_dgCargando) return;
+  const xs = _dgPendientes; if(!xs.length) return;
+  const est = document.getElementById('dgestado');
+  _dgCargando = true;
+  try{
+    const hojas = await hojasDePdfs(xs.map(x => x.f), t => { if(est) est.textContent = t; });
+    _dgPendientes = []; cerrar();
+    materialPorPagina(getPy(), hojas, xs.length > 1 ? `${xs.length} PDF` : xs[0].f.name);
+  }catch(e){ if(est) est.textContent = e.message || 'No pude leer el PDF'; return; }
+  finally{ _dgCargando = false; }
+  R();
+}
+
+/* ---------- una escena por página ----------
+   La agencia muchas veces no manda un storyboard en grilla sino la
+   presentación: una hoja por escena, con la frase (la locución o el súper)
+   y dos o tres cuadros pegados en una foto. Cada hoja es una escena y sus
+   fotos son los planos; si una foto trae varios cuadros pegados, se cortan
+   donde cambia la imagen de golpe. Lo que se repite en casi todas las hojas
+   (la agencia, la marca, el pie) no es de la escena.                      */
+
+/* Dónde está cada imagen de la hoja: pdf.js da las operaciones de dibujo y
+   se sigue la matriz hasta cada imagen (que se pinta en un cuadrado de 1×1). */
+async function cajasDeImagenes(L, page, vp){
+  const ops = await page.getOperatorList(), O = L.OPS;
+  const pinta = new Set([O.paintImageXObject, O.paintJpegXObject, O.paintInlineImageXObject, O.paintImageXObjectRepeat].filter(x => x != null));
+  const por = (a, b) => [a[0]*b[0] + a[2]*b[1], a[1]*b[0] + a[3]*b[1], a[0]*b[2] + a[2]*b[3], a[1]*b[2] + a[3]*b[3], a[0]*b[4] + a[2]*b[5] + a[4], a[1]*b[4] + a[3]*b[5] + a[5]];
+  const pila = [], cajas = [];
+  let m = [1, 0, 0, 1, 0, 0];
+  ops.fnArray.forEach((fn, i) => {
+    const a = ops.argsArray[i];
+    if(fn === O.save) pila.push(m);
+    else if(fn === O.restore) m = pila.pop() || [1, 0, 0, 1, 0, 0];
+    else if(fn === O.transform) m = por(m, a);
+    else if(fn === O.paintFormXObjectBegin){ pila.push(m); if(a && a[0]) m = por(m, a[0]); }
+    else if(fn === O.paintFormXObjectEnd) m = pila.pop() || [1, 0, 0, 1, 0, 0];
+    else if(pinta.has(fn)){
+      const t = por(vp.transform, m);
+      const xs = [t[4], t[0] + t[4], t[2] + t[4], t[0] + t[2] + t[4]], ys = [t[5], t[1] + t[5], t[3] + t[5], t[1] + t[3] + t[5]];
+      cajas.push({x0: Math.max(0, Math.min(...xs)), y0: Math.max(0, Math.min(...ys)),
+        x1: Math.min(vp.width, Math.max(...xs)), y1: Math.min(vp.height, Math.max(...ys))});
+    }
+  });
+  return cajas.filter(c => c.x1 - c.x0 > 4 && c.y1 - c.y0 > 4);
+}
+/* ¿Es una foto o un fondo liso / degradé? Una foto cambia mucho de un píxel al de al lado. */
+function pareceFoto(cv, c){
+  try{
+    const w = Math.round(c.x1 - c.x0), h = Math.round(c.y1 - c.y0);
+    const px = cv.getContext('2d').getImageData(Math.round(c.x0), Math.round(c.y0), w, h).data;
+    let s = 0, k = 0;
+    for(let y = 2; y < h - 2; y += Math.max(1, Math.floor(h / 60))) for(let x = 2; x < w - 3; x += Math.max(2, Math.floor(w / 80))){
+      const i = (y * w + x) * 4; s += Math.abs(px[i] - px[i+4]) + Math.abs(px[i+1] - px[i+5]) + Math.abs(px[i+2] - px[i+6]); k++; }
+    return k > 0 && s / k > 6;
+  }catch(e){ return true; }
+}
+/* Varios cuadros pegados en una sola foto (uno arriba del otro, o al lado):
+   se corta donde la imagen salta de golpe a lo largo de toda la fila. */
+function cortarCuadros(cv, c){
+  const x = Math.round(c.x0), y = Math.round(c.y0), w = Math.round(c.x1 - c.x0), h = Math.round(c.y1 - c.y0);
+  let px; try{ px = cv.getContext('2d').getImageData(x, y, w, h).data; }catch(e){ return [c]; }
+  const lum = i => (px[i] + px[i+1] + px[i+2]) / 3;
+  const saltosFilas = [], saltosCols = [];
+  for(let r = 1; r < h; r++){ let s = 0, k = 0;
+    for(let q = 0; q < w; q += 2){ s += Math.abs(lum((r*w + q)*4) - lum(((r-1)*w + q)*4)); k++; } saltosFilas.push(s / k); }
+  for(let q = 1; q < w; q++){ let s = 0, k = 0;
+    for(let r = 0; r < h; r += 2){ s += Math.abs(lum((r*w + q)*4) - lum((r*w + q - 1)*4)); k++; } saltosCols.push(s / k); }
+  const tramos = (saltos, largo) => {
+    const cortes = [];
+    saltos.forEach((v, i) => { const pos = i + 1;
+      if(v > 40 && pos > largo * 0.02 && pos < largo * 0.98 && !(cortes.length && pos - cortes[cortes.length - 1] <= 4)) cortes.push(pos); });
+    let seg = [0, ...cortes, largo].slice(1).map((v, i, a) => [i ? a[i-1] : 0, v]);
+    /* las puntas finitas son margen o un filo: afuera; un pedazo chico en el medio va con el de al lado */
+    while(seg.length > 1 && seg[0][1] - seg[0][0] < largo * 0.15) seg.shift();
+    while(seg.length > 1 && seg[seg.length-1][1] - seg[seg.length-1][0] < largo * 0.15) seg.pop();
+    return seg.reduce((o, t) => { if(o.length && t[1] - t[0] < largo * 0.15) o[o.length-1][1] = t[1]; else o.push([...t]); return o; }, []);
+  };
+  const f = tramos(saltosFilas, h), k = tramos(saltosCols, w);
+  /* el margen liso (el fondo de la hoja que la foto trae pegado) se recorta: una columna o
+     fila de foto cambia a lo largo; la del fondo es casi pareja */
+  const pareja = (x0, y0, x1, y1, vertical) => { let s = 0, s2 = 0, n = 0;
+    for(let t = vertical ? y0 : x0; t < (vertical ? y1 : x1); t += 3){ const v = lum(((vertical ? t : y0) * w + (vertical ? x0 : t)) * 4); s += v; s2 += v * v; n++; }
+    return n > 2 && Math.sqrt(Math.max(0, s2 / n - (s / n) ** 2)) < 7; };
+  const limpiar = b => {
+    let {x0, y0, x1, y1} = b;
+    const tope = 0.12;
+    for(let i = 0; i < (x1 - x0) * tope && pareja(x0, y0, x0 + 1, y1, true); i++) x0++;
+    for(let i = 0; i < (x1 - x0) * tope && pareja(x1 - 1, y0, x1, y1, true); i++) x1--;
+    for(let i = 0; i < (y1 - y0) * tope && pareja(x0, y0, x1, y0 + 1, false); i++) y0++;
+    for(let i = 0; i < (y1 - y0) * tope && pareja(x0, y1 - 1, x1, y1, false); i++) y1--;
+    return {x0: c.x0 + x0, y0: c.y0 + y0, x1: c.x0 + x1, y1: c.y0 + y1};
+  };
+  if(f.length > 1 && f.length >= k.length) return f.map(([a, b]) => limpiar({x0: k[0][0], y0: a, x1: k[k.length-1][1], y1: b}));
+  if(k.length > 1) return k.map(([a, b]) => limpiar({x0: a, y0: f[0][0], x1: b, y1: f[f.length-1][1]}));
+  return [limpiar({x0: k[0][0], y0: f[0][0], x1: k[0][1], y1: f[0][1]})];
+}
+/* Los renglones de la hoja, en orden de lectura, y los párrafos juntos. */
+function parrafosDeHoja(items, H){
+  const ps = (items || []).filter(it => it.transform && String(it.str || '').trim()).map(it => ({s: String(it.str), x: it.transform[4],
+    x1: it.transform[4] + (it.width || 0), y: H - it.transform[5], h: Math.abs(it.transform[3]) || it.height || 10}));
+  ps.sort((a, b) => Math.abs(a.y - b.y) > 3 ? a.y - b.y : a.x - b.x);
+  const lineas = [];
+  ps.forEach(p => { const l = lineas[lineas.length - 1];
+    if(l && Math.abs(p.y - l.y) <= 3 && p.x - l.x1 < 40){ l.s += (p.x - l.x1 > 1.5 && !/\s$/.test(l.s) ? ' ' : '') + p.s; l.x1 = Math.max(l.x1, p.x1); }
+    else lineas.push({...p}); });
+  lineas.forEach(l => { l.s = l.s.replace(/\s+/g, ' ').trim(); });
+  return lineas.filter(l => l.s);
+}
+async function hojasDePdfs(files, avance){
+  const L = await cargarPdfjs(), hojas = [];
+  for(const f of files){
+    const pdf = await L.getDocument({data: new Uint8Array(await f.arrayBuffer())}).promise;
+    for(let i = 1; i <= pdf.numPages; i++){
+      avance && avance(`Leyendo ${files.length > 1 ? f.name : 'la página ' + i + ' de ' + pdf.numPages}…`);
+      const page = await pdf.getPage(i), vp0 = page.getViewport({scale: 1});
+      const vp = page.getViewport({scale: Math.min(2.5, 1100 / vp0.width)});
+      const cv = document.createElement('canvas'); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+      await page.render({canvasContext: cv.getContext('2d', {willReadFrequently: true}), viewport: vp}).promise;
+      let lineas = [], cajas = [];
+      try{ lineas = parrafosDeHoja((await page.getTextContent()).items, vp0.height); }catch(e){}
+      try{ cajas = await cajasDeImagenes(L, page, vp); }catch(e){}
+      hojas.push({cv, lineas, cajas, archivo: f.name, pagina: i});
+    }
+  }
+  return hojas;
+}
+function materialPorPagina(py, hojas, origen){
+  const piezaId = piezaActual();
+  /* lo que se repite en la mitad de las hojas o más es de la plantilla, no de la escena */
+  const veces = new Map();
+  if(hojas.length >= 3) hojas.forEach(h => new Set(h.lineas.map(l => norm(l.s))).forEach(k => veces.set(k, (veces.get(k) || 0) + 1)));
+  const dePlantilla = l => (veces.get(norm(l.s)) || 0) >= hojas.length / 2 || /^\d{1,3}$/.test(l.s);
+  let k = sigNumeroPlano(py, piezaId), nLoc = 0;
+  const escenas = [], planos = [];
+  let placas = 0, cuadrosTot = 0;
+  hojas.forEach((h, n) => {
+    const area = h.cv.width * h.cv.height;
+    /* el texto: renglones seguidos van juntos; un salto grande arma otro párrafo */
+    const ls = h.lineas.filter(l => !dePlantilla(l));
+    let texto = '';
+    ls.forEach((l, i) => { texto += i ? (l.y - ls[i-1].y > 1.8 * l.h ? '\n' : ' ') + l.s : l.s; });
+    texto = texto.trim();
+    /* las fotos: ni el fondo de la hoja ni los logos; un fondo con foto vale si no hay otra */
+    const cs = h.cajas.map(c => ({...c, a: (c.x1 - c.x0) * (c.y1 - c.y0) / area}));
+    let fotos = cs.filter(c => c.a < 0.9 && c.a >= 0.12 && pareceFoto(h.cv, c));
+    if(!fotos.length){ const fondo = cs.filter(c => c.a >= 0.9 && pareceFoto(h.cv, c)).pop(); if(fondo) fotos = [fondo]; }
+    fotos = fotos.filter((c, i) => !fotos.some((o, j) => j !== i && o.a > c.a && c.x0 >= o.x0 - 2 && c.y0 >= o.y0 - 2 && c.x1 <= o.x1 + 2 && c.y1 <= o.y1 + 2))
+      .sort((a, b) => Math.abs(a.y0 - b.y0) > 20 ? a.y0 - b.y0 : a.x0 - b.x0);
+    const cuadros = fotos.flatMap(c => cortarCuadros(h.cv, c));
+    if(!texto && !cuadros.length) return;   /* una hoja en blanco o sólo el logo */
+    const numero = String(escenas.length + 1);
+    const frase = (texto.split('\n')[0] || '').replace(/\s+/g, ' ');
+    const placa = !cuadros.length;
+    const e = nuevaEscena({numero, piezaId, momento: 'DÍA',
+      encabezado: (frase || `Página ${h.pagina}`).slice(0, 90),
+      locacion: placa ? 'PLACA (POST)' : `LOCACIÓN ${++nLoc} · A DEFINIR`,
+      texto: texto ? `${placa ? 'Placa final' : 'Locución o súper'}: «${texto.replace(/\n/g, ' ')}»` : '',
+      notas: `${h.archivo}${h.pagina > 1 || hojas.some(o => o !== h && o.archivo === h.archivo) ? ', página ' + h.pagina : ''}` +
+        (cuadros.length ? ` · ${cuadros.length} ${plural(cuadros.length, 'cuadro')}` : '')});
+    detectar(e);
+    e.octavos = 1;
+    /* la placa final se hace en la post: no ocupa tiempo de rodaje */
+    if(placa){ e.puestasManual = 0; placas++; }
+    escenas.push(e);
+    cuadros.forEach((c, j) => {
+      const img = recorteCuadro(h.cv, c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0);
+      if(!img) return;
+      cuadrosTot++;
+      planos.push(nuevoItemPlan({tipo: 'plano', numero: String(k++), img, piezaId, escenaId: e.id,
+        desc: `${frase ? frase.slice(0, 60) + ' · ' : ''}cuadro ${j + 1} de ${cuadros.length}`}));
+    });
+  });
+  if(!escenas.length){ toast('No encontré ni texto ni cuadros en esas hojas'); return; }
+  const filmables = escenas.length - placas;
+  sumarMaterial(py, escenas, planos, origen, 'paginas',
+    `${origen}: ${filmables} ${plural(filmables, 'escena')} con ${cuadrosTot} ${plural(cuadrosTot, 'cuadro')}${placas ? ` y ${placas} ${plural(placas, 'placa')} para la post` : ''}.` +
+    ` Las locaciones quedan «a definir»: miralas en los cuadros y ponéles nombre.`);
 }
 
 let _pdfjs = null;
@@ -18170,7 +18398,21 @@ function quitarTag(k){
 }
 /* Aviso permanente cuando el guion se leyó sin encabezados: que quede claro
    que lo de abajo es una propuesta y no una lectura exacta.                  */
+/* Los cuadros del storyboard que son de esta escena, con su frase: con un
+   board de una hoja por escena, la locación sólo se ve en las imágenes. */
+function cuadrosEscenaHTML(py, e){
+  const cs = planDe(py).items.filter(x => x.tipo === 'plano' && x.escenaId === e.id && x.img);
+  if(!cs.length) return '';
+  const frase = (String(e.texto || '').match(/«([^»]+)»/) || [])[1] || '';
+  return `<div class="ecuadros">${cs.slice(0, 8).map(x => `<img src="${x.img}" alt="Cuadro ${esc(x.numero)}" title="Plano ${esc(x.numero)}${x.desc ? ': ' + esc(x.desc) : ''}" loading="lazy">`).join('')}
+    ${cs.length > 8 ? `<span class="muted">+${cs.length - 8}</span>` : ''}${frase ? `<q>${esc(frase)}</q>` : ''}</div>`;
+}
 function avisoModoHTML(d){
+  if(d.modo === 'paginas') return `<div class="avisomodo noprint">
+    <b>Una escena por página.</b> Cada hoja es una escena, con su frase y sus cuadros. <b>Falta lo que sólo se ve en
+    las imágenes:</b> mirá los cuadros de cada escena y ponéle nombre a la locación, si es INT o EXT y el momento (se
+    cambian con un click). Los cuadros también están en el banco del
+    <a href="#" onclick="event.preventDefault();setTab('plan')">plan de rodaje</a>.</div>`;
   if(d.modo === 'storyboard' || d.modo === 'tecnico') return `<div class="avisomodo noprint">
     <b>Desglosado desde ${d.modo === 'storyboard' ? 'el storyboard' : 'el guion técnico'}.</b>
     Cada ${d.modo === 'storyboard' ? 'cuadro' : 'renglón'} es un bloque; la locación y el momento salen de su descripción y los
@@ -18194,8 +18436,9 @@ function addEscena(){
 function delEscena(id){
   const d = getD(); const e = d.escenas.find(x=>x.id===id);
   if(!confirm(`Eliminar la escena ${e.numero}?`)) return;
+  dgFoto(getPy(), `borrar la escena ${e.numero}`);
   d.escenas = d.escenas.filter(x=>x.id!==id);
-  sincronizarJornadas(d); R();
+  sincronizarJornadas(d); toast(`Escena ${e.numero} borrada`, {accion: 'Deshacer', fn: dgDeshacer}); R();
 }
 /* Une con la anterior: junta textos, personajes y elementos sin duplicar.    */
 function unirEscena(id){
@@ -18261,17 +18504,74 @@ function toggleEsc(id){ const e=getD().escenas.find(x=>x.id===id); e.abierta=!e.
 function plegarTodo(abrir){ getD().escenas.forEach(e=>e.abierta=abrir); R(); }
 const getD = () => { const py=getPy(); if(!py) return null; py.desglose ||= nuevoDesglose(); return py.desglose; };
 
+/* ---------- deshacer del desglose ----------
+   Antes de cada cambio queda una foto de las escenas y se puede volver
+   atrás paso por paso: traer material, desglosar, borrar o unir escenas,
+   tocar elementos. Lo que no es del desglose no se toca: las jornadas, lo
+   filmado y a qué jornada fue cada escena siguen como están. Cuando el paso
+   trajo planos (un storyboard), vuelven también los planos del plan. Los
+   cambios se notan al pintar la solapa; traer material saca su foto antes. */
+let _dgHist = [], _dgVisto = null;
+const dgEstado = py => JSON.stringify((({guion, modo, importado, escenas}) => ({guion, modo, importado,
+  escenas: (escenas || []).map(({abierta, jornada, ...e}) => e)}))(py.desglose || nuevoDesglose()));
+const dgJornadas = py => Object.fromEntries(((py.desglose || {}).escenas || []).map(e => [e.id, e.jornada ?? null]));
+function dgGuardar(py, que, json, jor, items){
+  const top = _dgHist[_dgHist.length - 1];
+  if(top && top.pyId === py.id && top.json === json && !items) return;
+  _dgHist.push({pyId: py.id, que, json, jor, items: items || null});
+  if(_dgHist.length > 40) _dgHist.shift();
+}
+/* se llama al pintar el desglose: si algo cambió desde la última vez, lo de antes queda para deshacer */
+function dgMirar(py){
+  if(!py) return;
+  const j = dgEstado(py);
+  if(_dgVisto && _dgVisto.pyId === py.id && !_dgVisto.saltar && _dgVisto.json !== j){
+    const n0 = JSON.parse(_dgVisto.json).escenas.length, n1 = ((py.desglose || {}).escenas || []).length;
+    dgGuardar(py, n1 > n0 ? (n1 - n0 > 1 ? `agregar ${n1 - n0} escenas` : 'agregar una escena')
+      : n1 < n0 ? (n0 - n1 > 1 ? `sacar ${n0 - n1} escenas` : 'sacar una escena') : 'el último cambio', _dgVisto.json, _dgVisto.jor);
+  }
+  _dgVisto = {pyId: py.id, json: j, jor: dgJornadas(py)};
+}
+/* antes de traer material, desglosar o borrar: la foto incluye los planos del plan */
+function dgFoto(py, que){
+  if(!py) return;
+  dgMirar(py);
+  dgGuardar(py, que, dgEstado(py), dgJornadas(py), planDe(py).items.map(({img, ...x}) => [JSON.stringify(x), img]));
+  _dgVisto = {pyId: py.id, saltar: true};
+}
+/* lo que llega de otra compu no es un cambio mío para deshacer */
+function dgRebase(py){ if(_dgVisto && py && _dgVisto.pyId === py.id) _dgVisto = {pyId: py.id, json: dgEstado(py), jor: dgJornadas(py)}; }
+const dgPuedeDeshacer = py => !!py && _dgHist.some(x => x.pyId === py.id);
+const dgQueDeshace = py => { const x = [..._dgHist].reverse().find(h => h.pyId === py.id); return x ? x.que : ''; };
+function dgDeshacer(){
+  const py = getPy(); if(!py) return;
+  dgMirar(py);
+  let k = -1; for(let i = _dgHist.length - 1; i >= 0; i--) if(_dgHist[i].pyId === py.id){ k = i; break; }
+  if(k < 0){ toast('No hay nada para deshacer en el desglose'); return; }
+  const A = _dgHist.splice(k, 1)[0], d = getD(), s = JSON.parse(A.json);
+  const ahora = dgJornadas(py), abiertas = new Set(d.escenas.filter(e => e.abierta).map(e => e.id));
+  d.guion = s.guion; d.modo = s.modo; d.importado = s.importado;
+  d.escenas = s.escenas.map(e => ({...e, jornada: e.id in ahora ? ahora[e.id] : ((A.jor || {})[e.id] ?? null), ...(abiertas.has(e.id) ? {abierta: true} : {})}));
+  if(A.items) planDe(py).items = A.items.map(([j, img]) => img === undefined ? JSON.parse(j) : {...JSON.parse(j), img});
+  sincronizarJornadas(d);
+  _dgVisto = {pyId: py.id, json: dgEstado(py), jor: dgJornadas(py)};
+  cerrar(); toast(`Deshecho: ${A.que}`); R();
+}
+const dgBotonDeshacer = py => dgPuedeDeshacer(py)
+  ? `<button class="btn sm noprint" onclick="dgDeshacer()" title="Vuelve a como estaba antes de ${esc(dgQueDeshace(py))}. Se puede tocar varias veces">↶ Deshacer</button>` : '';
+
 function importarGuion(txt){
   const t = typeof txt==='string' ? txt : (document.getElementById('gtxt')?.value || getD().guion || '');
   if(!t.trim()){ toast('Pegá el guion primero'); return; }
   const {escenas, modo} = desglosar(t);
   if(!escenas.length){
     alert('No hay texto para desglosar.'); return; }
+  dgFoto(getPy(), 'desglosar');
   const d = getD();
   d.guion = t; d.escenas = escenas; d.importado = hoy(); d.modo = modo;
   DB.ui.subDesglose = enCotizacion(getPy()) && vePlata() ? 'cotizar' : 'escenas';
   toast(modo==='encabezados' ? `${escenas.length} escenas desglosadas`
-      : `${escenas.length} bloques — sin encabezados, separé por párrafo. Revisá y ajustá.`);
+      : `${escenas.length} bloques — sin encabezados, separé por párrafo. Revisá y ajustá.`, {accion: 'Deshacer', fn: dgDeshacer});
   R();
 }
 /* ---------- varios guiones en un archivo ----------
@@ -18384,7 +18684,9 @@ function crearPiezasDeGuiones(){
   const marcados = [...document.querySelectorAll('.mod input[type=checkbox][data-g]')]
     .filter(c=>c.checked).map(c=>_guionesPendientes[+c.dataset.g]);
   if(!marcados.length){ toast('No marcaste ninguno'); return; }
-  const py = getPy(), d = getD();
+  const py = getPy();
+  dgFoto(py, 'crear los guiones');
+  const d = getD();
   let creadas = 0, escenasTotal = 0;
   const textos = [];
   marcados.forEach(g=>{
@@ -18440,10 +18742,11 @@ function borrarDesglose(){
   if(!confirm('Borrar el guion y todo el desglose de este proyecto? Las jornadas, el plan de rodaje y los datos del callsheet se conservan.')) return;
   /* las jornadas no son del guion: tienen fecha, horarios, citaciones y el
      plan de rodaje. Borrarlas acá se llevaba puesto el callsheet. */
+  dgFoto(getPy(), 'borrar el desglose');
   const viejo = getPy().desglose;
   getPy().desglose = nuevoDesglose({jornadas: viejo.jornadas, paginasPorJornada: viejo.paginasPorJornada});
   getPy().desglose.jornadasMin = viejo.jornadasMin || viejo.jornadas.length;
-  cerrar(); toast('Desglose borrado (las jornadas quedan)'); R();
+  cerrar(); toast('Desglose borrado (las jornadas quedan)', {accion: 'Deshacer', fn: dgDeshacer}); R();
 }
 /* Vuelve a pasar el diccionario conservando lo agregado a mano: sólo se
    descartan las sugerencias viejas que ya no aparecen.                       */
