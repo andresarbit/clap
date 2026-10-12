@@ -135,7 +135,7 @@ console.log('\n--- 2. LOGIN ---');
   catch (e) { ok('clave mala avisa', /clave anónima no es válida/.test(e.message), e.message); }
   SB.anon = 'anon_valida'; ESTADO.caido = true;
   try { await sbFetch('/auth/v1/settings', { sinToken: true }); ok('servidor caído avisa', false); }
-  catch (e) { ok('servidor caído avisa', /No pude llegar al servidor/.test(e.message), e.message); }
+  catch (e) { ok('servidor caído avisa', /servidor de CLAP no responde|No hay internet/.test(e.message), e.message); }
   ESTADO.caido = false;
 
   /* --- 6. diagnóstico ---------------------------------------------------- */

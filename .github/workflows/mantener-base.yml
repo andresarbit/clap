@@ -1,0 +1,46 @@
+# Mantiene despierta la base de CLAP.
+#
+# Supabase, en el plan gratis, PAUSA el proyecto si pasa una semana sin que
+# nadie lo use: la dirección deja de existir y la app dice "No pude llegar al
+# servidor" (pasó el 12/10/2026). Esto le hace una consulta chica a la base
+# cada dos días, así nunca llega a la semana quieta.
+#
+# Usa la clave pública (la misma que viaja en los links de invitación), guardada
+# como secreto del repo para no dejarla escrita acá. No lee datos: sin sesión,
+# los permisos de la base devuelven una lista vacía, pero la consulta cuenta
+# como uso.
+#
+# Si la base ya está pausada, el paso FALLA y GitHub le manda un mail al dueño
+# del repo: esa es la señal de entrar a supabase.com y tocar "Restore project".
+#
+# También se puede correr a mano: Actions -> Mantener la base -> Run workflow.
+
+name: Mantener la base
+
+on:
+  schedule:
+    - cron: '0 11 */2 * *'   # cada dos días, 8:00 hora argentina
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  despertar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consulta chica a la base
+        env:
+          SB_URL: ${{ secrets.SUPABASE_URL }}
+          SB_KEY: ${{ secrets.SUPABASE_PUBLICA }}
+        run: |
+          set -eu
+          for i in 1 2 3; do
+            code=$(curl -s -m 30 -o /dev/null -w '%{http_code}' \
+              -H "apikey: $SB_KEY" "$SB_URL/rest/v1/productora?select=id&limit=1" || echo 000)
+            echo "intento $i: HTTP $code"
+            if [ "$code" = "200" ]; then exit 0; fi
+            sleep 20
+          done
+          echo "::error::La base de CLAP no responde. Puede estar pausada: entrá a supabase.com/dashboard y tocá Restore project."
+          exit 1

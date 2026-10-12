@@ -5055,7 +5055,11 @@ async function sbFetch(ruta, opts={}){
   try{
     res = await fetch(SB.url + ruta, {...opts, headers});
   }catch(e){
-    throw new Error('No pude llegar al servidor. Revisá la URL y que tengas internet.');
+    /* con internet y sin respuesta, el problema es la base (p. ej. pausada), no quien entra */
+    const online = typeof navigator === 'undefined' || navigator.onLine !== false;
+    throw new Error(online
+      ? 'El servidor de CLAP no responde. No es tu conexión: avisale a quien administra CLAP en tu productora y probá en un rato.'
+      : 'No hay internet en este aparato. Conectate y probá de nuevo.');
   }
   const txt = await res.text();
   let data = null;
