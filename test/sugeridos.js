@@ -69,7 +69,7 @@ ok('…y el chip del convenio la da por buena (no la marca vieja)', !estadoSICA(
 ok('…los que cobran un fee propio no cambian', corta.rubros.find(r => r.codigo === '04').lineas.find(l => l.concepto === 'Piloto de Drone').valorUnit === 450000);
 ok('sin dron: salen el alquiler y el piloto', ['Alquiler de drone', 'Piloto de Drone'].every(c => !N('Sin dron').rubros.some(r => r.lineas.some(l => l.concepto === c))) && /Sale: Piloto de Drone, Alquiler de drone/.test(cambiosVsBase(py, N('Sin dron')).texto));
 ok('sin Phantom: la cámara y el técnico', /Técnico de Phantom/.test(cambiosVsBase(py, N('Sin alta velocidad (Phantom)')).texto) && /Cámara de alta velocidad/.test(cambiosVsBase(py, N('Sin alta velocidad (Phantom)')).texto));
-ok('equipo reducido: una persona menos por área grande (la cabeza queda)', (() => { const M = medidasVersion(py, N('Equipo reducido (−5 personas)')); return M.personas === M0.personas - 5 && ['03', '04', '05', '06', '07'].every(c => M.crew[c] === M0.crew[c] - 1); })());
+ok('equipo reducido: una persona menos por área grande (la cabeza queda)', (() => { const M = medidasVersion(py, N('Equipo reducido (−5 personas)')); return M.personas === M0.personas - 5 && ['03', '04', '05', '18', '06'].every(c => M.crew[c] === M0.crew[c] - 1); })());
 ok('una sola locación: sale el mirador', /Sale: Locación — MIRADOR/.test(cambiosVsBase(py, N('Una sola locación (Ruta)')).texto));
 const ps = N('Post simple: packshot filmado, sin 3D');
 ok('post simple: sale el 3D y entra el packshot filmado (sin valor: lo avisa)', /Sale: Packshot 3D/.test(cambiosVsBase(py, ps).texto) && avisosEjercicio(py, ps).some(a => a.k === 'valor'));

@@ -24,7 +24,7 @@ ok('sin cuenta: el número suelto es el total (y se marca)', leerNumerosLinea([3
 console.log('\n--- 2. EL RUBRO DE CADA LÍNEA ---');
 const r = t => rubroDeConcepto(t);
 ok('puestos: producción, foto, eléctrica, dirección', r('Jefe de Producción') === '03' && r('Asist. cámara') === '04' && r('Op Hd') === '04' && r('gafer') === '05' && r('2do De Dirección') === '02');
-ok('vestuario y maquillaje', r('Vestuarista') === '07' && r('Maquillaje y peinado') === '07' && r('Wardrobe Rental') === '07');
+ok('vestuario y maquillaje, cada uno en su rubro', r('Vestuarista') === '07' && r('Maquillaje y peinado') === '19' && r('Wardrobe Rental') === '07');
 ok('alquileres', r('Cámara') === '11' && r('Lighting Rental') === '11' && r('Red One Mysterium x - Ultraprime') === '11');
 ok('el camión de luces es equipamiento; las vans, transporte', r('Camión de luces y grip') === '11' && r('Vans') === '12');
 ok('catering, permisos, seguridad, oficina', r('ALL MEALS: No. people x $/day x days') === '13' && r('Permits') === '10' && r('Security on Location') === '16' && r('Petty Cash') === '17');

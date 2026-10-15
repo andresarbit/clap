@@ -67,7 +67,7 @@ console.log('\n--- 4. LO QUE CAMBIA, EN PALABRAS ---');
 ({v: e} = crearEjercicio(py, base, {jornadas: 1, extras: 6, camaras: 2, areas: [{rubro: '05', delta: 2}]}));
 const C = cambiosVsBase(py, e);
 ok('jornadas con las horas extra', C.items.includes('Jornadas 2 → 1 (+6 h extra c/u)'), C.texto);
-ok('extras, cámaras y personas por área', C.items.includes(`Extras ${M0.extras} → 6`) && C.items.includes('Cámaras 1 → 2') && C.items.includes('Eléctrica y grip +2 personas'), C.texto);
+ok('extras, cámaras y personas por área', C.items.includes(`Extras ${M0.extras} → 6`) && C.items.includes('Cámaras 1 → 2') && C.items.includes('Eléctrica +2 personas'), C.texto);
 const TB = calcular(base).total, TE = calcular(e).total;
 ok('y el total contra la base', C.texto.endsWith(`Total ${fmt(TE, 'ARS')} (${TE < TB ? '−' : '+'}${Math.abs(Math.round((TE - TB) / TB * 1000) / 10).toLocaleString('es-AR')} % vs base)`), C.texto);
 ok('el nombre sale solo de los cambios', /^1 jornada con horas extra · 2 cámaras · 6 extras/.test(e.nombre), e.nombre);

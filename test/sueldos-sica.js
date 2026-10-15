@@ -195,7 +195,7 @@ modal = null; pickFuncion(r04.id);
 const esperadoDF = valorJornadaSICA(cargoSICA('Director de Fotografía', escalaDelProyecto(py)), py.configRodaje);
 ok('el selector de funciones muestra el valor que se va a cargar',
   (modal || '').includes('SICA ' + fmtC(esperadoDF)), 'SICA ' + fmtC(esperadoDF));
-ok('y el foquista también tiene su valor', /Foquista \(1° AC\)<\/span>\s*<span class="sica"/.test(modal || ''));
+ok('y el foquista también tiene su valor', /Foquista \(1° asistente de cámara\)<\/span>\s*<span class="sica"/.test(modal || ''));
 cerrar();
 
 console.log('\n--- 11. EL TARIFARIO ---');

@@ -38,7 +38,7 @@ const v = py.versiones[0]; DB.ui.versionId = v.id;
 v.tc = 1420; v.tcNombre = 'MEP'; v.tcFecha = '2026-08-25';
 Object.assign(v.capas, { fee: pr.feeDefault, contingencia: pr.contingenciaDefault, iva: pr.ivaDefault, iibb: pr.iibbDefault });
 ok('el presupuesto arranca en cero', calcular(v).total === 0);
-ok('trae los 17 rubros', v.rubros.length === 17, v.rubros.length);
+ok('trae los 19 rubros (Grip y Maquillaje aparte)', v.rubros.length === 19, v.rubros.length);
 ok('toma los defaults de la productora', v.capas.fee === 15 && v.capas.iva === 21);
 
 /* ──────────────────────────────────────────── 3. guion sin encabezados */

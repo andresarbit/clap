@@ -30,7 +30,7 @@ console.log('--- 1. EL PARTE: LLEGÓ Y LIBERAR ---');
 DB.ui.tab = 'rodaje'; DB.ui.subRodaje = 'parte'; DB.ui.jornada = 1; render();
 const h1 = app.innerHTML;
 ok('cada uno tiene "Llegó"', (h1.match(/>Llegó</g) || []).length >= 3);
-ok('liberar por departamento', /rdLiberarGrupo\('Eléctrica y Grip'\)/.test(h1) && /Liberar a todo Eléctrica y Grip/.test(h1));
+ok('liberar por departamento', /rdLiberarGrupo\('Eléctrica \(Luces\)'\)/.test(h1) && /Liberar a todo Eléctrica \(Luces\)/.test(h1));
 ok('y a todos los que quedan', /rdLiberarGrupo\('\*'\)/.test(h1));
 ok('la salida propone la hora en que el plan lo libera', new RegExp('placeholder="' + j1.citaciones['p:Franco'].libera + '"').test(h1));
 rdFichar('l:' + gaffer.id, 'entrada', '06:00');

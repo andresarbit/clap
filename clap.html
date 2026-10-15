@@ -142,6 +142,22 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible,summary:focus-v
 .del{color:var(--tx3);font-size:15px;line-height:1;text-align:center;padding:4px}
 .del:hover{color:var(--bad)}
 .addln{padding:7px 11px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line);background:var(--bg)}
+/* preproducción / rodaje dentro de un rubro del equipo: el subtotal cae bajo «Estimado» */
+.etgrupo{display:flex;align-items:baseline;gap:10px;padding:8px 161px 5px 11px;border-bottom:1px solid var(--line);
+  font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--tx2)}
+.etgrupo span{flex:1}
+.etgrupo i{font-style:normal;font-weight:600;text-transform:none;letter-spacing:0;color:var(--tx3);margin-left:4px}
+.etgrupo b{font:600 12px var(--mono);color:var(--tx);letter-spacing:0}
+.etgrupo.et-prepro{color:#1e3a5f}
+.etgrupo.et-post{color:#4a3a8a}
+@media (max-width:760px){ .etgrupo{padding:10px 12px 4px} }
+/* las jornadas de 8 h, en la fila de chips de la línea de rodaje */
+.chip.j8{display:inline-flex;align-items:center;gap:4px;background:rgba(91,155,213,.10);color:#1e3a5f;cursor:text}
+.chip.j8.on{background:rgba(91,155,213,.2)}
+.ln .chip.j8 input{width:3.4em;padding:0 3px;font:700 10.5px var(--mono);text-align:right;border:1px solid rgba(30,58,95,.25);border-radius:3px;background:var(--bg2)}
+.ln .chip.j8 input::placeholder{color:var(--tx3);opacity:.6;font-weight:400}
+/* «Gastos del área» en el catálogo de funciones */
+.pf-grupo{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700;margin:12px 0 4px;padding:10px 13px 0;border-top:1px solid var(--line)}
 
 /* chips de circuito / comprobante */
 .chip{font-size:9.5px;padding:2px 6px;border-radius:4px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
@@ -1043,6 +1059,7 @@ input::placeholder,textarea::placeholder{color:#7a7a7f}
 .rubro[data-r="10"]{--rc:#e3eed9}.rubro[data-r="11"]{--rc:#fde1c6}.rubro[data-r="12"]{--rc:#e2e7f0}
 .rubro[data-r="13"]{--rc:#e6ddfb}.rubro[data-r="14"]{--rc:#e9e2f5}.rubro[data-r="15"]{--rc:#ececea}
 .rubro[data-r="16"]{--rc:#f6e6cc}.rubro[data-r="17"]{--rc:#ececea}
+.rubro[data-r="18"]{--rc:#e4ecd0}.rubro[data-r="19"]{--rc:#f3e0f2}
 
 /* números grandes: baldosas pastel */
 .resu{gap:8px;background:transparent;border:none}
@@ -1467,9 +1484,11 @@ const RUBROS_BASE = [
   {codigo:'02', nombre:'Dirección',                        aplicaFee:true,  area:'direccion'},
   {codigo:'03', nombre:'Equipo de Producción',             aplicaFee:true,  area:'produccion'},
   {codigo:'04', nombre:'Fotografía y Cámara',              aplicaFee:true,  area:'camara'},
-  {codigo:'05', nombre:'Eléctrica y Grip',                 aplicaFee:true,  area:'electrica'},
+  {codigo:'05', nombre:'Eléctrica (Luces)',                aplicaFee:true,  area:'electrica'},
+  {codigo:'18', nombre:'Grip',                             aplicaFee:true,  area:'grip'},
   {codigo:'06', nombre:'Arte, Utilería y Ambientación',    aplicaFee:true,  area:'arte'},
-  {codigo:'07', nombre:'Vestuario, Maquillaje y Peinado',  aplicaFee:true,  area:'vestuario'},
+  {codigo:'07', nombre:'Vestuario',                        aplicaFee:true,  area:'vestuario'},
+  {codigo:'19', nombre:'Maquillaje y Peinado',             aplicaFee:true,  area:'maquillaje'},
   {codigo:'08', nombre:'Sonido',                           aplicaFee:true,  area:'sonido'},
   {codigo:'09', nombre:'Elenco y Derechos de Imagen',      aplicaFee:false, area:'elenco'},
   {codigo:'10', nombre:'Locaciones y Permisos',            aplicaFee:true,  area:'locaciones'},
@@ -1482,6 +1501,18 @@ const RUBROS_BASE = [
   {codigo:'17', nombre:'Administración y Gastos Bancarios',aplicaFee:false, area:'admin'},
 ];
 const RUBRO = cod => RUBROS_BASE.find(r=>r.codigo===cod) || {};
+/* El código es la llave interna y NO cambia nunca: lo guardan las líneas, los
+   comprobantes y la base. Grip (18) y Maquillaje (19) nacieron después,
+   partiendo Eléctrica y Vestuario, y para no renumerar nada de lo guardado
+   se les dio un código nuevo. Lo que ve la gente es otro número: la posición
+   en la lista (Luces 05, Grip 06, Arte 07…). Todo lo que muestra un número de
+   rubro pasa por acá; la lógica sigue usando `codigo`. Un rubro agregado a
+   mano (sin lugar en la lista) muestra su código tal cual.                  */
+const ordRubro = cod => { const i = RUBROS_BASE.findIndex(r => r.codigo === cod); return i < 0 ? 100 + (parseInt(cod, 10) || 0) : i; };
+const numRubro = cod => { const i = RUBROS_BASE.findIndex(r => r.codigo === cod); return i < 0 ? String(cod ?? '') : String(i + 1).padStart(2, '0'); };
+const porOrdenRubro = (a, b) => ordRubro(a) - ordRubro(b) || String(a).localeCompare(String(b));
+/* "05 · Eléctrica (Luces)" */
+const rubroTxt = (cod, nombre) => numRubro(cod) + ' · ' + (nombre ?? (RUBRO(cod).nombre || ''));
 const esTransversal = cod => !!RUBRO(cod).transversal;
 /* rubros que se miden por día de rodaje, no por departamento */
 const esPorJornada  = cod => !!RUBRO(cod).porJornada;
@@ -1501,22 +1532,27 @@ const FUNCIONES = {
         "Asistente de Producción","2° Asistente de Producción","Runner / Cadete",
         "Location Manager","Fijador","Director de Casting","Productor de campo",
         "Contador de producción","Caja chica de producción","Producer de agencia"],
-  '04':["Director de Fotografía","Operador de Cámara","Foquista (1° AC)",
-        "2° Asistente de Cámara","DIT","Data manager","Video Assist","Operador de Steadicam",
+  /* los nombres como se dicen acá; los de antes ("DIT", "Video Assist",
+     "Foquista (1° AC)"…) siguen valiendo para el convenio y las líneas viejas */
+  '04':["Director de Fotografía","Operador de Cámara","Foquista (1° asistente de cámara)",
+        "Ayudante de cámara","Operador HD (DIT)","Ayudante de operador HD (Data manager)",
+        "Video assist (VTR)","Operador de Steadicam",
         "Operador de Ronin / gimbal","Piloto de Drone","Fotógrafo de fija","Cámara de backstage",
         "Segunda unidad de cámara"],
-  '05':["Gaffer","Best Boy eléctrico","Eléctrico","Jefe eléctrico","Key Grip","Grip",
-        "Best Boy grip","Maquinista","Generadorista","Rigger","Operador de dolly",
-        "Operador de grúa","Expendables de eléctrica"],
+  '05':["Gaffer","Jefe de eléctricos","Best Boy eléctrico","Eléctrico","Operador de generador",
+        "Expendables de eléctrica"],
+  /* el grip arma y mueve: maquinistas, dolly, grúa, rigging de auto */
+  '18':["Key Grip","Grip","Best Boy grip","Maquinista","Rigger","Operador de dolly",
+        "Operador de grúa","Expendables de grip"],
   '06':["Director de Arte","Ambientador / 1° Asistente de Arte","Asistente de Arte",
-        "Ayudante de Arte","Utilero","Escenógrafo","Constructor","Carpintero","Pintor","Herrero",
+        "Ayudante de Arte","Utilero","Ayudante de utilero","Escenógrafo","Constructor","Carpintero","Pintor","Herrero",
         "Compras de arte","Alquiler de utilería","Alquiler de muebles","Construcción de set",
         "Plantas y flores","Food styling","Animales y adiestrador","Armería / utilería especial",
         "Gráfica y cartelería","Devoluciones y restitución"],
   '07':["Vestuarista","Asistente de Vestuario","Ayudante de Vestuario","Compra de vestuario",
-        "Alquiler de vestuario","Lavandería y tintorería","Arreglos y costura","Maquillador/a",
-        "Peinador/a","Asistente de Maquillaje y Peinado","Caracterización y prótesis","Manicura",
-        "Insumos de maquillaje","Barbería"],
+        "Alquiler de vestuario","Lavandería y tintorería","Arreglos y costura"],
+  '19':["Maquillador/a","Peinador/a","Asistente de Maquillaje y Peinado","Ayudante de Maquillaje",
+        "Caracterización y prótesis","Manicura","Barbería","Insumos de maquillaje"],
   '08':["Sonidista Directo","Microfonista","Asistente de sonido","Equipo de sonido directo",
         "Playback","Alquiler de microfonía","Insumos de sonido"],
   '09':["Actor / Actriz Principal","Actor / Actriz Secundario","Bolo","Extra",
@@ -1557,8 +1593,22 @@ const FUNCIONES = {
         "Sueldos de estructura","Contingencia","Fee de producción"],
 };
 
+/* Las funciones en el orden de los rubros. Ojo: no recorrer FUNCIONES con
+   Object.entries, que pone '18' y '19' ANTES que '01' (las claves que son
+   números enteros van primero) y un gasto que está en varios rubros, como
+   los fletes, caería en Grip. */
+const funcionesEnOrden = () => RUBROS_BASE.map(r => [r.codigo, FUNCIONES[r.codigo] || []]);
+/* Funciones que cambiaron de nombre para decirse como se dicen acá. Las
+   líneas y las fichas viejas no se renombran (son de alguien): para comparar
+   (la plantilla, las jornadas de 8 h) se pasa todo al nombre de ahora.    */
+const FUNCION_RENOMBRADA = {'Jefe eléctrico':'Jefe de eléctricos', 'Generadorista':'Operador de generador',
+  '2° Asistente de Cámara':'Ayudante de cámara', 'Foquista (1° AC)':'Foquista (1° asistente de cámara)',
+  'Video Assist':'Video assist (VTR)', 'DIT':'Operador HD (DIT)', 'Data manager':'Ayudante de operador HD (Data manager)'};
+let _renombrada = null;
+const nomFuncion = c => { _renombrada ||= new Map(Object.entries(FUNCION_RENOMBRADA).map(([a, b]) => [norm(a), b]));
+  return _renombrada.get(norm(c || '')) || c; };
 /* Todos los subrubros como una lista plana, para buscar al clasificar. */
-let SUBRUBROS = Object.entries(FUNCIONES).flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
+let SUBRUBROS = funcionesEnOrden().flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
 
 /* --------------------------------------------------------------------------
    ÁREAS (centros de costo). El rubro dice QUÉ es el gasto; el área dice DE
@@ -1569,9 +1619,11 @@ const AREAS = [
   {k:'produccion', l:'Producción',           r:'03'},
   {k:'direccion',  l:'Dirección',            r:'02'},
   {k:'camara',     l:'Fotografía y Cámara',  r:'04'},
-  {k:'electrica',  l:'Eléctrica y Grip',     r:'05'},
+  {k:'electrica',  l:'Eléctrica (Luces)',    r:'05'},
+  {k:'grip',       l:'Grip',                 r:'18'},
   {k:'arte',       l:'Arte',                 r:'06'},
-  {k:'vestuario',  l:'Vestuario y Maquillaje',r:'07'},
+  {k:'vestuario',  l:'Vestuario',            r:'07'},
+  {k:'maquillaje', l:'Maquillaje y Peinado', r:'19'},
   {k:'sonido',     l:'Sonido',               r:'08'},
   {k:'elenco',     l:'Elenco',               r:'09'},
   {k:'locaciones', l:'Locaciones',           r:'10'},
@@ -1592,7 +1644,7 @@ const COMUNES = ['Combustible del área','Movilidad y estacionamiento','Fletes y
 
 /* Los gastos comunes se agregan a cada rubro de departamento: asi la nafta se
    puede presupuestar dentro de arte, y el area la separa al cargarla.        */
-['02','03','04','05','06','07','08','10','13','14'].forEach(r=>{
+['02','03','04','05','18','06','07','19','08','10','13','14'].forEach(r=>{
   COMUNES.forEach(c=>{ if(!FUNCIONES[r].includes(c)) FUNCIONES[r].push(c); });
 });
 
@@ -1618,7 +1670,7 @@ const FUNCIONES_EXTRA = {
 };
 Object.entries(FUNCIONES_EXTRA).forEach(([r,xs]) => xs.forEach(x => {
   if(!FUNCIONES[r].includes(x)) FUNCIONES[r].push(x); }));
-SUBRUBROS = Object.entries(FUNCIONES).flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
+SUBRUBROS = funcionesEnOrden().flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
 
 /* Unidades de contratación */
 /* Escalas salariales SICA · publicidad. Salarios BRUTOS de convenio por
@@ -1656,13 +1708,13 @@ const ESCALAS_SICA = [
     {c:"OP. DE GENERADOR", d:"Eléctrica e Iluminación", r:'05', j8:149771, j12:262099},
     {c:"SONIDISTA", d:"Sonido", r:'08', j8:261999, j12:458499},
     {c:"MICROFONISTA", d:"Sonido", r:'08', j8:202051, j12:353589},
-    {c:"KEY GRIP", d:"Grip", r:'05', j8:261999, j12:458499},
+    {c:"KEY GRIP", d:"Grip", r:'18', j8:261999, j12:458499},
     {c:"UTILERO/A - CARPINTERO/A", d:"Utilería", r:'06', j8:261999, j12:458499},
     {c:"AYUDANTE", d:"Utilería", r:'06', j8:202051, j12:353589},
-    {c:"MAQUILLADOR/A", d:"Maquillaje y Peinado", r:'07', j8:261999, j12:458499},
-    {c:"AYUDANTE", d:"Maquillaje y Peinado", r:'07', j8:149771, j12:262099},
-    {c:"ASIST. DE MAQUILLAJE Y PEINADO", d:"Maquillaje y Peinado", r:'07', j8:179646, j12:314381},
-    {c:"PEINADOR/A", d:"Maquillaje y Peinado", r:'07', j8:261999, j12:458499},
+    {c:"MAQUILLADOR/A", d:"Maquillaje y Peinado", r:'19', j8:261999, j12:458499},
+    {c:"AYUDANTE", d:"Maquillaje y Peinado", r:'19', j8:149771, j12:262099},
+    {c:"ASIST. DE MAQUILLAJE Y PEINADO", d:"Maquillaje y Peinado", r:'19', j8:179646, j12:314381},
+    {c:"PEINADOR/A", d:"Maquillaje y Peinado", r:'19', j8:261999, j12:458499},
     {c:"DIRECCION DE ARTE", d:"Arte", r:'06', j8:247898, j12:433822},
     {c:"AMBIENTADOR/A / 1er ASIST. DE ARTE", d:"Arte", r:'06', j8:169568, j12:296744},
     {c:"ASISTENTE DE ARTE", d:"Arte", r:'06', j8:130828, j12:228949},
@@ -1701,13 +1753,13 @@ const ESCALAS_SICA = [
     {c:"OP. DE GENERADOR", d:"Eléctrica e Iluminación", r:'05', j8:156511, j12:273894},
     {c:"SONIDISTA", d:"Sonido", r:'08', j8:273789, j12:479131},
     {c:"MICROFONISTA", d:"Sonido", r:'08', j8:211143, j12:369500},
-    {c:"KEY GRIP", d:"Grip", r:'05', j8:273789, j12:479131},
+    {c:"KEY GRIP", d:"Grip", r:'18', j8:273789, j12:479131},
     {c:"UTILERO/A - CARPINTERO/A", d:"Utilería", r:'06', j8:273789, j12:479131},
     {c:"AYUDANTE", d:"Utilería", r:'06', j8:211143, j12:369500},
-    {c:"MAQUILLADOR/A", d:"Maquillaje y Peinado", r:'07', j8:273789, j12:479131},
-    {c:"AYUDANTE", d:"Maquillaje y Peinado", r:'07', j8:156511, j12:273894},
-    {c:"ASIST. DE MAQUILLAJE Y PEINADO", d:"Maquillaje y Peinado", r:'07', j8:187731, j12:328529},
-    {c:"PEINADOR/A", d:"Maquillaje y Peinado", r:'07', j8:273789, j12:479131},
+    {c:"MAQUILLADOR/A", d:"Maquillaje y Peinado", r:'19', j8:273789, j12:479131},
+    {c:"AYUDANTE", d:"Maquillaje y Peinado", r:'19', j8:156511, j12:273894},
+    {c:"ASIST. DE MAQUILLAJE Y PEINADO", d:"Maquillaje y Peinado", r:'19', j8:187731, j12:328529},
+    {c:"PEINADOR/A", d:"Maquillaje y Peinado", r:'19', j8:273789, j12:479131},
     {c:"DIRECCION DE ARTE", d:"Arte", r:'06', j8:259053, j12:453343},
     {c:"AMBIENTADOR/A / 1er ASIST. DE ARTE", d:"Arte", r:'06', j8:177198, j12:310097},
     {c:"ASISTENTE DE ARTE", d:"Arte", r:'06', j8:136715, j12:239251},
@@ -1792,20 +1844,27 @@ const ALIAS_SICA = [
   ['Operadora de Cámara','Fotografía y Cámara','CAMAROGRAFO/A'],
   ['Camarógrafo','Fotografía y Cámara','CAMAROGRAFO/A'],
   ['Camarógrafa','Fotografía y Cámara','CAMAROGRAFO/A'],
+  ['Foquista (1° asistente de cámara)','Fotografía y Cámara','ASISTENTE (FOQUISTA)'],
   ['Foquista (1° AC)','Fotografía y Cámara','ASISTENTE (FOQUISTA)'],
   ['Foquista','Fotografía y Cámara','ASISTENTE (FOQUISTA)'],
   ['Asistente de Cámara','Fotografía y Cámara','ASISTENTE (FOQUISTA)'],
   ['1° Asistente de Cámara','Fotografía y Cámara','ASISTENTE (FOQUISTA)'],
   ['2° Asistente de Cámara','Fotografía y Cámara','AYUDANTE'],
   ['Ayudante de Cámara','Fotografía y Cámara','AYUDANTE'],
+  ['Video assist (VTR)','Fotografía y Cámara','VIDEO ASISTENTE'],
   ['Video Assist','Fotografía y Cámara','VIDEO ASISTENTE'],
   ['Video Asistente','Fotografía y Cámara','VIDEO ASISTENTE'],
+  ['VTR','Fotografía y Cámara','VIDEO ASISTENTE'],
+  ['Operador HD (DIT)','Fotografía y Cámara','OPERADOR/A HD'],
   ['DIT','Fotografía y Cámara','OPERADOR/A HD'],
   ['Operador HD','Fotografía y Cámara','OPERADOR/A HD'],
+  ['Ayudante de operador HD (Data manager)','Fotografía y Cámara','AYTE. OPERADOR/A HD'],
   ['Data manager','Fotografía y Cámara','AYTE. OPERADOR/A HD'],
   ['Ayudante de Operador HD','Fotografía y Cámara','AYTE. OPERADOR/A HD'],
-  /* Eléctrica y grip */
+  /* Eléctrica (luces) */
   ['Gaffer','Eléctrica e Iluminación','GAFFER'],
+  ['Jefe de eléctricos','Eléctrica e Iluminación','JEFE/A ELECTRICO/A'],
+  ['Jefa de eléctricos','Eléctrica e Iluminación','JEFE/A ELECTRICO/A'],
   ['Jefe eléctrico','Eléctrica e Iluminación','JEFE/A ELECTRICO/A'],
   ['Jefa eléctrica','Eléctrica e Iluminación','JEFE/A ELECTRICO/A'],
   ['Best Boy eléctrico','Eléctrica e Iluminación','JEFE/A ELECTRICO/A'],
@@ -1813,6 +1872,7 @@ const ALIAS_SICA = [
   ['Eléctrica','Eléctrica e Iluminación','ELECTRICO/A'],
   ['Generadorista','Eléctrica e Iluminación','OP. DE GENERADOR'],
   ['Operador de generador','Eléctrica e Iluminación','OP. DE GENERADOR'],
+  /* Grip: el convenio tiene sólo al key grip */
   ['Key Grip','Grip','KEY GRIP'],
   /* Sonido */
   ['Sonidista Directo','Sonido','SONIDISTA'],
@@ -1830,7 +1890,9 @@ const ALIAS_SICA = [
   ['Utilera','Utilería','UTILERO/A - CARPINTERO/A'],
   ['Carpintero','Utilería','UTILERO/A - CARPINTERO/A'],
   ['Ayudante de Utilería','Utilería','AYUDANTE'],
-  /* Vestuario, maquillaje y peinado */
+  ['Ayudante de utilero','Utilería','AYUDANTE'],
+  ['Ayudante de utilera','Utilería','AYUDANTE'],
+  /* Vestuario / Maquillaje y peinado */
   ['Vestuarista','Vestuario','VESTUARIO'],
   ['Asistente de Vestuario','Vestuario','ASISTENTE DE VESTUARIO'],
   ['Ayudante de Vestuario','Vestuario','AYUDANTE DE VESTUARIO'],
@@ -2042,6 +2104,9 @@ function nuevaLinea(o={}){
        por jornada de 8 h aunque el rodaje sea de 12: así estaba en todos los
        presupuestos de la casa (columna "Jornadas de 8hs"). */
     etapa:o.etapa||null,
+    /* en una de preproducción: la raíz de la línea de rodaje de la que son las
+       «Jornadas de 8 h» (la misma persona antes del rodaje) */
+    preDe:o.preDe||null,
     /* 'sica' | 'aaa' | 'factura' · null = lo decide contratoDe(). Define si
        la línea lleva cargas sociales encima. */
     contrato:o.contrato||null};
@@ -2265,11 +2330,11 @@ const PL_PUB = {
     plL('02','Ayudante de Dirección (1° AD)', {pre:1}),
     plL('03','Jefe de Producción', {pre:2}), plL('03','Asistente de Producción', {pre:1}),
     plL('03','Aprendiz'), plG('03','Caja chica de producción', {nota:PL_REF.caja}),
-    plL('04','Director de Fotografía'), plL('04','Foquista (1° AC)'),
+    plL('04','Director de Fotografía'), plL('04','Foquista (1° asistente de cámara)'),
     plL('05','Gaffer'), plL('05','Eléctrico'),
     plL('06','Director de Arte', {pre:2}), plL('06','Utilero'),
     plG('06','Alquiler de utilería', {nota:PL_REF.util}), plG('06','Compras de arte'),
-    plL('07','Vestuarista', {pre:1}), plL('07','Maquillador/a'),
+    plL('07','Vestuarista', {pre:1}), plL('19','Maquillador/a'),
     plG('07','Alquiler de vestuario', {nota:PL_REF.vest}),
     plL('09','Actor / Actriz Principal'), plG('09','Buyout / Cesión de derechos'),
     plL('10','Fee de locación', {nota:PL_REF.loc}), plG('10','Permiso municipal de filmación', {nota:PL_REF.permiso}),
@@ -2287,14 +2352,14 @@ const PL_PUB = {
     plL('02','Script / Continuista'),
     plL('03','Jefe de Producción', {pre:5}), plL('03','Asistente de Producción', {pre:3}),
     plL('03','2° Asistente de Producción'), plL('03','Location Manager', {pre:3}), plL('03','Aprendiz', {q:2}),
-    plL('04','Director de Fotografía', {pre:1}), plL('04','2° Asistente de Cámara'),
-    plL('04','DIT'), plL('04','Video Assist'),
-    plL('05','Jefe eléctrico'), plL('05','Eléctrico', {q:2}), plL('05','Generadorista'),
-    plL('05','Key Grip'), plL('05','Grip', {nota:PL_REF.grip0}),
+    plL('04','Director de Fotografía', {pre:1}), plL('04','Ayudante de cámara'),
+    plL('04','Operador HD (DIT)'), plL('04','Video assist (VTR)'),
+    plL('05','Jefe de eléctricos'), plL('05','Eléctrico', {q:2}), plL('05','Operador de generador'),
+    plL('18','Key Grip'), plL('18','Grip', {nota:PL_REF.grip0}),
     plL('06','Director de Arte', {pre:5}), plL('06','Ambientador / 1° Asistente de Arte', {pre:2}),
     plL('06','Asistente de Arte', {pre:3}), plL('06','Ayudante de Arte'), plG('06','Alquiler de muebles'),
     plL('07','Vestuarista', {pre:3}), plL('07','Asistente de Vestuario', {pre:2}),
-    plL('07','Peinador/a'), plG('07','Compra de vestuario'), plG('07','Insumos de maquillaje'),
+    plL('19','Peinador/a'), plG('07','Compra de vestuario'), plG('19','Insumos de maquillaje'),
     plL('09','Actor / Actriz Secundario', {q:2}), plL('09','Extra', {q:6}),
     plG('09','Fee de agencia de casting'),
     plL('10','Seguridad de locación', {q:2, nota:PL_REF.segur}), plG('10','Limpieza'),
@@ -2310,8 +2375,8 @@ const PL_PUB = {
     plL('03','Productor', {pre:5, ct:'factura'}), plL('03','Coordinador de Producción', {pre:3}),
     plL('03','Asistente de Locaciones', {pre:2}),
     plL('04','Fotógrafo de fija'),
-    plL('05','Eléctrico', {q:2, mas:true}), plL('05','Grip', {mas:true, nota:PL_REF.grip0}), plL('05','Best Boy eléctrico'),
-    plL('07','Asistente de Maquillaje y Peinado'),
+    plL('05','Eléctrico', {q:2, mas:true}), plL('18','Grip', {mas:true, nota:PL_REF.grip0}), plL('05','Best Boy eléctrico'),
+    plL('19','Asistente de Maquillaje y Peinado'),
     plL('08','Sonidista Directo'), plL('08','Microfonista'),
     plL('09','Figuración especial', {q:2}), plL('09','Extra', {q:9, mas:true}),
     plL('10','Motorhome / camarín'), plL('10','Baños químicos'),
@@ -2324,7 +2389,7 @@ const PL_PUB = {
   super: () => [
     plL('02','Director de segunda unidad', {ct:'factura'}), plL('02','3° Ayudante de Dirección'),
     plL('04','Operador de Steadicam'), plL('04','Segunda unidad de cámara'), plG('04','Piloto de Drone'),
-    plL('05','Rigger'), plL('05','Operador de grúa'),
+    plL('18','Rigger'), plL('18','Operador de grúa'),
     plL('06','Escenógrafo', {pre:8, ct:'factura'}), plL('06','Constructor', {d:5}), plL('06','Carpintero', {q:2, d:5}),
     plL('06','Pintor', {d:3}), plG('06','Construcción de set'), plG('06','Efectos especiales (lluvia, humo, nieve)'),
     plG('06','Vehículos de escena'),
@@ -2359,10 +2424,10 @@ const PLANTILLAS = [
     lineas: () => [
       plG('02','Director', {ct:'factura'}),
       plL('03','Jefe de Producción', {pre:2}), plL('03','Asistente de Producción'),
-      plL('04','Director de Fotografía'), plL('04','Foquista (1° AC)'),
+      plL('04','Director de Fotografía'), plL('04','Foquista (1° asistente de cámara)'),
       plL('05','Gaffer'), plL('05','Eléctrico'),
       plL('06','Director de Arte', {pre:2}), plL('06','Utilero'), plG('06','Compras de arte'),
-      plL('07','Vestuarista'), plL('07','Maquillador/a'),
+      plL('07','Vestuarista'), plL('19','Maquillador/a'),
       plG('08','Playback'), plL('09','Bailarín / bailarina', {q:4}),
       plG('10','Fee de locación', {nota:PL_REF.loc}),
       plL('11','Paquete cámara + ópticas', {nota:PL_REF.camara}), plL('11','Paquete de luces', {nota:PL_REF.luces}),
@@ -2377,12 +2442,12 @@ const PLANTILLAS = [
       plG('02','Director', {ct:'factura'}), plL('02','Ayudante de Dirección (1° AD)', {pre:6}), plL('02','2° Ayudante de Dirección'),
       plL('03','Line Producer', {pre:6}), plL('03','Jefe de Producción', {pre:6}), plL('03','Asistente de Producción', {pre:4}),
       plL('03','Location Manager', {pre:5}), plL('03','Aprendiz', {q:2}), plG('03','Caja chica de producción', {nota:PL_REF.caja}),
-      plL('04','Director de Fotografía'), plL('04','DIT'), plL('04','Foquista (1° AC)'),
-      plL('05','Gaffer'), plL('05','Eléctrico', {q:2}), plL('05','Generadorista'), plL('05','Key Grip'), plL('05','Grip'),
+      plL('04','Director de Fotografía'), plL('04','Operador HD (DIT)'), plL('04','Foquista (1° asistente de cámara)'),
+      plL('05','Gaffer'), plL('05','Eléctrico', {q:2}), plL('05','Operador de generador'), plL('18','Key Grip'), plL('18','Grip'),
       plL('06','Director de Arte', {pre:6}), plL('06','Asistente de Arte', {pre:2}), plL('06','Utilero'),
       plL('06','Ayudante de Arte'), plG('06','Alquiler de utilería', {nota:PL_REF.util}), plG('06','Compras de arte'),
       plG('06','Construcción de set'), plG('06','Efectos especiales (lluvia, humo, nieve)'),
-      plL('07','Vestuarista'), plL('07','Asistente de Vestuario'), plL('07','Maquillador/a'), plL('07','Peinador/a'),
+      plL('07','Vestuarista'), plL('07','Asistente de Vestuario'), plL('19','Maquillador/a'), plL('19','Peinador/a'),
       plG('08','Playback'), plL('09','Actor / Actriz Principal', {q:2}), plG('09','Coreógrafo'),
       plL('10','Fee de locación', {q:2, d:1, nota:PL_REF.loc}), plG('10','Permiso municipal de filmación'),
       plL('10','Seguridad de locación', {q:2, nota:PL_REF.segur}),
@@ -2402,11 +2467,11 @@ const PLANTILLAS = [
       plG('02','Director', {ct:'factura'}), plL('02','Ayudante de Dirección (1° AD)', {pre:3}),
       plL('03','Jefe de Producción', {pre:4}), plL('03','Asistente de Producción', {pre:3}), plL('03','Aprendiz'),
       plG('03','Caja chica de producción'),
-      plL('04','Director de Fotografía'), plL('04','Foquista (1° AC)'), plL('04','DIT'),
-      plL('05','Gaffer'), plL('05','Eléctrico', {q:2}), plL('05','Key Grip'),
+      plL('04','Director de Fotografía'), plL('04','Foquista (1° asistente de cámara)'), plL('04','Operador HD (DIT)'),
+      plL('05','Gaffer'), plL('05','Eléctrico', {q:2}), plL('18','Key Grip'),
       plL('06','Director de Arte', {pre:4}), plL('06','Asistente de Arte', {pre:2}), plL('06','Utilero'),
       plG('06','Alquiler de utilería', {nota:PL_REF.util}),
-      plL('07','Vestuarista', {pre:2}), plL('07','Maquillador/a'), plG('07','Alquiler de vestuario'),
+      plL('07','Vestuarista', {pre:2}), plL('19','Maquillador/a'), plG('07','Alquiler de vestuario'),
       plL('09','Actor / Actriz Principal', {q:2}),
       plL('10','Estudio — días de armado', {d:1}), plL('10','Estudio — días de rodaje'),
       plL('11','Paquete cámara + ópticas', {nota:PL_REF.camara}), plL('11','Paquete de luces', {nota:PL_REF.luces}),
@@ -2431,9 +2496,9 @@ const PLANTILLAS = [
     lineas: () => [
       plG('02','Director', {ct:'factura'}),
       plL('03','Jefe de Producción', {pre:2}), plL('03','Asistente de Producción'),
-      plL('04','Director de Fotografía'), plL('04','Foquista (1° AC)'),
+      plL('04','Director de Fotografía'), plL('04','Foquista (1° asistente de cámara)'),
       plL('05','Gaffer'), plL('05','Eléctrico'),
-      plL('07','Maquillador/a'),
+      plL('19','Maquillador/a'),
       plL('08','Sonidista Directo'), plL('08','Microfonista'),
       plL('11','Paquete cámara + ópticas', {nota:PL_REF.camara}), plL('11','Paquete de luces', {nota:PL_REF.luces}),
       plL('12','Auto de producción'), plG('12','Combustible'),
@@ -2531,7 +2596,7 @@ function confirmarPlantilla(){
        cambió algo, se queda y se avisa: no se pierde trabajo.
      - lo que agregó alguien a mano, fuera de la plantilla, no se toca.
      - lo que la nueva tiene y el presupuesto no, se agrega.               */
-const clavePl = (r, c, etapa) => [r, norm(c), etapa || ''].join('|');
+const clavePl = (r, c, etapa) => [r, norm(nomFuncion(c)), etapa || ''].join('|');
 function lineasDePlantilla(k, J){
   const pl = PLANTILLA(k); const m = new Map();
   if(pl) resolverPlantilla(pl, J).lineas.forEach(x =>
@@ -2669,7 +2734,7 @@ function aplicarPlantilla(py, v, k, {jornadas} = {}){
   lineas.forEach(x => {
     const rb = v.rubros.find(r => r.codigo === x.r); if(!rb) return;
     const etapa = x.etapa === 'rodaje' ? null : x.etapa;
-    if(rb.lineas.some(l => norm(l.concepto) === norm(x.c) && (l.etapa||null) === etapa)) return;
+    if(rb.lineas.some(l => norm(nomFuncion(l.concepto)) === norm(x.c) && (l.etapa||null) === etapa)) return;
     const l = nuevaLinea({concepto:x.c, cantidad:x.q, dias:x.d, unidad:x.u,
       etapa, contrato:x.ct, notas:x.nota, area:areaDeRubro(x.r) || ''});
     autocompletarSICA(l, py);
@@ -2788,7 +2853,7 @@ function nuevaJornada(o={}){
 }
 
 /* Rubros de los que sale el equipo técnico del callsheet.                     */
-const RUBROS_CREW = ['02','03','04','05','06','07','08'];
+const RUBROS_CREW = ['02','03','04','05','18','06','07','19','08'];
 const RUBROS_PROV = ['10','11','12','13','14','15'];
 
 /* --------------------------- EQUIPO Y GASTOS ------------------------------
@@ -3087,7 +3152,7 @@ function totalesRend(py, cj){
   orden.forEach(c => { const k = c.rubro || '';
     (por[k] ||= {codigo: k, nombre: k ? (RUBRO(k).nombre || k) : 'Sin rubro', total: 0, cant: 0, gastos: []});
     por[k].total += n(c.importe); por[k].cant++; por[k].gastos.push(c); });
-  const rubros = Object.values(por).sort((a, b) => (a.codigo || '99').localeCompare(b.codigo || '99'));
+  const rubros = Object.values(por).sort((a, b) => (a.codigo ? ordRubro(a.codigo) : 999) - (b.codigo ? ordRubro(b.codigo) : 999));
   const fechas = [...(cj.adelantos || []).map(a => a.fecha), ...orden.map(c => c.fecha)].filter(f => /^\d{4}-\d\d-\d\d$/.test(f || '')).sort();
   const cantCon = orden.filter(c => c.tipo && c.tipo !== 'ninguno').length;
   return {...s, comprobantes: orden, rubros, desde: fechas[0] || '', hasta: fechas[fechas.length - 1] || '',
@@ -3996,7 +4061,7 @@ const FUNCIONES_PLANAS = (() => {
     if(k && !vistos.has(k)){ vistos.add(k); xs.push(t); } };
   /* primero las del catálogo: están escritas como se leen ("Director de
      Fotografía"), no en la forma de convenio ("DIRECTOR/A DE FOTOGRAFIA") */
-  Object.values(FUNCIONES).forEach(a=>a.forEach(sumar));
+  funcionesEnOrden().forEach(([, a])=>a.forEach(sumar));
   /* y cómo se escriben en los callsheets: "Asistente de Dirección",
      "Continuista", "Op. HD", que son la misma función con otro nombre */
   ALIAS_SICA.forEach(a=>sumar(a[0]));
@@ -4494,11 +4559,11 @@ const DETECTA = [
   {cat:'camara', k:'steadicam', l:'Steadicam', re:/\bstead[iy] ?cam\b/, media:/\b(sigue (a|al|a la) .{0,20}(caminando|corriendo)|camara (que )?la sigue|camara (que )?lo sigue)\b/,
     lineas:[['04','Operador de Steadicam','esc'],['11','Steadicam (equipo)','esc']], claves:['steadicam']},
   {cat:'camara', k:'grua', l:'Grúa / telescópica', re:/\b(grua|telescopica|techno ?crane|technocrane|jib|pluma de camara)\b/,
-    lineas:[['11','Technocrane / grúa telescópica','esc'],['05','Operador de grúa','esc']], claves:['grua','technocrane']},
+    lineas:[['11','Technocrane / grúa telescópica','esc'],['18','Operador de grúa','esc']], claves:['grua','technocrane']},
   {cat:'camara', k:'cablecam', l:'Cable cam', re:/\b(cable ?cam|spider ?cam)\b/, lineas:[['11','Cablecam (equipo y operador)','esc']], claves:['cablecam']},
   {cat:'camara', k:'carrig', l:'Car rig / brazo ruso', re:/\b(car ?rig|brazo ruso|russian arm|camera car|auto camara|montura de auto|car mount|pegad[oa] al auto|travelling vehicular)\b/,
     media:/\b(desde otro auto|en movimiento por la ruta|auto en movimiento|maneja por)\b/,
-    lineas:[['11','Camera car / brazo ruso','esc'],['05','Rigger','esc']], claves:['camera car','brazo ruso','car rig']},
+    lineas:[['11','Camera car / brazo ruso','esc'],['18','Rigger','esc']], claves:['camera car','brazo ruso','car rig']},
   {cat:'camara', k:'altavel', l:'Alta velocidad (Phantom)', re:/\b(phantom|alta velocidad|\d{3,4} ?fps|super ?slow|ultra ?slow)\b/, media:/\b(camara lenta|slow ?motion|slow ?mo|en slow|ralenti|camara super lenta)\b/,
     lineas:[['11','Cámara de alta velocidad (Phantom)','esc'],['04','Técnico de Phantom','esc']], lineasMedia:[['11','Cámara de alta velocidad (Phantom)','esc']], claves:['phantom','alta velocidad']},
   {cat:'camara', k:'submarina', l:'Cámara submarina', re:/\b(submarin[oa]s?|subacuatic[oa]s?|bajo el agua|debajo del agua|underwater|carcasa acuatica)\b/,
@@ -4510,7 +4575,7 @@ const DETECTA = [
   {cat:'camara', k:'gimbal', l:'Gimbal', re:/\b(gimbal|ronin|estabilizador)\b/, lineas:[['04','Operador de Ronin / gimbal','esc']], claves:['ronin','gimbal']},
   {cat:'camara', k:'mano', l:'Cámara en mano', re:/\b(camara en mano|handheld|hand ?held|en mano y nervios[oa])\b/, lineas:[], nota:'No suma equipo: lo hace el operador'},
   {cat:'camara', k:'dolly', l:'Travelling / dolly', re:/\b(travelling|traveling|dolly|rieles|riel)\b/,
-    lineas:[['11','Dolly y rieles','esc'],['05','Operador de dolly','esc']], claves:['dolly']},
+    lineas:[['11','Dolly y rieles','esc'],['18','Operador de dolly','esc']], claves:['dolly']},
   {cat:'camara', k:'vr', l:'360 / VR', re:/\b(360|realidad virtual|camara 360)\b/, media:/\bvr\b/, lineas:[['11','Cámara 360 / VR','esc']], claves:['360']},
   /* --- efectos especiales en set --- */
   {cat:'sfx', k:'lluvia', l:'Lluvia', re:/\b(lluvia|llueve|lloviendo|llovizna|aguacero|tormenta|empieza a llover)\b/, lineas:[['06','Efectos especiales — lluvia (torre y rociadores)',1]], claves:['lluvia']},
@@ -5520,7 +5585,7 @@ function gentePublica(py){
   return {versionRodaje: v.id, piezas: py.piezas || [], versiones: [{id: v.id, nombre: v.nombre, nivel: 'produccion', estado: v.estado,
     fecha: v.fecha, monedaBase: v.monedaBase, tc: 0, esqueleto: true, capas: {}, rubros: v.rubros.map(r => ({id: r.id, codigo: r.codigo, nombre: r.nombre,
       lineas: r.lineas.map(l => ({id: l.id, origenId: l.origenId || null, concepto: l.concepto, personaje: l.personaje || '', refId: l.refId || null,
-        refTipo: l.refTipo || null, cantidad: l.cantidad, dias: l.dias, unidad: l.unidad, etapa: l.etapa || null, piezaId: l.piezaId || null,
+        refTipo: l.refTipo || null, cantidad: l.cantidad, dias: l.dias, unidad: l.unidad, etapa: l.etapa || null, preDe: l.preDe || null, piezaId: l.piezaId || null,
         area: l.area || '', valorUnit: 0, moneda: l.moneda || 'ARS'}))}))}]};
 }
 const conLineas = d => ((d && d.versiones) || []).some(v => (v.rubros || []).some(r => (r.lineas || []).some(l => String(l.concepto || '').trim())));
@@ -5550,18 +5615,20 @@ const PARTES_PY = {
       py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; py.plantilla = d.plantilla || null;
       if(d.cotiz){ py.baseId = d.cotiz.baseId || null; py.elegidaId = d.cotiz.elegidaId || null; py.aprobado = d.cotiz.aprobado || null;
         py.noSalio = d.cotiz.noSalio || null; py.etapaHist = d.cotiz.etapaHist || []; py.productoCliente = d.cotiz.productoCliente || null; }
-      ponerFees(py, {...(py._fees || {}), ...Object.fromEntries(Object.entries(antes).filter(([, f]) => f != null))}); },
+      ponerFees(py, {...(py._fees || {}), ...Object.fromEntries(Object.entries(antes).filter(([, f]) => f != null))});
+      /* lo pudo guardar una compu que todavía no separaba Grip y Maquillaje */
+      partirRubros(py); },
     algo: conLineas},
   presupuesto_real: {
     lee: py => ({versiones: (py.versiones || []).filter(ES_REAL), adicionales: py.adicionales || [],
       fees: Object.fromEntries((py.versiones || []).filter(v => !ES_REAL(v)).map(v => [v.id, v.capas ? v.capas.fee ?? null : null]))}),
     pone: (py, d) => { py.versiones = [...(d.versiones || []), ...(py.versiones || []).filter(v => !ES_REAL(v))];
-      py.adicionales = d.adicionales || []; py._fees = d.fees || {}; ponerFees(py, py._fees); },
+      py.adicionales = d.adicionales || []; py._fees = d.fees || {}; ponerFees(py, py._fees); partirRubros(py); },
     algo: d => conLineas(d) || Object.keys(d.fees || {}).length > 0 || (d.adicionales || []).length > 0},
   gente: {
     lee: gentePublica,
     /* quien ve la plata tiene el presupuesto de verdad: la gente es para los demás */
-    pone: (py, d) => { if(vePlata()) return; py.versiones = d.versiones || []; py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; },
+    pone: (py, d) => { if(vePlata()) return; py.versiones = d.versiones || []; py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; partirRubros(py); },
     algo: conLineas},
   plan: {
     lee: py => ({desglose: desgloseSinPartes(py.desglose), plan: py.plan || null}),
@@ -6005,14 +6072,85 @@ function migrarIdsAUuid(){
   return mapa.size;
 }
 
+/* Grip y Maquillaje y Peinado eran parte de Eléctrica (05) y de Vestuario
+   (07). Desde octubre de 2026 son rubros aparte, con código nuevo (18 y 19)
+   para no renumerar nada de lo guardado. Esto pasa las líneas de grip y de
+   maquillaje de los presupuestos de antes a su rubro: las mismas líneas (el
+   mismo id, la misma persona, el mismo monto), así que el total no cambia.
+   El rubro nuevo copia del viejo si va con fee y con IVA, por lo mismo.
+   Corre al abrir y cada vez que llega un presupuesto de la base (lo pudo
+   guardar una compu que todavía no lo hacía). Una versión se parte UNA vez
+   (`rubrosPartidos`): después, si alguien pone un grip en Eléctrica, es a
+   propósito. Los ids de los rubros nuevos salen de la versión, así dos
+   compus que la parten a la vez arman el mismo rubro y no dos.             */
+const PARTIR_RUBROS = [
+  {de:'05', a:'18', viejo:'Eléctrica y Grip', area:'grip', re:/\bgrips?\b|maquinist|\brigg(er|ing)\b|\bdolly\b|\bgrua\b/},
+  {de:'07', a:'19', viejo:'Vestuario, Maquillaje y Peinado', area:'maquillaje', re:/maquill|peinad|make ?-?up|\bhair\b|caracteriz|protesis|manicur|barber/},
+];
+function partirRubrosVersion(v){
+  if(!v || !Array.isArray(v.rubros)) return 0;
+  let movidas = 0;
+  /* un rubro agregado a mano que agarró el 18 o el 19 (con 17 rubros, «+
+     Agregar rubro» daba 18) se corre a un código libre */
+  PARTIR_RUBROS.forEach(P => {
+    const ajeno = v.rubros.find(r => r.codigo === P.a && norm(r.nombre) !== norm(RUBRO(P.a).nombre) && r.id !== `${v.id}-rb${P.a}`);
+    if(ajeno) ajeno.codigo = codigoLibre(v);
+  });
+  PARTIR_RUBROS.forEach(P => {
+    const de = v.rubros.find(r => r.codigo === P.de);
+    if(de && de.nombre === P.viejo) de.nombre = RUBRO(P.de).nombre;
+    let a = v.rubros.find(r => r.codigo === P.a);
+    if(!a){
+      a = {id: `${v.id}-rb${P.a}`, ...RUBRO(P.a), lineas: [], abierto: false};
+      /* con fee y con IVA como estaban esas líneas */
+      if(de){ a.aplicaFee = de.aplicaFee; if(de.aplicaIva === false) a.aplicaIva = false; }
+      v.rubros.push(a);
+    }
+    if(!de || v.rubrosPartidos) return;
+    const van = de.lineas.filter(l => P.re.test(norm(l.concepto)));
+    if(!van.length) return;
+    de.lineas = de.lineas.filter(l => !van.includes(l));
+    van.forEach(l => { if(l.area === RUBRO(P.de).area) l.area = P.area; });
+    a.lineas.push(...van);
+    if(de.abierto) a.abierto = true;
+    movidas += van.length;
+  });
+  v.rubrosPartidos = true;
+  /* en el orden en que se leen; los agregados a mano, al final */
+  v.rubros.sort((x, y) => ordRubro(x.codigo) - ordRubro(y.codigo));
+  return movidas;
+}
+/* el próximo código que no usa nadie, para un rubro agregado a mano */
+function codigoLibre(v){
+  const usados = new Set([...RUBROS_BASE.map(r => r.codigo), ...(v.rubros || []).map(r => r.codigo)]);
+  let k = 20; while(usados.has(String(k))) k++;
+  return String(k);
+}
+function partirRubros(py){
+  if(!py) return 0;
+  let movidas = 0;
+  (py.versiones || []).forEach(v => { movidas += partirRubrosVersion(v); });
+  /* un gasto atado a una línea que se mudó, se muda con ella: si no, lo
+     gastado en grip seguiría sumando contra Eléctrica */
+  const dondeEsta = {};
+  (py.versiones || []).forEach(v => v.rubros.forEach(r => r.lineas.forEach(l => { dondeEsta[l.id] = r.codigo; })));
+  [...(py.comprobantes || []), ...(py.ocs || [])].forEach(c => {
+    const P = PARTIR_RUBROS.find(x => x.de === c.rubro);
+    if(P && c.lineaId && dondeEsta[c.lineaId] === P.a) c.rubro = P.a;
+  });
+  return movidas;
+}
+
 function migrar(){
   if(!DB.schemaVersion) DB.schemaVersion = 1;
+  (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(partirRubros));
   /* rubros agregados despues: se suman a los presupuestos que ya existian */
   (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(py=>
     (py.versiones||[]).forEach(v=>{
       RUBROS_BASE.forEach(rb=>{ if(!v.rubros.some(x=>x.codigo===rb.codigo))
         v.rubros.push({id:uid('rb'), ...rb, lineas:[], abierto:false}); });
-      v.rubros.sort((a,b)=>String(a.codigo).localeCompare(String(b.codigo)));
+      /* en el orden de la lista, no por código: Grip (18) va después de Eléctrica */
+      v.rubros.sort((a,b)=>ordRubro(a.codigo)-ordRubro(b.codigo));
     })));
   /* Piezas: los proyectos de antes no las tenían. No se les inventa ninguna
      —un proyecto sin piezas es un proyecto de una sola pieza y funciona
@@ -6167,16 +6305,16 @@ function sembrar(){
     ['rodrigo', 'Rodrigo Medina', 'Location Manager', '03', '11 5555-3004', 30555111, '1983-12-06', 0],
     ['abril', 'Abril Torres', 'Aprendiz', '03', '11 5555-3005', 43222111, '2002-03-23', 1],
     ['martinB', 'Martín Bevilacqua', 'Director de Fotografía', '04', '11 5555-2002', 28456789, '1980-11-15', 0],
-    ['nico', 'Nico Ferraro', 'Foquista (1° AC)', '04', '11 5555-2004', 35666777, '1991-01-08', 0, {alias:''}],   /* le falta el alias para el pago */
-    ['lucas', 'Lucas Prieto', '2° Asistente de Cámara', '04', '11 5555-3007', 39888222, '1996-08-30', 0],
-    ['bianca', 'Bianca Luna', 'DIT', '04', '11 5555-3008', 37111999, '1993-04-04', 1],
-    ['gaston', 'Gastón Vera', 'Video Assist', '04', '11 5555-3009', 36444111, '1992-07-27', 0],
+    ['nico', 'Nico Ferraro', 'Foquista (1° asistente de cámara)', '04', '11 5555-2004', 35666777, '1991-01-08', 0, {alias:''}],   /* le falta el alias para el pago */
+    ['lucas', 'Lucas Prieto', 'Ayudante de cámara', '04', '11 5555-3007', 39888222, '1996-08-30', 0],
+    ['bianca', 'Bianca Luna', 'Operador HD (DIT)', '04', '11 5555-3008', 37111999, '1993-04-04', 1],
+    ['gaston', 'Gastón Vera', 'Video assist (VTR)', '04', '11 5555-3009', 36444111, '1992-07-27', 0],
     ['martinG', 'Martín Gómez', 'Gaffer', '05', '11 5555-2003', 30111222, '1983-07-19', 0],
-    ['hernan', 'Hernán Díaz', 'Jefe eléctrico', '05', '11 5555-3010', 29777111, '1982-10-10', 0],
+    ['hernan', 'Hernán Díaz', 'Jefe de eléctricos', '05', '11 5555-3010', 29777111, '1982-10-10', 0],
     ['ezequiel', 'Ezequiel Mora', 'Eléctrico', '05', '11 5555-3011', 38999111, '1995-01-29', 0],
-    ['raul', 'Raúl Benítez', 'Generadorista', '05', '11 5555-3012', 26111333, '1977-06-14', 0],
-    ['pablo', 'Pablo Acosta', 'Key Grip', '05', '11 5555-3013', 32111777, '1986-11-03', 0],
-    ['ivan', 'Iván Correa', 'Grip', '05', '11 5555-3014', 41222333, '', 0, {cuit:'', alias:''}],   /* le faltan CUIL, nacimiento y alias */
+    ['raul', 'Raúl Benítez', 'Operador de generador', '05', '11 5555-3012', 26111333, '1977-06-14', 0],
+    ['pablo', 'Pablo Acosta', 'Key Grip', '18', '11 5555-3013', 32111777, '1986-11-03', 0],
+    ['ivan', 'Iván Correa', 'Grip', '18', '11 5555-3014', 41222333, '', 0, {cuit:'', alias:''}],   /* le faltan CUIL, nacimiento y alias */
     ['ines', 'Inés Calvo', 'Director de Arte', '06', '11 5555-2006', 29333444, '1982-12-01', 1],
     ['federico', 'Federico Sanz', 'Ambientador / 1° Asistente de Arte', '06', '11 5555-3015', 33999444, '1988-03-08', 0],
     ['carla', 'Carla Méndez', 'Asistente de Arte', '06', '11 5555-1007', 37888999, '1993-03-27', 1],
@@ -6184,8 +6322,8 @@ function sembrar(){
     ['ramon', 'Ramón Suárez', 'Utilero', '06', '11 5555-3017', 25444666, '1975-05-05', 0],
     ['sofia', 'Sofía Roldán', 'Vestuarista', '07', '11 5555-1001', 34111000, '', 1, {alias:''}],   /* le faltan nacimiento y alias */
     ['julieta', 'Julieta Castro', 'Asistente de Vestuario', '07', '11 5555-3018', 40555777, '1997-09-12', 1],
-    ['ana', 'Ana Quiroga', 'Maquillador/a', '07', '11 5555-2007', 32999000, '1987-05-14', 1],
-    ['daniela', 'Daniela Ruiz', 'Peinador/a', '07', '11 5555-3019', 35222888, '1990-02-25', 1],
+    ['ana', 'Ana Quiroga', 'Maquillador/a', '19', '11 5555-2007', 32999000, '1987-05-14', 1],
+    ['daniela', 'Daniela Ruiz', 'Peinador/a', '19', '11 5555-3019', 35222888, '1990-02-25', 1],
     ['vale', 'Valentina Sur', 'Actriz', '09', '11 5555-2009', 36222111, '1995-08-09', 1],
     ['mateo', 'Mateo Lanza', 'Actor', '09', '11 5555-2010', 31444333, '1986-10-22', 0, {cuit:'', alias:''}],   /* le faltan CUIT y alias */
   ];
@@ -6242,10 +6380,10 @@ function sembrar(){
   /* cada puesto del equipo, con su ficha del catálogo */
   const PUESTOS = [['02', 'Ayudante de Dirección (1° AD)', 'paula'], ['02', '2° Ayudante de Dirección', 'lara'], ['02', 'Script / Continuista', 'inesO'],
     ['03', 'Jefe de Producción', 'lucia'], ['03', 'Asistente de Producción', 'diego'], ['03', '2° Asistente de Producción', 'facundo'], ['03', 'Location Manager', 'rodrigo'], ['03', 'Aprendiz', 'abril'],
-    ['04', 'Director de Fotografía', 'martinB'], ['04', 'Foquista (1° AC)', 'nico'], ['04', '2° Asistente de Cámara', 'lucas'], ['04', 'DIT', 'bianca'], ['04', 'Video Assist', 'gaston'],
-    ['05', 'Gaffer', 'martinG'], ['05', 'Jefe eléctrico', 'hernan'], ['05', 'Eléctrico', 'ezequiel'], ['05', 'Generadorista', 'raul'], ['05', 'Key Grip', 'pablo'], ['05', 'Grip', 'ivan'],
+    ['04', 'Director de Fotografía', 'martinB'], ['04', 'Foquista (1° asistente de cámara)', 'nico'], ['04', 'Ayudante de cámara', 'lucas'], ['04', 'Operador HD (DIT)', 'bianca'], ['04', 'Video assist (VTR)', 'gaston'],
+    ['05', 'Gaffer', 'martinG'], ['05', 'Jefe de eléctricos', 'hernan'], ['05', 'Eléctrico', 'ezequiel'], ['05', 'Operador de generador', 'raul'], ['18', 'Key Grip', 'pablo'], ['18', 'Grip', 'ivan'],
     ['06', 'Director de Arte', 'ines'], ['06', 'Ambientador / 1° Asistente de Arte', 'federico'], ['06', 'Asistente de Arte', 'carla'], ['06', 'Ayudante de Arte', 'micaela'], ['06', 'Utilero', 'ramon'],
-    ['07', 'Vestuarista', 'sofia'], ['07', 'Asistente de Vestuario', 'julieta'], ['07', 'Maquillador/a', 'ana'], ['07', 'Peinador/a', 'daniela']];
+    ['07', 'Vestuarista', 'sofia'], ['07', 'Asistente de Vestuario', 'julieta'], ['19', 'Maquillador/a', 'ana'], ['19', 'Peinador/a', 'daniela']];
   /* la primera línea de cada puesto (y su preproducción) va a esa ficha */
   PUESTOS.forEach(([c, concepto, k]) => R_(c).lineas.filter(l => l.concepto === concepto).forEach((l, i, ls) => {
     if(l.etapa || ls.filter(x => !x.etapa).indexOf(l) === 0) Object.assign(l, {refId: C[k].id, refTipo: 'persona'}); }));
@@ -6262,16 +6400,16 @@ function sembrar(){
   /* la caja chica de producción: de ahí salen los fondos (💵 Dar fondo) */
   pon('03', 'Caja chica de producción', {valorUnit:700000, circuito:'efectivo', comprobante:'ninguno'});
   /* 04 cámara */
-  /* 05 eléctrica y grip: el grip cobra como ayudante (el convenio no tiene grip) */
-  pon('05', 'Grip', {valorUnit:239251});
+  /* 18 grip (en pantalla, el 06): el grip cobra como ayudante (el convenio no tiene grip) */
+  pon('18', 'Grip', {valorUnit:239251});
   /* 06 arte: Carla es asistente de arte, como en su usuario; la directora es Inés */
   pon('06', 'Alquiler de utilería', {valorUnit:900000, refId:C.baul.id, refTipo:'persona'});
   pon('06', 'Compras de arte', {valorUnit:650000, circuito:'efectivo'});
   pon('06', 'Alquiler de muebles', {valorUnit:550000});
-  /* 07 vestuario y maquillaje */
+  /* 07 vestuario y 19 maquillaje */
   pon('07', 'Alquiler de vestuario', {valorUnit:420000});
   pon('07', 'Compra de vestuario', {valorUnit:380000, circuito:'efectivo'});
-  pon('07', 'Insumos de maquillaje', {valorUnit:140000, circuito:'efectivo'});
+  pon('19', 'Insumos de maquillaje', {valorUnit:140000, circuito:'efectivo'});
   /* 09 elenco: dos principales, el nene (menor, con permiso) y los extras */
   sacar('09', 'Actor / Actriz Principal'); sacar('09', 'Actor / Actriz Secundario'); sacar('09', 'Extra');
   R_('09').lineas.forEach(l => { if(l.concepto === 'Fee de agencia de casting') l.concepto = 'Agencia de casting (comisión)'; });
@@ -6386,7 +6524,7 @@ function sembrar(){
   sinFicha('09', 'Chaperona', 'Laura Ortiz (la mamá de Benjamín)', '11 5555-3021');
   sinFicha('06', 'Compras de arte', 'Carla Méndez (compras)', '11 5555-1007');
   sinFicha('07', 'Compra de vestuario', 'Sofía Roldán (compras)', '11 5555-1001');
-  sinFicha('07', 'Insumos de maquillaje', 'Ana Quiroga (compras)', '11 5555-2007');
+  sinFicha('19', 'Insumos de maquillaje', 'Ana Quiroga (compras)', '11 5555-2007');
   sinFicha('03', 'Caja chica de producción', 'Diego Sosa (la maneja)', '11 5555-1006');
   /* la gente de la marca y de la agencia */
   py.contactos.extra.push({id: uid('cx'), grupo:'Producción y cliente', rol:'Marketing de Brisa', nombre:'Gabriela Núñez', tel:'11 5555-4001', email:'gabriela@brisa.ejemplo'},
@@ -6460,7 +6598,7 @@ function sembrar(){
     const {gente} = gentePorJornada(py, vRod, j.numero);
     gente.forEach(g => { const c = j.citaciones[g.clave] ||= {};
       if(g.grupo === 'Equipo de Producción') Object.assign(c, {citacion:'05:45', auto:false});
-      else if(g.grupo === 'Eléctrica y Grip') Object.assign(c, {citacion:'06:00', auto:false}); });
+      else if(['Eléctrica (Luces)', 'Grip'].includes(g.grupo)) Object.assign(c, {citacion:'06:00', auto:false}); });
   });
 
   /* --- la J1 ya pasó: el parte del día, con horas extra ---------------- */
@@ -7710,7 +7848,7 @@ function editTarea(id, lineaId, paraId){
   const para = t ? t.asignadoA : (paraId || (us.find(u => u.rol === 'asistprod') || {}).id || '');
   /* la línea del presupuesto (opcional): las de la versión de rodaje */
   const vr = vePlata() ? versionRodaje(py) : null;
-  const opLineas = vr ? vr.rubros.filter(r => r.lineas.length).map(r => `<optgroup label="${esc(r.codigo + ' · ' + r.nombre)}">${r.lineas.map(l =>
+  const opLineas = vr ? vr.rubros.filter(r => r.lineas.length).map(r => `<optgroup label="${esc(rubroTxt(r.codigo, r.nombre))}">${r.lineas.map(l =>
     `<option value="${l.id}" ${L && L.l.id === l.id ? 'selected' : ''}>${esc(l.concepto || '—')}</option>`).join('')}</optgroup>`).join('') : '';
   const lineaFuera = L && vr && !vr.rubros.some(r => r.lineas.some(l => l.id === L.l.id));
   const titulo = t ? t.titulo : (L ? L.l.concepto : '');
@@ -8439,7 +8577,7 @@ function rubroHTML(r,v,filtro,piezaSel,RL){
   return `<div class="rubro" data-r="${esc(r.codigo)}">
     <div class="rhead" onclick="toggleRubro('${r.id}')">
       <span class="caret">${r.abierto?'▾':'▸'}</span>
-      <span class="rcode">${esc(r.codigo)}</span>
+      <span class="rcode">${esc(numRubro(r.codigo))}</span>
       <span class="rname">${esc(r.nombre)}</span>
       ${!r.aplicaFee && veMargen()?'<span class="chip c-otr" title="No se le aplica fee de producción">s/fee</span>':''}
       ${r.aplicaIva===false && veMargen()?'<span class="chip c-otr" title="Este rubro no paga IVA">s/IVA</span>':''}
@@ -8456,7 +8594,7 @@ function rubroHTML(r,v,filtro,piezaSel,RL){
         <span>Concepto</span><span>Unidad</span><span class="num">Cant.</span><span class="num">Días</span>
         <span class="num">Valor unit.</span><span>Mon.</span><span class="num">Estimado</span><span class="num">Actual</span><span></span>
       </div>
-      ${ls.map(l=>lineaHTML(l,r,v,py,RL)).join('') ||
+      ${lineasPorEtapaHTML(ls,r,v,py,RL) ||
         `<div class="empty" style="padding:16px">${filtro?'Nada de esta pieza ni compartido en este rubro':'Sin líneas todavía'}</div>`}
       <div class="addln noprint">
         <button class="btn sm pri" onclick="addLinea('${r.id}')">+ Línea${piezaSel?' en '+esc(nombrePieza(py,piezaSel)):''}</button>
@@ -8471,6 +8609,104 @@ function rubroHTML(r,v,filtro,piezaSel,RL){
       </div>
     </div>`:''}
   </div>`;
+}
+
+/* En los rubros del equipo, la preproducción y el rodaje por separado, cada
+   uno con su subtotal, como en las planillas de la casa (la columna de
+   «Jornadas de 8 hs» iba aparte). Sólo si el rubro tiene algo que no es de
+   rodaje: si no, se ve como siempre. Es la vista; las líneas no cambian.  */
+const ETAPA_TITULO = {prepro: 'Preproducción', rodaje: 'Rodaje', post: 'Postproducción'};
+function lineasPorEtapaHTML(ls, r, v, py, RL){
+  if(!RUBROS_CREW.includes(r.codigo) || !ls.some(esJornada8)) return ls.map(l => lineaHTML(l, r, v, py, RL)).join('');
+  /* la preproducción en el orden del equipo de rodaje: la del DF arriba de la del foquista */
+  const pos = new Map(r.lineas.map((l, i) => [l.id, i]));
+  r.lineas.forEach((l, i) => { if(llevaJornadas8(l, r)){ const p = lineaPrepro(r, l); if(p) pos.set(p.id, i); } });
+  return ETAPAS.map(e => {
+    const xs = ls.filter(l => (l.etapa || 'rodaje') === e.k); if(!xs.length) return '';
+    if(e.k === 'prepro') xs.sort((a, b) => pos.get(a.id) - pos.get(b.id));
+    const sub = xs.reduce((s, l) => s + totalLinea(l, v), 0);
+    return `<div class="etgrupo et-${e.k}"><span>${ETAPA_TITULO[e.k] || e.l}${esJornada8(xs[0]) ? ' <i>jornadas de 8 h</i>' : ''}</span>
+      <b title="Subtotal de ${esc((ETAPA_TITULO[e.k] || e.l).toLowerCase())}">${fmt(sub, v.monedaBase)}</b></div>`
+      + xs.map(l => lineaHTML(l, r, v, py, RL)).join('');
+  }).join('');
+}
+
+/* «Jornadas de 8 h»: los días que el técnico trabaja ANTES del rodaje
+   (scouting, chequeos, armados) se pagan por jornada de 8 h. En la línea de
+   rodaje se escribe cuántas y CLAP arma (o pone al día) la línea de
+   preproducción de la misma persona: mismo concepto, misma cantidad, la
+   misma ficha, valorizada con el convenio a 8 h. Queda atada con `preDe`
+   (la raíz de la línea de rodaje, que sobrevive a duplicar la versión).
+   Las que ya estaban cargadas a mano (o por la plantilla) se reconocen por
+   el concepto y se atan, no se duplican.                                   */
+const ROLES_J8 = ['Director de Fotografía','Directora de Fotografía','DF','Gaffer',
+  'Jefe de eléctricos','Jefa de eléctricos','Jefe eléctrico','Jefa eléctrica','Eléctrico','Eléctrica',
+  'Operador de generador','Operadora de generador','Generadorista','Key Grip','Grip',
+  'Foquista (1° asistente de cámara)','Foquista (1° AC)','Foquista','1° Asistente de Cámara','Asistente de Cámara',
+  'Ayudante de cámara','2° Asistente de Cámara','Video assist (VTR)','Video Assist','Video Asistente','VTR',
+  'Operador HD (DIT)','Operadora HD (DIT)','Operador HD','DIT',
+  'Ayudante de operador HD (Data manager)','Ayudante de Operador HD','Data manager',
+  'Utilero','Utilera','Ayudante de utilero','Ayudante de utilera','Ayudante de Utilería'];
+let _rolesJ8 = null;
+function llevaJornadas8(l, r){
+  if(!l || !r || !RUBROS_CREW.includes(r.codigo) || esJornada8(l) || esHE(l)) return false;
+  if((l.unidad || 'jornada') !== 'jornada') return false;
+  _rolesJ8 ||= ROLES_J8.map(normCargo).sort((a, b) => b.length - a.length);
+  const k = normCargo(l.concepto || '');
+  return !!k && _rolesJ8.some(x => k === x || k.startsWith(x + ' '));
+}
+/* la línea de preproducción de esa línea de rodaje, si tiene */
+function lineaPrepro(r, l){
+  const raiz = raizLinea(l);
+  const pre = r.lineas.filter(x => x.etapa === 'prepro' && !esHE(x));
+  const atada = pre.find(x => x.preDe === raiz); if(atada) return atada;
+  const misma = x => norm(nomFuncion(x.concepto)) === norm(nomFuncion(l.concepto));
+  const deRodaje = new Set(r.lineas.filter(x => !esJornada8(x)).map(raizLinea));
+  /* las sueltas: sin atar, o atadas a una línea que ya no está */
+  const sueltas = pre.filter(x => misma(x) && (!x.preDe || !deRodaje.has(x.preDe)));
+  if(!sueltas.length) return null;
+  if(l.refId){ const m = sueltas.find(x => x.refId === l.refId); if(m) return m; }
+  /* sin ficha que las una, la suelta es de la primera línea de rodaje de esa
+     función que no tiene la suya (las otras son otra persona) */
+  const libres = sueltas.filter(x => !x.refId);
+  const sinSuya = r.lineas.filter(x => !esJornada8(x) && !esHE(x) && misma(x) && !pre.some(p => p.preDe === raizLinea(x))
+    && !(x.refId && sueltas.some(p => p.refId === x.refId)));
+  return libres.length && sinSuya[0] === l ? libres[0] : null;
+}
+function chipJornadas8(l, r){
+  if(!vePlata() || !llevaJornadas8(l, r)) return '';
+  const pre = lineaPrepro(r, l), N = pre ? n(pre.dias) : 0;
+  return `<label class="chip j8${N ? ' on' : ''}" title="Jornadas de 8 h antes del rodaje: scouting, chequeos, armados. Arma la línea de preproducción.">Jornadas de 8 h
+    <input type="number" min="0" step="1" inputmode="numeric" value="${N || ''}" placeholder="0" aria-label="Jornadas de 8 h de ${esc(l.concepto)} (scouting, chequeos, armados)"
+      onchange="setJornadas8('${r.id}','${l.id}',this.value)"></label>`;
+}
+function setJornadas8(rid, lid, val){
+  if(!vePlata()) return;
+  const v = getV(), py = getPy(), r = v && v.rubros.find(x => x.id === rid), l = r && r.lineas.find(x => x.id === lid);
+  if(!l) return;
+  const N = Math.max(0, n(val));
+  let pre = lineaPrepro(r, l);
+  if(!(N > 0)){
+    if(!pre){ R(); return; }
+    const i = r.lineas.indexOf(pre); r.lineas.splice(i, 1); R();
+    toast(`Sin jornadas de 8 h: ${l.concepto}`, {accion: 'Deshacer', fn: () => { r.lineas.splice(Math.min(i, r.lineas.length), 0, pre); R(); }});
+    return;
+  }
+  if(pre){
+    Object.assign(pre, {dias: N, cantidad: l.cantidad, preDe: raizLinea(l)});
+    if(l.refId && !pre.refId) Object.assign(pre, {refId: l.refId, refTipo: l.refTipo || 'persona'});
+  } else {
+    pre = nuevaLinea({concepto: l.concepto, cantidad: l.cantidad, dias: N, unidad: 'jornada', etapa: 'prepro',
+      refId: l.refId || null, refTipo: l.refTipo || null, area: l.area || '', piezaId: l.piezaId || null,
+      circuito: l.circuito || '', comprobante: l.comprobante || '', contrato: l.contrato || null,
+      sicaRef: l.sicaRef || null, preDe: raizLinea(l)});
+    r.lineas.splice(r.lineas.indexOf(l), 0, pre);
+  }
+  /* el convenio a 8 h; lo que alguien escribió a mano no se pisa */
+  const conConvenio = pre.valorOrigen === 'sica' || !(n(pre.valorUnit) > 0) ? autocompletarSICA(pre, py, true) : false;
+  R();
+  toast(`${l.concepto}: ${N} ${plural(N, 'jornada')} de 8 h en preproducción` +
+    (conConvenio ? ` · ${fmt(pre.valorUnit)} c/u` : n(pre.valorUnit) > 0 ? '' : ' · no tiene cargo en el convenio: poné el valor'));
 }
 
 /* El chip del convenio en la línea. Tres estados que importan:
@@ -8557,6 +8793,7 @@ function lineaHTML(l,r,v,py,RL){
         </select>
         ${chipSICA(l, r, py)}
         ${chipsContrato(l, r, py)}
+        ${chipJornadas8(l, r)}
         ${r.codigo === '09' ? `<input type="text" class="chipsel chip c-otr" style="width:120px" value="${esc(l.personaje || '')}" placeholder="personaje"
           title="El personaje del guion o del plan, si el concepto dice otra cosa (Protagonista, Actriz…): así se engancha con el plan y el callsheet"
           onchange="upLinea(${E},'personaje',this.value)">` : ''}
@@ -8589,7 +8826,7 @@ function tablaCliente(v,R){
     <div class="scrollx"><table class="tbl">
       <thead><tr><th style="width:44px">Cód.</th><th>Rubro</th><th style="text-align:right">Importe</th><th style="text-align:right;width:52px">%</th></tr></thead>
       <tbody>${R.porRubro.filter(r=>r.total>0).map(r=>`<tr>
-        <td><span class="rcode">${esc(r.codigo)}</span></td>
+        <td><span class="rcode">${esc(numRubro(r.codigo))}</span></td>
         <td>${esc(r.nombre)}</td>
         <td class="num" style="text-align:right;font-weight:600">${fmt(r.total,v.monedaBase)}</td>
         <td class="num muted" style="text-align:right">${pct(r.total,R.subtotal)}%</td></tr>`).join('')
@@ -8959,7 +9196,7 @@ function catalogoGenteHTML(){
       <select onchange="setFCat('rubro',this.value)">
         <option value="">Todos los rubros</option>
         ${RUBROS_BASE.filter(r=>cuentaRubro[r.codigo]).map(r=>
-          `<option value="${r.codigo}" ${F.rubro===r.codigo?'selected':''}>${esc(r.codigo+' · '+r.nombre)} (${cuentaRubro[r.codigo]})</option>`).join('')}
+          `<option value="${r.codigo}" ${F.rubro===r.codigo?'selected':''}>${esc(rubroTxt(r.codigo, r.nombre))} (${cuentaRubro[r.codigo]})</option>`).join('')}
       </select>
       <select onchange="setFCat('tipo',this.value)">
         <option value="">Personas y proveedores</option>
@@ -8990,7 +9227,7 @@ function catalogoGenteHTML(){
           ${(p.tipo||'persona')!=='persona'?`<span class="chip c-otr">${esc(p.tipo)}</span>`:''}
           <span class="muted" style="display:block;font-size:10.5px">${esc(p.condicion||'')}</span></td>
         <td>${esc(p.funcion)}${p.notas?`<span class="muted" style="display:block;font-size:10.5px;line-height:1.35;max-width:320px">${esc(p.notas.length>140?p.notas.slice(0,140)+'…':p.notas)}</span>`:''}</td>
-        <td><span class="rcode">${esc(p.rubro)}</span></td>
+        <td><span class="rcode">${esc(numRubro(p.rubro))}</span></td>
         <td class="muted" style="font-size:11px">${esc(p.tel||'')}${p.tel&&p.email?'<br>':''}${esc(p.email||'')}
           ${!p.tel&&!p.email?'<span style="color:var(--warn)">sin datos</span>':''}</td>
         <td><span class="disp ${disp.estado}">${disp.estado==='libre'?'Libre':'Ocupado'}</span>
@@ -9187,13 +9424,13 @@ function paraCotizarHTML(py){
   const nuevas = P.lineas.filter(l => !l.ya).length, act = P.lineas.filter(l => l.cambia).length;
   const evHTML = x => (x.evid || []).filter(v => v.frase).map(v => `${v.esc ? `<b>${esc(planPorEscenas(py) ? 'Esc.' : 'Bloque')} ${esc(v.esc)}:</b> ` : ''}«${esc(v.frase)}»`).join('<br>');
   const lnHTML = x => (x.lineas || []).map(l => { const s = estado(l);
-    return `<div class="det-ln">→ <span class="rcode">${esc(l.rubro)}</span> ${esc(l.concepto)}${l.unidad !== 'global' ? ` · ${l.cantidad} × ${l.dias} ${esc(l.unidad)}` : ''}
+    return `<div class="det-ln">→ <span class="rcode">${esc(numRubro(l.rubro))}</span> ${esc(l.concepto)}${l.unidad !== 'global' ? ` · ${l.cantidad} × ${l.dias} ${esc(l.unidad)}` : ''}
       ${s && s.ya && !s.cambia ? ` <span class="chip c-otr">ya está${s.parecida ? ': ' + esc(s.parecida) : ''}</span>` : s && s.cambia ? ` <span class="chip d-par">actualiza ${esc(s.parecida || '')}</span>` : ' <span class="chip d-si">nueva</span>'}</div>`; }).join('');
   const item = x => `<div class="det-item${x.producto && !x.producto.decision ? ' det-falta' : ''}">
     <div class="det-l">${esc(x.l)}${x.sub ? ` <span class="chip c-otr">${esc(x.sub)}</span>` : ''}${x.menor ? ' <span class="chip sica-bajo">menor: permiso y chaperona</span>' : ''}${x.cantidad ? ` <span class="muted" style="font-weight:600">× ${x.cantidad}</span>` : ''}
       <span class="conf ${x.conf}" title="${x.conf === 'alta' ? 'Lo dice el texto' : 'Lo sugiere el texto: revisalo'}">${esc(x.conf)}</span></div>
     <div><div class="det-ev">${evHTML(x) || '<span class="muted">—</span>'}${x.nota ? ` <span class="muted">· ${esc(x.nota)}</span>` : ''}</div>${lnHTML(x)}
-      ${x.producto ? toggleProductoHTML(x.producto, 'desglose') + lineasProductoCliente(x.producto).map(l => `<div class="det-ln">→ <span class="rcode">${esc(l.rubro)}</span> ${esc(l.concepto)}</div>`).join('') : ''}</div></div>`;
+      ${x.producto ? toggleProductoHTML(x.producto, 'desglose') + lineasProductoCliente(x.producto).map(l => `<div class="det-ln">→ <span class="rcode">${esc(numRubro(l.rubro))}</span> ${esc(l.concepto)}</div>`).join('') : ''}</div></div>`;
   const grupo = (c, cuerpo) => `<div class="det-grupo"><h5>${esc(c.l)}</h5>${cuerpo}</div>`;
   const puedo = vePlata();
   const escenasHTML = E.escenas.map(e => `<div class="det-item"><div class="det-l">${esc(e.numero)} · ${esc(e.intExt)} · ${esc(e.locacion)}
@@ -9725,7 +9962,7 @@ function vistaResumen(pr,py,v){
         <th style="width:118px;text-align:right">Comprometido + real</th>
         <th style="width:112px;text-align:right">Se pasó</th></tr></thead>
         <tbody>${P.filas.filter(f=>f.disponible<0).map(f=>`<tr class="conhe">
-          <td><span class="rcode">${esc(f.codigo)}</span></td><td>${esc(f.nombre)}</td>
+          <td><span class="rcode">${esc(numRubro(f.codigo))}</span></td><td>${esc(f.nombre)}</td>
           <td class="num" style="text-align:right">${fmt(f.presu,P.base)}</td>
           <td class="num" style="text-align:right">${fmt(f.comp+f.real,P.base)}</td>
           <td class="num" style="text-align:right"><b>${fmt(-f.disponible,P.base)}</b></td></tr>`).join('')}
@@ -10074,9 +10311,12 @@ function genteDelProyecto(py, v){
     const pe = l.refId ? DB.catalogo.personas.find(x => x.id === l.refId) : null;
     if(pe && (pe.tipo || 'persona') !== 'persona') return;
     if(!pe && NO_ES_PERSONA.test(concepto)) return;
-    const m = man['l:' + l.id] || {};
+    /* las jornadas de 8 h son de la persona de la línea de rodaje: si a esa
+       se le escribió el nombre a mano, vale también para ésta */
+    const deRodaje = l.preDe ? rb.lineas.find(x => x !== l && raizLinea(x) === l.preDe) : null;
+    const m = man['l:' + l.id] || (deRodaje && man['l:' + deRodaje.id]) || {};
     const nombre = (pe && pe.nombre) || m.nombre || '';
-    const clave = pe ? 'p:' + pe.id : (nombre ? 'n:' + norm(nombre) : 'f:' + rb.codigo + ':' + norm(concepto));
+    const clave = pe ? 'p:' + pe.id : (nombre ? 'n:' + norm(nombre) : 'f:' + rb.codigo + ':' + norm(nomFuncion(concepto)));
     let g = porClave.get(clave);
     if(!g){
       g = {clave, persona: pe, nombre, tel: (pe && pe.tel) || m.tel || '', email: (pe && pe.email) || m.email || '',
@@ -10087,7 +10327,7 @@ function genteDelProyecto(py, v){
     g.lineas.push({rb, l});
   }));
   return [...porClave.values()].sort((a, b) =>
-    String(a.lineas[0].rb.codigo).localeCompare(String(b.lineas[0].rb.codigo)) || String(a.nombre).localeCompare(String(b.nombre)));
+    ordRubro(a.lineas[0].rb.codigo) - ordRubro(b.lineas[0].rb.codigo) || String(a.nombre).localeCompare(String(b.nombre)));
 }
 
 /* Qué le falta a cada uno. Sin ficha del catálogo no hay dónde guardar nada. */
@@ -10530,7 +10770,7 @@ function ocsHTML(py,v,u){
           <td><b>${esc(o.subrubro||o.concepto||'—')}</b>
             ${o.concepto&&o.subrubro?`<span class="muted" style="display:block;font-size:10.5px">${esc(o.concepto)}</span>`:''}</td>
           <td class="muted">${esc(o.proveedor||'—')}</td>
-          <td><span class="rcode">${esc(o.rubro)}</span></td>
+          <td><span class="rcode">${esc(numRubro(o.rubro))}</span></td>
           <td class="num" style="text-align:right"><b>${fmt(o.importe,o.moneda)}</b></td>
           <td class="num" style="text-align:right">${fac?`<span style="color:${fac>=tot-1?'var(--ok)':'var(--warn)'}">${fmt(fac,base)}</span>`:'<span class="muted">—</span>'}</td>
           <td class="noprint" style="white-space:nowrap">
@@ -10653,7 +10893,7 @@ function matrizHTML(py,v){
       ${cols.map(c=>`<th class="${c.k==='__sin'?'colsin':''}">${esc(c.l)}</th>`).join('')}
       <th class="tot">Total</th></tr></thead>
     <tbody>${M.rubros.map(r=>`<tr>
-      <td class="fila"><span class="rcode">${esc(r.codigo)}</span> ${esc(r.nombre)}
+      <td class="fila"><span class="rcode">${esc(numRubro(r.codigo))}</span> ${esc(r.nombre)}
         ${r.transversal?'<span class="tv" title="Rubro transversal: gastan todos los departamentos">transversal</span>':''}</td>
       ${cols.map(c=>`<td class="num ${c.k==='__sin'&&val(r.codigo,c.k)?'faltante':''}"
         style="${tono(r.codigo,c.k)}">${celdaTxt(val(r.codigo,c.k))}</td>`).join('')}
@@ -10856,7 +11096,7 @@ function tableroHTML(py,v){
         <th style="width:96px">Avance</th>
         <th style="width:112px;text-align:right">Disponible</th></tr></thead>
       <tbody>${filas.map(f=>`<tr class="${f.disponible<0?'conhe':''}">
-        <td><span class="rcode">${esc(f.codigo)}</span></td>
+        <td><span class="rcode">${esc(numRubro(f.codigo))}</span></td>
         <td>${esc(f.nombre)}${f.cant?`<span class="muted" style="font-size:10px"> · ${f.cant}</span>`:''}</td>
         <td class="num" style="text-align:right">${f.presu?fmt(f.presu,P.base):'—'}</td>
         <td class="num" style="text-align:right;color:var(--ac)">${f.comp?fmt(f.comp,P.base):'—'}</td>
@@ -10895,7 +11135,7 @@ function bandejaHTML(lista, u, R, sub, pr, py, v, todos){
       <select onchange="setFiltro('rubro',this.value)">
         <option value="">Todos los rubros</option>
         ${RUBROS_BASE.filter(r=>cuenta[r.codigo]).map(r=>
-          `<option value="${r.codigo}" ${F.rubro===r.codigo?'selected':''}>${esc(r.codigo+' · '+r.nombre)} (${cuenta[r.codigo]})</option>`).join('')}
+          `<option value="${r.codigo}" ${F.rubro===r.codigo?'selected':''}>${esc(rubroTxt(r.codigo, r.nombre))} (${cuenta[r.codigo]})</option>`).join('')}
       </select>
       <select onchange="setFiltro('area',this.value)">
         <option value="">Todas las áreas</option>
@@ -10953,7 +11193,7 @@ function bandejaCuerpo(lista, u, R, sub, pr, filtros){
             ${(m => m ? `<span class="rech-mot">Lo rechazó ${esc(m.quien || 'producción')}${m.nota ? ': «' + esc(m.nota) + '»' : ''}${c.cargadoPor === u.id ? ' · cargalo de nuevo cuando lo tengas' : ''}</span>` : '')(motivoRechazo(c))}</td>
           <td class="muted">${esc(c.proveedor||'—')}
             ${c.tipo?`<span class="muted" style="display:block;font-size:10px">${esc(TIPO_CBTE(c.tipo))}${c.numero?' '+esc(c.numero):''}</span>`:''}</td>
-          <td><span class="rcode">${esc(c.rubro)}</span>
+          <td><span class="rcode">${esc(numRubro(c.rubro))}</span>
             ${c.area?`<span class="areachip">${esc(areaLbl(c.area))}</span>`:''}</td>
           <td class="num" style="text-align:right"><b>${fmt(c.importe, c.moneda)}</b></td>
           <td class="muted" style="font-size:10.5px">${esc(quien?quien.nombre.split(' ')[0]:'—')}
@@ -10998,7 +11238,7 @@ function controlHTML(R, v){
         <th style="width:110px">Avance</th>
         <th style="width:118px;text-align:right">Desvío</th></tr></thead>
       <tbody>${conMov.map(f=>`<tr class="${f.desvio>0?'conhe':''}">
-        <td><span class="rcode">${esc(f.codigo)}</span></td>
+        <td><span class="rcode">${esc(numRubro(f.codigo))}</span></td>
         <td>${esc(f.nombre)}${f.cant?`<span class="muted" style="font-size:10px"> · ${f.cant} cbte${f.cant==1?'':'s'}</span>`:''}</td>
         <td class="num" style="text-align:right">${f.presu?fmt(f.presu,R.base):'—'}</td>
         <td class="num" style="text-align:right"><b>${f.gastado?fmt(f.gastado,R.base):'—'}</b></td>
@@ -16277,9 +16517,12 @@ const RESUMEN_AICP = /(pre-?produc\S*.{0,20}(cierre|desarme|wrap)|equipo t[eé]c
    inglés de los AICP y las abreviaturas de las planillas. */
 const PALABRAS_RUBRO = [
   ['04', /(fotograf|foquista|cameraman|camera op|\bdop\b|d\.o\.p|asist\S*\.? ?(de )?c[aá]mara|ayud\S*\.? ?(de )?c[aá]mara|\b2d?[oº]\.? ?(de )?c[aá]mara|1st ac|2nd ac|focus pull|video ?asist|video assist op|\bdit\b|op\.? ?hd|t[eé]cnico hd|operador hd|steadicam op)/],
-  ['05', /(el[eé]ctric|\belect\b|gaff?er|best boy|maquinista|key grip|grip (asist|assist)|\bgrips?\b(?! rental| package| truck)|generadorista|op\.? (de )?generador|operador (de )?generador)/],
+  /* el grip antes que la eléctrica: "best boy grip" no es de luces */
+  ['18', /(maquinista|key grip|best boy grip|grip (asist|assist)|\bgrips?\b(?! rental| package| truck)|rigger|dolly (grip|op)|op\S*\.? (de )?(dolly|gr[uú]a))/],
+  ['05', /(el[eé]ctric|\belect\b|gaff?er|best boy|generadorista|op\.? (de )?generador|operador (de )?generador)/],
   ['02', /(director(?! de (fotograf|arte|producci|casting|locaci))|direcci[oó]n|\b1st ad\b|\b2nd ad\b|\bad\b|script|continuista|realizador)/],
-  ['07', /(vestu|wardrobe|maquill|make ?-?up|peinad|\bhair\b|stylist|estilista|costum|caracteriz|sastre)/],
+  ['19', /(maquill|make ?-?up|peinad|\bhair\b|caracteriz|pr[oó]tesis|barber|manicur)/],
+  ['07', /(vestu|wardrobe|stylist|estilista|costum|sastre)/],
   ['06', /(\barte\b|\bart\b(?! trucks?)|art director|utiler|\bprops?\b|ambientaci|escenograf|construcci|decorado|set dress|carpinter|pintor|mock ?-?up)/],
   ['09', /(actor|actriz|protagonista|call ?back|elenco|modelo|\bextras?\b|casting|talent|locutor|locuci[oó]n|voice ?over|\bvoz\b|derechos|figurante|\bdobles?\b|chaperon|ni[nñ][oa]s?\b|bailar|union|aporte a actores)/],
   ['11', /((cami[oó]n|truck)\S*.{0,30}(luces|lighting|grip|c[aá]mara|camera)|(luces|lighting|grip|c[aá]mara|camera).{0,30}(cami[oó]n|truck))/],
@@ -16303,7 +16546,7 @@ function rubroDeConcepto(concepto){
   let f = typeof detectarFuncion === 'function' ? detectarFuncion(concepto) : null;
   if(f && normCargo(f).length <= 4 && t.length > 12) f = null;
   if(f){
-    for(const [cod, lista] of Object.entries(FUNCIONES)) if(lista.some(x => normCargo(x) === normCargo(f))) return cod;
+    for(const [cod, lista] of funcionesEnOrden()) if(lista.some(x => normCargo(x) === normCargo(f))) return cod;
     const c = (SICA.cargos || []).find(x => normCargo(x.c) === normCargo(f)); if(c) return c.r;
     const a = (ALIAS_SICA || []).find(x => normCargo(x[0]) === normCargo(f));
     if(a){ const c2 = SICA.cargos.find(x => x.c === a[2]); if(c2) return c2.r; }
@@ -16529,10 +16772,10 @@ function pintarRevisionPresupuesto(){
   const incl = I.lineas.filter(l => l.incluir);
   const suma = incl.reduce((s, l) => s + l.total, 0);
   const sinRubro = incl.filter(l => !l.rubro).length;
-  const ops = sel0 => `<option value="">— elegí —</option>` + RUBROS_BASE.map(r => `<option value="${r.codigo}" ${r.codigo === sel0 ? 'selected' : ''}>${r.codigo} · ${esc(r.nombre)}</option>`).join('');
+  const ops = sel0 => `<option value="">— elegí —</option>` + RUBROS_BASE.map(r => `<option value="${r.codigo}" ${r.codigo === sel0 ? 'selected' : ''}>${esc(rubroTxt(r.codigo, r.nombre))}</option>`).join('');
   const porRubro = {};
   I.lineas.forEach((l, i) => (porRubro[l.rubro || ''] ||= []).push({l, i}));
-  const orden = Object.keys(porRubro).sort((a, b) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)));
+  const orden = Object.keys(porRubro).sort((a, b) => (a === '' ? -1 : b === '' ? 1 : porOrdenRubro(a, b)));
   const pct = I.ref ? Math.round(suma / I.ref.n * 100) : null;
   abrir(`<div class="ov"><div class="mod" style="max-width:900px">
     <h3>Lo que leí de «${esc(I.archivo)}»</h3><div class="mbody">
@@ -16550,7 +16793,7 @@ function pintarRevisionPresupuesto(){
         ${sel('Qué hacer','modo',I.modo,[{v:'sumar', l:'Sumar a lo que ya tiene el presupuesto'},{v:'reemplazar', l:'Reemplazar las líneas del presupuesto'}])}
         ${sel('Moneda de los montos','moneda',I.moneda,[{v:'ARS', l:'Pesos'},{v:'USD', l:'Dólares'}])}
       </div>
-      ${orden.map(cod => `<div class="iprub"><h4>${cod ? `<span class="rcode">${cod}</span> ${esc(RUBRO(cod).nombre || '')}` : '<span class="pl-rojo">Sin rubro: elegilo</span>'}</h4>
+      ${orden.map(cod => `<div class="iprub"><h4>${cod ? `<span class="rcode">${esc(numRubro(cod))}</span> ${esc(RUBRO(cod).nombre || '')}` : '<span class="pl-rojo">Sin rubro: elegilo</span>'}</h4>
         ${porRubro[cod].map(({l, i}) => `<div class="ipfila ${l.incluir ? '' : 'off'}">
           <input type="checkbox" ${l.incluir ? 'checked' : ''} onchange="_impP.lineas[${i}].incluir=this.checked;this.closest('.ipfila').classList.toggle('off',!this.checked)" aria-label="Importar ${esc(l.concepto)}">
           <span class="ipc">${esc(l.concepto)}${l.seccion ? `<small>${esc(l.seccion)}</small>` : ''}${l.dudosa ? '<small class="pl-rojo">estimada</small>' : ''}</span>
@@ -16577,7 +16820,7 @@ function confirmarImportarPresupuesto(){
   incl.forEach(l => {
     let rb = v.rubros.find(r => r.codigo === l.rubro);
     if(!rb){ rb = {id: uid('rb'), ...RUBRO(l.rubro), lineas: [], abierto: true};
-      v.rubros.push(rb); v.rubros.sort((a, b) => a.codigo.localeCompare(b.codigo)); }
+      v.rubros.push(rb); v.rubros.sort((a, b) => ordRubro(a.codigo) - ordRubro(b.codigo)); }
     const cuadra = Math.abs(l.cantidad * l.dias * l.valor - l.total) <= Math.max(1, l.total * 0.01);
     rb.lineas.push(nuevaLinea({concepto: l.concepto, cantidad: cuadra ? l.cantidad : 1, dias: cuadra ? l.dias : 1,
       valorUnit: cuadra ? l.valor : l.total, moneda: I.moneda, valorOrigen: 'manual',
@@ -16845,7 +17088,8 @@ function upTC(campo, val){
 
 function addRubro(){
   const nom = prompt('Nombre del rubro nuevo:'); if(!nom) return;
-  const v=getV(); const cod = String(v.rubros.length+1).padStart(2,'0');
+  /* un código que no sea de ningún rubro de la lista (con 17 rubros daba 18, que ahora es Grip) */
+  const v=getV(); const cod = codigoLibre(v);
   v.rubros.push({id:uid('rb'), codigo:cod, nombre:nom, aplicaFee:true, lineas:[], abierto:true}); R(); }
 function delRubro(id){ const v=getV(); const r=v.rubros.find(x=>x.id===id);
   if(r.lineas.length && !confirm(`Eliminar "${r.nombre}" con ${r.lineas.length} ${plural(r.lineas.length, 'línea')}?`)) return;
@@ -16982,10 +17226,13 @@ const personaDeCrew = (l, r) => RUBROS_CREW.includes(r.codigo) && (l.unidad || '
 const esExtraL = (l, r) => r.codigo === '09' && RE_EXTRAS_L.test(l.concepto || '') && !RE_NO_ELENCO.test(l.concepto || '');
 const esActorL = (l, r) => r.codigo === '09' && !esExtraL(l, r) && RE_ELENCO_AAA.test(l.concepto || '') && !RE_NO_ELENCO.test(l.concepto || '')
   && !/\bvoz\b|locutor|doble/i.test(l.concepto || '');
-const AREA_CORTA = {'02':'Dirección','03':'Producción','04':'Cámara','05':'Eléctrica y grip','06':'Arte','07':'Vestuario y maquillaje','08':'Sonido'};
+/* ojo: '18' y '19' son claves numéricas y Object.keys las pone primero;
+   para recorrerlas en el orden de los rubros, AREAS_CORTAS */
+const AREA_CORTA = {'02':'Dirección','03':'Producción','04':'Cámara','05':'Eléctrica','18':'Grip','06':'Arte','07':'Vestuario','19':'Maquillaje','08':'Sonido'};
+const AREAS_CORTAS = () => Object.keys(AREA_CORTA).sort(porOrdenRubro);
 /* el que se suma o se saca cuando el equipo de un área crece o se achica */
-const AUX_AREA = {'02':'2° Ayudante de Dirección','03':'Asistente de Producción','04':'2° Asistente de Cámara','05':'Eléctrico',
-  '06':'Asistente de Arte','07':'Asistente de Vestuario','08':'Microfonista'};
+const AUX_AREA = {'02':'2° Ayudante de Dirección','03':'Asistente de Producción','04':'Ayudante de cámara','05':'Eléctrico','18':'Grip',
+  '06':'Asistente de Arte','07':'Asistente de Vestuario','19':'Asistente de Maquillaje y Peinado','08':'Microfonista'};
 /* lo que se puede contar de un presupuesto, para comparar ejercicios */
 function medidasVersion(py, v){
   const crew = {}; let personas = 0, camaras = 0, extras = 0, elenco = 0, he = 0, heCosto = 0, hj = 0;
@@ -17014,7 +17261,7 @@ function cambiosVsBase(py, v, base = baseDe(py), u = getUsuario()){
   if(A.camaras !== B.camaras) out.push(`Cámaras ${A.camaras} → ${B.camaras}`);
   if(A.elenco !== B.elenco) out.push(`Elenco ${A.elenco} → ${B.elenco}`);
   if(A.extras !== B.extras) out.push(`Extras ${A.extras} → ${B.extras}`);
-  Object.keys(AREA_CORTA).forEach(cod => {
+  AREAS_CORTAS().forEach(cod => {
     const d = (B.crew[cod] || 0) - (A.crew[cod] || 0); if(!d) return;
     out.push(`${AREA_CORTA[cod]} ${d > 0 ? '+' : '−'}${Math.abs(d)} ${plural(Math.abs(d), 'persona')}`);
   });
@@ -17082,7 +17329,7 @@ function aplicarCamaras(py, v, de, a){
   else if(a > 0) lineaNuevaPara(py, v, '11', 'Paquete cámara + ópticas', a, J);
   if(!r04 || !delta) return {delta};
   const busca = re => r04.lineas.find(l => re.test(l.concepto || '') && !esHE(l) && !l.etapa);
-  [[/operador de c[aá]mara/i, 'Operador de Cámara'], [/foquista|1° ?ac\b/i, 'Foquista (1° AC)']].forEach(([re, nom]) => {
+  [[/operador de c[aá]mara/i, 'Operador de Cámara'], [/foquista|1° ?ac\b/i, 'Foquista (1° asistente de cámara)']].forEach(([re, nom]) => {
     const l = busca(re);
     if(delta > 0){ if(l) l.cantidad = n(l.cantidad) + delta; else lineaNuevaPara(py, v, '04', nom, delta, J); }
     else if(l){
@@ -17099,7 +17346,7 @@ function aplicarArea(py, v, rubro, delta){
   const J = jornadasDelPresupuesto(v) || n(v.jornadas) || n(py.jornadas) || 1;
   const pers = rb.lineas.filter(l => personaDeCrew(l, rb));
   if(delta > 0){
-    const aux = pers.find(l => norm(l.concepto) === norm(AUX_AREA[rubro] || ''))
+    const aux = pers.find(l => norm(nomFuncion(l.concepto)) === norm(AUX_AREA[rubro] || ''))
       || [...pers].sort((x, y) => n(x.valorUnit) - n(y.valorUnit))[0];
     if(aux && pers.length > 1) aux.cantidad = n(aux.cantidad) + delta;
     else lineaNuevaPara(py, v, rubro, AUX_AREA[rubro] || 'Asistente', delta, J);
@@ -17333,7 +17580,7 @@ function ejerciciosSugeridos(py, base = baseDe(py)){
   /* 5. sin cada cámara especial que tiene el presupuesto */
   camarasEspecialesDe(base).forEach(x => add({nombre: nombreSin(x), sin: [x.k]}, `cuánto pesa ${x.l.toLowerCase()} en el precio`));
   /* 6. el equipo técnico más chico o más grande */
-  const areasMenos = ['03', '04', '05', '06', '07'].filter(c => (M.crew[c] || 0) >= 3);
+  const areasMenos = ['03', '04', '05', '18', '06', '07', '19'].filter(c => (M.crew[c] || 0) >= 3);
   if(areasMenos.length) add({nombre: `Equipo reducido (−${areasMenos.length} ${plural(areasMenos.length, 'persona')})`, areas: areasMenos.map(rubro => ({rubro, delta: -1}))},
     'una persona menos en cada área grande (la cabeza del área no se toca)');
   const areasMas = ['04', '05', '06'].filter(c => (M.crew[c] || 0) >= 1);
@@ -17405,7 +17652,7 @@ function nuevoEjercicio(){
   const origen = fam.includes(v) ? v : baseDe(py);
   if(!origen){ toast('Primero armá el presupuesto base'); return; }
   const M = medidasVersion(py, origen), cfg = py.configRodaje || nuevaConfigRodaje();
-  const areaSel = (nm) => `<select name="${nm}"><option value="">— ningún área —</option>${Object.entries(AREA_CORTA).map(([k, l]) => `<option value="${k}">${esc(l)} (${M.crew[k] || 0})</option>`).join('')}</select>`;
+  const areaSel = (nm) => `<select name="${nm}"><option value="">— ningún área —</option>${AREAS_CORTAS().map(k => `<option value="${k}">${esc(AREA_CORTA[k])} (${M.crew[k] || 0})</option>`).join('')}</select>`;
   const cams = camarasEspecialesDe(origen), r14 = origen.rubros.find(r => r.codigo === '14'), con3d = r14 && r14.lineas.some(l => RE_POST_3D.test(l.concepto || ''));
   const chk = (nm, t) => `<label class="ej-chk"><input type="checkbox" name="${nm}" style="width:auto;flex:none"> <span>${t}</span></label>`;
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:620px">
@@ -17743,7 +17990,7 @@ function hojasCotizacion(py){
     v.rubros.forEach(r => {
       const ls = r.lineas.filter(l => String(l.concepto || '').trim());
       if(!ls.length) return;
-      f.push([B(r.codigo), B(r.nombre)]);
+      f.push([B(numRubro(r.codigo)), B(r.nombre)]);
       const ini = f.length + 1;
       ls.forEach(l => f.push(['', l.concepto, l.unidad || '', n(l.cantidad), n(l.dias), P(l.valorUnit), l.moneda || 'ARS', P(totalLinea(l, v)), l.notas || '']));
       const fin = f.length;
@@ -18169,7 +18416,7 @@ function editPersona(id){
         ${campo('Nombre / Razón social','nombre',p.nombre)}
         ${sel('Tipo','tipo',p.tipo,[{v:'persona',l:'Persona (crew / elenco)'},{v:'proveedor',l:'Proveedor'},{v:'equipo',l:'Equipamiento'}])}
         ${campo('Función / servicio','funcion',p.funcion)}
-        ${sel('Rubro','rubro',p.rubro,RUBROS_BASE.map(r=>({v:r.codigo,l:r.codigo+' · '+r.nombre})))}
+        ${sel('Rubro','rubro',p.rubro,RUBROS_BASE.map(r=>({v:r.codigo,l:rubroTxt(r.codigo, r.nombre)})))}
       </div>
       <div style="margin:16px 0 7px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700">
         Datos fiscales y de seguro <span style="text-transform:none;letter-spacing:0;font-weight:400">— con esto se genera el alta de la aseguradora</span></div>
@@ -18245,13 +18492,18 @@ function pickFuncion(rid){
      cargar: la escala de la fecha del rodaje y la jornada del proyecto. Antes
      mostraba la escala de hoy y siempre 12 h, y no coincidía con la línea. */
   const py = getPy(), E = escalaDelProyecto(py), cfg = py && py.configRodaje, H = horasJornadaDe(cfg);
-  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:460px">
-    <h3>${esc(r.codigo)} · ${esc(r.nombre)}</h3>
-    <div class="mbody" style="padding:8px">
-      ${fs.length?fs.map(f=>{ const sc = cargoSICA(f, E);
-        return `<button class="btn" style="width:100%;text-align:left;margin-bottom:4px;border-color:transparent;display:flex;gap:8px;align-items:baseline"
+  /* primero lo propio del área (sus puestos y lo que alquila o compra);
+     la nafta, los fletes y los viáticos, que están en todas, van aparte abajo */
+  const propias = fs.filter(f => !COMUNES.includes(f)), comunes = fs.filter(f => COMUNES.includes(f));
+  const boton = f => { const sc = cargoSICA(f, E);
+    return `<button class="btn" style="width:100%;text-align:left;margin-bottom:4px;border-color:transparent;display:flex;gap:8px;align-items:baseline"
         onclick="addFuncion('${rid}',${JSON.stringify(f).replace(/"/g,'&quot;')})"><span style="flex:1">${esc(f)}</span>
-        ${sc?`<span class="sica" title="Convenio SICA ${esc(E.nombre)} · ${esc(sc.d)} · ${esc(sc.c)} · jornada de ${H} h. Se carga de base y se puede editar.">SICA ${fmtC(valorJornadaSICA(sc, cfg))}</span>`:''}</button>`;}).join('')
+        ${sc?`<span class="sica" title="Convenio SICA ${esc(E.nombre)} · ${esc(sc.d)} · ${esc(sc.c)} · jornada de ${H} h. Se carga de base y se puede editar.">SICA ${fmtC(valorJornadaSICA(sc, cfg))}</span>`:''}</button>`; };
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:460px">
+    <h3>${esc(rubroTxt(r.codigo, r.nombre))}</h3>
+    <div class="mbody" style="padding:8px">
+      ${fs.length ? propias.map(boton).join('')
+        + (comunes.length ? `<div class="pf-grupo">Gastos del área</div>${comunes.map(boton).join('')}` : '')
         :'<div class="empty">Este rubro no tiene funciones sugeridas. Usá “+ Línea”.</div>'}
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div>
@@ -18291,7 +18543,7 @@ function pickPersona(rid){
         <select id="pprubro" onchange="ppFiltro('rubro', this.value)" aria-label="Rubro">
           <option value="">Todos los rubros (${ps.length})</option>
           ${RUBROS_BASE.filter(x => cuenta[x.codigo]).map(x =>
-            `<option value="${x.codigo}" ${_pp.rubro===x.codigo?'selected':''}>${esc(x.codigo+' · '+x.nombre)} (${cuenta[x.codigo]})</option>`).join('')}
+            `<option value="${x.codigo}" ${_pp.rubro===x.codigo?'selected':''}>${esc(rubroTxt(x.codigo, x.nombre))} (${cuenta[x.codigo]})</option>`).join('')}
         </select>
       </div>
     </div>
@@ -18342,7 +18594,7 @@ function ppListaHTML(){
     return `<button type="button" class="ppfila${ya ? ' ya' : ''}" onclick="ppAgregar('${p.id}')">
       <span class="ppnom"><b>${esc(p.nombre) || '<span class="muted">sin nombre</span>'}</b>
         ${(p.tipo||'persona') !== 'persona' ? '<span class="chip c-otr">proveedor</span>' : ''}
-        <span class="ppfun">${esc(p.funcion || '')} <span class="rcode">${esc(p.rubro || '')}</span></span>
+        <span class="ppfun">${esc(p.funcion || '')} <span class="rcode">${esc(numRubro(p.rubro || ''))}</span></span>
         ${nota ? `<span class="ppnota">${esc(nota.length > 90 ? nota.slice(0, 90) + '…' : nota)}</span>` : ''}</span>
       <span class="pptar">${ya ? '✓ agregado' : (n(p.tarifaRef) > 0 ? fmt(p.tarifaRef, p.moneda) : '<span class="muted">sin tarifa</span>')}</span>
     </button>`;
@@ -18929,7 +19181,7 @@ function expGastosCSV(){
     'Fecha','Importe','Moneda','Circuito de pago','Estado','Cargado por','Orden de compra',
     'Caja chica','Jornada','Notas'].map(q0).join(',')];
   cs.forEach(c=>L.push([
-    (RUBROS_BASE.find(r=>r.codigo===c.rubro)||{nombre:''}).nombre, c.rubro, c.subrubro,
+    (RUBROS_BASE.find(r=>r.codigo===c.rubro)||{nombre:''}).nombre, numRubro(c.rubro), c.subrubro,
     c.area?areaLbl(c.area):'', c.concepto,
     c.proveedor, c.cuit, TIPO_CBTE(c.tipo), c.numero, c.fecha, c.importe, c.moneda,
     (CIRCUITOS.find(x=>x.v===c.circuito)||{l:''}).l, EST(c.estado).l, usr(c.cargadoPor),
@@ -18954,7 +19206,7 @@ function editOC(id){
         <label class="f"><span>Rubro</span>
           <select name="rubro" onchange="alCambiarRubro(this.value)">
             <option value="">— elegir —</option>
-            ${RUBROS_BASE.map(r=>`<option value="${r.codigo}" ${r.codigo===o.rubro?'selected':''}>${esc(r.codigo+' · '+r.nombre)}</option>`).join('')}
+            ${RUBROS_BASE.map(r=>`<option value="${r.codigo}" ${r.codigo===o.rubro?'selected':''}>${esc(rubroTxt(r.codigo, r.nombre))}</option>`).join('')}
           </select></label>
         <label class="f"><span>Subrubro</span>
           <select name="subrubro" id="csub">${subrubroOpts(o.rubro, o.subrubro)}</select></label>
@@ -19037,7 +19289,7 @@ function darFondo(lineaId, persona, cajaId, pre = {}){
   const opP = u => `<option value="${u.id}" ${u.id === quien ? 'selected' : ''}>${esc(u.nombre)}</option>`;
   /* un fondo que ya existe (de antes, de otra persona) se sigue pudiendo completar */
   const extra = quien && ![...A.prod, ...A.arte].some(u => u.id === quien) ? getUsuarios().filter(u => u.id === quien) : [];
-  const opL = ({r, l}) => `<option value="${l.id}" ${l.id === lid ? 'selected' : ''}>${esc(r.codigo + ' · ' + l.concepto)}</option>`;
+  const opL = ({r, l}) => `<option value="${l.id}" ${l.id === lid ? 'selected' : ''}>${esc(numRubro(r.codigo) + ' · ' + l.concepto)}</option>`;
   const nadie = !A.prod.length && !A.arte.length && !extra.length;
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:520px">
     <h3>${fija ? 'Más plata para ' + esc(nombreUsuario(fija.responsable)) : 'Dar un fondo para rendir'}</h3><div class="mbody">
@@ -19538,7 +19790,7 @@ function filasRendHTML(py, cj, T, edita, u){
       <span class="rd-c rd-c-fecha"><span class="rd-l">Fecha</span>${esc(fFecha(c.fecha) || '—')}</span>
       <span class="rd-c rd-c-prov"><span class="rd-l">Proveedor</span><b>${esc(c.proveedor || '—')}</b>${c.cuit ? `<span class="rd-sub">${esc(c.cuit)}</span>` : ''}</span>
       <span class="rd-c rd-c-conc"><span class="rd-l">Concepto</span>${esc(c.concepto || c.subrubro || '—')}</span>
-      <span class="rd-c rd-c-rub"><span class="rd-l">Rubro</span>${c.rubro ? esc(c.rubro + ' · ' + (RUBRO(c.rubro).nombre || '')) : '—'}</span>
+      <span class="rd-c rd-c-rub"><span class="rd-l">Rubro</span>${c.rubro ? esc(rubroTxt(c.rubro)) : '—'}</span>
       <span class="rd-c rd-c-tipo"><span class="rd-l">Comprobante</span>${esc(TIPO_CBTE(c.tipo) || '—')}</span>
       <span class="rd-c rd-c-num"><span class="rd-l">Número</span>${esc(c.numero || '—')}</span>
       <span class="rd-c rd-c-imp"><span class="rd-l">Importe</span><b>${fmt(c.importe, c.moneda)}</b></span>
@@ -19553,7 +19805,7 @@ function filasRendHTML(py, cj, T, edita, u){
         <input class="rd-cuit${auto.includes('cuit') ? ' rd-auto' : ''}" type="text" inputmode="numeric" value="${esc(c.cuit || '')}" placeholder="CUIT" aria-label="CUIT" onchange="upGastoRend('${c.id}','cuit',this.value)" onkeydown="rdTecla(event)"></span>
       <label class="rd-c rd-c-conc"><span class="rd-l">Concepto</span>${inp('concepto', 'text', c.concepto, 'placeholder="Qué se compró" aria-label="Concepto"')}</label>
       <label class="rd-c rd-c-rub"><span class="rd-l">Rubro</span><select class="${cls('rubro').trim()}" onchange="upGastoRend('${c.id}','rubro',this.value)" onkeydown="rdTecla(event)" aria-label="Rubro">
-        <option value="">— rubro —</option>${RUBROS_BASE.map(r => `<option value="${r.codigo}" ${r.codigo === c.rubro ? 'selected' : ''}>${esc(r.codigo + ' · ' + r.nombre)}</option>`).join('')}</select></label>
+        <option value="">— rubro —</option>${RUBROS_BASE.map(r => `<option value="${r.codigo}" ${r.codigo === c.rubro ? 'selected' : ''}>${esc(rubroTxt(r.codigo, r.nombre))}</option>`).join('')}</select></label>
       <label class="rd-c rd-c-tipo"><span class="rd-l">Comprobante</span><select class="${cls('tipo').trim()}" onchange="upGastoRend('${c.id}','tipo',this.value)" onkeydown="rdTecla(event)" aria-label="Tipo de comprobante">
         <option value="">— tipo —</option>${TIPOS_CBTE.map(t => `<option value="${t.v}" ${t.v === c.tipo ? 'selected' : ''}>${esc(t.l)}</option>`).join('')}</select></label>
       <label class="rd-c rd-c-num"><span class="rd-l">Número</span>${inp('numero', 'text', c.numero, 'placeholder="0001-00001234" aria-label="Número"')}</label>
@@ -19571,7 +19823,7 @@ function planillaRendHTML(T, cj){
   if(!T.cant) return '<div class="pad muted" style="font-size:12.5px">Se arma sola a medida que se cargan los gastos.</div>';
   return `<div class="scrollx"><table class="tbl cst rd-plan">
     <thead><tr><th style="width:84px">Fecha</th><th>Proveedor</th><th>Concepto</th><th style="width:120px">Comprobante</th><th style="width:110px;text-align:right">Importe</th></tr></thead>
-    <tbody>${T.rubros.map(r => `<tr class="csdep"><td colspan="5"><b>${esc(r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre)}</b></td></tr>
+    <tbody>${T.rubros.map(r => `<tr class="csdep"><td colspan="5"><b>${esc(r.codigo ? rubroTxt(r.codigo, r.nombre) : r.nombre)}</b></td></tr>
       ${r.gastos.map(c => `<tr><td>${esc(fFecha(c.fecha) || '—')}</td><td>${esc(c.proveedor || '—')}</td><td>${esc(c.concepto || c.subrubro || '')}</td>
         <td style="font-size:11px">${esc(TIPO_CBTE(c.tipo) || '—')}${c.numero ? ' ' + esc(c.numero) : ''}</td><td class="num" style="text-align:right">${fmt(c.importe, cj.moneda)}</td></tr>`).join('')}
       <tr class="rd-subt"><td colspan="4" style="text-align:right">Subtotal ${esc(r.nombre)}</td><td class="num" style="text-align:right"><b>${fmt(r.total, cj.moneda)}</b></td></tr>`).join('')}
@@ -20221,7 +20473,7 @@ function hojasRendicion(py, cj){
         ...(c.quien ? [[B('Cierre anotado por'), c.quien, c.cuando ? {fecha: String(c.cuando).slice(0, 10)} : '']] : [])]; })() : []),
     [],
     [H('Por rubro'), H('Gastos'), H('Total')],
-    ...T.rubros.map(r => [r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre, r.cant, P(r.total)]),
+    ...T.rubros.map(r => [r.codigo ? rubroTxt(r.codigo, r.nombre) : r.nombre, r.cant, P(r.total)]),
     [B('Total'), {v: T.cant, s: 1}, PB(T.gastado)],
     [],
     [B('Con comprobante'), T.cantCon],
@@ -20239,7 +20491,7 @@ function hojasRendicion(py, cj){
   const porRubro = [[H('Rubro'), H('Fecha'), H('Proveedor'), H('CUIT'), H('Concepto'), H('Comprobante'), H('Número'), H('Importe')]];
   const subt = [];
   T.rubros.forEach(r => {
-    porRubro.push([B(r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre)]);
+    porRubro.push([B(r.codigo ? rubroTxt(r.codigo, r.nombre) : r.nombre)]);
     const ini = porRubro.length + 1;
     r.gastos.forEach(c => porRubro.push(['', c.fecha ? {fecha: c.fecha} : '', c.proveedor || '', c.cuit || '', c.concepto || c.subrubro || '', TIPO_CBTE(c.tipo) || '', c.numero || '', P(c.importe)]));
     const fin = porRubro.length;
@@ -20253,7 +20505,7 @@ function hojasRendicion(py, cj){
   porRubro.push(['', '', '', '', '', '', B('Saldo (fondo − rendido)'), {v: T.saldo, s: 4, f: `H${filaTot + 1}-H${filaTot}`}]);
   const detalle = [[H('N°'), H('Fecha'), H('Proveedor'), H('CUIT'), H('Concepto'), H('Cód. rubro'), H('Rubro'), H('Comprobante'), H('Número'), H('Importe'), H('Moneda'), H('Archivo'), H('Notas')],
     ...T.comprobantes.map((c, i) => [i + 1, c.fecha ? {fecha: c.fecha} : '', c.proveedor || '', c.cuit || '', c.concepto || c.subrubro || '',
-      c.rubro || '', c.rubro ? RUBRO(c.rubro).nombre || '' : '', TIPO_CBTE(c.tipo) || '', c.numero || '', P(c.importe), c.moneda || mon,
+      c.rubro ? numRubro(c.rubro) : '', c.rubro ? RUBRO(c.rubro).nombre || '' : '', TIPO_CBTE(c.tipo) || '', c.numero || '', P(c.importe), c.moneda || mon,
       c.adjunto ? c.adjunto.nombre || '' : '', c.notas || ''])];
   return [{nombre: 'Carátula', filas: caratula, anchos: [30, 26, 16, 22]},
     {nombre: 'Por rubro', filas: porRubro, anchos: [34, 12, 28, 15, 30, 16, 18, 15]},
@@ -20300,7 +20552,7 @@ function rendImpresionHTML(py, cj){
       </div>
       ${estadoRend(cj) === 'cerrada' ? `<div class="ri-cbtes">Cierre: ${esc(cierreTxt(cj) || 'cerró justo')}${(cj.cierre || {}).quien ? ' · lo anotó ' + esc(cj.cierre.quien) : ''} · gastado de verdad <b>${fmt(plataFondo(py, cj).real, mon)}</b>${faltanteRend(py, cj) ? ` · <b>faltan ${fmt(faltanteRend(py, cj), mon)}</b>` : ''}</div>` : ''}
       <table class="ri-tabla"><thead><tr><th>Rubro</th><th style="text-align:right">Gastos</th><th style="text-align:right">Total</th></tr></thead>
-        <tbody>${T.rubros.map(r => `<tr><td>${esc(r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre)}</td><td style="text-align:right">${r.cant}</td><td style="text-align:right">${fmt(r.total, mon)}</td></tr>`).join('')}</tbody>
+        <tbody>${T.rubros.map(r => `<tr><td>${esc(r.codigo ? rubroTxt(r.codigo, r.nombre) : r.nombre)}</td><td style="text-align:right">${r.cant}</td><td style="text-align:right">${fmt(r.total, mon)}</td></tr>`).join('')}</tbody>
         <tfoot><tr><td>Total</td><td style="text-align:right">${T.cant}</td><td style="text-align:right">${fmt(T.gastado, mon)}</td></tr></tfoot></table>
       <div class="ri-cbtes">Comprobantes: <b>${T.cantCon}</b> con comprobante · <b>${T.cantSin}</b> sin comprobante</div>
       <div class="ri-firmas">${firma('Rindió', firmaRindio(cj))}${viaProduccion(cj) ? firma('Revisó · asistente de producción', firmaProd(cj)) : ''}${firma('Revisó · jefe de producción', firmaRend(cj, 'aprobada'))}${firma('Recibió · administración', firmaRend(cj, 'cerrada'))}</div>
@@ -20309,7 +20561,7 @@ function rendImpresionHTML(py, cj){
     <div class="ri-hoja">
       <div class="ri-tit2">Planilla por rubro</div>
       <table class="ri-tabla ri-plan"><thead><tr><th>N°</th><th>Fecha</th><th>Proveedor</th><th>Concepto</th><th>Comprobante</th><th style="text-align:right">Importe</th></tr></thead>
-        <tbody>${T.rubros.map(r => `<tr class="ri-rub"><td colspan="6">${esc(r.codigo ? r.codigo + ' · ' + r.nombre : r.nombre)}</td></tr>
+        <tbody>${T.rubros.map(r => `<tr class="ri-rub"><td colspan="6">${esc(r.codigo ? rubroTxt(r.codigo, r.nombre) : r.nombre)}</td></tr>
           ${r.gastos.map(c => `<tr><td>${num(c)}</td><td>${esc(fFecha(c.fecha))}</td><td>${esc(c.proveedor || '')}${c.cuit ? `<br><small>${esc(c.cuit)}</small>` : ''}</td><td>${esc(c.concepto || c.subrubro || '')}</td>
             <td>${esc(TIPO_CBTE(c.tipo) || '—')}${c.numero ? '<br><small>' + esc(c.numero) + '</small>' : ''}</td><td style="text-align:right">${fmt(c.importe, mon)}</td></tr>`).join('')}
           <tr class="ri-subt"><td colspan="5" style="text-align:right">Subtotal</td><td style="text-align:right">${fmt(r.total, mon)}</td></tr>`).join('')}</tbody>
@@ -20404,7 +20656,7 @@ function cargarComprobante(id, cajaId){
         <label class="f"><span>Rubro</span>
           <select name="rubro" onchange="alCambiarRubro(this.value)">
             <option value="">— elegir —</option>
-            ${RUBROS_BASE.map(r=>`<option value="${r.codigo}" ${r.codigo===c.rubro?'selected':''}>${esc(r.codigo+' · '+r.nombre)}</option>`).join('')}
+            ${RUBROS_BASE.map(r=>`<option value="${r.codigo}" ${r.codigo===c.rubro?'selected':''}>${esc(rubroTxt(r.codigo, r.nombre))}</option>`).join('')}
           </select></label>
         <label class="f"><span>Subrubro</span>
           <select name="subrubro" id="csub">${subrubroOpts(c.rubro, c.subrubro)}</select></label>
@@ -20619,7 +20871,7 @@ function verComprobante(id){
       <span class="est" style="color:${e.c};border-color:${e.c}55;background:${e.c}18">${e.l}</span></h3>
     <div class="mbody">
       <div class="grid2" style="font-size:12.5px">
-        ${[['Rubro', c.rubro+' · '+((RUBROS_BASE.find(r=>r.codigo===c.rubro)||{}).nombre||'')],
+        ${[['Rubro', rubroTxt(c.rubro)],
            ['Proveedor', c.proveedor||'—'],['CUIT', c.cuit||'—'],
            ['Comprobante', (TIPO_CBTE(c.tipo)||'—')+(c.numero?' '+c.numero:'')],
            ['Fecha', c.fecha],['Importe', fmt(c.importe, c.moneda)],
@@ -20772,7 +21024,7 @@ function pintarCandidatos(leidos, fallados){
             ${c.ya?`<span class="muted" style="display:block;font-size:10px">ya está como ${esc(c.ya.nombre)}</span>`:''}
             <span class="muted" style="display:block;font-size:9.5px;opacity:.6">${esc(c.crudo)}</span></td>
           <td>${esc(c.funcion)||'<span class="muted">—</span>'}</td>
-          <td>${c.rubro?`<span class="rcode">${esc(c.rubro)}</span>`:'<span class="muted">—</span>'}</td>
+          <td>${c.rubro?`<span class="rcode">${esc(numRubro(c.rubro))}</span>`:'<span class="muted">—</span>'}</td>
           <td class="muted" style="font-size:11px">${esc(c.tel||'')}${c.tel&&c.email?'<br>':''}${esc(c.email||'')}</td>
           <td class="num muted" style="text-align:center">${c.veces}</td>
         </tr>`).join('')}</tbody></table></div>`
@@ -21328,7 +21580,7 @@ const MAPA_RUBRO = {
   arte:      {rubro:'06', modo:'agrupado', etiqueta:'Ambientación'},
   animales:  {rubro:'06', modo:'agrupado', etiqueta:'Animales y adiestrador'},
   vestuario: {rubro:'07', modo:'agrupado', etiqueta:'Vestuario'},
-  maquillaje:{rubro:'07', modo:'agrupado', etiqueta:'Caracterización'},
+  maquillaje:{rubro:'19', modo:'agrupado', etiqueta:'Caracterización'},
   vehiculos: {rubro:'12', modo:'porItem',  etiqueta:'Vehículos'},
   sfx:       {rubro:'11', modo:'agrupado', etiqueta:'Efectos especiales'},
   equipo:    {rubro:'11', modo:'porItem',  etiqueta:'Equipo especial'},
@@ -21538,11 +21790,11 @@ function aPresupuesto(){
         <div class="muted" style="font-size:11.5px;margin-top:4px">${producto.decision === 'marca' ? `No se agrega ninguna línea: en las condiciones de la cotización va «${esc(textoProductoMarca(producto))}»`
           : producto.decision === 'produccion' ? 'Se suman el alquiler, el traslado y el seguro' + (producto.conRig || producto.maneja ? ', y el conductor de precisión' : '') + ' (abajo, en sus rubros).'
           : 'Depende del trato con la marca. Hasta que lo decidas no se puede aplicar.'}</div></div>` : ''}
-      ${Object.keys(porRubro).sort().map(cod=>{
+      ${Object.keys(porRubro).sort(porOrdenRubro).map(cod=>{
         const rb = v.rubros.find(x=>x.codigo===cod);
         return `<div style="margin-bottom:11px">
           <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3);font-weight:700;margin-bottom:2px">
-            <span class="rcode">${esc(cod)}</span> ${esc(rb?rb.nombre:'(rubro inexistente)')}</div>
+            <span class="rcode">${esc(numRubro(cod))}</span> ${esc(rb?rb.nombre:'(rubro inexistente)')}</div>
           ${porRubro[cod].map(fila).join('')}
         </div>`;
       }).join('')}
@@ -22867,7 +23119,7 @@ function expCSV(){
   const U = unidadDe(py);
   const L = [['Rubro','Código','Concepto',U,'Unidad','Cantidad','Días','Valor unit.','Moneda',
               'Total '+v.monedaBase,'Circuito','Comprobante'].map(q).join(',')];
-  v.rubros.forEach(r=>r.lineas.forEach(l=>L.push([r.nombre,r.codigo,l.concepto,
+  v.rubros.forEach(r=>r.lineas.forEach(l=>L.push([r.nombre,numRubro(r.codigo),l.concepto,
     l.piezaId ? nombrePieza(py, l.piezaId) : 'Compartida',
     l.unidad,l.cantidad,
     l.dias,l.valorUnit,l.moneda,Math.round(totalLinea(l,v)),
