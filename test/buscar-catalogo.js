@@ -30,7 +30,7 @@ console.log('--- 1. LA VENTANA ---');
 modal = null; pickPersona(r04.id);
 ok('tiene buscador', /id="ppq"/.test(modal || '') && /Buscar por nombre, función o proyecto/.test(modal || ''));
 ok('tiene Todos / Profesionales / Proveedores', /Profesionales/.test(modal) && /Proveedores/.test(modal));
-ok('tiene el filtro de rubro, con cuántos hay', /id="pprubro"/.test(modal) && /04 · Fotografía y Cámara \(\d+\)/.test(modal));
+ok('tiene el filtro de rubro, con cuántos hay', /id="pprubro"/.test(modal) && /03 · Fotografía y Cámara \(\d+\)/.test(modal));
 ok('arranca en el rubro donde se está cargando', _pp.rubro === '04');
 ok('no dibuja las 1.500 de una: como mucho 60', filas() === PP_MAX, filas() + ' filas');
 ok('y dice cuántas coinciden', /coinciden · se ven los primeros 60/.test(els.ppcuenta.textContent), els.ppcuenta.textContent);

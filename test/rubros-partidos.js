@@ -1,7 +1,7 @@
 /* Grip y Maquillaje y Peinado como rubros aparte (códigos 18 y 19, que en
    pantalla son el 06 y el 09), la migración de los presupuestos de antes,
    las «Jornadas de 8 h» de la línea de rodaje (la línea de preproducción
-   atada), los encabezados Preproducción / Rodaje y el catálogo de funciones
+   atada) y el catálogo de funciones
    con los «Gastos del área» aparte. También que el convenio siga
    encontrando el cargo con los nombres nuevos y con los de antes.
    Uso: node test/run.js test/rubros-partidos.js                             */
@@ -25,9 +25,9 @@ ok('Maquilladora va al 19', cargoSICA('Maquillador/a', E).r === '19');
 ok('Grip sin convenio', cargoSICA('Grip', E) === null);
 
 console.log('--- números que ve la gente ---');
-ok('orden', RUBROS_BASE.map(r => r.codigo).join(',') === '01,02,03,04,05,18,06,07,19,08,09,10,11,12,13,14,15,16,17');
-ok('Luces 05, Grip 06, Arte 07, Vestuario 08, Maquillaje 09, Sonido 10, Elenco 11, Administración 19',
-  ['05','18','06','07','19','08','09','17'].map(numRubro).join(',') === '05,06,07,08,09,10,11,19');
+ok('orden', RUBROS_BASE.map(r => r.codigo).join(',') === '02,03,04,05,18,06,07,19,08,09,10,11,12,13,14,15,16,17');
+ok('Dirección 01, Luces 04, Grip 05, Arte 06, Vestuario 07, Maquillaje 08, Sonido 09, Elenco 10, Administración 18',
+  ['02','05','18','06','07','19','08','09','17'].map(numRubro).join(',') === '01,04,05,06,07,08,09,10,18');
 ok('un rubro agregado a mano muestra su código', numRubro('23') === '23');
 ok('catálogo de Grip', FUNCIONES['18'].includes('Key Grip') && FUNCIONES['18'].includes('Fletes y envíos'));
 ok('SUBRUBROS en orden (fletes: primero dirección)', SUBRUBROS.find(x => x.s === 'Fletes y envíos').r === '02');
@@ -63,7 +63,7 @@ ok('la persona sigue atada', RV('18').lineas[0].refId === 'pX');
 ok('el área automática pasa a grip', RV('18').lineas[0].area === 'grip' && RV('18').lineas[1].area === '');
 ok('Grip hereda «sin fee» de Eléctrica', RV('18').aplicaFee === false);
 ok('maquillaje aparte', RV('19').lineas.map(l => l.concepto).join() === 'Maquillador/a,Insumos de maquillaje' && RV('07').nombre === 'Vestuario' && RV('07').lineas.length === 1);
-ok('en orden', v.rubros.map(r => r.codigo).join(',') === '01,02,03,04,05,18,06,07,19,08,09,10,11,12,13,14,15,16,17,20', v.rubros.map(r => r.codigo).join(','));
+ok('en orden', v.rubros.map(r => r.codigo).join(',') === '02,03,04,05,18,06,07,19,08,09,10,11,12,13,14,15,16,17,20', v.rubros.map(r => r.codigo).join(','));
 ok('el gasto atado a la línea de grip se muda; el del gaffer no', cp.rubro === '18' && cp2.rubro === '05');
 const ids = JSON.stringify(v.rubros.map(r => [r.id, r.lineas.map(l => l.id)]));
 migrar(); partirRubros(py);
@@ -112,9 +112,9 @@ ok('grip sin convenio: la línea queda en cero para completar', lineaPrepro(V.ru
 /* la vista */
 DB.ui.tab = 'presu'; DB.ui.vista = 'interna'; r04.abierto = true; render();
 const h = app.innerHTML;
-ok('encabezados Preproducción y Rodaje', /etgrupo et-prepro"><span>Preproducción/.test(h) && /etgrupo et-rodaje"><span>Rodaje/.test(h));
+ok('los dos bloques: preproducción y rodaje', /bloque bl-pre/.test(h) && /bloque bl-rod/.test(h) && h.indexOf('bl-pre') < h.indexOf('bl-rod'));
 ok('el campo en la línea', /Jornadas de 8 h/.test(h) && /setJornadas8\(/.test(h));
-ok('números de rubro a la vista', /<span class="rcode">06<\/span>\s*<span class="rname">Grip/.test(h) && /<span class="rcode">09<\/span>\s*<span class="rname">Maquillaje y Peinado/.test(h));
+ok('números de rubro a la vista', /<span class="rcode">05<\/span>\s*<span class="rname">Grip/.test(h) && /<span class="rcode">08<\/span>\s*<span class="rname">Maquillaje y Peinado/.test(h));
 /* el jefe de producción ve plata; el equipo no ve el presupuesto */
 DB.ui.usuarioId = getPr().usuarios.find(u => u.rol === 'equipo').id;
 ok('el equipo no ve el campo', chipJornadas8(df, r04) === '');
@@ -129,6 +129,6 @@ modal = null; pickFuncion(r04.id);
 const m = modal || '';
 ok('Gastos del área aparte, después de los puestos', m.indexOf('Gastos del área') > m.indexOf('Director de Fotografía') && m.indexOf('Fletes y envíos') > m.indexOf('Gastos del área'));
 modal = null; pickFuncion(V.rubros.find(r => r.codigo === '18').id);
-ok('Grip muestra lo de grip', /06 · Grip/.test(modal) && /Key Grip/.test(modal) && !/Gaffer/.test(modal));
+ok('Grip muestra lo de grip', /05 · Grip/.test(modal) && /Key Grip/.test(modal) && !/Gaffer/.test(modal));
 console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');
 })();

@@ -142,21 +142,24 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible,summary:focus-v
 .del{color:var(--tx3);font-size:15px;line-height:1;text-align:center;padding:4px}
 .del:hover{color:var(--bad)}
 .addln{padding:7px 11px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--line);background:var(--bg)}
-/* preproducción / rodaje dentro de un rubro del equipo: el subtotal cae bajo «Estimado» */
-.etgrupo{display:flex;align-items:baseline;gap:10px;padding:8px 161px 5px 11px;border-bottom:1px solid var(--line);
-  font-size:10px;text-transform:uppercase;letter-spacing:.07em;font-weight:700;color:var(--tx2)}
-.etgrupo span{flex:1}
-.etgrupo i{font-style:normal;font-weight:600;text-transform:none;letter-spacing:0;color:var(--tx3);margin-left:4px}
-.etgrupo b{font:600 12px var(--mono);color:var(--tx);letter-spacing:0}
-.etgrupo.et-prepro{color:#1e3a5f}
-.etgrupo.et-post{color:#4a3a8a}
-@media (max-width:760px){ .etgrupo{padding:10px 12px 4px} }
+/* los dos bloques del presupuesto: preproducción y rodaje, cada uno con su subtotal */
+.bloque{margin:4px 0 14px}
+.bhead{display:flex;align-items:baseline;gap:12px;padding:12px 14px 6px;border-bottom:2px solid var(--tx);
+  font-size:12px;text-transform:uppercase;letter-spacing:.09em;font-weight:800;color:var(--tx)}
+.bhead span{flex:1}
+.bhead i{font-style:normal;font-weight:600;text-transform:none;letter-spacing:0;color:var(--tx3);margin-left:6px;font-size:11.5px}
+.bhead b{font:700 14px var(--mono);letter-spacing:0}
+.bl-pre .bhead{color:#1e3a5f;border-bottom-color:#5b9bd5}
+.bvacio{padding:16px}
+.bmas{padding:8px 0 2px}
+@media (max-width:760px){ .bhead{padding:12px 4px 6px} }
 /* las jornadas de 8 h, en la fila de chips de la línea de rodaje */
 .chip.j8{display:inline-flex;align-items:center;gap:4px;background:rgba(91,155,213,.10);color:#1e3a5f;cursor:text}
 .chip.j8.on{background:rgba(91,155,213,.2)}
 .ln .chip.j8 input{width:3.4em;padding:0 3px;font:700 10.5px var(--mono);text-align:right;border:1px solid rgba(30,58,95,.25);border-radius:3px;background:var(--bg2)}
 .ln .chip.j8 input::placeholder{color:var(--tx3);opacity:.6;font-weight:400}
 /* «Gastos del área» en el catálogo de funciones */
+.pf-grupo .pf-nota{text-transform:none;letter-spacing:0;font-weight:500;margin-left:6px}
 .pf-grupo{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700;margin:12px 0 4px;padding:10px 13px 0;border-top:1px solid var(--line)}
 
 /* chips de circuito / comprobante */
@@ -1471,7 +1474,11 @@ const esUuid = s => typeof s === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
 
 /* Rubros por defecto — estructura de presupuesto publicitario argentino.
-   aplicaFee: si el fee de producción se calcula sobre este rubro.            */
+   aplicaFee: si el fee de producción se calcula sobre este rubro.
+   No hay rubro de preproducción: el scouting, el casting, la PPM son
+   preproducción de Dirección o de Producción (líneas con etapa 'prepro', que
+   el presupuesto muestra en su propio bloque). El viejo 01 «Preproducción y
+   Desarrollo» se reparte entre esos dos al abrir (repartirRubro01).       */
 /* Cada rubro pertenece a un área, salvo los `transversal`, donde gastan varios
    departamentos y hay que decir cuál. Sólo el alquiler de equipos y el
    transporte lo son: cámara alquila cámara y arte alquila utilería, cada uno
@@ -1480,7 +1487,6 @@ const esUuid = s => typeof s === 'string' &&
    JORNADA y es un área en sí mismo. Lo mismo los seguros o la seguridad, que
    son de la producción entera.                                               */
 const RUBROS_BASE = [
-  {codigo:'01', nombre:'Preproducción y Desarrollo',       aplicaFee:true,  area:'preproduccion'},
   {codigo:'02', nombre:'Dirección',                        aplicaFee:true,  area:'direccion'},
   {codigo:'03', nombre:'Equipo de Producción',             aplicaFee:true,  area:'produccion'},
   {codigo:'04', nombre:'Fotografía y Cámara',              aplicaFee:true,  area:'camara'},
@@ -1508,8 +1514,8 @@ const RUBRO = cod => RUBROS_BASE.find(r=>r.codigo===cod) || {};
    en la lista (Luces 05, Grip 06, Arte 07…). Todo lo que muestra un número de
    rubro pasa por acá; la lógica sigue usando `codigo`. Un rubro agregado a
    mano (sin lugar en la lista) muestra su código tal cual.                  */
-const ordRubro = cod => { const i = RUBROS_BASE.findIndex(r => r.codigo === cod); return i < 0 ? 100 + (parseInt(cod, 10) || 0) : i; };
-const numRubro = cod => { const i = RUBROS_BASE.findIndex(r => r.codigo === cod); return i < 0 ? String(cod ?? '') : String(i + 1).padStart(2, '0'); };
+const ordRubro = cod => { const i = RUBROS_BASE.findIndex(r => r.codigo === cod); return i < 0 ? (cod === '01' ? -1 : 100 + (parseInt(cod, 10) || 0)) : i; };
+const numRubro = cod => { const i = RUBROS_BASE.findIndex(r => r.codigo === cod); return i < 0 ? (cod === '01' ? 'PRE' : String(cod ?? '')) : String(i + 1).padStart(2, '0'); };
 const porOrdenRubro = (a, b) => ordRubro(a) - ordRubro(b) || String(a).localeCompare(String(b));
 /* "05 · Eléctrica (Luces)" */
 const rubroTxt = (cod, nombre) => numRubro(cod) + ' · ' + (nombre ?? (RUBRO(cod).nombre || ''));
@@ -1521,10 +1527,6 @@ const esPorJornada  = cod => !!RUBRO(cod).porJornada;
    carga una línea de presupuesto Y con la que se clasifica cada factura que
    entra, así nadie escribe el concepto a mano y todo suma al mismo lugar.  */
 const FUNCIONES = {
-  '01':["Scouting / búsqueda de locaciones","Casting","Pre Production Meeting (PPM)",
-        "Permisos y trámites","Movilidad de preproducción","Oficina y coworking",
-        "Comunicaciones y telefonía","Papelería e impresiones","Research y referencias",
-        "Storyboard","Traducciones","Honorarios de desarrollo","Mensajería"],
   '02':["Director","Ayudante de Dirección (1° AD)","2° Ayudante de Dirección",
         "3° Ayudante de Dirección","Script / Continuista","Storyboard artist",
         "Director de segunda unidad","Coach de actores","Asistente de dirección de casting"],
@@ -1594,10 +1596,27 @@ const FUNCIONES = {
 };
 
 /* Las funciones en el orden de los rubros. Ojo: no recorrer FUNCIONES con
-   Object.entries, que pone '18' y '19' ANTES que '01' (las claves que son
+   Object.entries, que pone '18' y '19' ANTES que '02' (las claves que son
    números enteros van primero) y un gasto que está en varios rubros, como
    los fletes, caería en Grip. */
 const funcionesEnOrden = () => RUBROS_BASE.map(r => [r.codigo, FUNCIONES[r.codigo] || []]);
+/* Lo que era del rubro 01: son cosas de Dirección o de Producción que se
+   hacen ANTES del rodaje. Están en el catálogo de esas áreas, marcadas, y
+   entran siempre como preproducción (aunque se elijan desde el rodaje). */
+const FUNCIONES_PRE = {
+  '02':['Casting','Casting de voces','Storyboard','Shootingboard','Presentación y tratamiento',
+        'Research y referencias','Honorarios de desarrollo'],
+  '03':['Scouting / búsqueda de locaciones','Pre Production Meeting (PPM)','Permisos y trámites',
+        'Movilidad de preproducción','Oficina y coworking','Comunicaciones y telefonía',
+        'Papelería e impresiones','Traducciones','Mensajería','Prueba de vestuario'],
+  /* el scouting técnico (el DF y el gaffer van a ver la locación) y la prueba de cámara */
+  '04':['Scouting técnico','Prueba de cámara'],
+};
+Object.entries(FUNCIONES_PRE).forEach(([r, xs]) => xs.forEach(x => { if(!FUNCIONES[r].includes(x)) FUNCIONES[r].push(x); }));
+let _funPre = null;
+/* ¿es de las que van siempre en preproducción? (por el nombre, con o sin acentos) */
+const esFuncionPre = c => { _funPre ||= new Set(Object.values(FUNCIONES_PRE).flat().map(x => norm(x)));
+  return _funPre.has(norm(c || '')); };
 /* Funciones que cambiaron de nombre para decirse como se dicen acá. Las
    líneas y las fichas viejas no se renombran (son de alguien): para comparar
    (la plantilla, las jornadas de 8 h) se pasa todo al nombre de ahora.    */
@@ -1615,7 +1634,7 @@ let SUBRUBROS = funcionesEnOrden().flatMap(([r,xs])=>xs.map(x=>({r, s:x})));
    QUIÉN es. Sin esto, la nafta de arte y la de producción caen en la misma
    bolsa y después no se sabe quién se pasó.                                  */
 const AREAS = [
-  {k:'preproduccion', l:'Preproducción',     r:'01'},
+  {k:'preproduccion', l:'Preproducción',     r:'03'},
   {k:'produccion', l:'Producción',           r:'03'},
   {k:'direccion',  l:'Dirección',            r:'02'},
   {k:'camara',     l:'Fotografía y Cámara',  r:'04'},
@@ -1653,7 +1672,6 @@ const COMUNES = ['Combustible del área','Movilidad y estacionamiento','Fletes y
    estudio se cobra por día de armado, de pre-light, de rodaje y de desarme;
    los menores traen chaperona y permiso; los camiones cobran horas extra. */
 const FUNCIONES_EXTRA = {
-  '01':['Shootingboard','Presentación y tratamiento','Casting de voces','Prueba de vestuario'],
   '03':['Line Producer','Productor Financiero','Aprendiz','Asistente de Locaciones'],
   '06':['Efectos especiales (lluvia, humo, nieve)','Vehículos de escena','Home economist'],
   '09':['Chaperona','Permiso de menores (escribanía)','Representante (comisión)',
@@ -2325,7 +2343,7 @@ const plG = (r, c, o={}) => plL(r, c, {...o, u:'global', d:1});
    lo tiene la mediana, y así. */
 const PL_PUB = {
   chica: () => [
-    plG('01','Scouting / búsqueda de locaciones'), plG('01','Casting', {nota:PL_REF.casting}),
+    plG('03','Scouting / búsqueda de locaciones'), plG('02','Casting', {nota:PL_REF.casting}),
     plG('02','Director', {ct:'factura', nota:'Honorarios del director: van aparte del convenio'}),
     plL('02','Ayudante de Dirección (1° AD)', {pre:1}),
     plL('03','Jefe de Producción', {pre:2}), plL('03','Asistente de Producción', {pre:1}),
@@ -2347,7 +2365,7 @@ const PL_PUB = {
     plG('15','Seguro de Accidentes Personales'), plG('15','Responsabilidad Civil'),
   ],
   mediana: () => [
-    plG('01','Pre Production Meeting (PPM)'), plG('01','Shootingboard'),
+    plG('03','Pre Production Meeting (PPM)'), plG('02','Shootingboard'),
     plL('02','Ayudante de Dirección (1° AD)', {pre:3}), plL('02','2° Ayudante de Dirección'),
     plL('02','Script / Continuista'),
     plL('03','Jefe de Producción', {pre:5}), plL('03','Asistente de Producción', {pre:3}),
@@ -2438,7 +2456,7 @@ const PLANTILLAS = [
   {k:'clip-mediano', tipo:'videoclip', escala:'Mediano', jornadas:2, horas:12, contrato:'factura',
     t:'Videoclip · mediano', d:'Dos jornadas, equipo por fuera, efectos y dolly, como el videoclip grande de la carpeta (USD 48 mil).',
     lineas: () => [
-      plG('01','Scouting / búsqueda de locaciones'), plG('01','Casting', {nota:PL_REF.casting}), plG('01','Shootingboard'),
+      plG('03','Scouting / búsqueda de locaciones'), plG('02','Casting', {nota:PL_REF.casting}), plG('02','Shootingboard'),
       plG('02','Director', {ct:'factura'}), plL('02','Ayudante de Dirección (1° AD)', {pre:6}), plL('02','2° Ayudante de Dirección'),
       plL('03','Line Producer', {pre:6}), plL('03','Jefe de Producción', {pre:6}), plL('03','Asistente de Producción', {pre:4}),
       plL('03','Location Manager', {pre:5}), plL('03','Aprendiz', {q:2}), plG('03','Caja chica de producción', {nota:PL_REF.caja}),
@@ -2463,7 +2481,7 @@ const PLANTILLAS = [
   {k:'cont-tv', tipo:'contenido', escala:'Mediana', jornadas:1, horas:12, piezas:5,
     t:'Contenido / TV · separadores y promos', d:'Una jornada en estudio para varias piezas cortas (5 separadores), como los formatos para un canal de la carpeta.',
     lineas: () => [
-      plG('01','Scouting / búsqueda de locaciones'), plG('01','Presentación y tratamiento'),
+      plG('03','Scouting / búsqueda de locaciones'), plG('02','Presentación y tratamiento'),
       plG('02','Director', {ct:'factura'}), plL('02','Ayudante de Dirección (1° AD)', {pre:3}),
       plL('03','Jefe de Producción', {pre:4}), plL('03','Asistente de Producción', {pre:3}), plL('03','Aprendiz'),
       plG('03','Caja chica de producción'),
@@ -2703,6 +2721,8 @@ function resolverPlantilla(pl, jornadas){
     porClave.set(clave, {r:x.r, c:x.c, q:x.q, d:dias, u:x.u, etapa, nota:x.nota, ct:x.ct || pl.contrato || null});
   };
   pl.lineas().forEach(x => {
+    /* el scouting, el casting, la PPM: van enteras en preproducción */
+    if(esFuncionPre(x.c)){ add(x, 'prepro', x.u === 'global' ? 1 : (x.d === 'J' ? J : n(x.d))); return; }
     add(x, x.u === 'global' ? null : 'rodaje', x.u === 'global' ? 1 : (x.d === 'J' ? J : n(x.d)));
     if(x.pre) add({...x, q: x.q === 'CAB' ? 1 : x.q, nota:''}, 'prepro', x.pre);
   });
@@ -5617,18 +5637,18 @@ const PARTES_PY = {
         py.noSalio = d.cotiz.noSalio || null; py.etapaHist = d.cotiz.etapaHist || []; py.productoCliente = d.cotiz.productoCliente || null; }
       ponerFees(py, {...(py._fees || {}), ...Object.fromEntries(Object.entries(antes).filter(([, f]) => f != null))});
       /* lo pudo guardar una compu que todavía no separaba Grip y Maquillaje */
-      partirRubros(py); },
+      repartir01(py); partirRubros(py); },
     algo: conLineas},
   presupuesto_real: {
     lee: py => ({versiones: (py.versiones || []).filter(ES_REAL), adicionales: py.adicionales || [],
       fees: Object.fromEntries((py.versiones || []).filter(v => !ES_REAL(v)).map(v => [v.id, v.capas ? v.capas.fee ?? null : null]))}),
     pone: (py, d) => { py.versiones = [...(d.versiones || []), ...(py.versiones || []).filter(v => !ES_REAL(v))];
-      py.adicionales = d.adicionales || []; py._fees = d.fees || {}; ponerFees(py, py._fees); partirRubros(py); },
+      py.adicionales = d.adicionales || []; py._fees = d.fees || {}; ponerFees(py, py._fees); repartir01(py); partirRubros(py); },
     algo: d => conLineas(d) || Object.keys(d.fees || {}).length > 0 || (d.adicionales || []).length > 0},
   gente: {
     lee: gentePublica,
     /* quien ve la plata tiene el presupuesto de verdad: la gente es para los demás */
-    pone: (py, d) => { if(vePlata()) return; py.versiones = d.versiones || []; py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; partirRubros(py); },
+    pone: (py, d) => { if(vePlata()) return; py.versiones = d.versiones || []; py.versionRodaje = d.versionRodaje || null; py.piezas = d.piezas || []; repartir01(py); partirRubros(py); },
     algo: conLineas},
   plan: {
     lee: py => ({desglose: desgloseSinPartes(py.desglose), plan: py.plan || null}),
@@ -6141,9 +6161,59 @@ function partirRubros(py){
   return movidas;
 }
 
+/* El rubro 01 «Preproducción y Desarrollo» se fue (octubre de 2026): lo suyo
+   es preproducción de Dirección (el casting, el storyboard, el desarrollo) o
+   de Producción (el scouting, la PPM, los trámites). Cada línea pasa al 02
+   o al 03 con etapa 'prepro': la misma línea (id, persona, monto). Si el 01
+   tenía el fee o el IVA distinto que el rubro de destino, mudarla cambiaría
+   el total: esa versión queda con su 01 como estaba (sus líneas, igual, en
+   el bloque de preproducción) y se avisa en la consola. Una vez por versión
+   (`rubro01Repartido`).                                                      */
+const RE_A_DIRECCION = /casting|story ?board|shooting ?board|gui[oó]n|desarrollo|research|referencias|tratamiento/;
+const destino01 = l => esFuncionPre(l.concepto) ? (FUNCIONES_PRE['02'].some(x => norm(x) === norm(l.concepto)) ? '02' : '03')
+  : RE_A_DIRECCION.test(norm(l.concepto || '')) ? '02' : '03';
+function repartirRubro01(v){
+  if(!v || !Array.isArray(v.rubros) || v.rubro01Repartido) return 0;
+  const r01 = v.rubros.find(r => r.codigo === '01');
+  v.rubro01Repartido = true;
+  if(!r01) return 0;
+  const igual = d => d && (d.aplicaFee !== false) === (r01.aplicaFee !== false) && (d.aplicaIva !== false) === (r01.aplicaIva !== false);
+  const dests = ['02', '03'].map(c => v.rubros.find(r => r.codigo === c));
+  r01.lineas.forEach(l => { l.etapa = 'prepro'; });
+  if(r01.lineas.some(l => !igual(v.rubros.find(r => r.codigo === destino01(l))))){
+    try{ console.info(`CLAP: «${v.nombre}» tiene el rubro 01 con otro fee o IVA: queda como estaba para no cambiar el total`); }catch(e){}
+    return 0;
+  }
+  let movidas = 0;
+  r01.lineas.forEach(l => { const d = v.rubros.find(r => r.codigo === destino01(l));
+    if(l.area === 'preproduccion') l.area = d.area || l.area;
+    d.lineas.push(l); movidas++; });
+  v.rubros = v.rubros.filter(r => r !== r01);
+  return movidas;
+}
+function repartir01(py){
+  if(!py) return 0;
+  const donde = {};
+  (py.versiones || []).forEach(v => {
+    const r01 = (v.rubros || []).find(r => r.codigo === '01');
+    if(r01 && !v.rubro01Repartido) r01.lineas.forEach(l => { donde[l.id] = destino01(l); });
+    repartirRubro01(v);
+  });
+  /* los gastos del 01: con su línea si la tienen; si no, por lo que dicen */
+  const enV = {}; (py.versiones || []).forEach(v => v.rubros.forEach(r => r.lineas.forEach(l => { enV[l.id] = r.codigo; })));
+  [...(py.comprobantes || []), ...(py.ocs || [])].forEach(c => {
+    if(c.rubro !== '01') return;
+    const aca = c.lineaId && enV[c.lineaId];
+    if(aca === '01') return;                       /* su línea se quedó en el 01 */
+    c.rubro = aca || donde[c.lineaId] || destino01({concepto: c.subrubro || c.concepto || ''});
+    if(c.area === 'preproduccion') c.area = RUBRO(c.rubro).area || c.area;
+  });
+  return Object.keys(donde).length;
+}
+
 function migrar(){
   if(!DB.schemaVersion) DB.schemaVersion = 1;
-  (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(partirRubros));
+  (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(py => { repartir01(py); partirRubros(py); }));
   /* rubros agregados despues: se suman a los presupuestos que ya existian */
   (DB.productoras||[]).forEach(pr=>(pr.proyectos||[]).forEach(py=>
     (py.versiones||[]).forEach(v=>{
@@ -6387,11 +6457,12 @@ function sembrar(){
   /* la primera línea de cada puesto (y su preproducción) va a esa ficha */
   PUESTOS.forEach(([c, concepto, k]) => R_(c).lineas.filter(l => l.concepto === concepto).forEach((l, i, ls) => {
     if(l.etapa || ls.filter(x => !x.etapa).indexOf(l) === 0) Object.assign(l, {refId: C[k].id, refTipo: 'persona'}); }));
-  /* 01 preproducción */
-  pon('01', 'Scouting / búsqueda de locaciones', {valorUnit:850000, circuito:'efectivo', comprobante:'reciboS'});
-  pon('01', 'Casting', {valorUnit:900000});
-  pon('01', 'Pre Production Meeting (PPM)', {valorUnit:250000});
-  pon('01', 'Shootingboard', {valorUnit:450000});
+  /* la preproducción de dirección y de producción */
+  const ponPre = (c, concepto, o) => { const l = LN(c, concepto, 'prepro'); if(l) Object.assign(l, o); return l; };
+  ponPre('03', 'Scouting / búsqueda de locaciones', {valorUnit:850000, circuito:'efectivo', comprobante:'reciboS'});
+  ponPre('02', 'Casting', {valorUnit:900000});
+  ponPre('03', 'Pre Production Meeting (PPM)', {valorUnit:250000});
+  ponPre('02', 'Shootingboard', {valorUnit:450000});
   /* 02 dirección: Paula es la asistente de dirección (1° AD), como en su usuario */
   pon('02', 'Director', {valorUnit:4800000, refId:C.julian.id, refTipo:'persona', comprobante:'facA'});
   R_('02').lineas.forEach(l => { if(l.concepto === 'Ayudante de Dirección (1° AD)') l.concepto = 'Asistente de Dirección (1° AD)'; });
@@ -8397,8 +8468,7 @@ function vistaPresupuesto(pr,py,v){
   ${solapasPiezas(py, v, sel, cli)}
   ${cli ? '' : barraSICA(py, v)}
   ${sel && !cli ? avisoPieza(py, v, sel) : ''}
-  ${cli ? tablaCliente(v,R) : (()=>{ const RL = realPorLinea(py,v);
-      return v.rubros.map(r=>rubroHTML(r,v,filtro,sel,RL)).join(''); })()}
+  ${cli ? tablaCliente(v,R) : presupuestoEnBloquesHTML(py, v, filtro, sel)}
   ${cli?'':`<div class="pad noprint" style="padding:0 0 10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" onclick="addRubro()">+ Agregar rubro</button>
       <button class="btn" onclick="elegirPlantilla()" title="Suma las líneas de una plantilla que todavía no estén">+ Líneas de una plantilla</button>
@@ -8570,65 +8640,141 @@ function cabeceraProyecto(pr,py,v,cli){
   </div></div>`;
 }
 
-function rubroHTML(r,v,filtro,piezaSel,RL){
-  const ls = filtro ? r.lineas.filter(filtro) : r.lineas;
+/* =====================  PREPRODUCCIÓN Y RODAJE  ===========================
+   El presupuesto se lee en dos bloques, como las planillas de la casa: arriba
+   la PREPRODUCCIÓN (jornadas de 8 h: el scouting, la prueba de cámara, los
+   armados) y abajo el RODAJE. Los rubros se repiten: Fotografía y Cámara
+   está en los dos, cada vez con lo suyo. Todos los rubros pueden tener
+   preproducción —como mínimo el scouting— salvo Postproducción.
+   Qué va arriba: las líneas con etapa 'prepro'. (El viejo rubro 01,
+   «Preproducción y Desarrollo», ya no existe: lo suyo es preproducción de
+   Dirección o de Producción, ver repartirRubro01.)
+   En el bloque de preproducción sólo se ven los rubros que tienen algo; el
+   que se suma con «+ Agregar rubro a preproducción» se ve vacío hasta que
+   se le carga una línea (eso vive en DB.ui, no en el presupuesto).
+   Es la vista: las líneas, los rubros y los totales no cambian.             */
+const RUBRO_SIN_PRE = '14';
+const esLineaPre = (l, r) => !!r && r.codigo !== RUBRO_SIN_PRE && l.etapa === 'prepro';
+/* los rubros que se sumaron a mano al bloque y todavía están vacíos */
+const preVacios = () => (DB.ui.preVacios ||= []);
+function bloquesPresupuesto(v, filtro){
+  const pre = [], rod = [];
+  (v.rubros || []).forEach(r => {
+    const ls = filtro ? r.lineas.filter(filtro) : r.lineas;
+    const lp = ls.filter(l => esLineaPre(l, r)), lr = ls.filter(l => !esLineaPre(l, r));
+    const conPre = r.lineas.some(l => esLineaPre(l, r));
+    if(lp.length || (!conPre && preVacios().includes(r.id) && r.codigo !== RUBRO_SIN_PRE)) pre.push({r, ls: lp});
+    rod.push({r, ls: lr});
+  });
+  const tot = xs => xs.reduce((s, x) => s + x.ls.reduce((a, l) => a + totalLinea(l, v), 0), 0);
+  return {pre, rod, totPre: tot(pre), totRod: tot(rod)};
+}
+function presupuestoEnBloquesHTML(py, v, filtro, sel){
+  const RL = realPorLinea(py, v), B = bloquesPresupuesto(v, filtro);
+  /* las acciones del rubro (fee, IVA, eliminar) van una sola vez: en el rodaje,
+     donde están todos los rubros */
+  const enRod = new Set(B.rod.map(x => x.r.id));
+  const quedan = (v.rubros || []).filter(r => r.codigo !== RUBRO_SIN_PRE && !B.pre.some(x => x.r === r));
+  return `<div class="bloque bl-pre">
+      <div class="bhead"><span>Preproducción <i>jornadas de 8 h</i></span><b>${fmt(B.totPre, v.monedaBase)}</b></div>
+      ${B.pre.map(x => rubroHTML(x.r, v, filtro, sel, RL, 'pre', x.ls, !enRod.has(x.r.id))).join('')
+        || `<div class="empty bvacio">Sin preproducción cargada: el scouting, la prueba de cámara, los armados.</div>`}
+      ${quedan.length ? `<div class="pad noprint bmas"><button class="btn" onclick="agregarRubroPre()">+ Agregar rubro a preproducción</button></div>` : ''}
+    </div>
+    <div class="bloque bl-rod">
+      <div class="bhead"><span>Rodaje</span><b>${fmt(B.totRod, v.monedaBase)}</b></div>
+      ${B.rod.map(x => rubroHTML(x.r, v, filtro, sel, RL, 'rodaje', x.ls, true)).join('')}
+    </div>`;
+}
+/* el rubro abierto o cerrado en el bloque de preproducción: lo mismo que en el
+   rodaje, salvo que se lo toque ahí (queda en DB.ui) */
+const preAbierto = r => { const m = DB.ui.preAbierto || {}; return r.id in m ? !!m[r.id] : true; };
+function togglePre(id){ DB.ui.preAbierto ||= {}; const r = getV().rubros.find(x => x.id === id); DB.ui.preAbierto[id] = !preAbierto(r); R(); }
+function agregarRubroPre(){
+  const v = getV(); if(!v) return;
+  const B = bloquesPresupuesto(v, null);
+  const xs = v.rubros.filter(r => r.codigo !== RUBRO_SIN_PRE && !B.pre.some(x => x.r === r));
+  abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:460px">
+    <h3>Agregar rubro a preproducción</h3>
+    <div class="mbody" style="padding:8px">
+      <div class="muted" style="font-size:12px;line-height:1.5;margin:2px 6px 8px">El scouting, la prueba de cámara, un armado: lo que el área trabaja antes del rodaje, por jornada de 8 h. Postproducción no tiene preproducción.</div>
+      ${xs.map(r => `<button class="btn" style="width:100%;text-align:left;margin-bottom:4px;border-color:transparent;display:flex;gap:8px;align-items:baseline"
+        onclick="sumarRubroPre('${r.id}')"><span class="rcode">${esc(numRubro(r.codigo))}</span><span style="flex:1">${esc(r.nombre)}</span></button>`).join('')
+        || '<div class="empty">Ya están todos.</div>'}
+    </div>
+    <div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div></div></div>`);
+}
+function sumarRubroPre(id){
+  if(!preVacios().includes(id)) preVacios().push(id);
+  DB.ui.preAbierto ||= {}; DB.ui.preAbierto[id] = true;
+  cerrar(); R();
+}
+/* cuando entra la primera línea, el rubro ya se ve por lo que tiene */
+const yaNoVacioPre = id => { DB.ui.preVacios = preVacios().filter(x => x !== id); };
+/* una línea nueva cargada desde el bloque de preproducción */
+function alPre(l, r){
+  l.etapa = 'prepro';
+  yaNoVacioPre(r.id);
+  return l;
+}
+
+function rubroHTML(r,v,filtro,piezaSel,RL,bloque,lsBloque,acciones = true){
+  const ls = lsBloque || (filtro ? r.lineas.filter(filtro) : r.lineas);
   const tot = ls.reduce((s,l)=>s+totalLinea(l,v), 0);
   const py = getPy();
-  return `<div class="rubro" data-r="${esc(r.codigo)}">
-    <div class="rhead" onclick="toggleRubro('${r.id}')">
-      <span class="caret">${r.abierto?'▾':'▸'}</span>
+  const pre = bloque === 'pre';
+  const abierto = pre ? preAbierto(r) : r.abierto;
+  const P = pre ? ",'pre'" : '';
+  /* lo gastado: en preproducción, lo de sus líneas; en el rodaje, el resto
+     del rubro (con lo que no está asignado a ninguna línea) */
+  const realPre = RL ? r.lineas.filter(l => esLineaPre(l, r)).reduce((s, l) => s + (RL.porLinea[l.id] || 0), 0) : 0;
+  const real = !RL ? 0 : pre ? realPre : (RL.porRubro[r.codigo] || 0) - (bloque ? realPre : 0);
+  return `<div class="rubro${pre ? ' rpre' : ''}" data-r="${esc(r.codigo)}">
+    <div class="rhead" onclick="${pre ? 'togglePre' : 'toggleRubro'}('${r.id}')">
+      <span class="caret">${abierto?'▾':'▸'}</span>
       <span class="rcode">${esc(numRubro(r.codigo))}</span>
       <span class="rname">${esc(r.nombre)}</span>
       ${!r.aplicaFee && veMargen()?'<span class="chip c-otr" title="No se le aplica fee de producción">s/fee</span>':''}
       ${r.aplicaIva===false && veMargen()?'<span class="chip c-otr" title="Este rubro no paga IVA">s/IVA</span>':''}
       <span class="muted" style="font-size:11px">${ls.length}</span>
       <span class="rtot">${fmt(tot, v.monedaBase)}</span>
-      ${(()=>{ const real = RL && RL.porRubro[r.codigo];
-        if(!real) return '<span class="rreal vacio">—</span>';
+      ${(()=>{
+        if(!(real > 0)) return '<span class="rreal vacio">—</span>';
         return `<span class="rreal ${real>tot?'pasado':''}"
-          title="Gastado de verdad · comprobantes cargados${RL.sueltoRubro[r.codigo]?` · ${fmt(RL.sueltoRubro[r.codigo],v.monedaBase)} sin asignar a una línea`:''}">${fmt(real, v.monedaBase)}</span>`;
+          title="Gastado de verdad · comprobantes cargados${!pre && RL.sueltoRubro[r.codigo]?` · ${fmt(RL.sueltoRubro[r.codigo],v.monedaBase)} sin asignar a una línea`:''}">${fmt(real, v.monedaBase)}</span>`;
       })()}
     </div>
-    ${r.abierto?`<div class="rbody">
+    ${abierto?`<div class="rbody">
       <div class="lh">
         <span>Concepto</span><span>Unidad</span><span class="num">Cant.</span><span class="num">Días</span>
         <span class="num">Valor unit.</span><span>Mon.</span><span class="num">Estimado</span><span class="num">Actual</span><span></span>
       </div>
-      ${lineasPorEtapaHTML(ls,r,v,py,RL) ||
-        `<div class="empty" style="padding:16px">${filtro?'Nada de esta pieza ni compartido en este rubro':'Sin líneas todavía'}</div>`}
+      ${lineasDelBloqueHTML(ls,r,v,py,RL,pre) ||
+        `<div class="empty" style="padding:16px">${filtro?'Nada de esta pieza ni compartido en este rubro':pre?'Sin preproducción todavía: el scouting, la prueba de cámara…':bloque?'Sin líneas de rodaje todavía':'Sin líneas todavía'}</div>`}
       <div class="addln noprint">
-        <button class="btn sm pri" onclick="addLinea('${r.id}')">+ Línea${piezaSel?' en '+esc(nombrePieza(py,piezaSel)):''}</button>
-        <button class="btn sm" onclick="pickFuncion('${r.id}')">+ Del catálogo de funciones</button>
-        <button class="btn sm" onclick="pickPersona('${r.id}')">+ Persona / proveedor</button>
+        <button class="btn sm pri" onclick="addLinea('${r.id}'${P})">+ Línea${piezaSel?' en '+esc(nombrePieza(py,piezaSel)):''}</button>
+        <button class="btn sm" onclick="pickFuncion('${r.id}'${P})">+ Del catálogo de funciones</button>
+        <button class="btn sm" onclick="pickPersona('${r.id}'${P})">+ Persona / proveedor</button>
         <div class="spacer" style="flex:1"></div>
-        ${veMargen() ? `<button class="btn sm" onclick="upRubro('${r.id}','aplicaFee',${!r.aplicaFee})"
+        ${acciones ? `${veMargen() ? `<button class="btn sm" onclick="upRubro('${r.id}','aplicaFee',${!r.aplicaFee})"
           title="Si este rubro entra en la base del fee de producción">${r.aplicaFee?'Quitar del fee':'Incluir en el fee'}</button>
         <button class="btn sm" onclick="upRubro('${r.id}','aplicaIva',${r.aplicaIva===false})"
           title="Si este rubro paga IVA">${r.aplicaIva===false?'Gravar con IVA':'Marcar exento de IVA'}</button>` : ''}
-        <button class="btn sm dgr" onclick="delRubro('${r.id}')">Eliminar rubro</button>
+        <button class="btn sm dgr" onclick="delRubro('${r.id}')">Eliminar rubro</button>` : ''}
       </div>
     </div>`:''}
   </div>`;
 }
 
-/* En los rubros del equipo, la preproducción y el rodaje por separado, cada
-   uno con su subtotal, como en las planillas de la casa (la columna de
-   «Jornadas de 8 hs» iba aparte). Sólo si el rubro tiene algo que no es de
-   rodaje: si no, se ve como siempre. Es la vista; las líneas no cambian.  */
-const ETAPA_TITULO = {prepro: 'Preproducción', rodaje: 'Rodaje', post: 'Postproducción'};
-function lineasPorEtapaHTML(ls, r, v, py, RL){
-  if(!RUBROS_CREW.includes(r.codigo) || !ls.some(esJornada8)) return ls.map(l => lineaHTML(l, r, v, py, RL)).join('');
-  /* la preproducción en el orden del equipo de rodaje: la del DF arriba de la del foquista */
-  const pos = new Map(r.lineas.map((l, i) => [l.id, i]));
-  r.lineas.forEach((l, i) => { if(llevaJornadas8(l, r)){ const p = lineaPrepro(r, l); if(p) pos.set(p.id, i); } });
-  return ETAPAS.map(e => {
-    const xs = ls.filter(l => (l.etapa || 'rodaje') === e.k); if(!xs.length) return '';
-    if(e.k === 'prepro') xs.sort((a, b) => pos.get(a.id) - pos.get(b.id));
-    const sub = xs.reduce((s, l) => s + totalLinea(l, v), 0);
-    return `<div class="etgrupo et-${e.k}"><span>${ETAPA_TITULO[e.k] || e.l}${esJornada8(xs[0]) ? ' <i>jornadas de 8 h</i>' : ''}</span>
-      <b title="Subtotal de ${esc((ETAPA_TITULO[e.k] || e.l).toLowerCase())}">${fmt(sub, v.monedaBase)}</b></div>`
-      + xs.map(l => lineaHTML(l, r, v, py, RL)).join('');
-  }).join('');
+/* Las líneas de un rubro dentro de su bloque. En preproducción, en el orden
+   del equipo de rodaje: la del DF arriba de la del foquista.              */
+function lineasDelBloqueHTML(ls, r, v, py, RL, pre){
+  if(pre){
+    const pos = new Map(r.lineas.map((l, i) => [l.id, i]));
+    r.lineas.forEach((l, i) => { if(llevaJornadas8(l, r)){ const p = lineaPrepro(r, l); if(p) pos.set(p.id, i); } });
+    ls = [...ls].sort((a, b) => pos.get(a.id) - pos.get(b.id));
+  }
+  return ls.map(l => lineaHTML(l, r, v, py, RL)).join('');
 }
 
 /* «Jornadas de 8 h»: los días que el técnico trabaja ANTES del rodaje
@@ -8745,13 +8891,14 @@ function chipsContrato(l, r, py){
   const E = `'${r.id}','${l.id}'`;
   const esGente = RUBROS_CREW.includes(r.codigo) || r.codigo === '09';
   const k = contratoDe(l, r);
-  const verEtapa = l.etapa || RUBROS_CREW.includes(r.codigo);
+  /* la etapa, en todos los rubros menos Postproducción, que no tiene preproducción */
+  const verEtapa = l.etapa || r.codigo !== RUBRO_SIN_PRE;
   const verContrato = l.contrato || esGente || k !== 'factura';
   let h = '';
   if(verEtapa) h += `<select class="chipsel chip et-${l.etapa||'rodaje'}"
       title="Etapa. En preproducción y post la jornada del convenio es de 8 h."
       onchange="upLinea(${E},'etapa',this.value)">
-      ${ETAPAS.map(e=>`<option value="${e.k==='rodaje'?'':e.k}" ${(l.etapa||'rodaje')===e.k?'selected':''}>${e.l}</option>`).join('')}
+      ${ETAPAS.filter(e => !(e.k === 'prepro' && r.codigo === RUBRO_SIN_PRE) || l.etapa === 'prepro').map(e=>`<option value="${e.k==='rodaje'?'':e.k}" ${(l.etapa||'rodaje')===e.k?'selected':''}>${e.l}</option>`).join('')}
     </select>`;
   if(verContrato) h += `<select class="chipsel chip ct-${k}"
       title="${esc((CONTRATOS.find(c=>c.k===k)||{}).d||'')}${l.contrato?'':' · detectado solo'}"
@@ -10311,6 +10458,9 @@ function genteDelProyecto(py, v){
     const pe = l.refId ? DB.catalogo.personas.find(x => x.id === l.refId) : null;
     if(pe && (pe.tipo || 'persona') !== 'persona') return;
     if(!pe && NO_ES_PERSONA.test(concepto)) return;
+    /* el casting, el scouting, la PPM (lo que era el rubro 01) son gastos de
+       preproducción de dirección o de producción, no una persona del equipo */
+    if(!pe && esFuncionPre(concepto)) return;
     /* las jornadas de 8 h son de la persona de la línea de rodaje: si a esa
        se le escribió el nombre a mano, vale también para ésta */
     const deRodaje = l.preDe ? rb.lineas.find(x => x !== l && raizLinea(x) === l.preDe) : null;
@@ -16529,15 +16679,21 @@ const PALABRAS_RUBRO = [
   ['12', /(movilidad|transporte|cami[oó]n|truck|camioneta|\bvans?\b|combi|remis|taxi|traslado|pasaje|a[eé]reo|flight|hotel|hospedaje|per ?diem|vi[aá]tico|nafta|\bgas\b|combustible|peaje|tolls|parking|kilometraje|chofer|driver|motorhome|camar[ií]n|flete|\bautos?\b|\bbus(es)?\b|vehic|deliver|scouting van)/],
   ['13', /(catering|\bmeals?\b|comida|almuerzo|desayuno|merienda|\bcena\b|refrigerio|vianda|craft service)/],
   ['16', /(seguridad|security|m[eé]dico|\bmedic|ambulancia|enfermer|polic[ií]a|bomber|higiene)/],
+  /* el scouting es preproducción de producción, no un gasto de locación */
+  ['03', /(preproducci|scouting|\bppm\b|pre ?production meeting)/],
   ['10', /(locaci[oó]n|location|permis|permit|scout|\bestudio\b|\bstudio\b|galer[ií]a|limpieza|guardia|ba[nñ]os? qu[ií]micos?)/],
   ['15', /(seguro|insurance|legal|escriban|abogad)/],
   ['14', /(backstage|making ?of|edici[oó]n|editor|\bedit\b|\bpost\b|postpro|color|vfx|efectos digitales|animaci|finalizaci|mezcla|\bmix\b|copias|subtitul|motion|gr[aá]fica|\b3d\b|on ?line|off ?line|telecine|transfer|davinci|laboratorio|material virgen|film stock|m[uú]sica|music|voice over until)/],
   ['08', /(sonido|sonidista|\bsound\b|microfonista|\bboom op|playback)/],
   ['17', /(bancari|administrativ|contador|oficina|\boffice\b|mensajer|messenger|fotocopi|tel[eé]fono|celular|cellular|\bfax\b|petty cash|caja chica|courier)/],
-  ['01', /(shooting ?board|story ?board|casting facilit|preproducci|desarrollo|gui[oó]n)/],
+  /* lo que antes era el rubro 01: preproducción de dirección o de producción */
+  ['02', /(shooting ?board|story ?board|casting|desarrollo|gui[oó]n|tratamiento)/],
   ['11', /(alquiler|rental|\bequipos?\b|equipment|paquete|package|c[aá]mara|camera|lentes|\blens|[oó]pticas|ultraprime|red one|alexa|luces|lighting|\bled\b|panel|gels?\b|iluminaci|dolly|gr[uú]a|crane|monitor|\bkit\b|drone|\bdron\b|steadicam|handies|walkie|generador)/],
   ['03', /(producci[oó]n|productor|producer|\bprod\b|runner|coordinador|asistente|ayudante|assist)/],
 ];
+/* lo que en una planilla es preproducción de dirección o de producción */
+const RE_CONCEPTO_PRE = /(shooting ?board|story ?board|casting|desarrollo|gui[oó]n|tratamiento|preproducci|scouting|\bppm\b|pre ?production meeting|research)/;
+const esConceptoPre = c => esFuncionPre(c) || RE_CONCEPTO_PRE.test(norm(c || ''));
 function rubroDeConcepto(concepto){
   const t = norm(concepto);
   /* primero el puesto, contra las funciones conocidas (las del convenio y
@@ -16824,6 +16980,7 @@ function confirmarImportarPresupuesto(){
     const cuadra = Math.abs(l.cantidad * l.dias * l.valor - l.total) <= Math.max(1, l.total * 0.01);
     rb.lineas.push(nuevaLinea({concepto: l.concepto, cantidad: cuadra ? l.cantidad : 1, dias: cuadra ? l.dias : 1,
       valorUnit: cuadra ? l.valor : l.total, moneda: I.moneda, valorOrigen: 'manual',
+      etapa: ['02', '03'].includes(l.rubro) && esConceptoPre(l.concepto) ? 'prepro' : null,
       notas: `Importado de ${I.archivo}${l.seccion ? ' · ' + l.seccion : ''}`}));
     rb.abierto = true; k++;
   });
@@ -16868,14 +17025,17 @@ function piezaActual(){
 }
 /* Si estoy parado en un spot, la línea que agrego es de ESE spot. Es lo que
    uno espera y evita el error silencioso de cargarle a todos algo de uno. */
-function addLinea(rid){
-  getV().rubros.find(r=>r.id===rid).lineas.push(nuevaLinea({piezaId:piezaActual()})); R(); }
+function addLinea(rid, bloque){
+  const r = getV().rubros.find(x=>x.id===rid), l = nuevaLinea({piezaId:piezaActual()});
+  if(bloque === 'pre') alPre(l, r);
+  r.lineas.push(l); R(); }
 function delLinea(rid,lid){ const r=getV().rubros.find(x=>x.id===rid);
   const i = r.lineas.findIndex(l=>l.id===lid); if(i < 0) return;
   const [l] = r.lineas.splice(i, 1); R();
   toast(`Borrada: ${l.concepto || 'la línea'}`, {accion:'Deshacer', fn:()=>{ r.lineas.splice(Math.min(i, r.lineas.length), 0, l); R(); }}); }
 function upLinea(rid,lid,campo,val){
-  const l = getV().rubros.find(r=>r.id===rid).lineas.find(x=>x.id===lid);
+  const rb = getV().rubros.find(r=>r.id===rid), l = rb.lineas.find(x=>x.id===lid);
+  if(campo === 'etapa' && val === 'prepro' && rb.codigo === RUBRO_SIN_PRE){ toast('Postproducción no tiene preproducción'); R(); return; }
   l[campo] = ['cantidad','dias','valorUnit'].includes(campo) ? n(val) : val;
   /* El valor escrito a mano manda y el convenio no lo vuelve a tocar. Si lo
      borran (queda en 0), vuelve a quedar libre para que lo complete el SICA. */
@@ -16887,6 +17047,7 @@ function upLinea(rid,lid,campo,val){
      valor vino del convenio, se recalcula; si alguien lo escribió, no */
   if(campo === 'etapa'){
     l.etapa = val || null;
+    if(l.etapa === 'prepro') yaNoVacioPre(rid);
     if(l.valorOrigen === 'sica') autocompletarSICA(l, getPy(), true);
     else autocompletarSICA(l, getPy());
   }
@@ -18484,8 +18645,10 @@ async function subirCatalogoEntero(){
 }
 
 /* Elegir función del catálogo maestro (carga rápida de líneas) */
-function pickFuncion(rid){
+function pickFuncion(rid, bloque){
   const r = getV().rubros.find(x=>x.id===rid);
+  /* desde preproducción la línea entra como prepro: el convenio, a 8 h */
+  const pre = bloque === 'pre';
   /* el fee de la productora no es una línea que arme el jefe */
   const fs = (FUNCIONES[r.codigo] || []).filter(f => veMargen() || !/^fee de producci/i.test(f));
   /* El número que se muestra acá tiene que ser EXACTAMENTE el que se va a
@@ -18494,24 +18657,27 @@ function pickFuncion(rid){
   const py = getPy(), E = escalaDelProyecto(py), cfg = py && py.configRodaje, H = horasJornadaDe(cfg);
   /* primero lo propio del área (sus puestos y lo que alquila o compra);
      la nafta, los fletes y los viáticos, que están en todas, van aparte abajo */
-  const propias = fs.filter(f => !COMUNES.includes(f)), comunes = fs.filter(f => COMUNES.includes(f));
+  const propias = fs.filter(f => !COMUNES.includes(f) && !esFuncionPre(f)), comunes = fs.filter(f => COMUNES.includes(f));
+  const dePre = fs.filter(f => esFuncionPre(f) && !COMUNES.includes(f));
   const boton = f => { const sc = cargoSICA(f, E);
     return `<button class="btn" style="width:100%;text-align:left;margin-bottom:4px;border-color:transparent;display:flex;gap:8px;align-items:baseline"
-        onclick="addFuncion('${rid}',${JSON.stringify(f).replace(/"/g,'&quot;')})"><span style="flex:1">${esc(f)}</span>
-        ${sc?`<span class="sica" title="Convenio SICA ${esc(E.nombre)} · ${esc(sc.d)} · ${esc(sc.c)} · jornada de ${H} h. Se carga de base y se puede editar.">SICA ${fmtC(valorJornadaSICA(sc, cfg))}</span>`:''}</button>`; };
+        onclick="addFuncion('${rid}',${JSON.stringify(f).replace(/"/g,'&quot;')}${bloque === 'pre' ? ",'pre'" : ''})"><span style="flex:1">${esc(f)}</span>
+        ${sc?`<span class="sica" title="Convenio SICA ${esc(E.nombre)} · ${esc(sc.d)} · ${esc(sc.c)} · jornada de ${pre ? 8 : H} h. Se carga de base y se puede editar.">SICA ${fmtC(pre ? sc.j8 : valorJornadaSICA(sc, cfg))}</span>`:''}</button>`; };
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod" style="max-width:460px">
-    <h3>${esc(rubroTxt(r.codigo, r.nombre))}</h3>
+    <h3>${esc(rubroTxt(r.codigo, r.nombre))}${bloque === 'pre' ? ' · preproducción' : ''}</h3>
     <div class="mbody" style="padding:8px">
       ${fs.length ? propias.map(boton).join('')
+        + (dePre.length ? `<div class="pf-grupo">Preproducción <span class="pf-nota">entran en el bloque de preproducción</span></div>${dePre.map(boton).join('')}` : '')
         + (comunes.length ? `<div class="pf-grupo">Gastos del área</div>${comunes.map(boton).join('')}` : '')
         :'<div class="empty">Este rubro no tiene funciones sugeridas. Usá “+ Línea”.</div>'}
     </div>
     <div class="mfoot"><button class="btn" onclick="cerrar()">Cerrar</button></div>
   </div></div>`); }
-function addFuncion(rid, concepto){
-  const l = nuevaLinea({concepto, piezaId:piezaActual()});
-  autocompletarSICA(l, getPy());       /* de base, el sueldo del convenio */
-  getV().rubros.find(r=>r.id===rid).lineas.push(l);
+function addFuncion(rid, concepto, bloque){
+  const r = getV().rubros.find(x=>x.id===rid), l = nuevaLinea({concepto, piezaId:piezaActual()});
+  if(bloque === 'pre' || esFuncionPre(concepto)) alPre(l, r);
+  autocompletarSICA(l, getPy());       /* de base, el sueldo del convenio (a 8 h si es de preproducción) */
+  r.lineas.push(l);
   guardar(); toast('Agregado: '+concepto);
   const m = document.querySelector('.mod'); if(m) m.scrollTop = 0; }
 
@@ -18524,14 +18690,14 @@ function addFuncion(rid, concepto){
    perder el cursor del buscador.                                            */
 let _pp = null;
 const PP_MAX = 60;
-function pickPersona(rid){
+function pickPersona(rid, bloque){
   const r = getV().rubros.find(x=>x.id===rid);
   const ps = DB.catalogo.personas || [];
   const hayDelRubro = ps.some(p => p.rubro === r.codigo);
-  _pp = {rid, q:'', tipo:'', rubro: hayDelRubro ? r.codigo : '', agregados: new Set()};
+  _pp = {rid, q:'', tipo:'', rubro: hayDelRubro ? r.codigo : '', agregados: new Set(), bloque: bloque || null};
   const cuenta = {}; ps.forEach(p => cuenta[p.rubro] = (cuenta[p.rubro]||0) + 1);
   abrir(`<div class="ov" onclick="cerrarAfuera(event,this)"><div class="mod ppmod" style="max-width:620px">
-    <h3>Traer del catálogo → ${esc(r.nombre)}</h3>
+    <h3>Traer del catálogo → ${esc(r.nombre)}${bloque === 'pre' ? ' (preproducción)' : ''}</h3>
     <div class="ppbusca">
       <input type="search" id="ppq" placeholder="Buscar por nombre, función o proyecto…" autocomplete="off"
         oninput="ppFiltro('q', this.value)">
@@ -18619,12 +18785,12 @@ function ppAgregar(pid){
     _pp = null; cerrar(); toast('Asignado: ' + ((pe && pe.nombre) || '')); R();
     return;
   }
-  addPersona(_pp.rid, pid);
+  addPersona(_pp.rid, pid, _pp.bloque);
   _pp.agregados.add(pid);
   ppPintar();
 }
-function addPersona(rid, pid){
-  const p = DB.catalogo.personas.find(x=>x.id===pid);
+function addPersona(rid, pid, bloque){
+  const p = DB.catalogo.personas.find(x=>x.id===pid), r = getV().rubros.find(x=>x.id===rid);
   const l = nuevaLinea({
     piezaId: piezaActual(),
     concepto:p.funcion||p.nombre, refId:p.id, refTipo:'persona',
@@ -18633,9 +18799,13 @@ function addPersona(rid, pid){
     comprobante: p.condicion==='Responsable Inscripto'?'facA':(p.condicion==='Monotributista'?'facBC':'')});
   /* La tarifa de la persona es lo que cobra de verdad y manda sobre el
      convenio. Si no tiene tarifa cargada, de base va el sueldo del SICA. */
-  if(n(p.tarifaRef) > 0) l.valorOrigen = 'catalogo';
+  if(bloque === 'pre') alPre(l, r);
+  /* en preproducción manda el convenio a 8 h si la función tiene cargo: la
+     tarifa de la ficha es la de una jornada de rodaje */
+  if(bloque === 'pre' && l.etapa && (!l.unidad || l.unidad === 'jornada') && autocompletarSICA(l, getPy(), true)){}
+  else if(n(p.tarifaRef) > 0) l.valorOrigen = 'catalogo';
   else autocompletarSICA(l, getPy());
-  getV().rubros.find(r=>r.id===rid).lineas.push(l);
+  r.lineas.push(l);
   guardar(); toast('Agregado: '+(p.funcion||p.nombre)); }
 
 /* ---------- desglose ---------- */

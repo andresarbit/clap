@@ -52,7 +52,7 @@ ok('el link directo abre esa rendición', hashDeUI() === '#/gastos/rend/r-' + fo
 DB.ui.rendId = null; aplicarHash('#/gastos/rend/r-' + fondo.id);
 ok('y vuelve a abrirla desde el link', DB.ui.subGasto === 'rend' && DB.ui.rendId === fondo.id);
 ok('ni ahí ve montos del presupuesto', !h.includes(TOTAL) && !h.includes(COSTO) && !MONTOS_RUBROS.some(x => h.includes(x)));
-ok('ni el rubro con su plata: sólo nombres', /03 · Equipo de Producción/.test(h));
+ok('ni el rubro con su plata: sólo nombres', /02 · Equipo de Producción/.test(h));
 ok('sin botones para elevar ni cerrar', !/elevarRend\(/.test(h) && !/rendirCaja\(/.test(h));
 como('arte');
 ok('Carla (arte) no ve la rendición de Diego', !veRend(fondo));

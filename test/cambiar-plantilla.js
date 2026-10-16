@@ -25,7 +25,7 @@ const df = buscar(v, 'Director de Fotografía');
 df.valorUnit = 1500000; df.valorOrigen = 'manual';                     /* valor escrito */
 const cam = buscar(v, 'Paquete cámara + ópticas'); cam.valorUnit = 900000; cam.valorOrigen = 'manual';
 const scr = buscar(v, 'Script / Continuista'); scr.cantidad = 1; scr.dias = 1;   /* le cambiaron los días */
-const shoot = buscar(v, 'Shootingboard');                              /* intacta, no está en videoclip */
+const shoot = buscar(v, 'Shootingboard', 'prepro');                    /* intacta (es preproducción de dirección) */
 const muebles = buscar(v, 'Alquiler de muebles'); muebles.valorUnit = 50000; muebles.valorOrigen = 'manual';
 const aMano = nuevaLinea({concepto: 'Grúa con cabeza caliente', unidad: 'jornada', valorUnit: 700000, valorOrigen: 'manual'});
 v.rubros.find(r => r.codigo === '11').lineas.push(aMano);

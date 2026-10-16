@@ -81,10 +81,11 @@ ok('al recuperarlo deja de estar descartado', !py.tags.descartados.includes('mul
 
 console.log('\n--- 5. PREPRODUCCION COMO AREA ---');
 ok('preproducción es un área', !!AREA('preproduccion'), areaLbl('preproduccion'));
-ok('el rubro 01 le pertenece', areaDeRubro('01') === 'preproduccion', areaDeRubro('01'));
-ok('ya no cae en producción', areaDeRubro('01') !== 'produccion');
+/* el rubro 01 se fue: la preproducción es una etapa de cada rubro (y el
+   área queda, para los gastos que ya la tienen) */
+ok('ya no hay rubro 01', !RUBROS_BASE.some(r => r.codigo === '01') && areaDeRubro('01') === '');
 ok('cada área tiene un rubro que la usa o es transversal',
-  AREAS.every(a => RUBROS_BASE.some(r => r.area === a.k) || a.k === 'catering'),
+  AREAS.every(a => RUBROS_BASE.some(r => r.area === a.k) || a.k === 'catering' || a.k === 'preproduccion'),
   AREAS.filter(a => !RUBROS_BASE.some(r => r.area === a.k)).map(a => a.k).join(',') || 'todas');
 
 console.log('\n--- 6. RENDER ---');

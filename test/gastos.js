@@ -9,7 +9,7 @@ console.log('--- 1. RUBROS INTERNOS ---');
 const totalSub = Object.values(FUNCIONES).reduce((s, x) => s + x.length, 0);
 console.log('  ' + RUBROS_BASE.length + ' rubros · ' + totalSub + ' subrubros');
 RUBROS_BASE.forEach(r => console.log(`  ${r.codigo} ${r.nombre.padEnd(38)} ${String((FUNCIONES[r.codigo] || []).length).padStart(3)} subrubros`));
-ok('19 rubros', RUBROS_BASE.length === 19, RUBROS_BASE.length);
+ok('18 rubros', RUBROS_BASE.length === 18, RUBROS_BASE.length);
 ok('todos los rubros tienen subrubros', RUBROS_BASE.every(r => (FUNCIONES[r.codigo] || []).length > 0),
   RUBROS_BASE.filter(r => !(FUNCIONES[r.codigo] || []).length).map(r => r.codigo).join(',') || 'todos');
 ok('más de 200 subrubros', totalSub > 200, totalSub);
