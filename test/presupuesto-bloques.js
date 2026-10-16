@@ -2,7 +2,9 @@
    RODAJE abajo, con los rubros repetidos (cada uno con lo suyo). El rubro 01
    «Preproducción y Desarrollo» ya no existe: lo suyo es preproducción de
    Dirección (casting, storyboard, desarrollo) o de Producción (scouting,
-   PPM, trámites), y los presupuestos de antes se reparten al abrir.
+   PPM, trámites), y los presupuestos de antes se reparten al abrir. Lo que
+   sale (el Excel de la cotización, la vista del cliente, el CSV) también va
+   en preproducción y rodaje.
    Uso: node test/run.js test/presupuesto-bloques.js                         */
 (() => {
 let fallos = 0;
@@ -141,5 +143,44 @@ d.versiones.forEach(x => { delete x.rubro01Repartido; x.rubros.unshift({id: 'rbX
   lineas: [nuevaLinea({concepto: 'Casting', unidad: 'global', valorUnit: 100000})]}); });
 PARTES_PY.presupuesto.pone(py4, JSON.parse(JSON.stringify(d)));
 ok('al recibirlo de la base, se reparte', !getV().rubros.some(r => r.codigo === '01') && getV().rubros.find(r => r.codigo === '02').lineas.some(l => l.concepto === 'Casting' && l.etapa === 'prepro'));
+
+console.log('--- 7. LO QUE SALE: EXCEL, CLIENTE Y CSV ---');
+DB = dbVacia(); sembrar();
+const prX = getPr(), pyX = prX.proyectos[1];                     /* Cumbre, en cotización */
+DB.ui.usuarioId = prX.usuarios.find(u => u.rol === 'ejecutivo').id;
+DB.ui.proyectoId = pyX.id;
+const vB = baseDe(pyX); DB.ui.versionId = vB.id;
+const RX = calcular(vB), SX = seccionesVersion(vB);
+ok('las secciones: preproducción y rodaje', SX.length === 2 && SX[0].k === 'pre' && SX[1].k === 'rodaje' && SX[0].rubros.length > 0);
+ok('pre + rodaje = las líneas, como antes', redondo(SX[0].total + SX[1].total) === redondo(RX.subtotalLineas), `${SX[0].total} + ${SX[1].total} vs ${RX.subtotalLineas}`);
+ok('y cada sección es la suma de sus rubros', SX.every(x => redondo(x.rubros.reduce((a, y) => a + y.total, 0)) === redondo(x.total)));
+const hojaB = hojasCotizacion(pyX).find(h => h.nombre === 'Base').filas;
+const txt = c => c == null ? '' : typeof c === 'object' ? String(c.v ?? '') : String(c);
+const iFila = re => hojaB.findIndex(f => f && f.some(c => re.test(txt(c))));
+const val = re => { const fr = hojaB[iFila(re)]; return fr ? +txt(fr[7]) : NaN; };
+ok('el Excel: PREPRODUCCIÓN primero, después RODAJE', iFila(/^PREPRODUCCIÓN · jornadas de 8 h$/) > 0 && iFila(/^PREPRODUCCIÓN/) < iFila(/^RODAJE$/));
+ok('con el subtotal de cada sección', Math.abs(val(/^Subtotal preproducción$/) - SX[0].total) < 0.02 && Math.abs(val(/^Subtotal rodaje$/) - SX[1].total) < 0.02);
+const filaL = hojaB[iFila(/^Líneas$/)];
+ok('las líneas suman las dos secciones (fórmula) y dan lo mismo que antes', /^H\d+\+H\d+$/.test(filaL[7].f) && Math.abs(filaL[7].v - RX.subtotalLineas) < 0.02);
+ok('los totales de siempre, iguales a la app', Math.abs(val(/^Costo directo$/) - RX.subtotal) < 0.02 && Math.abs(val(/^Fee de producción \(margen\)$/) - RX.fee) < 0.02
+  && Math.abs(val(/^IVA$/) - RX.iva) < 0.02 && Math.abs(val(/^Total al cliente$/) - RX.total) < 0.02);
+ok('con los números de rubro de la pantalla', hojaB.some(f => f && txt(f[0]) === numRubro('18') && txt(f[1]) === 'Grip'));
+/* la vista del cliente (y el PDF) */
+const hc = tablaCliente(vB, RX);
+ok('el cliente ve las dos secciones con su subtotal', /class="csec"/.test(hc) && hc.indexOf('Preproducción') < hc.indexOf('Rodaje') && hc.includes(fmt(SX[0].total, vB.monedaBase)) && hc.includes(fmt(SX[1].total, vB.monedaBase)));
+ok('y nada de más: sin líneas, sin fee', !/Director de Fotografía|Scouting/.test(hc) && !/\bfee\b/i.test(hc));
+ok('las cargas sociales, al final como siempre', !RX.cargas || hc.lastIndexOf('Cargas sociales') > hc.lastIndexOf('csec'));
+/* el CSV */
+let csvX = ''; const _bX = bajar; bajar = (nm, c) => { csvX = c; }; expCSV(); bajar = _bX;
+ok('el CSV tiene la etapa de cada línea', /"Etapa"/.test(csvX.split('\n')[0]) && /"Casting","Preproducción"/.test(csvX) && /"Rodaje"/.test(csvX));
+/* una versión sin preproducción: sólo el rodaje, sin títulos de más */
+DB = dbVacia(); sembrarChico();
+const pyC = getPy(), vC = getV();
+ok('sin preproducción: una sola sección', seccionesVersion(vC).length === 1 && seccionesVersion(vC)[0].k === 'rodaje');
+const hojaC = hojasCotizacion(pyC)[1].filas;
+ok('el Excel sale sin PREPRODUCCIÓN ni RODAJE', !hojaC.some(f => f && f.some(c => /^(PREPRODUCCIÓN|RODAJE)/.test(txt(c)))));
+const fL = hojaC.find(f => f && txt(f[6]) === 'Líneas');
+ok('y las líneas dan lo mismo', fL && Math.abs(fL[7].v - calcular(vC).subtotalLineas) < 0.02 && /^H\d+(\+H\d+)+$/.test(fL[7].f));
+ok('el cliente lo ve como antes', !/csec/.test(tablaCliente(vC, calcular(vC))));
 console.log(fallos ? `\n>>> ${fallos} FALLA(S)` : '\n>>> TODO OK');
 })();

@@ -159,6 +159,10 @@ button:focus-visible,a:focus-visible,[role=button]:focus-visible,summary:focus-v
 .ln .chip.j8 input{width:3.4em;padding:0 3px;font:700 10.5px var(--mono);text-align:right;border:1px solid rgba(30,58,95,.25);border-radius:3px;background:var(--bg2)}
 .ln .chip.j8 input::placeholder{color:var(--tx3);opacity:.6;font-weight:400}
 /* «Gastos del área» en el catálogo de funciones */
+/* las secciones (preproducción / rodaje) en la cotización del cliente */
+.tcli tr.csec td{background:var(--bg3);border-top:2px solid var(--line2);text-transform:uppercase;letter-spacing:.06em;font-size:11.5px}
+.tcli tr.csec td .muted{text-transform:none;letter-spacing:0}
+@media print{ .tcli tr.csec td{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
 .pf-grupo .pf-nota{text-transform:none;letter-spacing:0;font-weight:500;margin-left:6px}
 .pf-grupo{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);font-weight:700;margin:12px 0 4px;padding:10px 13px 0;border-top:1px solid var(--line)}
 
@@ -8468,7 +8472,7 @@ function vistaPresupuesto(pr,py,v){
   ${solapasPiezas(py, v, sel, cli)}
   ${cli ? '' : barraSICA(py, v)}
   ${sel && !cli ? avisoPieza(py, v, sel) : ''}
-  ${cli ? tablaCliente(v,R) : presupuestoEnBloquesHTML(py, v, filtro, sel)}
+  ${cli ? tablaCliente(v,R,filtro) : presupuestoEnBloquesHTML(py, v, filtro, sel)}
   ${cli?'':`<div class="pad noprint" style="padding:0 0 10px;display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn" onclick="addRubro()">+ Agregar rubro</button>
       <button class="btn" onclick="elegirPlantilla()" title="Suma las líneas de una plantilla que todavía no estén">+ Líneas de una plantilla</button>
@@ -8668,6 +8672,24 @@ function bloquesPresupuesto(v, filtro){
   });
   const tot = xs => xs.reduce((s, x) => s + x.ls.reduce((a, l) => a + totalLinea(l, v), 0), 0);
   return {pre, rod, totPre: tot(pre), totRod: tot(rod)};
+}
+/* Lo mismo para lo que sale de la app (el Excel de la cotización, la vista
+   y el PDF del cliente): la preproducción y el rodaje, cada uno con los
+   rubros que tienen algo y su subtotal. Una versión sin preproducción da
+   una sola sección (el rodaje) y sale como siempre, sin títulos de más.   */
+const ETAPA_SALIDA = {pre: 'Preproducción', rodaje: 'Rodaje', post: 'Postproducción'};
+const etapaDeLinea = (l, r) => esLineaPre(l, r) ? ETAPA_SALIDA.pre : l.etapa === 'post' ? ETAPA_SALIDA.post : ETAPA_SALIDA.rodaje;
+function seccionesVersion(v, filtro){
+  const S = [{k: 'pre', titulo: 'Preproducción', nota: 'jornadas de 8 h', rubros: []}, {k: 'rodaje', titulo: 'Rodaje', nota: '', rubros: []}];
+  (v.rubros || []).forEach(r => {
+    const ls = filtro ? r.lineas.filter(filtro) : r.lineas;
+    const p = ls.filter(l => esLineaPre(l, r)), d = ls.filter(l => !esLineaPre(l, r));
+    if(p.length) S[0].rubros.push({r, ls: p});
+    if(d.length) S[1].rubros.push({r, ls: d});
+  });
+  S.forEach(x => { x.rubros.forEach(y => { y.total = y.ls.reduce((a, l) => a + totalLinea(l, v), 0); });
+    x.total = x.rubros.reduce((a, y) => a + y.total, 0); });
+  return S[0].rubros.length ? S : [S[1]];
 }
 function presupuestoEnBloquesHTML(py, v, filtro, sel){
   const RL = realPorLinea(py, v), B = bloquesPresupuesto(v, filtro);
@@ -8966,18 +8988,27 @@ function lineaHTML(l,r,v,py,RL){
   </div>`;
 }
 
-/* vista cliente: sólo rubros agrupados, sin detalle ni circuito de pago */
-function tablaCliente(v,R){
+/* vista cliente: sólo rubros agrupados, sin detalle ni circuito de pago.
+   Con preproducción, en dos secciones (preproducción y rodaje) con su
+   subtotal; las cargas sociales van al final, como siempre. */
+function tablaCliente(v,R,filtro){
   const py = getPy();
+  const S = seccionesVersion(v, filtro), conSecciones = S.length > 1;
+  const fila = (cod, nombre, total) => `<tr>
+        <td><span class="rcode">${esc(numRubro(cod))}</span></td>
+        <td>${esc(nombre)}</td>
+        <td class="num" style="text-align:right;font-weight:600">${fmt(total,v.monedaBase)}</td>
+        <td class="num muted" style="text-align:right">${pct(total,R.subtotal)}%</td></tr>`;
+  const filas = conSecciones
+    ? S.map(x => `<tr class="csec"><td colspan="2"><b>${esc(x.titulo)}</b>${x.nota ? ` <span class="muted">${esc(x.nota)}</span>` : ''}</td>
+        <td class="num" style="text-align:right"><b>${fmt(x.total, v.monedaBase)}</b></td><td class="num muted" style="text-align:right">${pct(x.total,R.subtotal)}%</td></tr>`
+        + x.rubros.filter(y => y.total > 0).map(y => fila(y.r.codigo, y.r.nombre, y.total)).join('')).join('')
+      + R.porRubro.filter(r => r.sintetico && r.total > 0).map(r => fila(r.codigo, r.nombre, r.total)).join('')
+    : R.porRubro.filter(r=>r.total>0).map(r => fila(r.codigo, r.nombre, r.total)).join('');
   return `${clientePorPieza(py, v)}<div class="card"><h3>Presupuesto — resumen por rubro</h3>
-    <div class="scrollx"><table class="tbl">
+    <div class="scrollx"><table class="tbl tcli">
       <thead><tr><th style="width:44px">Cód.</th><th>Rubro</th><th style="text-align:right">Importe</th><th style="text-align:right;width:52px">%</th></tr></thead>
-      <tbody>${R.porRubro.filter(r=>r.total>0).map(r=>`<tr>
-        <td><span class="rcode">${esc(numRubro(r.codigo))}</span></td>
-        <td>${esc(r.nombre)}</td>
-        <td class="num" style="text-align:right;font-weight:600">${fmt(r.total,v.monedaBase)}</td>
-        <td class="num muted" style="text-align:right">${pct(r.total,R.subtotal)}%</td></tr>`).join('')
-        || '<tr><td colspan="4" class="empty">Sin importes cargados</td></tr>'}</tbody>
+      <tbody>${filas || '<tr><td colspan="4" class="empty">Sin importes cargados</td></tr>'}</tbody>
     </table></div></div>`;
 }
 
@@ -18147,17 +18178,27 @@ function hojasCotizacion(py){
       ...(v.ejercicio && v.ejercicio.porque ? [[B('Por qué'), v.ejercicio.porque]] : []),
       [],
       [H('Cód.'), H('Rubro / concepto'), H('Unidad'), H('Cantidad'), H('Días'), H('Valor unitario'), H('Moneda'), H('Total ' + mb), H('Notas')]];
+    /* en dos secciones, preproducción (jornadas de 8 h) y rodaje, cada una con
+       sus rubros y su subtotal; sin preproducción, como siempre */
+    const S = seccionesVersion(v, l => String(l.concepto || '').trim()), conSecciones = S.length > 1;
     const subt = [];
-    v.rubros.forEach(r => {
-      const ls = r.lineas.filter(l => String(l.concepto || '').trim());
-      if(!ls.length) return;
-      f.push([B(numRubro(r.codigo)), B(r.nombre)]);
-      const ini = f.length + 1;
-      ls.forEach(l => f.push(['', l.concepto, l.unidad || '', n(l.cantidad), n(l.dias), P(l.valorUnit), l.moneda || 'ARS', P(totalLinea(l, v)), l.notas || '']));
-      const fin = f.length;
-      f.push(['', '', '', '', '', '', B('Subtotal'), {v: Math.round(totalRubro({lineas: ls}, v) * 100) / 100, s: 4, f: `SUM(H${ini}:H${fin})`}]);
-      subt.push('H' + f.length);
-      f.push([]);
+    S.forEach(x => {
+      if(conSecciones) f.push(['', {v: x.titulo.toUpperCase() + (x.nota ? ' · ' + x.nota : ''), s: 6}]);
+      const subtS = [];
+      x.rubros.forEach(({r, ls, total}) => {
+        f.push([B(numRubro(r.codigo)), B(r.nombre)]);
+        const ini = f.length + 1;
+        ls.forEach(l => f.push(['', l.concepto, l.unidad || '', n(l.cantidad), n(l.dias), P(l.valorUnit), l.moneda || 'ARS', P(totalLinea(l, v)), l.notas || '']));
+        const fin = f.length;
+        f.push(['', '', '', '', '', '', B('Subtotal'), {v: Math.round(total * 100) / 100, s: 4, f: `SUM(H${ini}:H${fin})`}]);
+        subtS.push('H' + f.length);
+        f.push([]);
+      });
+      if(conSecciones){
+        f.push(['', '', '', '', '', '', B('Subtotal ' + x.titulo.toLowerCase()), {v: Math.round(x.total * 100) / 100, s: 4, f: subtS.length ? subtS.join('+') : '0'}]);
+        subt.push('H' + f.length);
+        f.push([]);
+      } else subt.push(...subtS);
     });
     const tot = (t, val, pct) => ['', B(t), '', '', '', '', pct != null ? `${n(pct)} %` : '', PB(val)];
     f.push(['', '', '', '', '', '', B('Líneas'), {v: Math.round(R.subtotalLineas * 100) / 100, s: 4, f: subt.length ? subt.join('+') : '0'}]);
@@ -23287,9 +23328,9 @@ function expCSV(){
   const v=getV(), py=getPy(); if(!v || !vePlata()) return;
   const q = s => '"'+String(s??'').replace(/"/g,'""')+'"';
   const U = unidadDe(py);
-  const L = [['Rubro','Código','Concepto',U,'Unidad','Cantidad','Días','Valor unit.','Moneda',
+  const L = [['Rubro','Código','Concepto','Etapa',U,'Unidad','Cantidad','Días','Valor unit.','Moneda',
               'Total '+v.monedaBase,'Circuito','Comprobante'].map(q).join(',')];
-  v.rubros.forEach(r=>r.lineas.forEach(l=>L.push([r.nombre,numRubro(r.codigo),l.concepto,
+  v.rubros.forEach(r=>r.lineas.forEach(l=>L.push([r.nombre,numRubro(r.codigo),l.concepto,etapaDeLinea(l, r),
     l.piezaId ? nombrePieza(py, l.piezaId) : 'Compartida',
     l.unidad,l.cantidad,
     l.dias,l.valorUnit,l.moneda,Math.round(totalLinea(l,v)),
@@ -23297,19 +23338,19 @@ function expCSV(){
     (COMPROBANTES.find(c=>c.v===l.comprobante)||{}).l||''].map(q).join(','))));
   const R2=calcular(v);
   if(R2.cargas || R2.cargasElenco){
-    L.push('', [q('Líneas'),'','','','','','','',Math.round(R2.subtotalLineas)].join(','));
-    if(R2.cargas) L.push([q(`Cargas sociales SICA ${n(v.capas.cargas)}% s/ ${Math.round(R2.baseSica)}`),'','','','','','','',Math.round(R2.cargas)].join(','));
-    if(R2.cargasElenco) L.push([q(`Cargas del elenco AAA ${n(v.capas.cargasElenco)}% s/ ${Math.round(R2.baseAAA)}`),'','','','','','','',Math.round(R2.cargasElenco)].join(','));
+    L.push('', [q('Líneas'),'','','','','','','','','',Math.round(R2.subtotalLineas)].join(','));
+    if(R2.cargas) L.push([q(`Cargas sociales SICA ${n(v.capas.cargas)}% s/ ${Math.round(R2.baseSica)}`),'','','','','','','','','',Math.round(R2.cargas)].join(','));
+    if(R2.cargasElenco) L.push([q(`Cargas del elenco AAA ${n(v.capas.cargasElenco)}% s/ ${Math.round(R2.baseAAA)}`),'','','','','','','','','',Math.round(R2.cargasElenco)].join(','));
   }
-  L.push('', [q('Subtotal'),'','','','','','','',Math.round(R2.subtotal)].join(','));
+  L.push('', [q('Subtotal'),'','','','','','','','','',Math.round(R2.subtotal)].join(','));
   if(veMargen()){
-    L.push([q(`Fee ${v.capas.fee}%`),'','','','','','','',Math.round(R2.fee)].join(','));
-    L.push([q(`Contingencia ${v.capas.contingencia}%`),'','','','','','','',Math.round(R2.contingencia)].join(','));
-    L.push([q(`IVA ${v.capas.iva}%`),'','','','','','','',Math.round(R2.iva)].join(','));
-    L.push([q('TOTAL'),'','','','','','','',Math.round(R2.total)].join(','));
+    L.push([q(`Fee ${v.capas.fee}%`),'','','','','','','','','',Math.round(R2.fee)].join(','));
+    L.push([q(`Contingencia ${v.capas.contingencia}%`),'','','','','','','','','',Math.round(R2.contingencia)].join(','));
+    L.push([q(`IVA ${v.capas.iva}%`),'','','','','','','','','',Math.round(R2.iva)].join(','));
+    L.push([q('TOTAL'),'','','','','','','','','',Math.round(R2.total)].join(','));
   } else {
-    L.push([q(`Contingencia ${v.capas.contingencia}%`),'','','','','','','',Math.round(R2.contingencia)].join(','));
-    L.push([q('COSTO DE PRODUCCIÓN'),'','','','','','','',Math.round(R2.subtotal + R2.contingencia)].join(','));
+    L.push([q(`Contingencia ${v.capas.contingencia}%`),'','','','','','','','','',Math.round(R2.contingencia)].join(','));
+    L.push([q('COSTO DE PRODUCCIÓN'),'','','','','','','','','',Math.round(R2.subtotal + R2.contingencia)].join(','));
   }
   /* y cuánto sale cada pieza, aclarando que lo común no se gasta de nuevo */
   const CP = costoPorPieza(py, v);
